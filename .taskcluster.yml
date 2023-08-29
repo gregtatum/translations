@@ -7,6 +7,8 @@
 version: 1
 reporting: checks-v1
 policy:
+    # Tasks are created for all pull requests.
+    # https://docs.taskcluster.net/docs/reference/integrations/github/taskcluster-yml-v1#pull-requests
     pullRequests: public
 tasks:
     - $let:
