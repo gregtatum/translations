@@ -53,6 +53,8 @@ tasks:
               $switch:
                   '"github" in tasks_for': {$eval: as_slugid("decision_task")}
                   'tasks_for in ["cron", "action"]': '${ownTaskId}'
+          # The available actions are documented here, under "Activity types":
+          # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#pull_request
           pullRequestAction:
               $switch:
                   'tasks_for[:19] == "github-pull-request"': ${event.action}
@@ -60,6 +62,21 @@ tasks:
           isPullRequest:
               $eval: 'tasks_for[:19] == "github-pull-request"'
       in:
+          #-------------------------------------------------------------------------------
+          # Linting
+          #-------------------------------------------------------------------------------
+          $if: >
+              event.ref == "refs/heads/main" && (
+                tasks_for in ["github-push"]
+                || (isPullRequest && pullRequestAction in ["opened", "reopened", "synchronize"])
+              )
+
+          then:
+              # TODO
+
+          #-------------------------------------------------------------------------------
+          # Decision Task
+          #-------------------------------------------------------------------------------
           $if: >
               tasks_for in ["action", "cron", "github-push"]
               || (isPullRequest && pullRequestAction in ["opened", "reopened", "synchronize"])
