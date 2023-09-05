@@ -20,7 +20,7 @@ tasks:
     worker-type: b-linux-large
     worker:
       max-run-time: 86400
-      docker-image: {in-tree: base}
+      docker-image: "ubuntu:latest"
     run:
       command:
         - pip3 install poetry
