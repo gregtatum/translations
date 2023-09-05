@@ -20,10 +20,9 @@ tasks:
     worker-type: b-linux-large
     worker:
       max-run-time: 86400
-      docker-image: "ubuntu:latest"
+      docker-image: {in-tree: testing}
     run:
       command:
-        - pip3 install poetry
         - poetry install
         - poetry run python3 test.py
     run-on-tasks-for: ["github-push", "github-pull-request"]
