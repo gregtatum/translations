@@ -1,0 +1,36 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+---
+
+loader: taskgraph.loader.transform:loader
+
+transforms:
+    - taskgraph.transforms.job:transforms
+    - taskgraph.transforms.task:transforms
+
+task-defaults:
+    attributes:
+        retrigger: true
+        code-review: true
+    worker-type: t-linux
+    worker:
+        docker-image: {"in-tree": "testing-lint"}
+    treeherder:
+        kind: test
+        platform: tests/opt
+        tier: 1
+    run:
+        using: run-task
+        cwd: '{checkout}'
+
+tasks:
+    helloworld:
+        description: "Demonstrate that this works to run a python file"
+        treeherder:
+            symbol: unit
+        attributes:
+            artifact_prefix: public
+        run:
+            command: >-
+                poetry run python test.py
