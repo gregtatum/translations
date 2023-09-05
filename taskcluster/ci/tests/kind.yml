@@ -22,5 +22,5 @@ tasks:
       max-run-time: 86400
       docker-image: {in-tree: base}
     run:
-      command: python test.py
+      command: python3 test.py
     run-on-tasks-for: ["github-push", "github-pull-request"]
