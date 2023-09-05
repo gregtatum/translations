@@ -22,5 +22,8 @@ tasks:
       max-run-time: 86400
       docker-image: {in-tree: base}
     run:
-      command: python3 test.py
+      command:
+        - pip3 install poetry
+        - poetry install
+        - poetry run python3 test.py
     run-on-tasks-for: ["github-push", "github-pull-request"]
