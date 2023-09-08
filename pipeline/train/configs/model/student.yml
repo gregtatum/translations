@@ -1,3 +1,4 @@
+---
 # https://github.com/browsermt/students/tree/master/train-student/models/student.tiny11
 dec-cell-base-depth: 2
 dec-cell-high-depth: 1
@@ -23,4 +24,3 @@ transformer-preprocess: ""
 transformer-tied-layers: []
 transformer-train-position-embeddings: false
 type: transformer
-

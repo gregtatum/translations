@@ -1,3 +1,4 @@
+---
 # Mozilla Berlin cluster
 single-gpu-partition: g2080
 multi-gpu-partition: g2080

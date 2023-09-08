@@ -1,3 +1,4 @@
+---
 cluster: "submit.py"
 cluster-status: "status.py"
 jobscript: "jobscript.sh"
@@ -18,7 +19,12 @@ resources: gpu=2
 cores: 16
 cache: false
 reason: true
-singularity-args: "--bind /home/cs-pavl1/rds/evgeny,/usr/local/software/cuda/11.2,/usr/local/Cluster-Apps/cudnn/8.1_cuda-11.2/lib64:/cudnn,/tmp --nv --containall"
+singularity-args: "\
+  --bind \
+  /home/cs-pavl1/rds/evgeny,\
+  /usr/local/software/cuda/11.2,\
+  /usr/local/Cluster-Apps/cudnn/8.1_cuda-11.2/lib64:/cudnn,\
+  /tmp --nv --containall"
 config:
   - deps=false
   - root=/home/cs-pavl1/rds/evgeny
@@ -29,7 +35,6 @@ config:
   # if compiling on CPU you might need to do mariancmake=-DBUILD_ARCH=core-avx2
   - mariancmake=""
   - gpus=""
-
 
 # running on csd3 requires:
 #  module load singularity

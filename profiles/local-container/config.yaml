@@ -1,3 +1,4 @@
+---
 verbose: false
 use-conda: true
 resources: gpu=8

@@ -6,8 +6,8 @@
 loader: taskgraph.loader.transform:loader
 
 transforms:
-    - taskgraph.transforms.job:transforms
-    - taskgraph.transforms.task:transforms
+  - taskgraph.transforms.job:transforms
+  - taskgraph.transforms.task:transforms
 
 task-defaults:
   description: "Run tests"

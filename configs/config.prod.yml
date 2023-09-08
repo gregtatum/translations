@@ -1,3 +1,4 @@
+---
 ####
 # Example of a production config
 # Change language pair, experiment name, datasets and other settings if needed
@@ -41,14 +42,15 @@ experiment:
 
 
 marian-args:
-# these configs override pipeline/train/configs
+  # these configs override pipeline/train/configs
   training-backward:
     # change based on available training data
     after: 10e
   training-teacher-base:
     # remove for low resource languages or if training without augmentation
     after: 2e
-# these configs override pipeline/translate/decoder.yml
+
+  # these configs override pipeline/translate/decoder.yml
   decoding-backward:
     # 12 Gb GPU, s2s model
     mini-batch-words: 2000
@@ -148,5 +150,3 @@ datasets:
     - news-crawl_news.2017
     - news-crawl_news.2016
     - news-crawl_news.2015
-
-

@@ -5,14 +5,14 @@
 loader: taskgraph.loader.transform:loader
 
 transforms:
-    - taskgraph.transforms.fetch:transforms
-    - taskgraph.transforms.job:transforms
-    - taskgraph.transforms.task:transforms
+  - taskgraph.transforms.fetch:transforms
+  - taskgraph.transforms.job:transforms
+  - taskgraph.transforms.task:transforms
 
 task-defaults:
-    docker-image: {in-tree: base}
+  docker-image: {in-tree: base}
 
 tasks-from:
-    - bicleaner.yml
-    - python.yml
-    - toolchains.yml
+  - bicleaner.yml
+  - python.yml
+  - toolchains.yml
