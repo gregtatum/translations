@@ -1,5 +1,7 @@
 """
-Generates filter config for a dataset based on defaults to use in OpusCleaner
+Generates filter config for a dataset based on defaults to use in OpusCleaner.
+
+https://github.com/hplt-project/OpusCleaner
 """
 
 import argparse
@@ -41,14 +43,14 @@ def build_config(config_path: str, src: str, trg: str) -> str:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "input_prefix", metavar="INPUT_PREFIX", type=str, help="Dataset file prefix"
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawTextHelpFormatter,  # Preserves whitespace in the help text.
     )
-    parser.add_argument("src", metavar="SRC", type=str, help="Source language code")
-    parser.add_argument("trg", metavar="TRG", type=str, help="Target language code")
-    parser.add_argument("dataset", metavar="DATASET", type=str, help="Dataset name")
-    parser.add_argument("output", metavar="OUTPUT_PATH", type=str, help="Write filter config here")
+    parser.add_argument("--src", type=str, help="Source language code")
+    parser.add_argument("--trg", type=str, help="Target language code")
+    parser.add_argument("--dataset", type=str, help="Dataset name")
+    parser.add_argument("--output", type=str, help="Write filter config here")
 
     args = parser.parse_args()
     src = args.src

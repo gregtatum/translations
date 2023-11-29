@@ -30,7 +30,14 @@ mkdir -p "${dir}"
 echo "### Generating cleaning config: ${dataset}.${SRC}-${TRG}.filters.json"
 # save new filter to dataset output dir
 filter_path="${output_prefix}.${SRC}-${TRG}.filters.json"
-python3 generate_filters.py "${input_prefix}" "${SRC}" "${TRG}" "${dataset}" "${filter_path}"
+
+python3 generate_filters.py \
+  --input_prefix "${input_prefix}"
+  --src "${SRC}" \
+  --trg "${TRG}" \
+  --datasets "${dataset}" \
+  --output "${filter_path}"
+
 test -s "${filter_path}" || exit 1
 
 echo "### Cleaning ${input_prefix} with filter ${filter_path}"

@@ -31,6 +31,9 @@ mtdata="0.3.2"
 requests="2.26.0"
 humanize = "^4.9.0"
 
+[tool.poetry.group.downloads.dependencies]
+tqdm = "^4.66.1"
+
 [tool.poetry.group.tests.dependencies]
 sacrebleu="2.0.0"
 mtdata="0.3.2"

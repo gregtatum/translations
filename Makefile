@@ -122,7 +122,7 @@ dag:
 # More details are in docs/cleaning.md
 opuscleaner-ui:
 	poetry install --only opuscleaner
-	opuscleaner-server serve --host=0.0.0.0 --port=8000
+	poetry run opuscleaner-server serve --host=0.0.0.0 --port=8000
 
 # Utils to find corpus etc
 install-utils:

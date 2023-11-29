@@ -1,7 +1,11 @@
 #!/bin/bash
 ##
 # Downloads corpus using opus
-#
+# bash importers/corpus/opus.sh \
+#   ru \
+#   en \
+#   /builds/worker/artifacts/ELRC-3075-wikipedia_health_v1 \
+#   ELRC-3075-wikipedia_health/v1
 
 set -x
 set -euo pipefail
@@ -16,6 +20,7 @@ dataset=$4
 COMPRESSION_CMD="${COMPRESSION_CMD:-pigz}"
 ARTIFACT_EXT="${ARTIFACT_EXT:-gz}"
 
+# ELRC-3075-wikipedia_health
 name=${dataset%%/*}
 name_and_version="${dataset//[^A-Za-z0-9_- ]/_}"
 

@@ -9,7 +9,6 @@ set -euo pipefail
 [[ -z "${SRC}" ]] && echo "SRC is empty"
 [[ -z "${TRG}" ]] && echo "TRG is empty"
 
-
 dataset=$1
 output_prefix=$2
 

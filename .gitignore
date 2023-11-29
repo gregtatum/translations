@@ -137,4 +137,5 @@ dmypy.json
 .bin
 .snakemake
 
-tests_data
+/tests_data
+/data
