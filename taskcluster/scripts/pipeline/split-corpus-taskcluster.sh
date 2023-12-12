@@ -3,16 +3,16 @@
 set -x
 set -euo pipefail
 
-chunks=$1
+split_chunks=$1
 output_dir=$2
-length=$3
+split_length=$3
 lang_args=( "${@:4}" )
 
 pushd `dirname $0`/../../.. &>/dev/null
 VCS_ROOT=$(pwd)
 popd &>/dev/null
 
-${VCS_ROOT}/pipeline/translate/split-corpus.sh "${lang_args[@]}" "${output_dir}" "${length}"
+${VCS_ROOT}/pipeline/translate/split-corpus.sh "${lang_args[@]}" "${output_dir}" "${split_length}"
 
 # Taskcluster requires a consistent number of chunks; split the resulting files
 # evenly into the requested number of chunks, creating empty archives if there's
@@ -20,9 +20,9 @@ ${VCS_ROOT}/pipeline/translate/split-corpus.sh "${lang_args[@]}" "${output_dir}"
 cd "${output_dir}"
 ls file* | grep -v "\.ref" | sort > src-files.txt
 ls file* | grep "\.ref" | sort > ref-files.txt
-for i in $(seq 1 ${chunks} | tr '\n' ' '); do
+for i in $(seq 1 ${split_chunks} | tr '\n' ' '); do
   # Using `r` ensures that src and ref are chunked consistently.
-  src_files=$(split -n r/${i}/${chunks} src-files.txt | tr '\n' ' ')
+  src_files=$(split -n r/${i}/${split_chunks} src-files.txt | tr '\n' ' ')
   if [ "${src_files}" = "" ]; then
     touch "src-file.${i}"
   else
@@ -30,7 +30,7 @@ for i in $(seq 1 ${chunks} | tr '\n' ' '); do
   fi
   zstd --rm "src-file.${i}"
 
-  ref_files=$(split -n r/${i}/${chunks} ref-files.txt | tr '\n' ' ')
+  ref_files=$(split -n r/${i}/${split_chunks} ref-files.txt | tr '\n' ' ')
   if [ "${ref_files}" = "" ]; then
     touch "ref-file.${i}"
   else
