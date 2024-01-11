@@ -72,6 +72,7 @@ ignore = [
 exclude = [
   "3rd_party"
 ]
+fixable = ["ALL"]
 
 [build-system]
 requires = ["poetry-core"]
