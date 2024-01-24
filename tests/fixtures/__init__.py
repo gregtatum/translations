@@ -1,9 +1,15 @@
+import json
 import os
+import shlex
 import shutil
+import subprocess
 import sys
 from subprocess import CompletedProcess
+from typing import Optional
 
 import zstandard as zstd
+
+from utils.preflight_check import get_taskgraph_parameters, run_taskgraph
 
 FIXTURES_PATH = os.path.dirname(os.path.abspath(__file__))
 DATA_PATH = os.path.abspath(os.path.join(FIXTURES_PATH, "../../data"))
@@ -20,14 +26,14 @@ Instantly the wicked woman gave a loud cry of fear, and then, as Dorothy looked 
 “I’m very sorry, indeed,” said Dorothy, who was truly frightened to see the Witch actually melting away like brown sugar before her very eyes.
 """
 
-ca_sample = """La nena, en veure que havia perdut una de les seves boniques sabates, es va enfadar i va dir a la bruixa: "Torna'm la sabata!"
-"No ho faré", va replicar la Bruixa, "perquè ara és la meva sabata, i no la teva".
-"Ets una criatura dolenta!" va cridar la Dorothy. "No tens dret a treure'm la sabata".
-"Me'l guardaré, igualment", va dir la Bruixa, rient-se d'ella, "i algun dia t'agafaré l'altre també".
-Això va fer enfadar tant la Dorothy que va agafar la galleda d'aigua que hi havia a prop i la va llançar sobre la Bruixa, mullant-la de cap a peus.
-A l'instant, la malvada dona va fer un fort crit de por, i aleshores, mentre la Dorothy la mirava meravellada, la Bruixa va començar a encongir-se i a caure.
-"Mira què has fet!" ella va cridar. "D'aquí a un minut em fondreré".
-"Ho sento molt, de veritat", va dir la Dorothy, que es va espantar veritablement de veure que la Bruixa es va desfer com el sucre moreno davant els seus mateixos ulls.
+ru_sample = """Маленькая девочка, увидев, что потеряла одну из своих красивых туфелек, рассердилась и сказала Ведьме: «Верни мне мою туфельку!»
+«Я не буду, — парировала Ведьма, — потому что теперь это моя туфля, а не твоя».
+«Ты злое существо!» - воскликнула Дороти. «Ты не имеешь права забирать у меня туфлю».
+«Я все равно сохраню его, — сказала Ведьма, смеясь над ней, — и когда-нибудь я получу от тебя и другой».
+Это так разозлило Дороти, что она взяла стоявшее рядом ведро с водой и облила им Ведьму, обмочив ее с головы до ног.
+Мгновенно злая женщина громко вскрикнула от страха, а затем, когда Дороти с удивлением посмотрела на нее, Ведьма начала сжиматься и падать.
+«Посмотри, что ты наделал!» она закричала. «Через минуту я растаю».
+«Мне действительно очень жаль», — сказала Дороти, которая была по-настоящему напугана, увидев, что Ведьма тает, как коричневый сахар, у нее на глазах.
 """
 
 
@@ -104,3 +110,137 @@ def fail_on_error(result: CompletedProcess[bytes]):
             print(line, file=sys.stderr)
 
         raise Exception(f"{result.args[0]} exited with a status code: {result.returncode}")
+
+
+# Only (lazily) create the full taskgraph once per test suite run.
+_full_taskgraph: Optional[dict[str, object]] = None
+
+
+def get_full_taskgraph():
+    """
+    Generates the full taskgraph and stores it for re-use. It uses the config.pytest.yml
+    in this directory.
+    """
+    global _full_taskgraph
+    if _full_taskgraph:
+        return _full_taskgraph
+    current_folder = os.path.dirname(os.path.abspath(__file__))
+    config = os.path.join(current_folder, "config.pytest.yml")
+    task_graph_json = os.path.join(current_folder, "../../artifacts/full-task-graph.json")
+
+    run_taskgraph(config, get_taskgraph_parameters())
+
+    with open(task_graph_json, "rb") as file:
+        _full_taskgraph = json.load(file)
+    return _full_taskgraph
+
+
+def get_task_command_and_env(task_name: str, script=None) -> tuple[str, dict[str, str]]:
+    """
+    Extracts a task's command from the full taskgraph. This allows for testing
+    the full taskcluster pipeline and the scripts that it generates.
+    See artifacts/full-task-graph.json for the full list of what is generated.
+
+    task_name - The full task name like "split-mono-src-en"
+        or "evaluate-backward-sacrebleu-wmt09-en-ru".
+    script - If this is provided, then it will return all of the arguments provided
+        to a script, and ignore everything that came before it.
+    """
+    full_taskgraph = get_full_taskgraph()
+    task = full_taskgraph[task_name]
+
+    env = task["task"]["payload"]["env"]
+
+    # The commands typically take the form:
+    #  [
+    #    ['chmod', '+x', 'run-task'],
+    #    ['./run-task', '--firefox_translations_training-checkout=./checkouts/vcs/', '--', 'bash', '-c', "full command"]
+    #  ]
+    commands = task["task"]["payload"]["command"]
+
+    # Get the "full command" from ['./run-task', ..., "full command"]
+    command = commands[-1][-1]
+
+    if script:
+        # Return the parts after the script name.
+        parts = command.split(script)
+        if len(parts) != 2:
+            raise Exception(f"Could not correctly find {script} in: {command}")
+        command = parts[1].strip()
+
+    # Return the full command.
+    return command, env
+
+
+def run_task(
+    task_name: str,
+    script: str,
+    work_dir: str,
+    fetches_dir: str,
+    env: dict[str, str] = {},
+):
+    """
+    Runs a task from the taskgraph. See artifacts/full-task-graph.json after running a
+    test for the full list of task names
+
+    Arguments:
+
+    task_name - The full task name like "split-mono-src-en"
+        or "evaluate-backward-sacrebleu-wmt09-en-ru".
+
+    script - The name of the script (bash or python) that is running. This is used
+        since the full command generally contains things that shouldn't run in the
+        test suite, like pip installs.
+
+    work_dir - This is the TASK_WORKDIR, in tests generally the test's DataDir.
+
+    fetches_dir - The MOZ_FETCHES_DIR, generally set as the test's DataDir.
+
+    env - Any environment variable overrides.
+    """
+    if not task_name:
+        raise Exception("Expected a task_name")
+    if not script:
+        raise Exception("Expected a script")
+    if not work_dir:
+        raise Exception("Expected a work_dir")
+    if not fetches_dir:
+        raise Exception("Expected a fetches_dir")
+
+    command, task_env = get_task_command_and_env(task_name, script=script)
+
+    # There are some non-string environment variables that involve taskcluster references
+    # Remove these.
+    for key in task_env:
+        if not isinstance(task_env[key], str):
+            task_env[key] = ""
+
+    current_folder = os.path.dirname(os.path.abspath(__file__))
+    root_path = os.path.abspath(os.path.join(current_folder, "../.."))
+
+    command_env = {
+        **os.environ,
+        **task_env,
+        "TASK_WORKDIR": work_dir,
+        "MOZ_FETCHES_DIR": fetches_dir,
+        "VCS_PATH": root_path,
+        **env,
+    }
+
+    # Manually apply the environment variables, as they don't get added to the args
+    # through the subprocess.run
+    command = command.replace("$TASK_WORKDIR/$VCS_PATH", root_path)
+    command = command.replace("$TASK_WORKDIR", work_dir)
+    command = command.replace("$MOZ_FETCHES_DIR", fetches_dir)
+
+    # Log the command in case tests fail.
+    print("Running command:", command)
+
+    result = subprocess.run(
+        [script, *shlex.split(command)],
+        env=command_env,
+        cwd=root_path,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    fail_on_error(result)
