@@ -18,8 +18,8 @@ def shared_setup(env: dict[str, str]):
 
     # Create the dataset.
     dataset_prefix = test_data_dir.join("wmt09")
-    test_data_dir.create_zst("wmt09.en.zst", en_sample),
-    test_data_dir.create_zst("wmt09.ca.zst", ca_sample),
+    test_data_dir.create_zst("wmt09.en.zst", en_sample)
+    test_data_dir.create_zst("wmt09.ca.zst", ca_sample)
 
     env = {
         **os.environ,
@@ -73,14 +73,12 @@ def test_eval_sh() -> None:
     # arguments are adjusted.
     marian_decoder_args = json.loads(test_data_dir.load("marian-decoder.args.txt"))
     assert marian_decoder_args == [
-        # fmt: off
         "--config", test_data_dir.join("fake_config.yml"),
         "--quiet",
         "--quiet-translation",
         "--log",    test_data_dir.join("artifacts/wmt09.log"),
         "--models", test_data_dir.join("fake_model.npz"),
-        # fmt: on
-    ], "The marian arguments matched."
+    ], "The marian arguments matched."  # fmt: skip
 
     assert "0.4\n1.0\n" in test_data_dir.load("artifacts/wmt09.metrics")
 
@@ -111,7 +109,6 @@ def test_eval_gpu_sh() -> None:
     # arguments are adjusted.
     marian_decoder_args = json.loads(test_data_dir.load("marian-decoder.args.txt"))
     assert marian_decoder_args == [
-        # fmt: off
         "--config", test_data_dir.join("fake_config.yml"),
         "--quiet",
         "--quiet-translation",
@@ -119,8 +116,7 @@ def test_eval_gpu_sh() -> None:
         '--workspace', '1024',
         '--devices', '4',
         "--models", test_data_dir.join("fake_model.npz"),
-        # fmt: on
-    ], "The marian arguments matched."
+    ], "The marian arguments matched."  # fmt: skip
 
     assert "0.4\n1.0\n" in test_data_dir.load("artifacts/wmt09.metrics")
 
@@ -151,7 +147,6 @@ def test_eval_quantized_sh() -> None:
     # arguments are adjusted.
     marian_decoder_args = json.loads(test_data_dir.load("marian-decoder.args.txt"))
     assert marian_decoder_args == [
-        # fmt: off
         "--config", test_data_dir.join("fake_config.yml"),
         "--quiet",
         "--quiet-translation",
@@ -162,7 +157,6 @@ def test_eval_quantized_sh() -> None:
         test_data_dir.join('vocab.spm'),
         '--shortlist', test_data_dir.join('fake_shortlist-lex.s2t.pruned'), 'false',
         '--int8shiftAlphaAll',
-        # fmt: on
-    ], "The marian arguments matched."
+    ], "The marian arguments matched."  # fmt: skip
 
     assert "0.4\n1.0\n" in test_data_dir.load("artifacts/wmt09.metrics")
