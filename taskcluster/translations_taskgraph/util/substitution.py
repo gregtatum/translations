@@ -14,12 +14,10 @@ def substitute(item, **subs):
     elif isinstance(item, dict):
         new_dict = {}
         for k, v in item.items():
-            k = k.format_map(PartialSubstitutionDict(subs))
-            new_dict[k] = substitute(v, **subs)
+            key = k.format_map(PartialSubstitutionDict(subs))
+            new_dict[key] = substitute(v, **subs)
         item = new_dict
     elif isinstance(item, str):
         item = item.format_map(PartialSubstitutionDict(subs))
-    else:
-        item = item
 
     return item

@@ -1,6 +1,7 @@
-from taskgraph.transforms.base import TransformSequence
-from urllib.parse import urljoin
 import os
+from urllib.parse import urljoin
+
+from taskgraph.transforms.base import TransformSequence
 
 CONTINUE_TRAINING_ARTIFACTS = (
     "devset.out",

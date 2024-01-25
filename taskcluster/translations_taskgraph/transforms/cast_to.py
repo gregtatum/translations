@@ -11,7 +11,6 @@ from taskgraph.transforms.base import TransformSequence
 from taskgraph.util.schema import Schema
 from voluptuous import ALLOW_EXTRA, Optional
 
-
 SCHEMA = Schema(
     {
         Optional("cast-to"): {

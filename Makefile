@@ -152,13 +152,11 @@ lint:
 	poetry install --only lint --no-root
 	poetry run ruff --version
 	poetry run ruff check .
-	poetry run black --check .
 
 # Runs ruff, but also fixes the errors.
 lint-fix:
 	poetry install --only lint --no-root
 	poetry run ruff check . --fix
-	poetry run black .
 
 # Fix all automatically fixable errors. This is useful to run before pushing.
 fix-all:

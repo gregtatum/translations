@@ -38,10 +38,9 @@ import copy
 
 from taskgraph.transforms.base import TransformSequence
 from taskgraph.util.schema import Schema
-from voluptuous import ALLOW_EXTRA, Optional
-
-from translations_taskgraph.util.substitution import substitute
 from translations_taskgraph.util.dataset_helpers import sanitize_dataset_name
+from translations_taskgraph.util.substitution import substitute
+from voluptuous import ALLOW_EXTRA, Optional
 
 SCHEMA = Schema(
     {

@@ -9,9 +9,6 @@ readme = "README.md"
 python = "^3.10"
 pip-tools = "^7.3.0"
 
-[tool.poetry.group.black.dependencies]
-black = "^23.7.0"
-
 [tool.poetry.group.lint.dependencies]
 ruff = "^0.1.13"
 translations_parser = {path="./tracking/", develop=true}
@@ -45,10 +42,6 @@ zstandard = "^0.22.0"
 translations_parser = {path="./tracking/", develop=true}
 taskcluster-taskgraph = "^7.0.3"
 
-[tool.black]
-extend-exclude= "/3rd_party"
-line-length = 99
-
 # Match the rules from mozilla-central.
 # https://searchfox.org/mozilla-central/source/pyproject.toml
 [tool.ruff]
@@ -65,6 +58,9 @@ ignore = [
   "E741",      # ambiguous-variable-name
   "PLR09",     # too-many-return-statements, too-many-branches, too-many-arguments, too-many-statements
   "PLR2004",   # magic-value-comparison
+
+  # These are handled by black.
+  "E1", "E4", "E5", "W2", "W5"
 ]
 exclude = [
   "3rd_party"

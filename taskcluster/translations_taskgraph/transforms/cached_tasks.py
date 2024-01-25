@@ -18,13 +18,12 @@ import itertools
 
 import taskgraph
 from taskgraph.transforms.base import TransformSequence
-from taskgraph.transforms.cached_tasks import order_tasks, format_task_digest
+from taskgraph.transforms.cached_tasks import format_task_digest, order_tasks
 from taskgraph.util.cached_tasks import add_optimization
 from taskgraph.util.hash import hash_path
 from taskgraph.util.schema import Schema, optionally_keyed_by, resolve_keyed_by
-from voluptuous import ALLOW_EXTRA, Any, Required, Optional
-
 from translations_taskgraph.util.dict_helpers import deep_get
+from voluptuous import ALLOW_EXTRA, Any, Optional, Required
 
 transforms = TransformSequence()
 
