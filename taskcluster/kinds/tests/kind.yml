@@ -56,8 +56,8 @@ tasks:
 #          make dry-run                                                      &&
 #          make test-dry-run
 
-  black:
-    # Run python's black formatter, which formats python files.
+  format:
+    # Run the ruff formatter, which formats python files.
     worker-type: b-cpu
     worker:
       max-run-time: 3600
@@ -68,7 +68,7 @@ tasks:
         - -c
         - >-
             pip install poetry &&
-            make black
+            make format
     run-on-tasks-for: ["github-push", "github-pull-request"]
 
   lint:

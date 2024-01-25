@@ -130,37 +130,39 @@ install-utils:
 
 # Black is a code formatter for Python files. Running this command will check that
 # files are correctly formatted, but not fix them.
-black:
-	poetry install --only black --no-root
-	@if poetry run black . --check --diff; then \
+format:
+	poetry install --only lint --no-root
+	@if poetry run ruff format . --check --diff; then \
 		echo "The python code formatting is correct."; \
 	else \
 	  echo ""; \
 		echo "Python code formatting issues detected."; \
-		echo "Run 'make black-fix' to fix them."; \
+		echo "Run 'make format-fix' to fix them."; \
 		echo ""; \
 		exit 1; \
 	fi
 
 # Runs black, but also fixes the errors.
-black-fix:
-	poetry install --only black --no-root
-	poetry run black .
+format-fix:
+	poetry install --only lint --no-root
+	poetry run ruff format .
 
 # Runs ruff, a linter for python.
 lint:
 	poetry install --only lint --no-root
 	poetry run ruff --version
 	poetry run ruff check .
+	poetry run black --check .
 
 # Runs ruff, but also fixes the errors.
 lint-fix:
 	poetry install --only lint --no-root
 	poetry run ruff check . --fix
+	poetry run black .
 
 # Fix all automatically fixable errors. This is useful to run before pushing.
 fix-all:
-	make black-fix
+	make format-fix-fix
 	make lint-fix
 
 # Run unit tests
