@@ -57,6 +57,7 @@ def data_dir():
         ("opus", "ELRC-3075-wikipedia_health_v1"),
         ("flores", "dev"),
         ("sacrebleu", "wmt19"),
+        ("bucket", "releng-translations-dev_data_en-ru_pytest-dataset"),
     ],
 )
 def test_basic_corpus_import(importer, dataset, data_dir):

@@ -168,6 +168,9 @@ class DataDir:
                 "TASK_WORKDIR": work_dir,
                 "MOZ_FETCHES_DIR": fetches_dir,
                 "VCS_PATH": root_path,
+                # Code can change behavior if being run in a pytest, for instance download
+                # mocked data.
+                "PYTEST": "1",
                 **env,
             },
             cwd=root_path,
@@ -313,5 +316,11 @@ def get_mocked_downloads() -> str:
                 corpus_samples, "en-ru.txt.zip"
             ),
             "https://object.pouta.csc.fi/OPUS-ELRC-3075-wikipedia_health/v1/moses/ru-en.txt.zip": "404",
+            "gs://releng-translations-dev/data/en-ru/pytest-dataset.en.zst": os.path.join(
+                corpus_samples, "pytest-dataset.en.zst"
+            ),
+            "gs://releng-translations-dev/data/en-ru/pytest-dataset.ru.zst": os.path.join(
+                corpus_samples, "pytest-dataset.ru.zst"
+            ),
         }
     )
