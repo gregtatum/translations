@@ -7,9 +7,10 @@ set -x
 set -euo pipefail
 
 dataset=$1
-lang=$2
-max_sent=$3
-output_path=$4
+dataset_sanitized=$2
+lang=$3
+max_sent=$4
+output_path=$5
 coef=0.1
 
 COMPRESSION_CMD="${COMPRESSION_CMD:-pigz}"
@@ -23,12 +24,19 @@ tmp=$(dirname "${output_path}")/original
 mkdir -p "${tmp}"
 
 echo "### Downloading dataset"
-original_prefix="${tmp}/${dataset}.original.${lang}"
+original_prefix="${tmp}/${dataset_sanitized}.original.${lang}"
 name=${dataset#*_}
 type=${dataset%%_*}
 
+# Choose either the .sh or .py script.
+if [[ -f "importers/mono/${type}.py" ]]; then
+  script="python importers/mono/${type}.py"
+else
+  script="bash importers/mono/${type}.sh"
+fi
+
 test -s "${original_prefix}.${ARTIFACT_EXT}" ||
-  bash "importers/mono/${type}.sh" "${lang}" "${original_prefix}" "${name}"
+  ${script} "${lang}" "${original_prefix}" "${name}"
 
 echo "### Sampling dataset"
 # temporary disable pipefail because perl operation causes SIGPIPE (141)

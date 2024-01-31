@@ -307,20 +307,25 @@ def get_task_command_and_env(task_name: str, script=None) -> tuple[str, dict[str
 
 def get_mocked_downloads() -> str:
     corpus_samples = os.path.abspath(os.path.join(FIXTURES_PATH, "../data/corpus_samples"))
+
+    def get_path(name: str):
+        return os.path.join(corpus_samples, name)
+
     return json.dumps(
         {
-            "https://dl.fbaipublicfiles.com/flores101/dataset/flores101_dataset.tar.gz": os.path.join(
-                corpus_samples, "flores101_dataset.tar.gz"
-            ),
-            "https://object.pouta.csc.fi/OPUS-ELRC-3075-wikipedia_health/v1/moses/en-ru.txt.zip": os.path.join(
-                corpus_samples, "en-ru.txt.zip"
-            ),
-            "https://object.pouta.csc.fi/OPUS-ELRC-3075-wikipedia_health/v1/moses/ru-en.txt.zip": "404",
-            "gs://releng-translations-dev/data/en-ru/pytest-dataset.en.zst": os.path.join(
-                corpus_samples, "pytest-dataset.en.zst"
-            ),
-            "gs://releng-translations-dev/data/en-ru/pytest-dataset.ru.zst": os.path.join(
-                corpus_samples, "pytest-dataset.ru.zst"
-            ),
+            "https://dl.fbaipublicfiles.com/flores101/dataset/flores101_dataset.tar.gz":
+                get_path("flores101_dataset.tar.gz"),
+            "https://object.pouta.csc.fi/OPUS-ELRC-3075-wikipedia_health/v1/moses/en-ru.txt.zip":
+                get_path("en-ru.txt.zip"),
+            "https://object.pouta.csc.fi/OPUS-ELRC-3075-wikipedia_health/v1/moses/ru-en.txt.zip":
+                "404",
+            "http://data.statmt.org/news-crawl/en/news.2021.en.shuffled.deduped.gz":
+                get_path("pytest-dataset.en.gz"),
+            "http://data.statmt.org/news-crawl/ru/news.2021.ru.shuffled.deduped.gz":
+                get_path("pytest-dataset.ru.gz"),
+            "gs://releng-translations-dev/data/en-ru/pytest-dataset.en.zst":
+                get_path("pytest-dataset.en.zst"),
+            "gs://releng-translations-dev/data/en-ru/pytest-dataset.ru.zst":
+                get_path("pytest-dataset.ru.zst"),
         }
-    )
+    )  # fmt: skip
