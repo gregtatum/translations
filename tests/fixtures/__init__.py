@@ -168,6 +168,9 @@ class DataDir:
                 "TASK_WORKDIR": work_dir,
                 "MOZ_FETCHES_DIR": fetches_dir,
                 "VCS_PATH": root_path,
+                # Code can change behavior if being run in a pytest, for instance download
+                # mocked data.
+                "PYTEST": "1",
                 **env,
             },
             cwd=root_path,
@@ -343,5 +346,9 @@ def get_mocked_downloads() -> str:
                 get_path("pytest-dataset.en.gz"),
             "http://data.statmt.org/news-crawl/ru/news.2021.ru.shuffled.deduped.gz":
                 get_path("pytest-dataset.ru.gz"),
+            "gs://releng-translations-dev/data/en-ru/pytest-dataset.en.zst":
+                get_path("pytest-dataset.en.zst"),
+            "gs://releng-translations-dev/data/en-ru/pytest-dataset.ru.zst":
+                get_path("pytest-dataset.ru.zst"),
         }
     )  # fmt: skip

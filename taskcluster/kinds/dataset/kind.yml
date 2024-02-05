@@ -119,6 +119,95 @@ tasks:
                     --dataset {dataset}
                     --output_prefix $TASK_WORKDIR/artifacts/{dataset_sanitized}
 
+    bucket:
+        description: Fetch a parallel corpus from a Google cloud storage bucket
+        # No slashes version of dataset used here because slashes break caches
+        label: dataset-bucket-{dataset_sanitized}-{src_locale}-{trg_locale}
+        dataset-config:
+            provider: bucket
+        attributes:
+            cache:
+                resources:
+                    - pipeline/data/importers/corpus/bucket.py
+                    - pipeline/data/download-corpus.sh
+                    - pipeline/data/dataset_importer.py
+                    - pipeline/data/requirements/data.txt
+        run:
+            command:
+                - bash
+                - -c
+                - >-
+                    pip3 install --upgrade pip setuptools &&
+                    pip3 install -r $VCS_PATH/pipeline/data/requirements/data.txt &&
+                    python3 $VCS_PATH/pipeline/data/dataset_importer.py
+                    --type corpus
+                    --dataset {dataset}
+                    --output_prefix $TASK_WORKDIR/artifacts/{dataset_sanitized}
+
+    bucket-{src_locale}:
+        description: Fetch a monolingual corpus from a Google cloud storage bucket for {src_locale}
+        label: dataset-bucket-{dataset_sanitized}-{src_locale}
+        dataset-config:
+            provider: bucket
+            category: mono-src
+        attributes:
+            cache:
+                resources:
+                    - pipeline/data/importers/mono/bucket.py
+                    - pipeline/data/download-mono.sh
+                from-parameters:
+                    max_sent_src:
+                        - training_config.experiment.mono-max-sentences-src
+        task-context:
+            from-parameters:
+                max_sent_src:
+                    - training_config.experiment.mono-max-sentences-src
+            substitution-fields:
+                - run.command
+        run:
+            command:
+                - bash
+                - -c
+                - >-
+                    $VCS_PATH/pipeline/data/download-mono.sh
+                    {dataset}
+                    {dataset_sanitized}
+                    {src_locale}
+                    {max_sent_src}
+                    $TASK_WORKDIR/artifacts/{dataset_sanitized}.{src_locale}.zst
+
+    bucket-{trg_locale}:
+        description: Fetch a monolingual corpus from a Google cloud storage bucket for {trg_locale}
+        label: dataset-bucket-{dataset_sanitized}-{trg_locale}
+        dataset-config:
+            provider: bucket
+            category: mono-trg
+        attributes:
+            cache:
+                resources:
+                    - pipeline/data/importers/mono/bucket.py
+                    - pipeline/data/download-mono.sh
+                from-parameters:
+                    max_sent_trg:
+                        - training_config.experiment.mono-max-sentences-trg
+        task-context:
+            from-parameters:
+                max_sent_trg:
+                    - training_config.experiment.mono-max-sentences-trg
+            substitution-fields:
+                - run.command
+        run:
+            command:
+                - bash
+                - -c
+                - >-
+                    $VCS_PATH/pipeline/data/download-mono.sh
+                    {dataset}
+                    {dataset_sanitized}
+                    {trg_locale}
+                    {max_sent_trg}
+                    $TASK_WORKDIR/artifacts/{dataset_sanitized}.{trg_locale}.zst
+
     mtdata:
         description: Fetch mtdata dataset
         label: dataset-mtdata-{dataset_sanitized}-{src_locale}-{trg_locale}
@@ -170,6 +259,7 @@ tasks:
                 - >-
                     $VCS_PATH/pipeline/data/download-mono.sh
                     {dataset}
+                    {dataset_sanitized}
                     {src_locale}
                     {max_sent_src}
                     $TASK_WORKDIR/artifacts/{dataset_sanitized}.{src_locale}.zst
@@ -201,6 +291,7 @@ tasks:
                 - >-
                     $VCS_PATH/pipeline/data/download-mono.sh
                     {dataset}
+                    {dataset_sanitized}
                     {trg_locale}
                     {max_sent_trg}
                     $TASK_WORKDIR/artifacts/{dataset_sanitized}.{trg_locale}.zst
