@@ -58,7 +58,6 @@ def main() -> None:
 
     client = storage.Client.create_anonymous_client()
     bucket = client.bucket(bucket_name)
-    bucket.name
 
     print("Bucket:", bucket_name)
     print("Downloading:", src_file)

@@ -30,7 +30,7 @@ if os.environ.get("PYTEST"):
                     "Expected the mocked downloads to be a json object mapping the URL to file path"
                 )
             url = f"gs://{self.bucket.name}/{self.name}"
-            source_file = mocked_downloads.get(url)
+            source_file: str = mocked_downloads.get(url)
             if not source_file:
                 print("[mocked gcs] MOCKED_DOWNLOADS:", mocked_downloads)
                 raise Exception(f"Received a URL that was not in MOCKED_DOWNLOADS {url}")
@@ -43,6 +43,8 @@ if os.environ.get("PYTEST"):
             print(f"[mocked gcs] to: {destination_path}")
 
             shutil.copyfile(source_file, destination_path)
+            print(f"Source file: {os.stat(source_file).st_size} bytes")
+            print(f"Target file: {os.stat(destination_path).st_size} bytes")
 
     class MockedBucket:
         def __init__(self, name: str) -> None:

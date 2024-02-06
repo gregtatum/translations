@@ -187,13 +187,16 @@ class DataDir:
         span = "─" * span_len
         print(f"┌{span}┐")
 
-        for root, _dirs, files in os.walk(self.path):
+        for root, dirs, files in os.walk(self.path):
             level = root.replace(self.path, "").count(os.sep)
             indent = " " * 4 * (level)
             folder_text = f"│ {indent}{os.path.basename(root)}/"
             print(f"{folder_text.ljust(span_len)} │")
             subindent = " " * 4 * (level + 1)
 
+            if len(files) == 0 and len(dirs) == 0:
+                empty_text = f"│ {subindent} <empty folder>"
+                print(f"{empty_text.ljust(span_len)} │")
             for file in files:
                 file_text = f"│ {subindent}{file}"
                 bytes = f"{os.stat(os.path.join(root, file)).st_size} bytes"
