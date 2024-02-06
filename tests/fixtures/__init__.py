@@ -174,7 +174,6 @@ class DataDir:
                 **env,
             },
             cwd=root_path,
-            stderr=subprocess.PIPE,
             check=False,
         )
         fail_on_error(result)

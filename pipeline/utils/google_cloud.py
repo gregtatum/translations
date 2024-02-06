@@ -43,8 +43,8 @@ if os.environ.get("PYTEST"):
             print(f"[mocked gcs] to: {destination_path}")
 
             shutil.copyfile(source_file, destination_path)
-            print(f"Source file: {os.stat(source_file).st_size} bytes")
-            print(f"Target file: {os.stat(destination_path).st_size} bytes")
+            print(f"[mocked gcs] Source file: {os.stat(source_file).st_size} bytes")
+            print(f"[mocked gcs] Target file: {os.stat(destination_path).st_size} bytes")
 
     class MockedBucket:
         def __init__(self, name: str) -> None:
