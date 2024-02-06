@@ -208,9 +208,6 @@ class DataDir:
 def fail_on_error(result: CompletedProcess[bytes]):
     """When a process fails, surface the stderr."""
     if not result.returncode == 0:
-        for line in result.stderr.decode("utf-8").split("\n"):
-            print(line, file=sys.stderr)
-
         raise Exception(f"{result.args[0]} exited with a status code: {result.returncode}")
 
 

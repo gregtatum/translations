@@ -28,6 +28,8 @@ original_prefix="${tmp}/${dataset_sanitized}.original.${lang}"
 name=${dataset#*_}
 type=${dataset%%_*}
 
+echo "File size before downloading: `stat -f "%z" "${original_prefix}.${ARTIFACT_EXT}"`"
+
 # Choose either the .sh or .py script.
 if [[ -f "importers/mono/${type}.py" ]]; then
   script="python importers/mono/${type}.py"
@@ -38,6 +40,8 @@ fi
 test -s "${original_prefix}.${ARTIFACT_EXT}" ||
   ${script} "${lang}" "${original_prefix}" "${name}"
 
+echo "File size before sampling: `stat -f "%z" "${original_prefix}.${ARTIFACT_EXT}"`"
+
 echo "### Sampling dataset"
 # temporary disable pipefail because perl operation causes SIGPIPE (141)
 set +o pipefail
@@ -47,6 +51,8 @@ perl -ne 'print if(split(/\s/, $_) < 100)' |
 head -n "${max_sent}" |
 ${COMPRESSION_CMD} >"${output_path}"
 set -o pipefail
+
+echo "File size after sampling: `stat -f "%z" "${original_prefix}.${ARTIFACT_EXT}"`"
 
 rm -rf "${original_prefix}.${ARTIFACT_EXT}"
 
