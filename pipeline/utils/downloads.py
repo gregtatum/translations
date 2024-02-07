@@ -1,15 +1,19 @@
+import io
 import json
 import os
 import shutil
 
+from google.api_core.exceptions import RequestRangeNotSatisfiable
 from google.cloud import storage as RealStorage
 
 from pipeline.utils.logging import get_logger
 
 google_cloud_storage: RealStorage
 
+
 # Use mocked downloads if they exist.
-if not os.environ.get("MOCKED_DOWNLOADS"):
+if os.environ.get("MOCKED_DOWNLOADS"):
+    logger = get_logger("google_cloud(mocked)")
 
     class MockedBlob:
         name: str
@@ -19,9 +23,10 @@ if not os.environ.get("MOCKED_DOWNLOADS"):
             super().__init__()
             self.name = name
             self.bucket = bucket
+            self.chunk_size = 1024**2
+            self._downloaded = False
 
-        def download_to_filename(self, destination_path: str) -> None:
-            logger = get_logger("google_cloud(mocked)")
+        def _get_mocked_source_file(self) -> str:
             if not os.environ.get("MOCKED_DOWNLOADS"):
                 raise Exception(
                     "The mocked google cloud storage utility expected the MOCKED_DOWNLOADS environment variable to be set."
@@ -40,6 +45,20 @@ if not os.environ.get("MOCKED_DOWNLOADS"):
 
             if not os.path.exists(source_file):
                 raise Exception(f"The source file specified did not exist {source_file}")
+
+            return source_file
+
+        def download_as_bytes(self, start=None, end=None, checksum=None, retry=None) -> bytes:
+            if self._downloaded:
+                raise RequestRangeNotSatisfiable("Done")
+            self._downloaded = True
+
+            with open(self._get_mocked_source_file(), "rb") as file:
+                bytes = io.BytesIO(file.read())
+                return bytes.getvalue()
+
+        def download_to_filename(self, destination_path: str) -> None:
+            source_file = self._get_mocked_source_file()
 
             logger.info("copying the file")
             logger.info(f"from: {source_file}")

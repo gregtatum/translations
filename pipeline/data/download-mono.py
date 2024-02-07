@@ -47,7 +47,7 @@ logger = get_logger("download_mono")
 def shuffle_and_truncate(
     line_stream: Iterator[str], dataset: Dataset, file_destination: str, max_sentences: int
 ):
-    lines = []
+    lines: list[str] = []
 
     logger.info("Load the stream into memory, discarding sentences that are too long.")
     for line in line_stream:

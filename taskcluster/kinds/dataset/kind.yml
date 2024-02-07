@@ -153,7 +153,6 @@ tasks:
         attributes:
             cache:
                 resources:
-                    - pipeline/data/importers/mono/bucket.py
                     - pipeline/data/download-mono.py
                 from-parameters:
                     max_sentences:
@@ -184,7 +183,6 @@ tasks:
         attributes:
             cache:
                 resources:
-                    - pipeline/data/importers/mono/bucket.py
                     - pipeline/data/download-mono.py
                 from-parameters:
                     max_sentences:
@@ -239,7 +237,6 @@ tasks:
         attributes:
             cache:
                 resources:
-                    - pipeline/data/importers/mono/news-crawl.sh
                     - pipeline/data/download-mono.py
                 from-parameters:
                     max_sentences:
@@ -270,7 +267,6 @@ tasks:
         attributes:
             cache:
                 resources:
-                    - pipeline/data/importers/mono/news-crawl.sh
                     - pipeline/data/download-mono.py
                 from-parameters:
                     max_sentences:
