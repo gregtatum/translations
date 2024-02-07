@@ -1,8 +1,23 @@
 #!/usr/bin/env python3
 """
-Download a monolingual dataset, shuffle it, and truncate it to a maximum amount of sentences.
-"""
+Downloads a monolingual dataset, shuffles it, and truncates it to a maximum amount of sentences.
 
+Kinds:
+   taskcluster/kinds/dataset/kind.yml
+
+Example usage:
+
+    pipeline/data/download-mono.py                  \\
+        --dataset news-crawl_news.2021              \\
+        --language en                               \\
+        --max_sentences 100000000                   \\
+        --artifacts $TASK_WORKDIR/artifacts
+
+Artifacts:
+
+    artifacts
+    └── news.2021.en.zst
+"""
 
 import argparse
 import gzip
@@ -20,7 +35,7 @@ from pipeline.utils import Dataset, attempt_mocked_request
 from pipeline.utils.downloads import google_cloud_storage
 from pipeline.utils.logging import get_logger
 
-# TODO(CJK) - Issue #45
+# TODO(CJK) - Issue #424
 MAX_WORDS_IN_SENTENCE = 100
 
 CURRENT_FOLDER = os.path.dirname(os.path.abspath(__file__))
@@ -51,7 +66,7 @@ def shuffle_and_truncate(
                 writer.write(line.encode("utf-8"))
 
 
-def parse_bucket_key(dataset_key: str):
+def parse_bucket_from_dataset_key(dataset_key: str):
     # bucket_releng-translations-dev/data/custom-en-ru.zip
     matches = re.search(r"^bucket_([\w-]*)/(.*)$", dataset_key)
     if not matches:
@@ -64,14 +79,13 @@ def parse_bucket_key(dataset_key: str):
 
 
 class BucketZSTLineStreamer:
-    """
-    Stream lines directly from a .zst file in Google Cloud Storage.
-    """
+    """Stream lines directly from a .zst file in Google Cloud Storage."""
 
     def __init__(self, bucket_name: str, bucket_path: str) -> None:
         super().__init__()
         self.bucket_name = bucket_name
         self.bucket_path = bucket_path
+
         self.network_stream = None
         self.decoding_stream = None
         self.line_stream = None
@@ -96,12 +110,11 @@ class BucketZSTLineStreamer:
 
 
 class RemoteGzipLineStreamer:
-    """
-    Stream lines directly from a remote gzip file
-    """
+    """Stream lines directly from a remote gzip file."""
 
     def __init__(self, url: str) -> None:
         self.url = url
+
         self.decoding_stream = None
         self.response = None
         self.line_stream = None
@@ -158,7 +171,7 @@ def main(args_list: Optional[list[str]] = None) -> None:
 
     line_streamer = None
     if dataset.importer == "bucket":
-        bucket_name, file_path = parse_bucket_key(args.dataset)
+        bucket_name, file_path = parse_bucket_from_dataset_key(args.dataset)
         bucket_path = f"{file_path}.{args.language}.zst"
         line_streamer = BucketZSTLineStreamer(bucket_name, bucket_path)
     elif dataset.importer == "news-crawl":
