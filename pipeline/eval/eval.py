@@ -44,35 +44,12 @@ For instance for a value of: "fetches/wmt09":
 import argparse
 import json
 import os
-import subprocess
-from textwrap import dedent, indent
 from typing import Optional
 
 from sacrebleu.metrics.bleu import BLEU, BLEUScore
 from sacrebleu.metrics.chrf import CHRF, CHRFScore
 
-
-def run_bash_oneliner(command: str):
-    """
-    Runs multi-line bash with comments as a one-line command.
-    """
-    command_dedented = dedent(command)
-
-    # Remove comments and whitespace.
-    lines = [
-        line.strip() for line in command_dedented.split("\n") if line and not line.startswith("#")
-    ]
-    command = " \\\n".join(lines)
-
-    print("-----------------Running bash in one line--------------")
-    print(indent(command_dedented, "  "))
-    print("-------------------------------------------------------")
-    return subprocess.check_call(command, shell=True)
-
-
-# De-compresses files, and pipes the result as necessary.
-def decompress(path: str, compression_cmd: str, artifact_ext: str):
-    subprocess.check_call(f'{compression_cmd} -dc "{path}"')
+from pipeline.utils import run_bash_oneliner
 
 
 def main(args_list: Optional[list[str]] = None) -> None:

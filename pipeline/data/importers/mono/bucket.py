@@ -13,21 +13,7 @@ pipeline/data/importers/mono/bucket.py                                       \
 import argparse
 import re
 
-from pipeline.utils.google_cloud import storage
-
-# pipeline/data/importers/corpus/bucket.py
-
-
-def parse_name(name: str):
-    # releng-translations-dev/data/custom-en-ru.zip
-    matches = re.search(r"^([\w-]*)/(.*)$", name)
-    if not matches:
-        raise Exception(f"Could not parse the name {name}")
-
-    bucket_name = matches.group(1)
-    file_path = matches.group(2)
-
-    return bucket_name, file_path
+from pipeline.utils.downloads import google_cloud_storage
 
 
 def main() -> None:
@@ -38,27 +24,16 @@ def main() -> None:
     parser.add_argument("lang", type=str)
     parser.add_argument("output_prefix", type=str)
     parser.add_argument("name", type=str)
+    parser.add_argument(
+        "--compression_cmd", default="pigz", help="The name of the compression command to use."
+    )
+    parser.add_argument(
+        "--artifact_ext",
+        default="gz",
+        help="The artifact extension for the compression",
+    )
 
     args = parser.parse_args()
-
-    bucket_name, file_path = parse_name(args.name)
-
-    print("lang", args.lang)
-    print("output_prefix", args.output_prefix)
-    print("name", args.name)
-    print("bucket_name", bucket_name)
-    print("file_path", f"{file_path}.{args.lang}.zst")
-
-    lang_file = f"{file_path}.{args.lang}.zst"
-    lang_dest = f"{args.output_prefix}.zst"
-
-    client = storage.Client.create_anonymous_client()
-    bucket = client.bucket(bucket_name)
-    bucket.name
-
-    print("Bucket:", bucket_name)
-    print("Downloading:", lang_file)
-    bucket.blob(lang_file).download_to_filename(lang_dest)
 
 
 if __name__ == "__main__":

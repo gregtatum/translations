@@ -14,7 +14,7 @@ pipeline/data/importers/corpus/bucket.py \
 import argparse
 import re
 
-from pipeline.utils.google_cloud import storage
+from pipeline.utils.downloads import google_cloud_storage
 
 
 def parse_name(name: str):
@@ -56,7 +56,7 @@ def main() -> None:
     src_dest = f"{args.output_prefix}.{args.src}.zst"
     trg_dest = f"{args.output_prefix}.{args.trg}.zst"
 
-    client = storage.Client.create_anonymous_client()
+    client = google_cloud_storage.Client.create_anonymous_client()
     bucket = client.bucket(bucket_name)
 
     print("Bucket:", bucket_name)

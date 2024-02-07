@@ -4,10 +4,12 @@ import shutil
 
 from google.cloud import storage as RealStorage
 
-storage: RealStorage
+from pipeline.utils.logging import get_logger
 
-# Mock google.cloud.storage in tests, otherwise return the real thing.
-if os.environ.get("PYTEST"):
+google_cloud_storage: RealStorage
+
+# Use mocked downloads if they exist.
+if not os.environ.get("MOCKED_DOWNLOADS"):
 
     class MockedBlob:
         name: str
@@ -19,6 +21,7 @@ if os.environ.get("PYTEST"):
             self.bucket = bucket
 
         def download_to_filename(self, destination_path: str) -> None:
+            logger = get_logger("google_cloud(mocked)")
             if not os.environ.get("MOCKED_DOWNLOADS"):
                 raise Exception(
                     "The mocked google cloud storage utility expected the MOCKED_DOWNLOADS environment variable to be set."
@@ -32,19 +35,19 @@ if os.environ.get("PYTEST"):
             url = f"gs://{self.bucket.name}/{self.name}"
             source_file: str = mocked_downloads.get(url)
             if not source_file:
-                print("[mocked gcs] MOCKED_DOWNLOADS:", mocked_downloads)
+                logger.info(f"MOCKED_DOWNLOADS: {mocked_downloads}")
                 raise Exception(f"Received a URL that was not in MOCKED_DOWNLOADS {url}")
 
             if not os.path.exists(source_file):
                 raise Exception(f"The source file specified did not exist {source_file}")
 
-            print("[mocked gcs] copying the file")
-            print(f"[mocked gcs] from: {source_file}")
-            print(f"[mocked gcs] to: {destination_path}")
+            logger.info("copying the file")
+            logger.info(f"from: {source_file}")
+            logger.info(f"to: {destination_path}")
 
             shutil.copyfile(source_file, destination_path)
-            print(f"[mocked gcs] Source file: {os.stat(source_file).st_size} bytes")
-            print(f"[mocked gcs] Target file: {os.stat(destination_path).st_size} bytes")
+            logger.info(f"Source file: {os.stat(source_file).st_size} bytes")
+            logger.info(f"Target file: {os.stat(destination_path).st_size} bytes")
 
     class MockedBucket:
         def __init__(self, name: str) -> None:
@@ -64,6 +67,7 @@ if os.environ.get("PYTEST"):
     class MockedStorage:
         Client = MockedClient
 
-    storage = MockedStorage()
+    google_cloud_storage = MockedStorage()
 else:
-    storage = RealStorage
+    google_cloud_storage = RealStorage
+    # requests =
