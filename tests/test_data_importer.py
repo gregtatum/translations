@@ -79,9 +79,6 @@ def test_basic_corpus_import(importer, dataset, data_dir):
     assert len(read_lines(output_trg)) > 0
 
 
-@pytest.mark.skip(
-    reason="This works locally, but fails in CI. It will soon be replaced with python. See #420"
-)
 @pytest.mark.parametrize(
     "importer,dataset",
     [
@@ -107,9 +104,6 @@ def test_mono_source_import(importer, dataset, data_dir):
     assert len(read_lines(mono_data)) > 0
 
 
-@pytest.mark.skip(
-    reason="This works locally, but fails in CI. It will soon be replaced with python. See #420"
-)
 @pytest.mark.parametrize(
     "importer,dataset",
     [
