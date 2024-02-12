@@ -88,7 +88,7 @@ def test_basic_corpus_import(importer, dataset, data_dir):
     [
         ("en", "news-crawl", "news_2021", 5),
         ("en", "bucket", "releng-translations-dev_data_en-ru_pytest-dataset", 0),
-        ("ru", "news-crawl", "news_2021"),
+        ("ru", "news-crawl", "news_2021", 5),
         ("ru", "bucket", "releng-translations-dev_data_en-ru_pytest-dataset", 0),
     ],
 )
