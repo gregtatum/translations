@@ -2,7 +2,11 @@ import os
 
 import pytest
 import zstandard as zstd
+<<<<<<< HEAD
 from fixtures import DataDir, get_mocked_downloads
+=======
+from fixtures import DataDir, en_sample, get_mocked_downloads, ru_sample
+>>>>>>> 21b8d56 (remote corpus squash)
 
 SRC = "ru"
 TRG = "en"
@@ -56,6 +60,7 @@ def data_dir():
         ("opus", "ELRC-3075-wikipedia_health_v1"),
         ("flores", "dev"),
         ("sacrebleu", "wmt19"),
+        ("bucket", "releng-translations-dev_data_en-ru_pytest-dataset"),
     ],
 )
 def test_basic_corpus_import(importer, dataset, data_dir):
@@ -85,11 +90,13 @@ def test_basic_corpus_import(importer, dataset, data_dir):
 @pytest.mark.parametrize(
     "language,importer,dataset",
     [
-        ("en", "news-crawl", "news_2021"),
+        ("en", "news-crawl", "news_2021", 5),
+        ("en", "bucket", "releng-translations-dev_data_en-ru_pytest-dataset", 0),
         ("ru", "news-crawl", "news_2021"),
+        ("ru", "bucket", "releng-translations-dev_data_en-ru_pytest-dataset", 0),
     ],
 )
-def test_mono_source_import(language, importer, dataset, data_dir):
+def test_mono_source_import(language, importer, dataset, first_line, data_dir):
     data_dir.run_task(
         f"dataset-{importer}-{dataset}-{language}",
         env={
@@ -100,12 +107,17 @@ def test_mono_source_import(language, importer, dataset, data_dir):
         },
     )
 
-    prefix = data_dir.join(f"artifacts/{dataset}")
-    mono_data = f"{prefix}.{language}.{ARTIFACT_EXT}"
+    mono_data = data_dir.join(f"artifacts/{dataset}")
 
     data_dir.print_tree()
+
+    en_lines = en_sample.splitlines(keepends=True)
+
     assert os.path.exists(mono_data)
-    assert len(read_lines(mono_data)) > 0
+    source_lines = read_lines(mono_data)
+    assert len(source_lines) == len(en_lines)
+    assert source_lines[0] == en_lines[first_line], "The data is shuffled."
+
 
 
 augmentation_params = [
