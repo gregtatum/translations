@@ -6,7 +6,7 @@ import shutil
 from google.api_core.exceptions import RequestRangeNotSatisfiable
 from google.cloud import storage as RealStorage
 
-from pipeline.utils.logging import get_logger
+from pipeline.common.logging import get_logger
 
 google_cloud_storage: RealStorage
 

@@ -25,7 +25,6 @@ datasets:
     - sacrebleu_wmt09
     - sacrebleu_wmt19
     - mtdata_Neulab-tedtalks_test-1-eng-rus
-    - bucket_releng-translations-dev/data/en-ru/pytest-dataset
     - url_https://storage.googleapis.com/releng-translations-dev/data/en-ca/catalan_textual_corpus.{lang}.zst
   train:
     - opus_Books/v1

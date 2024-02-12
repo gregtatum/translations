@@ -2,11 +2,7 @@ import os
 
 import pytest
 import zstandard as zstd
-<<<<<<< HEAD
-from fixtures import DataDir, get_mocked_downloads
-=======
 from fixtures import DataDir, en_sample, get_mocked_downloads, ru_sample
->>>>>>> 21b8d56 (remote corpus squash)
 
 SRC = "ru"
 TRG = "en"
@@ -111,13 +107,17 @@ def test_mono_source_import(language, importer, dataset, first_line, data_dir):
 
     data_dir.print_tree()
 
-    en_lines = en_sample.splitlines(keepends=True)
+    sample = {
+        "en": en_sample,
+        "ru": ru_sample,
+    }
+
+    sample_lines = sample[language].splitlines(keepends=True)
 
     assert os.path.exists(mono_data)
     source_lines = read_lines(mono_data)
-    assert len(source_lines) == len(en_lines)
-    assert source_lines[0] == en_lines[first_line], "The data is shuffled."
-
+    assert len(source_lines) == len(sample_lines)
+    assert source_lines[0] == sample_lines[first_line], "The data is shuffled."
 
 
 augmentation_params = [
