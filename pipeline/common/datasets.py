@@ -1,9 +1,10 @@
+from math import ceil
 import os
 import tempfile
 from collections import deque
 from io import TextIOWrapper
 from random import Random
-from typing import Iterator
+from typing import Iterator, Optional
 
 
 class Dataset:
@@ -41,12 +42,16 @@ def shuffle_with_max_lines(
     total_byte_size: int,
 ) -> Iterator[str]:
     """
-    Shuffle a line stream, but only retain up to a maximum number of sentences in memory.
+    Shuffle a line stream, but only retain up to a maximum number of lines in memory.
     Note that the final ordering is determined by the seed and the contents of the file. So
-    running this multiple times on the same dataset will return the same results, but running
+    running this multiple times on the same dataset will return the same result, but running
     it with the same seed and different content will create a different ordering.
 
     Only run for monolingual data or where the parallel sentences are separated by a delimiter.
+
+    The distribution should be even unless the initial content is not representative of the
+    general size of the sentences, in this case the distribution will be slightly biased. See
+    the test cases for more in-depth examples.
     """
     lines = deque()
 
@@ -57,7 +62,7 @@ def shuffle_with_max_lines(
     # Fill up the lines up until the max, and measure the total bytes.
     for line in line_stream:
         # Encoding returns the underlying byte representation which is then measured.
-        total_bytes = total_bytes + len(line.encode())
+        total_bytes = total_bytes + len(line.encode("utf-8"))
 
         if len(line.split()) > max_words_in_sentence:
             # TODO(CJK) - Issue #424
@@ -78,7 +83,7 @@ def shuffle_with_max_lines(
     for line in line_stream:
         i = i + 1
         # Continuously adjust this estimation in case the first sampled data is not representative.
-        total_bytes = total_bytes + len(line.encode())
+        total_bytes = total_bytes + len(line.encode("utf-8"))
         average_bytes_per_line = total_bytes / (max_lines + i)
         estimated_lines = total_byte_size / average_bytes_per_line
         line_sampling_probability = max_lines / estimated_lines
@@ -96,7 +101,13 @@ def shuffle_with_max_lines(
 
 
 def shuffle_in_temp_files(
-    line_stream: Iterator[str], output: TextIOWrapper, seed: str, chunk_size: int, bucket_size: int
+    line_stream: Iterator[str],
+    output: TextIOWrapper,
+    seed: str,
+    chunk_bytes: int,
+    bucket_bytes: int,
+    chunk_dir: Optional[str] = tempfile.gettempdir(),
+    keep_chunks=False,
 ):
     """
     Shuffle large datasets by storing chunks to the file system. The ordering is guaranteed to be
@@ -133,43 +144,65 @@ def shuffle_in_temp_files(
     At most 1 bucket will be held in memory. At most the dataset + 1 bucket of file space will be
     needed when running this algorithm.
     """
-    tmp_dir = os.path.join(tempfile.gettempdir(), "shuffle")
-    if not os.path.exists(tmp_dir):
-        os.mkdir(tmp_dir)
-
     random = Random(seed)
 
     chunk_index = 0
-    chunk_file = open(os.path.join(tmp_dir, f"chunk.{chunk_index}"), "wt")
-    line_count = 0
+    chunk_file = open(os.path.join(chunk_dir, f"chunk.{chunk_index}"), "wt")
 
     # Write out the chunks to disk.
+    bytes_written_to_chunk = 0
     for line in line_stream:
-        chunk_file.write(line)
-        line_count += 1
-        if line_count > chunk_size:
-            line_count = 0
-            chunk_index = chunk_index + 1
+        line_bytes = len(line.encode("utf-8")) + 1
+
+        if bytes_written_to_chunk + line_bytes > chunk_bytes:
+            # Start a new chunk.
             chunk_file.close()
-            chunk_file = open(os.path.join(tmp_dir, f"chunk.{chunk_index}"), "wt")
+            chunk_index += 1
+            chunk_file = open(os.path.join(chunk_dir, f"chunk.{chunk_index}"), "wt")
+            bytes_written_to_chunk = 0
+
+        chunk_file.write(line + "\n")
+        bytes_written_to_chunk += line_bytes
+
     chunk_file.close()
 
     # Shuffle the chunk indexes
-    shuffled_chunk_indexes = random.shuffle([*range(chunk_index + 1)])
+    chunk_count = chunk_index + 1
 
-    # Put the chunks into buckets.
-    buckets = []
-    for i in range(0, len(shuffled_chunk_indexes), bucket_size):
-        bucket = shuffled_chunk_indexes[i : i + bucket_size]
-        buckets.append(bucket)
+    shuffled_chunk_indexes = [*range(chunk_count)]
+    random.shuffle(shuffled_chunk_indexes)
 
     # Load a single bucket into memory, discarding the chunks.
-    for bucket in buckets:
-        lines = []
-        for chunk_index in bucket:
-            chunk_name = os.path.join(tmp_dir, f"chunk.{chunk_index}")
-            with open(chunk_name, "rt") as file:
-                lines.append(file.readline())
+    bucket_count = 0
+    bytes_in_bucket = 0
+    bucket = []
+
+    for chunk_index in shuffled_chunk_indexes:
+        chunk_name = os.path.join(chunk_dir, f"chunk.{chunk_index}")
+
+        # Read in the chunk line by line.
+        with open(chunk_name, "r") as file:
+            for line in file.readlines():
+                bucket.append(line)
+                bytes_in_bucket += len(line.encode("utf-8"))
+
+                # If the bucket overflows, shuffle and write it out.
+                if bytes_in_bucket > bucket_bytes:
+                    random.shuffle(bucket)
+                    for shuffled_line in bucket:
+                        output.write(shuffled_line)
+
+                    # Create the new bucket.
+                    bucket = []
+                    bytes_in_bucket = 0
+                    bucket_count += 1
+
+        if not keep_chunks:
             os.remove(chunk_name)
 
-        output.writelines(lines)
+    if len(bucket) > 0:
+        random.shuffle(bucket)
+        for shuffled_line in bucket:
+            output.write(shuffled_line)
+
+    print(f"Shuffled with {bucket_count} buckets.")

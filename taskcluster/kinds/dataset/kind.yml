@@ -119,16 +119,16 @@ tasks:
                     --dataset {dataset}
                     --output_prefix $TASK_WORKDIR/artifacts/{dataset_sanitized}
 
-    bucket:
-        description: Fetch a parallel corpus from a Google cloud storage bucket
+    url:
+        description: Fetch a parallel corpus from a URL
         # No slashes version of dataset used here because slashes break caches
-        label: dataset-bucket-{dataset_sanitized}-{src_locale}-{trg_locale}
+        label: dataset-url-{dataset_sanitized}-{src_locale}-{trg_locale}
         dataset-config:
-            provider: bucket
+            provider: url
         attributes:
             cache:
                 resources:
-                    - pipeline/data/importers/corpus/bucket.py
+                    - pipeline/data/importers/corpus/url.py
                     - pipeline/data/download-corpus.sh
                     - pipeline/data/dataset_importer.py
                     - pipeline/data/requirements/data.txt
@@ -144,11 +144,11 @@ tasks:
                     --dataset {dataset}
                     --output_prefix $TASK_WORKDIR/artifacts/{dataset_sanitized}
 
-    bucket-{src_locale}:
-        description: Fetch a monolingual corpus from a Google cloud storage bucket for {src_locale}
-        label: dataset-bucket-{dataset_sanitized}-{src_locale}
+    url-{src_locale}:
+        description: Fetch a monolingual corpus from a URL for {src_locale}
+        label: dataset-url-{dataset_sanitized}-{src_locale}
         dataset-config:
-            provider: bucket
+            provider: url
             category: mono-src
         attributes:
             cache:
@@ -177,11 +177,11 @@ tasks:
                     --max_sentences {max_sentences}
                     --artifacts $TASK_WORKDIR/artifacts
 
-    bucket-{trg_locale}:
-        description: Fetch a monolingual corpus from a Google cloud storage bucket for {trg_locale}
-        label: dataset-bucket-{dataset_sanitized}-{trg_locale}
+    url-{trg_locale}:
+        description: Fetch a monolingual corpus from a URL for {trg_locale}
+        label: dataset-url-{dataset_sanitized}-{trg_locale}
         dataset-config:
-            provider: bucket
+            provider: url
             category: mono-trg
         attributes:
             cache:

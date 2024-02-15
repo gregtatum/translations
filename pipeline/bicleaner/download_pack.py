@@ -59,7 +59,7 @@ def check_result(result: subprocess.CompletedProcess):
 
 
 def download(src: str, trg: str, output_path: str, compression_cmd: str) -> None:
-    tmp_dir = os.path.join(tempfile.gettempdir(), "bicleaner")
+    tmp_dir = os.path.join(tempfile.gettempdir(), "shuffle")
     if not os.path.exists(tmp_dir):
         os.mkdir(tmp_dir)
 

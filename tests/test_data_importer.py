@@ -103,7 +103,8 @@ def test_mono_source_import(language, importer, dataset, first_line, data_dir):
         },
     )
 
-    mono_data = data_dir.join(f"artifacts/{dataset}")
+    prefix = data_dir.join(f"artifacts/{dataset}")
+    mono_data = f"{prefix}.{language}.{ARTIFACT_EXT}"
 
     data_dir.print_tree()
 

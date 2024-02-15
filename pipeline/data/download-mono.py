@@ -31,9 +31,9 @@ import requests
 import zstandard
 from google.cloud.storage.fileio import BlobReader
 
-from pipeline.utils import Dataset, attempt_mocked_request
-from pipeline.utils.downloads import google_cloud_storage
-from pipeline.utils.logging import get_logger
+from pipeline.common import Dataset, attempt_mocked_request
+from pipeline.common.downloads import google_cloud_storage
+from pipeline.common.logging import get_logger
 
 # TODO(CJK) - Issue #424
 MAX_WORDS_IN_SENTENCE = 100
@@ -41,7 +41,7 @@ MAX_WORDS_IN_SENTENCE = 100
 CURRENT_FOLDER = os.path.dirname(os.path.abspath(__file__))
 IMPORTERS_PATH = os.path.abspath(os.path.join(CURRENT_FOLDER, "mono"))
 
-logger = get_logger("download_mono")
+logger = get_logger(__file__)
 
 
 def shuffle_and_truncate(
