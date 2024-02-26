@@ -84,7 +84,7 @@ def test_basic_corpus_import(importer, dataset, data_dir):
     reason="This works locally, but fails in CI. It will soon be replaced with python. See #420"
 )
 @pytest.mark.parametrize(
-    "language,importer,dataset",
+    "language,importer,dataset,first_line",
     [
         ("en", "news-crawl", "news_2021", 5),
         ("en", "bucket", "releng-translations-dev_data_en-ru_pytest-dataset", 0),

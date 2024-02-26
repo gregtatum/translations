@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Import data from a Google Cloud storage bucket.
+Import data from a url.
 
 Example usage:
 
