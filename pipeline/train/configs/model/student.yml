@@ -1,15 +1,56 @@
+# See: docs/pipeline-steps.md
+#
+# Use a hybrid transformer RNN. This uses a transformer-style architecture, but instead
+# of multihead attention as the first layer, it uses an RNN.
+#
+#   Simple Recurrent Units:
+#     https://arxiv.org/abs/1709.02755
+#   Efficient Inference For Neural Machine Translation (information about SSRU):
+#     https://arxiv.org/pdf/2010.02416.pdf
+#
+# This configuration is based off of the work from BrowserMT and their student recipe:
+# https://github.com/browsermt/students/tree/master/train-student
 # https://github.com/browsermt/students/tree/master/train-student/models/student.tiny11
+#
+# Transformer DecoderLayerRNN - https://github.com/marian-nmt/marian/blob/65bf82ffce52f4854295d8b98482534f176d494e/src/models/transformer.h#L836-L838
+# Initial commit in Marian: https://github.com/marian-nmt/marian/commit/34aa79d17ee0c119e03762162fb742f24f94ab4b
+# Quantization Paper: https://aclanthology.org/2020.ngt-1.26.pdf
+
+#--------------------------
+# Decoder settings.
+#
+# This uses the "Super Simple Recurrent Units" network architecture.
+# https://aclanthology.org/D19-5632/
 dec-cell-base-depth: 2
 dec-cell-high-depth: 1
 dec-cell: ssru
 dec-depth: 2
+
+# Size of the model and vocab
 dim-emb: 256
 dim-vocabs: [32000, 32000]
-enc-cell-depth: 1
+
+#--------------------------
+# Encoder settings.
+
+# The encoder uses a GRU encoder type, rather than self-attention with a traditional
+# transformer architecture. This speeds up encoding time as it requires fewer operations.
 enc-cell: gru
+
+# The number of GRU layers in the encoder. The more layers, the more language knowledge
+# can be encoded by the network, at the cost of encoding time and model size.
 enc-depth: 6
+
+# The cell-depth is for adding "stacked encoders", which this architecture does not use.
+enc-cell-depth: 1
+# Why is this bidirectional?
 enc-type: bidirectional
+
+# Tying the input and output embeddings reduces model size, and doesn't hurt quality.
+# https://marian-nmt.github.io/examples/mtm2017/complex/#tied-embeddings
+# https://arxiv.org/abs/1608.05859
 tied-embeddings-all: true
+
 transformer-decoder-autoreg: rnn
 transformer-dim-ffn: 1536
 transformer-ffn-activation: relu
@@ -17,10 +58,9 @@ transformer-ffn-depth: 2
 transformer-guided-alignment-layer: last
 transformer-heads: 8
 transformer-no-projection: false
-transformer-postprocess-emb: d
-transformer-postprocess: dan
-transformer-preprocess: ""
+transformer-postprocess-emb: d # dropout embeddings
+transformer-postprocess: dan # dropout, add, normalize
+transformer-preprocess: "" # Do not perform any other operation.
 transformer-tied-layers: []
-transformer-train-position-embeddings: false
+transformer-train-position-embeddings: false # Use static sinusoidal embeddings
 type: transformer
-
