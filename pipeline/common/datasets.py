@@ -227,7 +227,7 @@ def shuffle_in_temp_files(
 
 
 class SentenceSizeDistribution:
-    def __init__(self, scale: int = 1e10) -> None:
+    def __init__(self, scale: int = 3) -> None:
         self.histogram: dict[int, int] = {}
         self.scale = scale
 
@@ -242,14 +242,14 @@ class SentenceSizeDistribution:
         for value in self.histogram.keys():
             max_value = max(max_value, value)
 
-        max_bucket = math.ceil(math.log(max_value * self.scale))
+        max_bucket = math.ceil(math.log(max_value)) * self.scale
         buckets = [0 for _ in range(max_bucket + 1)]
 
         for line_length, sentences_count in self.histogram.items():
-            bucket = math.ceil(math.log(line_length * self.scale))
+            bucket = math.ceil(math.log(line_length) * self.scale)
             buckets[bucket] += sentences_count
 
-        rows: list[list[str]] = [
+        table: list[list[str]] = [
             # Header
             [Align.right, Align.left, Align.right],
             ["length", "sentences graph", "sentences"],
@@ -260,15 +260,15 @@ class SentenceSizeDistribution:
             max_sentences_count = max(sentences_count, max_sentences_count)
 
         for i, sentences_count in enumerate(buckets):
-            range_start = math.ceil(math.e ** (i - 1) / self.scale)
-            range_end = math.ceil(math.e ** (i) / self.scale)
+            range_start = math.ceil(math.e ** ((i - 1) / self.scale))
+            range_end = math.ceil(math.e ** (i / self.scale))
             if i == 0:
                 range_start = 0
 
-            if math.e ** (i) / self.scale < 1:
+            if math.e ** (i / self.scale) < 1:
                 continue
 
-            rows.append(
+            table.append(
                 [
                     f"{range_start}-{range_end}",
                     "█" * round(sentences_count / max_sentences_count * graph_width),
@@ -276,9 +276,7 @@ class SentenceSizeDistribution:
                 ]
             )
 
-        print_table(
-            rows,
-        )
+        print_table(table)
 
 
 Align = Enum("Align", ["left", "right"])
@@ -331,6 +329,6 @@ def print_table(table: list[list[any]]):
         if index == 0:
             print("|", end="")
             for length in column_lengths:
-                text = alignment("", length, "─")
+                text = alignment("", length, "-")
                 print(f" {text} |", end="")
             print("")
