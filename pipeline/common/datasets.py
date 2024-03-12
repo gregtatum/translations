@@ -1,3 +1,5 @@
+from enum import Enum
+import math
 import os
 import tempfile
 from collections import deque
@@ -222,3 +224,113 @@ def shuffle_in_temp_files(
             output.write(shuffled_line)
 
     print(f"Shuffled with {bucket_count} buckets.")
+
+
+class SentenceSizeDistribution:
+    def __init__(self, scale: int = 1e10) -> None:
+        self.histogram: dict[int, int] = {}
+        self.scale = scale
+
+    def count_line(self, line: str):
+        count = len(line)
+        if count not in self.histogram:
+            self.histogram[count] = 0
+        self.histogram[count] += 1
+
+    def report_log_scale(self, graph_width=25):
+        max_value = 0
+        for value in self.histogram.keys():
+            max_value = max(max_value, value)
+
+        max_bucket = math.ceil(math.log(max_value * self.scale))
+        buckets = [0 for _ in range(max_bucket + 1)]
+
+        for line_length, sentences_count in self.histogram.items():
+            bucket = math.ceil(math.log(line_length * self.scale))
+            buckets[bucket] += sentences_count
+
+        rows: list[list[str]] = [
+            # Header
+            [Align.right, Align.left, Align.right],
+            ["length", "sentences graph", "sentences"],
+        ]
+
+        max_sentences_count = 0
+        for i, sentences_count in enumerate(buckets):
+            max_sentences_count = max(sentences_count, max_sentences_count)
+
+        for i, sentences_count in enumerate(buckets):
+            range_start = math.ceil(math.e ** (i - 1) / self.scale)
+            range_end = math.ceil(math.e ** (i) / self.scale)
+            if i == 0:
+                range_start = 0
+
+            if math.e ** (i) / self.scale < 1:
+                continue
+
+            rows.append(
+                [
+                    f"{range_start}-{range_end}",
+                    "█" * round(sentences_count / max_sentences_count * graph_width),
+                    f"{sentences_count:,}",
+                ]
+            )
+
+        print_table(
+            rows,
+        )
+
+
+Align = Enum("Align", ["left", "right"])
+
+
+def ljust(str: str, length: int, fill_char: str = " ") -> str:
+    return str.ljust(length, fill_char)
+
+
+def rjust(str: str, length: int, fill_char: str = " ") -> str:
+    return str.rjust(length, fill_char)
+
+
+def print_table(table: list[list[any]]):
+    """
+    Nicely print a table.
+
+    Either: The first row is the header
+
+    Or: The first row is the text alignment (using the Align enum),
+    and the second row is the header.
+    """
+
+    if len(table) <= 1:
+        print("(no datasets)")
+
+    if isinstance(table[0][0], Align):
+        # The header included alignment information.
+        alignments = table.pop(0)
+    else:
+        # Align everything left.
+        alignments = [Align.left for _ in range(len(table[0]))]
+
+    alignments = [ljust if align == Align.left else rjust for align in alignments]
+
+    # Compute the column lengths.
+    transposed_table = list(map(list, zip(*table)))
+    column_lengths = [max(len(str(x)) for x in column) for column in transposed_table]
+
+    print("")
+    for index, row in enumerate(table):
+        # Print the row.
+        print("|", end="")
+        for datum, max_len, alignment in zip(row, column_lengths, alignments):
+            text = alignment(str(datum), max_len)
+            print(f" {text} |", end="")
+        print("")
+
+        # Print a separator between the header and the rest of the table.
+        if index == 0:
+            print("|", end="")
+            for length in column_lengths:
+                text = alignment("", length, "─")
+                print(f" {text} |", end="")
+            print("")
