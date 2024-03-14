@@ -4,12 +4,18 @@
 #
 #    pip-compile pipeline/data/requirements/analyze.in
 #
+certifi==2024.2.2
+    # via requests
+charset-normalizer==3.3.2
+    # via requests
 contourpy==1.2.0
     # via matplotlib
 cycler==0.12.1
     # via matplotlib
 fonttools==4.49.0
     # via matplotlib
+idna==3.6
+    # via requests
 kiwisolver==1.4.5
     # via matplotlib
 matplotlib==3.8.3
@@ -27,5 +33,9 @@ pyparsing==3.1.2
     # via matplotlib
 python-dateutil==2.9.0.post0
     # via matplotlib
+requests==2.31.0
+    # via -r pipeline/data/requirements/analyze.in
 six==1.16.0
     # via python-dateutil
+urllib3==2.2.1
+    # via requests
