@@ -405,7 +405,7 @@ def main(
     )
     parser.add_argument(
         "--config",
-        default="configs/tc.prod.yml",
+        default="taskcluster/configs/config.prod.yml",
         type=str,
         help='The path to the training config. Defaults to "configs/tc.prod.yml"',
     )

@@ -11,11 +11,17 @@ transforms:
     - translations_taskgraph.transforms.dependency_dummies
     - taskgraph.transforms.task:transforms
 
+# In order for tasks to be produced as "leaves" of the task graph, they must be attached
+# as dependencies to the "all" dummy task. This file is for full training runs. See
+# "all-pr" for integrating into the CI training runs. If a new final "leaf" task is
+# needed, as it as a kind dependency here so that it will be
+# produced as part of the final task graph.
 kind-dependencies:
     - export
     - evaluate
     - evaluate-quantized
     - evaluate-teacher-ensemble
+    - analyze-mono
 
 tasks:
     all:
@@ -24,7 +30,7 @@ tasks:
             stage: all
             src_locale: "{src_locale}"
             trg_locale: "{trg_locale}"
-        
+
         task-context:
             from-parameters:
                 src_locale: training_config.experiment.src

@@ -16,16 +16,17 @@ from matplotlib import ticker
 
 import wandb
 
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 # Ensure the pipeline is available on the path.
-sys.path.append(os.path.join(CURRENT_DIR, "../.."))
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../.."))
 
 from pipeline.common.datasets import LogDistribution
 from pipeline.common.downloads import (
     RemoteGzipLineStreamer,
     RemoteZstdLineStreamer,
 )
+from pipeline.common.logging import get_logger
 
+logger = get_logger(__file__)
 
 def get_line_streamer(file_location: str):
     if file_location.startswith("http://") or file_location.startswith("https://"):
@@ -43,7 +44,7 @@ def get_line_streamer(file_location: str):
 
 def log_to_wandb(
     file_location: str,
-    name: str,
+    dataset: str,
     language: str,
     files: list[str],
 ):
@@ -53,7 +54,7 @@ def log_to_wandb(
         entity="gtatum",
     ) as run:
         artifact = wandb.Artifact(
-            name=f"{name}-{language}",
+            name=f"{dataset}-{language}",
             type="dataset",
         )
         artifact.add_reference(uri=file_location)
@@ -71,7 +72,10 @@ def main() -> None:
     parser.add_argument(
         "--file_location", type=str, required=True, help="A url or file path for analyzing."
     )
-    parser.add_argument("--name", type=str, required=True, help="The name of the dataset")
+    parser.add_argument(
+        "--output_dir", type=str, required=True, help="The directory for the output."
+    )
+    parser.add_argument("--dataset", type=str, required=True, help="The name of the dataset")
     parser.add_argument(
         "--language",
         type=str,
@@ -80,6 +84,11 @@ def main() -> None:
     )
 
     parsed_args = parser.parse_args()
+
+    logger.info(f"file_location: {parsed_args.file_location}")
+    logger.info(f"output_dir: {parsed_args.output_dir}")
+    logger.info(f"dataset: {parsed_args.dataset}")
+    logger.info(f"language: {parsed_args.language}")
 
     # url = "https://object.pouta.csc.fi/OPUS-OpenSubtitles/v1/mono/cs.txt.gz"
     # url = "https://data.statmt.org/news-crawl/cs/news.2007.cs.shuffled.deduped.gz"
@@ -96,8 +105,8 @@ def main() -> None:
     str_length_distribution.report_log_scale()
     word_distribution.report_log_scale()
 
-    words_filename = "distribution-words.png"
-    codepoints_filename = "distribution-codepoints.png"
+    words_filename = os.path.join(parsed_args.output_dir, "distribution-words.png")
+    codepoints_filename = os.path.join(parsed_args.output_dir, "distribution-codepoints.png")
 
     plot_logarithmic_histogram(
         word_distribution.histogram,
@@ -105,7 +114,7 @@ def main() -> None:
         title="\n".join(
             [
                 "Word Count Distribution",
-                f"{parsed_args.name} - {parsed_args.language}",
+                f"{parsed_args.dataset} - {parsed_args.language}",
             ]
         ),
         x_axis_label="Words (log scale)",
@@ -118,19 +127,19 @@ def main() -> None:
         title="\n".join(
             [
                 "Codepoints per Sentence Distribution",
-                f"{parsed_args.name} - {parsed_args.language}",
+                f"{parsed_args.dataset} - {parsed_args.language}",
             ]
         ),
         x_axis_label="Codepoints (log scale)",
         filename=codepoints_filename,
     )
 
-    log_to_wandb(
-        parsed_args.file_location,
-        parsed_args.name,
-        parsed_args.language,
-        files=[words_filename, codepoints_filename],
-    )
+    # log_to_wandb(
+    #     parsed_args.file_location,
+    #     parsed_args.dataset,
+    #     parsed_args.language,
+    #     files=[words_filename, codepoints_filename],
+    # )
 
 
 def plot_logarithmic_histogram(
@@ -159,8 +168,8 @@ def plot_logarithmic_histogram(
 
     # Ensure no labels are cut off.
     plt.tight_layout()
-    print("Saving plot to", filename)
-    plt.savefig(filename, dpi=200)
+    logger.info(f"Saving plot to: {filename}")
+    plt.savefig(filename, dpi=150)
     plt.close()
 
 
