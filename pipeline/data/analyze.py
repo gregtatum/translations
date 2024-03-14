@@ -14,8 +14,6 @@ import numpy as np
 import zstandard
 from matplotlib import ticker
 
-import wandb
-
 # Ensure the pipeline is available on the path.
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../.."))
 
@@ -27,6 +25,7 @@ from pipeline.common.downloads import (
 from pipeline.common.logging import get_logger
 
 logger = get_logger(__file__)
+
 
 def get_line_streamer(file_location: str):
     if file_location.startswith("http://") or file_location.startswith("https://"):
@@ -48,6 +47,8 @@ def log_to_wandb(
     language: str,
     files: list[str],
 ):
+    import wandb
+
     with wandb.init(
         project="fxt-training",
         job_type="datasets",
