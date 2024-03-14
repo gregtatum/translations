@@ -1,6 +1,8 @@
+import math
 import os
 import tempfile
 from collections import deque
+from enum import Enum
 from io import TextIOWrapper
 from random import Random
 from typing import Iterator, Optional
@@ -222,3 +224,138 @@ def shuffle_in_temp_files(
             output.write(shuffled_line)
 
     print(f"Shuffled with {bucket_count} buckets.")
+
+
+class LogDistribution:
+    def __init__(self, count_label: str, scale: int = 3) -> None:
+        self.histogram: dict[int, int] = {}
+        self.count_label = count_label
+        self.scale = scale
+
+    def count(self, count: int):
+        if count not in self.histogram:
+            self.histogram[count] = 0
+        self.histogram[count] += 1
+
+    def build_log_scale_table(self, graph_width=25):
+        max_value = 0
+        for value in self.histogram.keys():
+            max_value = max(max_value, value)
+
+        max_bucket = math.ceil(math.log(max_value)) * self.scale
+        buckets = [0 for _ in range(max_bucket + 1)]
+
+        for line_length, sentences_count in self.histogram.items():
+            if line_length == 0:
+                bucket = 0
+            else:
+                bucket = math.ceil(math.log(line_length) * self.scale)
+
+            buckets[bucket] += sentences_count
+
+        table: list[list[str]] = [
+            # Header
+            [TextAlign.right, TextAlign.left, TextAlign.right],
+            [self.count_label, "sentences graph", "sentences"],
+        ]
+
+        max_sentences_count = 0
+        for i, sentences_count in enumerate(buckets):
+            max_sentences_count = max(sentences_count, max_sentences_count)
+
+        for i, sentences_count in enumerate(buckets):
+            range_start = math.ceil(math.e ** ((i - 1) / self.scale))
+            range_end = math.ceil(math.e ** (i / self.scale))
+            if i == 0:
+                range_start = 0
+
+            if math.e ** (i / self.scale) < 1:
+                continue
+
+            table.append(
+                [
+                    f"{range_start}-{range_end}",
+                    "█" * round(sentences_count / max_sentences_count * graph_width),
+                    f"{sentences_count:,}",
+                ]
+            )
+
+        return table
+
+    def report_log_scale(self, graph_width=25):
+        print_markdown_table(self.build_log_scale_table(graph_width))
+
+    def as_list(self) -> list[int]:
+        max_key = 0
+        for key in self.histogram.keys():
+            max_key = max(key, max_key)
+
+        result: list[int] = []
+        for i in range(max_key + 1):
+            result.append(self.histogram.get(i, 0))
+        return result
+
+
+class TextAlign(Enum):
+    """Align text to the left or right."""
+
+    left = "left"
+    right = "right"
+
+
+def print_markdown_table(table: list[list[any]]):
+    """
+    Nicely print a table as markdown.
+
+    Example:
+        print_table([
+            [Align.Left,         Align.Right],  # Optional text alignment.
+            ["Dataset",          "Size"],       # Mandatory header.
+
+            # The data:
+            ["CCMatrix",         "4.3 GB"],
+            ["NLLB",             "4.3 GB"],
+            ["ParaCrawl",        "4.4 GB"],
+            ["OpenSubtitles",    "1.3 GB"],
+            ["StanfordNLP-NMT",  "1.1 GB"],
+        ])
+    """
+
+    if isinstance(table[0][0], TextAlign):
+        # The header included alignment information.
+        alignments = table.pop(0)
+    else:
+        # Align everything left.
+        alignments = [TextAlign.left for _ in range(len(table[0]))]
+
+    def ljust(str: str, length: int, fill_char: str = " ") -> str:
+        return str.ljust(length, fill_char)
+
+    def rjust(str: str, length: int, fill_char: str = " ") -> str:
+        return str.rjust(length, fill_char)
+
+    alignments = [ljust if align == TextAlign.left else rjust for align in alignments]
+
+    # Compute the column lengths.
+    transposed_table = list(map(list, zip(*table)))
+    column_lengths = [max(len(str(x)) for x in column) for column in transposed_table]
+
+    print("")
+    for index, row in enumerate(table):
+        # Print the row.
+        print("|", end="")
+        for datum, max_len, alignment in zip(row, column_lengths, alignments):
+            text = alignment(str(datum), max_len)
+            print(f" {text} |", end="")
+        print("")
+
+        # Print a separator between the header and the rest of the table.
+        if index == 0:
+            print("|", end="")
+            for length in column_lengths:
+                text = alignment("", length, "-")
+                print(f" {text} |", end="")
+            print("")
+
+    if len(table) <= 1:
+        print("(no data for the table.)")
