@@ -7,22 +7,18 @@ Get the statistical distribution of a dataset.
 import argparse
 import gzip
 import os
-import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
 import zstandard
 from matplotlib import ticker
 
-# Ensure the pipeline is available on the path.
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../.."))
-
-from pipeline.common.datasets import LogDistribution
-from pipeline.common.downloads import (
+from ..common.datasets import LogDistribution
+from ..common.downloads import (
     RemoteGzipLineStreamer,
     RemoteZstdLineStreamer,
 )
-from pipeline.common.logging import get_logger
+from ..common.logging import get_logger
 
 logger = get_logger(__file__)
 
