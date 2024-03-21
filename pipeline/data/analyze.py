@@ -17,7 +17,6 @@ from matplotlib import ticker
 # Ensure the pipeline is available on the path.
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../.."))
 
-from pipeline.common.datasets import LogDistribution
 from pipeline.common.downloads import (
     RemoteGzipLineStreamer,
     RemoteZstdLineStreamer,
@@ -28,6 +27,7 @@ logger = get_logger(__file__)
 
 
 def get_line_streamer(file_location: str):
+    """Streams in lines from remote locations, or from disk. Accepts zst, gz, and plain text."""
     if file_location.startswith("http://") or file_location.startswith("https://"):
         if file_location.endswith(".zst"):
             return RemoteZstdLineStreamer(file_location)
@@ -39,30 +39,6 @@ def get_line_streamer(file_location: str):
     if file_location.endswith(".zst"):
         return zstandard.open(file_location, "rt")
     return open(file_location, "rt")
-
-
-def log_to_wandb(
-    file_location: str,
-    dataset: str,
-    language: str,
-    files: list[str],
-):
-    import wandb
-
-    with wandb.init(
-        project="fxt-training",
-        job_type="datasets",
-        entity="gtatum",
-    ) as run:
-        artifact = wandb.Artifact(
-            name=f"{dataset}-{language}",
-            type="dataset",
-        )
-        artifact.add_reference(uri=file_location)
-        for file in files:
-            artifact.add_file(local_path=file)
-
-        run.log_artifact(artifact)
 
 
 def main() -> None:
@@ -91,26 +67,16 @@ def main() -> None:
     logger.info(f"dataset: {parsed_args.dataset}")
     logger.info(f"language: {parsed_args.language}")
 
-    # url = "https://object.pouta.csc.fi/OPUS-OpenSubtitles/v1/mono/cs.txt.gz"
-    # url = "https://data.statmt.org/news-crawl/cs/news.2007.cs.shuffled.deduped.gz"
-    # file = "data/statistics/opensubtitles-cs.txt.gz"
-
-    str_length_distribution = LogDistribution("string length")
-    word_distribution = LogDistribution("words")
-
+    # Compute the distributions for both the codepoints, and word size.
+    codepoints_distribution = Histogram()
+    word_distribution = Histogram()
     with get_line_streamer(parsed_args.file_location) as lines:
         for line in lines:
-            str_length_distribution.count(len(line))
+            codepoints_distribution.count(len(line))
             word_distribution.count(len(line.split()))
 
-    str_length_distribution.report_log_scale()
-    word_distribution.report_log_scale()
-
-    words_filename = os.path.join(parsed_args.output_dir, "distribution-words.png")
-    codepoints_filename = os.path.join(parsed_args.output_dir, "distribution-codepoints.png")
-
     plot_logarithmic_histogram(
-        word_distribution.histogram,
+        word_distribution,
         max_size=5_000,  # words
         title="\n".join(
             [
@@ -119,11 +85,11 @@ def main() -> None:
             ]
         ),
         x_axis_label="Words (log scale)",
-        filename=words_filename,
+        filename=os.path.join(parsed_args.output_dir, "distribution-words.png"),
     )
 
     plot_logarithmic_histogram(
-        str_length_distribution.histogram,
+        codepoints_distribution,
         max_size=10_000,  # codepoints
         title="\n".join(
             [
@@ -132,36 +98,50 @@ def main() -> None:
             ]
         ),
         x_axis_label="Codepoints (log scale)",
-        filename=codepoints_filename,
+        filename=os.path.join(parsed_args.output_dir, "distribution-codepoints.png"),
     )
 
-    # log_to_wandb(
-    #     parsed_args.file_location,
-    #     parsed_args.dataset,
-    #     parsed_args.language,
-    #     files=[words_filename, codepoints_filename],
-    # )
+
+class Histogram:
+    """Computes a histogram based on counts."""
+
+    def __init__(self) -> None:
+        # The keys are the bins, the values are the counts.
+        self.data: dict[int, int] = {}
+
+    def count(self, count: int):
+        if count not in self.data:
+            self.data[count] = 0
+        self.data[count] += 1
+
+    def log_scale_bins(self, max_size: int, bin_count: int = 30) -> list[int]:
+        """Converts the linear bins of the histogram into into logscale bins."""
+        # Start with a few small value bins, since it's easy to start with some small fractional
+        # values on a log scale.
+        bins = [1.0, 2.0]
+        for edge in np.logspace(np.log10(1), np.log10(max_size), bin_count):
+            if edge > 2.0:
+                bins.append(edge)
+        return bins
 
 
 def plot_logarithmic_histogram(
-    histogram: dict[int, int], max_size: int, title: str, x_axis_label: str, filename: str
+    histogram: Histogram, max_size: int, title: str, x_axis_label: str, filename: str
 ):
-    # Convert the histogram dictionary to a DataFrame.
-    # Start with a few small value buckets, since it's easy to start with some small fractional
-    # values on a log scale.
-    bin_edges = [1.0, 2.0]
-    for edge in np.logspace(np.log10(1), np.log10(max_size), 30):
-        if edge > 2.0:
-            bin_edges.append(edge)
-    bin_edges = np.array(bin_edges)
+    """
+    Converts a histogram of values into a logscale graph, where the x axis is logarithmic,
+    and the y scale is linear. The x axis represents the bins of the histogram.
+    """
+
+    bins = np.array(histogram.log_scale_bins(max_size))
 
     # Plot a histogram with logarithmic bins.
     plt.title(title)
-    plt.hist(histogram.keys(), bins=bin_edges, weights=histogram.values(), alpha=0.7)
+    plt.hist(histogram.data.keys(), bins=bins, weights=histogram.data.values(), alpha=0.7)
 
     plt.xlabel(x_axis_label)
     plt.xscale("log")
-    plt.xticks(ticks=bin_edges, labels=[f"{int(edge)}" for edge in bin_edges], rotation="vertical")
+    plt.xticks(ticks=bins, labels=[f"{int(edge)}" for edge in bins], rotation="vertical")
 
     plt.ylabel("Frequency (linear)")
     plt.yscale("linear")
@@ -169,6 +149,7 @@ def plot_logarithmic_histogram(
 
     # Ensure no labels are cut off.
     plt.tight_layout()
+
     logger.info(f"Saving plot to: {filename}")
     plt.savefig(filename, dpi=150)
     plt.close()
