@@ -8,6 +8,7 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.10"
 pip-tools = "^7.3.0"
+zstandard = "^0.22.0"
 
 [tool.poetry.group.black.dependencies]
 black = "^23.7.0"
@@ -80,3 +81,6 @@ exclude = [
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -4,6 +4,7 @@ Downloads artifacts from a Taskcluster Task Group. This command supports the fol
  - evals
  - model
 """
+
 import os
 import sys
 
@@ -61,6 +62,7 @@ def donwload_logs(group_id, output):
     queue = taskcluster.Queue(options=options)
     group = queue.listTaskGroup(group_id)
 
+    task_found = False
     for task in group["tasks"]:
         if task["status"]["state"] not in ("completed", "running"):
             continue
@@ -68,6 +70,8 @@ def donwload_logs(group_id, output):
         label = task["task"]["tags"]["kind"]
         if ("train" not in label and "finetune" not in label) or "vocab" in label:
             continue
+
+        task_found = True
 
         task_id = task["status"]["taskId"]
 
@@ -99,6 +103,9 @@ def donwload_logs(group_id, output):
         print(f"Writing to {output_path}")
         with open(output_path, "w") as f:
             f.write("\n".join(log_lines))
+
+    if not task_found:
+        print(f"No logs were found for {group_id}")
 
 
 def donwload_evals(group_id, output):
@@ -232,7 +239,6 @@ def main() -> None:
         output = args.output
     else:
         output = os.path.join(DATA_DIR, f"taskcluster-{mode.value}")
-
     if mode == Mode.logs:
         donwload_logs(group_id, output)
     elif mode == Mode.evals:
