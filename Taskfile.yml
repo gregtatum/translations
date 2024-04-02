@@ -106,10 +106,11 @@ tasks:
   test-docker:
     desc: Run the unit tests in the docker image. Some tests require the pre-built Linux executables.
     cmds:
-      - task docker-run -- task test-all
+      - task docker-run -- task test
 
   docker:
     desc: Interactively run the local docker test image.
+    deps: [docker-build]
     summary: |
       The local docker image includes the Linux x86 image, and pre-built binaries
       that are used in training.
@@ -118,6 +119,7 @@ tasks:
 
   docker-run:
     desc: Run a command in the local docker instance. e.g. `docker-run -- echo "hello"`
+    deps: [docker-build]
     summary: |
       The local docker image includes the Linux x86 image, and pre-built binaries
       that are used in training.
@@ -126,7 +128,6 @@ tasks:
 
   docker-build:
     desc: Build the local docker image that includes the proper Linux binaries for training
-    internal: true
     cmds:
       - ./utils/tasks/docker-build.sh
 
@@ -188,3 +189,9 @@ tasks:
         --offline
         --log-file data/taskcluster-logs/**/*.log
         --work-dir data/tensorboard-logs
+
+  find-corpus:
+    desc: Finds all datasets for a language pair
+    deps: [poetry-install-utils]
+    cmds:
+      - poetry run python -W ignore utils/find_corpus.py {{.CLI_ARGS}}
