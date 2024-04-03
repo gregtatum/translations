@@ -62,6 +62,7 @@ ENV MARIAN=/builds/worker/tools/marian-dev/build
 RUN ln -s /bin/python3 /bin/python
 
 # Install taskfile - https://taskfile.dev/
+# Keep the version in sync with taskcluster/docker/test/Dockerfile.
 RUN curl -sSLf "https://github.com/go-task/task/releases/download/v3.35.1/task_linux_amd64.tar.gz" \
     | tar -xz -C /usr/local/bin
 
