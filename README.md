@@ -2,20 +2,40 @@
 Training pipelines for Firefox Translations machine translation models.
 
 The trained models are hosted in [firefox-translations-models](https://github.com/mozilla/firefox-translations-models/) repository,
-compatible with [bergamot-translator](https://github.com/mozilla/bergamot-translator) and 
-power the Firefox web page translation starting with version 118. 
+compatible with [bergamot-translator](https://github.com/mozilla/bergamot-translator) and
+power the Firefox web page translation starting with version 118.
 
 The pipeline was originally developed as a part of [Bergamot](https://browser.mt/) project  that focuses on improving client-side machine translation in a web browser.
 
 [Documentation](https://mozilla.github.io/firefox-translations-training/)
 
+## Contributing
+
+If you would like to contribute to the project there are various ways to help out.
+
+## Request a language
+
+If you would like to request a new language you can do so on [Mozilla Connect](https://connect.mozilla.org). Search for your language, and thumbs it up, or if it's not there, make a new post.
+
+## Evaluate our models
+
+We are always looking for better qualitative understanding of our language models, which means you can try out our models and leave feedback on our [Firefox Translations Matrix chat channel](https://chat.mozilla.org/#/room/#firefoxtranslations:mozilla.org) or in GitHub issues. We also may have questions about specific languages, and if you leave your name and the language you can help with, we may reach out.
+
+## Researchers for Machine Learning
+
+If you are a researcher and are interested in using our pipeline, you can also [reach out](https://chat.mozilla.org/#/room/#firefoxtranslations:mozilla.org).
+We have optimized the pipeline to run on Mozilla cloud resources via [Taskcluster](https://taskcluster.net/) and no longer actively maintain the Snakemake configuration, but we do accept PRs to fix it. If you can help contribute specific training configs and data
+
+We can always use language experts to help our understanding of cleaning rules, segmentation issues, and other language specific issues.
+If you are interested on hacking on something and contributing some code, check out the GitHub issues.
+
 ## Pipeline
 
-The pipeline is capable of training a translation model for a language pair end to end. 
-Translation quality depends on the chosen datasets, data cleaning procedures and hyperparameters. 
+The pipeline is capable of training a translation model for a language pair end to end.
+Translation quality depends on the chosen datasets, data cleaning procedures and hyperparameters.
 Some settings, especially low resource languages might require extra tuning.
 
-We use fast translation engine [Marian](https://marian-nmt.github.io).
+We use the fast translation engine [Marian](https://marian-nmt.github.io).
 
 You can find more details about the pipeline steps in the [documentation](docs/pipeline-steps.md).
 
@@ -23,10 +43,10 @@ You can find more details about the pipeline steps in the [documentation](docs/p
 
 An orchestrator is responsible for workflow management and parallelization.
 
-- [Taskcluster](https://taskcluster.net/) - Mozilla task execution framework. It is also used for Firefox CI. 
-  It provides access to the hybrid cloud workers (GCP + on-prem) with increased scalability and observability. 
+- [Taskcluster](https://taskcluster.net/) - Mozilla task execution framework. It is also used for Firefox CI.
+  It provides access to the hybrid cloud workers (GCP + on-prem) with increased scalability and observability.
   [Usage instructions](docs/task-cluster.md).
-- [Snakemake](https://snakemake.github.io/) - a file based orchestrator that allows to run the pipeline locally or on a Slurm cluster. 
+- [Snakemake](https://snakemake.github.io/) - a file based orchestrator that allows to run the pipeline locally or on a Slurm cluster.
   [Usage instructions](docs/snakemake.md). (The integration is not maintained since Mozilla has switched to Taskcluster. Contributions are welcome.)
 
 ## Experiment tracking
