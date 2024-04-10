@@ -17,4 +17,5 @@ docker build \
 docker build \
   --build-arg DOCKER_IMAGE_PARENT=ftt-test \
   --file docker/Dockerfile \
+  --progress plain \
   --tag ftt-local .

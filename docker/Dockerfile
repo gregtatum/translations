@@ -76,3 +76,10 @@ RUN git config --global --add safe.directory /builds/worker/checkouts
 
 # Allow scripts to detect if they are running in docker
 ENV IS_DOCKER 1
+
+# Install the poetry dependencies as the last step, as these will be invalidated
+# frequently as dependencies and config for the project change.
+WORKDIR /builds/worker/checkouts
+COPY poetry.lock pyproject.toml .
+COPY tracking tracking
+RUN poetry install --no-root
