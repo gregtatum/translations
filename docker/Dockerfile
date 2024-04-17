@@ -81,5 +81,5 @@ ENV IS_DOCKER 1
 # frequently as dependencies and config for the project change.
 WORKDIR /builds/worker/checkouts
 COPY poetry.lock pyproject.toml .
-COPY tracking tracking
+COPY tracking/pyproject.toml tracking/pyproject.toml
 RUN poetry install --no-root
