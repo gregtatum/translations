@@ -1,6 +1,13 @@
+from dataclasses import dataclass
+from enum import Enum
+from typing import Generator, Literal
 from taskgraph.transforms.base import TransformSequence
 from urllib.parse import urljoin
 import os
+
+"""
+Transform jobs to be able to use pre-trained models.
+"""
 
 CONTINUE_TRAINING_ARTIFACTS = (
     "devset.out",
@@ -29,23 +36,62 @@ INITIALIZE_MODEL_ARTIFACTS = (
     "model.npz.best-chrf.npz",
 )
 
-
-def get_artifact_mount(url, directory, artifact_name):
-    normalized_url = f"{url}/" if not url.endswith("/") else url
-    artifact_url = urljoin(normalized_url, artifact_name)
-    return {
-        "content": {
-            "url": artifact_url,
-        },
-        "file": os.path.join(directory, artifact_name),
-    }
+ModelMode = Enum(
+    "Mode",
+    [
+        "init",
+        "continue",
+        "use",
+    ],
+)
 
 
-def get_artifact_mounts(urls, directory, artifact_names):
+@dataclass
+class PretrainedModel:
+    """
+    The YAML object that represents a pre-trained model.
+    """
+
+    urls: list[str]
+    mode: ModelMode
+    # In the future "opusmt" may be supported.
+    type: Literal["npz"]
+
+    def get_artifact_names(self):
+        artifacts = {
+            "init": INITIALIZE_MODEL_ARTIFACTS,
+            "continue": CONTINUE_TRAINING_ARTIFACTS,
+            "use": CONTINUE_TRAINING_ARTIFACTS,
+        }
+        return artifacts[self.mode]
+
+
+def get_artifact_mounts(
+    urls: list[str], directory: str, artifact_names: str
+) -> Generator[list[dict[any]], None, None]:
+    """
+    Build a list of artifact mounts that will mount a remote URL file to the tasks local
+    file system.
+
+    For instance, given: "https://example.com/en-ru"
+
+    This will download files such as:
+      "https://example.com/en-ru/model.npz.best-bleu-detok.npz"
+      "https://example.com/en-ru/model.npz.best-ce-mean-words.npz",
+      etc.
+    """
+
     for url in urls:
         artifact_mounts = []
         for artifact_name in artifact_names:
-            artifact_mounts.append(get_artifact_mount(url, directory, artifact_name))
+            # Ensure the url ends with a "/"
+            normalized_url = f"{url}/" if not url.endswith("/") else url
+            artifact_mounts.append(
+                {
+                    "content": {"url": urljoin(normalized_url, artifact_name)},
+                    "file": os.path.join(directory, artifact_name),
+                }
+            )
         yield artifact_mounts
 
 
@@ -54,30 +100,42 @@ transforms = TransformSequence()
 
 @transforms.add
 def add_pretrained_model_mounts(config, jobs):
+    """
+    The transform for modifying the task graph to use pre-trained models.
+
+    See docs/using-pretrained-models.md
+    """
+
+    # Example:
+    # pretrained-models:
+    #   train-backwards:
+    #     urls: [https://storage.googleapis.com/bucket-name/models/ru-en/backward]
+    #     mode: "use"
+    #     type: "default"
     pretrained_models = config.params["training_config"]["experiment"].get("pretrained-models", {})
+
     for job in jobs:
-        pretrained_models_training_artifact_mounts = {
-            pretrained_model: get_artifact_mounts(
-                pretrained_models[pretrained_model]["urls"],
-                "./artifacts",
-                INITIALIZE_MODEL_ARTIFACTS
-                if pretrained_models[pretrained_model]["mode"] == "init"
-                else CONTINUE_TRAINING_ARTIFACTS,
-            )
-            for pretrained_model in pretrained_models
-        }
-        pretrained_model_training_artifact_mounts = next(
-            pretrained_models_training_artifact_mounts.get(config.kind, iter((None,)))
-        )
-        if pretrained_model_training_artifact_mounts:
+        pretrained_model_dict = pretrained_models.get(config.kind, None)
+        if pretrained_model_dict:
+            pretrained_model = PretrainedModel(**pretrained_model_dict)
+
+            # Add the pretrained artifacts to the mounts.
             mounts = job["worker"].get("mounts", [])
-            mounts.extend(pretrained_model_training_artifact_mounts)
+            mounts.extend(
+                get_artifact_mounts(
+                    urls=pretrained_model.urls,
+                    directory="./artifacts",
+                    artifact_names=pretrained_model.get_artifact_names(),
+                )
+            )
             job["worker"]["mounts"] = mounts
+
+            # Remove any vocab training, as this is using a pre-existing vocab.
             job["dependencies"].pop("train-vocab")
             job["fetches"].pop("train-vocab")
 
-            if pretrained_models[config.kind]["mode"] == "use":
-                # In use mode, no upstream dependencies of the training job are needed - the
+            if pretrained_model.mode == "use":
+                # In "use" mode, no upstream dependencies of the training job are needed - the
                 # task simply republishes the pretrained artifacts.
                 job["dependencies"] = {}
                 job["fetches"] = {}

@@ -22,12 +22,35 @@ pretrained-models:
     mode: continue
     type: default
 
-  # Re-use an existing backwards model from a Google Cloud Storage bucket.
+  # Re-use an existing backwards model from a Google Cloud Storage bucket. This must
+  # be the original (non-quantized) student model.
   train-backwards:
     urls:
-      - https://storage.googleapis.com/bucket-name/models/ru-en/backward
+      - https://storage.googleapis.com/releng-translations-dev/models/en-fi/opusmt/student/
     mode: use
     type: default
+```
+
+To find models from older training runs see the `gs://releng-translations-dev/models` bucket.
+
+For instance you can see the models available for the following commands:
+
+```sh
+gsutil ls gs://releng-translations-dev/models
+```
+
+And then use the URLs from:
+
+```sh
+gs://releng-translations-dev/models/en-fi/opusmt/student
+```
+
+This directory should contain the various `.npz` and `.decoder.yml` for the models, as well as the `vocab.spm`. If the `vocab.spm` is not present then run something like:
+
+```sh
+gsutil cp \
+  gs://releng-translations-dev/models/en-fi/opusmt/vocab/vocab.spm \
+  gs://releng-translations-dev/models/en-fi/opusmt/student/vocab.spm
 ```
 
 ### The URLs Key
