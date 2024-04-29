@@ -68,7 +68,7 @@ class PretrainedModel:
 
 def get_artifact_mounts(
     urls: list[str], directory: str, artifact_names: str
-) -> Generator[list[dict[any]], None, None]:
+):
     """
     Build a list of artifact mounts that will mount a remote URL file to the tasks local
     file system.
@@ -92,7 +92,7 @@ def get_artifact_mounts(
                     "file": os.path.join(directory, artifact_name),
                 }
             )
-        yield artifact_mounts
+        return artifact_mounts
 
 
 transforms = TransformSequence()
@@ -124,13 +124,13 @@ def add_pretrained_model_mounts(config, jobs):
             # Add the pretrained artifacts to the mounts.
             mounts = job["worker"].get("mounts", [])
             print("!!! mounts before", mounts)
-            mounts.extend(
-                get_artifact_mounts(
-                    urls=pretrained_model.urls,
-                    directory="./artifacts",
-                    artifact_names=pretrained_model.get_artifact_names(),
-                )
+            mounts2 = get_artifact_mounts(
+                urls=pretrained_model.urls,
+                directory="./artifacts",
+                artifact_names=pretrained_model.get_artifact_names(),
             )
+            print("!!! mounts2", mounts2)
+            mounts.extend(mounts2)
             job["worker"]["mounts"] = mounts
 
             # Remove any vocab training, as this is using a pre-existing vocab.
