@@ -58,9 +58,10 @@ experiment:
   
   # Continue training see docs/using-pretrained-models.md
   pretrained-models:
-    train-backwards:
+    train-teacher:
       urls:
-        - https://storage.googleapis.com/releng-translations-dev/models/en-fi/opusmt/student/
+        - https://storage.googleapis.com/releng-translations-dev1/models/en-fi/opusmt/student/
+        - https://storage.googleapis.com/releng-translations-dev2/models/en-fi/opusmt/student/
       mode: use
       type: default
 

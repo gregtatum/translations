@@ -36,8 +36,9 @@ INITIALIZE_MODEL_ARTIFACTS = (
     "model.npz.best-chrf.npz",
 )
 
+# See docs/using-pretrained-models.md for documentation.
 ModelMode = Enum(
-    "Mode",
+    "ModelMode",
     [
         "init",
         "continue",
@@ -81,18 +82,22 @@ def get_artifact_mounts(
       etc.
     """
 
-    for url in urls:
-        artifact_mounts = []
-        for artifact_name in artifact_names:
-            # Ensure the url ends with a "/"
-            normalized_url = f"{url}/" if not url.endswith("/") else url
-            artifact_mounts.append(
-                {
-                    "content": {"url": urljoin(normalized_url, artifact_name)},
-                    "file": os.path.join(directory, artifact_name),
-                }
-            )
-        return artifact_mounts
+    if len(urls) != 1:
+        raise Exception("Multiple URLs are currently not supported for pretrained models. See Issue #542")
+
+    url = urls[1]
+    artifact_mounts = []
+
+    for artifact_name in artifact_names:
+        # Ensure the url ends with a "/"
+        normalized_url = f"{url}/" if not url.endswith("/") else url
+        artifact_mounts.append(
+            {
+                "content": {"url": urljoin(normalized_url, artifact_name)},
+                "file": os.path.join(directory, "{this_chunk}", artifact_name),
+            }
+        )
+    return artifact_mounts
 
 
 transforms = TransformSequence()
@@ -113,24 +118,18 @@ def add_pretrained_model_mounts(config, jobs):
     #     mode: "use"
     #     type: "default"
     pretrained_models = config.params["training_config"]["experiment"].get("pretrained-models", {})
-    print("!!! add_pretrained_model_mounts", pretrained_models)
-
     for job in jobs:
-        print("!!! job", job)
         pretrained_model_dict = pretrained_models.get(config.kind, None)
         if pretrained_model_dict:
             pretrained_model = PretrainedModel(**pretrained_model_dict)
 
             # Add the pretrained artifacts to the mounts.
             mounts = job["worker"].get("mounts", [])
-            print("!!! mounts before", mounts)
-            mounts2 = get_artifact_mounts(
+            mounts.extend(get_artifact_mounts(
                 urls=pretrained_model.urls,
                 directory="./artifacts",
                 artifact_names=pretrained_model.get_artifact_names(),
-            )
-            print("!!! mounts2", mounts2)
-            mounts.extend(mounts2)
+            ))
             job["worker"]["mounts"] = mounts
 
             # Remove any vocab training, as this is using a pre-existing vocab.
