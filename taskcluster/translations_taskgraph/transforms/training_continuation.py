@@ -1,12 +1,14 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Generator, Literal
+from typing import Literal
 from taskgraph.transforms.base import TransformSequence
 from urllib.parse import urljoin
 import os
 
 """
 Transform jobs to be able to use pre-trained models.
+
+See docs/using-pretrained-models.md
 """
 
 CONTINUE_TRAINING_ARTIFACTS = (
@@ -55,8 +57,7 @@ class PretrainedModel:
 
     urls: list[str]
     mode: ModelMode
-    # In the future "opusmt" may be supported.
-    type: Literal["npz"]
+    type: Literal["npz"]  # In the future "opusmt" may be supported.
 
     def get_artifact_names(self):
         artifacts = {
@@ -67,9 +68,7 @@ class PretrainedModel:
         return artifacts[self.mode]
 
 
-def get_artifact_mounts(
-    urls: list[str], directory: str, artifact_names: str
-):
+def get_artifact_mounts(pretrained_model: PretrainedModel, directory: str):
     """
     Build a list of artifact mounts that will mount a remote URL file to the tasks local
     file system.
@@ -82,13 +81,15 @@ def get_artifact_mounts(
       etc.
     """
 
-    if len(urls) != 1:
-        raise Exception("Multiple URLs are currently not supported for pretrained models. See Issue #542")
+    if len(pretrained_model.urls) != 1:
+        raise Exception(
+            "Multiple URLs are currently not supported for pretrained models. See Issue #542"
+        )
 
-    url = urls[1]
+    url = pretrained_model.urls[0]
     artifact_mounts = []
 
-    for artifact_name in artifact_names:
+    for artifact_name in pretrained_model.get_artifact_names():
         # Ensure the url ends with a "/"
         normalized_url = f"{url}/" if not url.endswith("/") else url
         artifact_mounts.append(
@@ -111,26 +112,32 @@ def add_pretrained_model_mounts(config, jobs):
     See docs/using-pretrained-models.md
     """
 
-    # Example:
-    # pretrained-models:
-    #   train-backwards:
-    #     urls: [https://storage.googleapis.com/bucket-name/models/ru-en/backward]
-    #     mode: "use"
-    #     type: "default"
-    pretrained_models = config.params["training_config"]["experiment"].get("pretrained-models", {})
+    # Example training config.
+    #
+    # experiment:
+    #   pretrained-models:
+    #     train-backwards:
+    #       urls: [https://storage.googleapis.com/bucket-name/models/ru-en/backward]
+    #       mode: "use"
+    #       type: "default"
+    pretrained_model_dict = (
+        config.params["training_config"]["experiment"]
+        .get("pretrained-models", {})
+        .get(config.kind, None)
+    )
+
     for job in jobs:
-        pretrained_model_dict = pretrained_models.get(config.kind, None)
         if pretrained_model_dict:
             pretrained_model = PretrainedModel(**pretrained_model_dict)
 
             # Add the pretrained artifacts to the mounts.
-            mounts = job["worker"].get("mounts", [])
-            mounts.extend(get_artifact_mounts(
-                urls=pretrained_model.urls,
-                directory="./artifacts",
-                artifact_names=pretrained_model.get_artifact_names(),
-            ))
-            job["worker"]["mounts"] = mounts
+            job["worker"]["mounts"] = [
+                *job["worker"].get("mounts", []),
+                *get_artifact_mounts(
+                    pretrained_model,
+                    directory="./artifacts",
+                ),
+            ]
 
             # Remove any vocab training, as this is using a pre-existing vocab.
             job["dependencies"].pop("train-vocab")
@@ -150,5 +157,5 @@ def add_pretrained_model_mounts(config, jobs):
                     for p, v in job["attributes"]["cache"]["from-parameters"].items()
                     if p.startswith("pretrained")
                 }
-        print("!!! Yielding job", job)
+
         yield job
