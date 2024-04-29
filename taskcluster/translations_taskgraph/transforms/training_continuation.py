@@ -113,14 +113,17 @@ def add_pretrained_model_mounts(config, jobs):
     #     mode: "use"
     #     type: "default"
     pretrained_models = config.params["training_config"]["experiment"].get("pretrained-models", {})
+    print("!!! add_pretrained_model_mounts", pretrained_models)
 
     for job in jobs:
+        print("!!! job", job)
         pretrained_model_dict = pretrained_models.get(config.kind, None)
         if pretrained_model_dict:
             pretrained_model = PretrainedModel(**pretrained_model_dict)
 
             # Add the pretrained artifacts to the mounts.
             mounts = job["worker"].get("mounts", [])
+            print("!!! mounts before", mounts)
             mounts.extend(
                 get_artifact_mounts(
                     urls=pretrained_model.urls,
@@ -148,5 +151,5 @@ def add_pretrained_model_mounts(config, jobs):
                     for p, v in job["attributes"]["cache"]["from-parameters"].items()
                     if p.startswith("pretrained")
                 }
-
+        print("!!! Yielding job", job)
         yield job

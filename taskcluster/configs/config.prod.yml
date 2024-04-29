@@ -64,9 +64,6 @@ experiment:
       mode: use
       type: default
 
-  # Continue training see docs/using-pretrained-models.md
-  pretrained-models: {}
-
 # The lists of datasets. Each dataset is defined by a corpus key. This key is formed
 # by "{IMPORTER}_{DATASET}". These datasets and their corpus key can be found through
 #

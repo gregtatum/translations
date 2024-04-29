@@ -119,9 +119,9 @@ def run_taskgraph(cfg_path: str, parameters: Parameters) -> None:
     input = load_yml(cfg_path)
 
     # This command outputs the stdout. Ignore it here.
-    stdout = sys.stdout
-    devnull = open(os.devnull, "w")
-    sys.stdout = devnull
+    # stdout = sys.stdout
+    # devnull = open(os.devnull, "w")
+    # sys.stdout = devnull
 
     # This invokes train_action in taskcluster/translations_taskgraph/actions/train.py
     taskgraph.actions.trigger_action_callback(
@@ -134,7 +134,7 @@ def run_taskgraph(cfg_path: str, parameters: Parameters) -> None:
         test=True,
     )
 
-    sys.stdout = stdout
+    # sys.stdout = stdout
 
 
 def pretty_print_training_config(parameters: Parameters) -> None:
