@@ -8,6 +8,8 @@ from utils.find_corpus import main as find_corpus
 Tests the `utils/find_corpus.py` script.
 """
 
+pytestmark = pytest.mark.plain
+
 
 @pytest.fixture
 def mock_opus_data(requests_mock):

@@ -2,9 +2,12 @@ import os
 import re
 import subprocess
 import sys
+import pytest
 
 import pytest
 from fixtures import DataDir, en_sample, ru_sample
+
+pytestmark = pytest.mark.plain
 
 current_folder = os.path.dirname(os.path.abspath(__file__))
 fixtures_path = os.path.join(current_folder, "fixtures")

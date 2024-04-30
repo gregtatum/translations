@@ -2,6 +2,8 @@ import pytest
 
 from tracking.translations_parser.utils import parse_tag
 
+pytestmark = pytest.mark.plain
+
 
 @pytest.mark.parametrize(
     "example, parsed_values",

@@ -11,6 +11,9 @@ from fixtures import DataDir
 
 from pipeline.translate.splitter import main as split_file
 
+import pytest
+pytestmark = pytest.mark.plain
+
 COMPRESSION_CMD = "zstdmt"
 
 

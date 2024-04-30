@@ -1,9 +1,12 @@
 import io
 import os
+import pytest
 from contextlib import redirect_stdout
 from typing import Optional
 
 from utils.preflight_check import main as preflight_check
+
+pytestmark = pytest.mark.plain
 
 
 def get_preflight_check_output(*args):

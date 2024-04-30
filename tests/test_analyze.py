@@ -1,6 +1,8 @@
 import os
-
+import pytest
 from fixtures import DataDir, en_sample, ru_sample
+
+pytestmark = pytest.mark.plain
 
 
 def test_analyze_mono():

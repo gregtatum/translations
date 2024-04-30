@@ -11,6 +11,9 @@ from pytest import fixture
 from pipeline.bicleaner import download_pack
 from pipeline.bicleaner.download_pack import main as download_model
 
+import pytest
+pytestmark = pytest.mark.plain
+
 
 @pytest.fixture(scope="function")
 def data_dir():

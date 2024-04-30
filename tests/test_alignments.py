@@ -1,8 +1,11 @@
+import pytest
 import os
 import shutil
 
 import sh
 from fixtures import DataDir
+
+pytestmark = pytest.mark.plain
 
 current_folder = os.path.dirname(os.path.abspath(__file__))
 fixtures_path = os.path.join(current_folder, "fixtures")

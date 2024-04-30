@@ -10,6 +10,8 @@ from fixtures import DataDir
 from translations_parser.cli import experiments as experiments_publish
 from translations_parser.cli import taskcluster as tc_publish
 
+pytestmark = pytest.mark.plain
+
 """
 Tests tracking parser and publication via CLI entrypoints
 """

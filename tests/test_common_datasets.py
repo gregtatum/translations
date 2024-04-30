@@ -6,6 +6,8 @@ from fixtures import DataDir
 
 from pipeline.common.datasets import shuffle_in_temp_files, shuffle_with_max_lines
 
+pytestmark = pytest.mark.plain
+
 ITEMS = 100_000
 # ITEMS = 1_000
 PERCENTAGE = 0.2

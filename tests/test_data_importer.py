@@ -4,6 +4,9 @@ import pytest
 import zstandard as zstd
 from fixtures import DataDir, en_sample, get_mocked_downloads, ru_sample
 
+import pytest
+pytestmark = pytest.mark.plain
+
 SRC = "ru"
 TRG = "en"
 ARTIFACT_EXT = "zst"

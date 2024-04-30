@@ -85,3 +85,9 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.pytest]
+markers = [
+    "docker: The test requires docker to run.",
+    "plain: The test does not require docker to run.",
+]

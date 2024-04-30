@@ -17,7 +17,7 @@ WORKDIR /builds/worker/
 ENV CURL='curl --location --retry 5' \
     LANG='en_US.UTF-8' \
     TERM='dumb'
-    
+
 RUN apt-get update -qq \
     # We need to install tzdata before all of the other packages. Otherwise it will show an interactive dialog that
     # we cannot navigate while building the Docker image.
