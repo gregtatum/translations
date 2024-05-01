@@ -76,12 +76,36 @@ RUN git config --global --add safe.directory /builds/worker/checkouts
 
 # Allow scripts to detect if they are running in docker
 ENV IS_DOCKER 1
+ADD pipeline/setup/* .
 
-RUN \
-    pip3 install -r pipeline/quantize/requirements/quantize.txt && \
-    pip3 install -r pipeline/clean/requirements/clean.txt && \
-    pip3 install -r pipeline/train/requirements/train.txt && \
-    pip3 install -r pipeline/bicleaner/requirements/bicleaner.txt && \
-    pip3 install -r pipeline/eval/requirements/eval.txt && \
-    pip3 install -r pipeline/alignments/requirements/alignments.txt && \
-    pip3 install -r pipeline/data/requirements/data.txt
+USER worker
+WORKDIR /builds/worker/checkouts
+
+COPY pipeline/quantize/requirements/quantize.txt     pipeline/quantize/requirements/quantize.txt
+COPY pipeline/clean/requirements/clean.txt           pipeline/clean/requirements/clean.txt
+COPY pipeline/train/requirements/train.txt           pipeline/train/requirements/train.txt
+COPY pipeline/bicleaner/requirements/bicleaner-ai.txt   pipeline/bicleaner/requirements/bicleaner-ai.txt
+COPY pipeline/eval/requirements/eval.txt             pipeline/eval/requirements/eval.txt
+COPY pipeline/alignments/requirements/alignments.txt pipeline/alignments/requirements/alignments.txt
+COPY pipeline/data/requirements/data.txt             pipeline/data/requirements/data.txt
+
+# Use the --no-cache-dir to keep the Docker image lighter.
+RUN pip3 install --no-cache-dir -r pipeline/quantize/requirements/quantize.txt
+RUN pip3 install --no-cache-dir -r pipeline/clean/requirements/clean.txt
+# opustrainer fails without the legacy resolver when installing from a git URL.
+RUN pip3 install --no-cache-dir --use-deprecated=legacy-resolver -r pipeline/train/requirements/train.txt
+RUN pip3 install --no-cache-dir -r pipeline/bicleaner/requirements/bicleaner-ai.txt
+RUN pip3 install --no-cache-dir -r pipeline/eval/requirements/eval.txt
+RUN pip3 install --no-cache-dir -r pipeline/alignments/requirements/alignments.txt
+RUN pip3 install --no-cache-dir --use-deprecated=legacy-resolver -r pipeline/data/requirements/data.txt
+
+USER root
+# RUN chown -R worker:worker /builds/worker/.config/pypoetry
+# USER worker
+
+# RUN poetry config virtualenvs.create true
+# COPY pyproject.toml pyproject.toml
+# # Remove the local package so that poetry can run the install.
+# RUN sed -i '/translations_parser = {path=".\/tracking\/", develop=true}/d' pyproject.toml
+# RUN poetry install --only tests --no-root
+# RUN rm pyproject.toml
