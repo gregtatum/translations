@@ -76,3 +76,12 @@ RUN git config --global --add safe.directory /builds/worker/checkouts
 
 # Allow scripts to detect if they are running in docker
 ENV IS_DOCKER 1
+
+RUN \
+    pip3 install -r pipeline/quantize/requirements/quantize.txt && \
+    pip3 install -r pipeline/clean/requirements/clean.txt && \
+    pip3 install -r pipeline/train/requirements/train.txt && \
+    pip3 install -r pipeline/bicleaner/requirements/bicleaner.txt && \
+    pip3 install -r pipeline/eval/requirements/eval.txt && \
+    pip3 install -r pipeline/alignments/requirements/alignments.txt && \
+    pip3 install -r pipeline/data/requirements/data.txt
