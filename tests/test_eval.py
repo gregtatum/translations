@@ -88,6 +88,7 @@ def test_evaluate(params) -> None:
     data_dir.run_task(
         task_name,
         env=env,
+        requirements=os.path.join(root_path, "pipeline/eval/requirements/eval.txt"),
     )
 
     # Test that the data files are properly written out.

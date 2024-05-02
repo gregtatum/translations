@@ -1,5 +1,7 @@
+import hashlib
 import json
 import os
+import platform
 import re
 import shlex
 import shutil
@@ -116,6 +118,7 @@ class DataDir:
         fetches_dir: Optional[str] = None,
         env: dict[str, str] = {},
         extra_args: List[str] = None,
+        requirements: Optional[str] = None,
     ):
         """
         Runs a task from the taskgraph. See artifacts/full-task-graph.json after running a
@@ -135,7 +138,7 @@ class DataDir:
         env - Any environment variable overrides.
         """
 
-        command_parts, task_env = get_task_command_and_env(task_name)
+        command_parts, requirements, task_env = get_task_command_and_env(task_name)
 
         # There are some non-string environment variables that involve taskcluster references
         # Remove these.
@@ -163,6 +166,17 @@ class DataDir:
 
         if extra_args:
             command_parts.extend(extra_args)
+
+        print(requirements)
+
+        # If using a venv, prepend the binary directory to the path so it is used.
+        python_bin_dir = get_python_bin_dir(requirements)
+        if python_bin_dir:
+            env = {**env, "PATH": f'{python_bin_dir}:{os.environ.get("PATH", "")}'}
+
+        print("┌──────────────────────────────────────────────────────────")
+        print("│ run_task:", " ".join(command_parts))
+        print("└──────────────────────────────────────────────────────────")
 
         result = subprocess.run(
             command_parts,
@@ -224,6 +238,7 @@ def get_full_taskgraph():
     global _full_taskgraph
     if _full_taskgraph:
         return _full_taskgraph
+    print("Generating the full taskgraph, this can take a second.")
     current_folder = os.path.dirname(os.path.abspath(__file__))
     config = os.path.join(current_folder, "config.pytest.yml")
     task_graph_json = os.path.join(current_folder, "../../artifacts/full-task-graph.json")
@@ -235,7 +250,24 @@ def get_full_taskgraph():
     return _full_taskgraph
 
 
-def find_pipeline_script(commands: Union[list[str], list[list[str]]]) -> str:
+# Taskcluster commands can either be a single list of commands, or a nested list.
+Commands = Union[list[str], list[list[str]]]
+
+
+def get_command(commands: Commands) -> str:
+    if isinstance(commands[-1], str):
+        # Non-nested command, get the last string.
+        return commands[-1]
+
+    if isinstance(commands[-1][-1], str):
+        # Nested command, get the last string of the last command.
+        return commands[-1][-1]
+
+    print(commands)
+    raise Exception("Unable to find a string in the nested command.")
+
+
+def find_pipeline_script(commands: Commands) -> str:
     """
     Extract the pipeline script and arguments from a command list.
 
@@ -254,14 +286,7 @@ def find_pipeline_script(commands: Union[list[str], list[list[str]]]) -> str:
           "full command"
     ]
     """
-    command: str
-    if isinstance(commands[-1], str):
-        command = commands[-1]
-    elif isinstance(commands[-1][-1], str):
-        command = commands[-1][-1]
-    else:
-        print(command)
-        raise Exception("Unable to find a string in the nested command.")
+    command = get_command(commands)
 
     # Match a pipeline script like:
     #   pipeline/data/dataset_importer.py
@@ -301,6 +326,29 @@ def find_pipeline_script(commands: Union[list[str], list[list[str]]]) -> str:
     return script.join(command_parts).strip()
 
 
+def find_requirements(commands: Commands) -> Optional[str]:
+    command = get_command(commands)
+
+    # Match the following:
+    # pip install -r $VCS_PATH/pipeline/eval/requirements/eval.txt && ...
+    #                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    match = re.search(
+        r"""
+        pip3?\ install\ -r\ \$VCS_PATH\/  # Find the pip install.
+        (?P<requirements>               # Capture as "requirements"
+            [\w\/\-\.]+                 # Match the path
+        )
+        """,
+        command,
+        re.X,
+    )
+
+    if match:
+        return match.groupdict()["requirements"]
+
+    return None
+
+
 def get_task_command_and_env(task_name: str, script=None) -> tuple[str, dict[str, str]]:
     """
     Extracts a task's command from the full taskgraph. This allows for testing
@@ -324,11 +372,13 @@ def get_task_command_and_env(task_name: str, script=None) -> tuple[str, dict[str
 
     commands = task["task"]["payload"]["command"]
     pipeline_script = find_pipeline_script(commands)
+    requirements = find_requirements(commands)
 
     print(f'Running: "{task_name}":')
     print(" > Commands:", commands)
     print(" > Running:", pipeline_script)
     print(" > Env:", env)
+    print(" > Requirements:", requirements)
 
     command_parts = [
         part
@@ -338,8 +388,12 @@ def get_task_command_and_env(task_name: str, script=None) -> tuple[str, dict[str
         if part != "2>&1"
     ]
 
+    # The python binary will be picked by the run_task abstraction.
+    if command_parts[0] == "python" or command_parts[0] == "python3":
+        command_parts = command_parts[1:]
+
     # Return the full command.
-    return command_parts, env
+    return command_parts, requirements, env
 
 
 def get_mocked_downloads() -> str:
@@ -366,3 +420,84 @@ def get_mocked_downloads() -> str:
                 get_path("pytest-dataset.ru.zst"),
         }
     )  # fmt: skip
+
+
+def get_python_bin_dir(requirements: Optional[str]) -> Optional[str]:
+    """
+    Creates a virtual environment for each requirements file that a task needs. The virtual
+    environment is hashed based on the requirements file contents, and the system details. This
+    way a virtual environment will be re-used between docker environments.
+    """
+    if not requirements:
+        return None
+
+    system_details = "-".join(
+        [
+            platform.system(),  # Linux
+            platform.machine(),  # aarch64
+            platform.release(),  # 5.15.49-linuxkit-pr
+        ]
+    )
+    hash = build_hash(requirements, system_details)
+    print(hash, requirements, system_details)
+
+    venv_dir = os.path.abspath(os.path.join(DATA_PATH, "task-venvs", hash))
+    python_bin_dir = os.path.join(venv_dir, "bin")
+    python_bin = os.path.join(python_bin_dir, "python")
+
+    # Create the venv only if it doesn't exist.
+    if not os.path.exists(venv_dir):
+        try:
+            print("Creating virtual environment")
+            subprocess.check_call(
+                # Give the virtual environment access to the system site packages, as these
+                # are installed via docker.
+                ["python", "-m", "venv", "--system-site-packages", venv_dir],
+            )
+
+            print("Installing setuptools", requirements)
+            subprocess.check_call(
+                [python_bin, "-m", "pip", "install", "--upgrade", "setuptools", "pip"],
+            )
+
+            print("Installing", requirements)
+            subprocess.check_call(
+                [python_bin, "-m", "pip", "install", "-r", requirements],
+            )
+        except Exception as exception:
+            print("Removing the venv due to an error in its creation.")
+            shutil.rmtree(venv_dir)
+            raise exception
+
+    return python_bin_dir
+
+
+def build_hash(requirements_path: str, system_details: str):
+    with open(requirements_path, "rb") as f:
+        hash = hashlib.md5()
+        while chunk := f.read(4096):
+            hash.update(chunk)
+
+    hash.update(system_details.encode("utf-8"))
+    return hash.hexdigest()
+
+
+def get_uname_output():
+    try:
+        # Run the uname -a command
+        process = subprocess.Popen(
+            ["uname", "-a"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        )
+
+        # Capture the output
+        stdout, stderr = process.communicate()
+
+        # Check if there's any error
+        if stderr:
+            print(f"An error occurred: {stderr}")
+        else:
+            # Return the output
+            return stdout.strip()
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
+        return None

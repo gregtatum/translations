@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  #----------------------------------------------------------------------
+  # native images - Built for speed on macOS machines, but doesn't
+  # include training binaries.
+
+  # The base Taskcluster image, used in production training runs.
+  ftt-base-native:
+    build:
+      context: ./taskcluster/docker/base
+    image: ftt-base-native
+
+  # The Taskcluster image for tests, used in CI.
+  ftt-test-native:
+    build:
+      context: ./taskcluster/docker/test
+      args:
+        - DOCKER_IMAGE_PARENT=ftt-base-native
+    image: ftt-test-native
+    depends_on:
+      - ftt-base-native
+
+  # The local build layer, which includes more dependencies to run things locally.
+  ftt-local-native:
+    build:
+      context: ./docker/local
+      args:
+        - DOCKER_IMAGE_PARENT=ftt-test-native
+    image: ftt-local-native
+    depends_on:
+      - ftt-test-native
+
+  # The base Taskcluster image, used in production training runs.
+  ftt-base-amd64:
+    build:
+      context: ./taskcluster/docker/base
+      args:
+        - DOCKER_DEFAULT_PLATFORM=linux/amd64
+    image: ftt-base-amd64
+
+
+  #----------------------------------------------------------------------
+  # amd64 Images - Required for Marian and training binary build support.
+
+  # The Taskcluster image for tests, used in CI.
+  ftt-test-amd64:
+    build:
+      context: ../taskcluster/docker/test
+      args:
+        - DOCKER_IMAGE_PARENT=ftt-base-amd64
+        - DOCKER_DEFAULT_PLATFORM=linux/amd64
+    image: ftt-test-amd64
+    depends_on:
+      - ftt-base-amd64
+
+  # The local build layer, which includes more dependencies to run things locally.
+  ftt-local-amd64:
+    build:
+      context: ../docker/local
+      args:
+        - DOCKER_IMAGE_PARENT=ftt-test-amd64
+        - DOCKER_DEFAULT_PLATFORM=linux/amd64
+    image: ftt-local-amd64
+    depends_on:
+      - ftt-test-amd64
+
+  # The training layer, which includes tools like Marian.
+  ftt-local-train-amd64:
+    build:
+      context: ../docker/local-train
+      args:
+        - DOCKER_IMAGE_PARENT=ftt-local-amd64
+        - DOCKER_DEFAULT_PLATFORM=linux/amd64
+    image: ftt-local-train-amd64
+    depends_on:
+      - ftt-local-amd64
