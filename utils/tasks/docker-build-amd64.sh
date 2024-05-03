@@ -23,10 +23,10 @@ docker build \
 
 docker build \
   --build-arg DOCKER_IMAGE_PARENT=ftt-test-amd64 \
-  --file docker/local/Dockerfile \
+  --file docker/local-test.Dockerfile \
   --tag ftt-local-amd64 .
 
 docker build \
   --build-arg DOCKER_IMAGE_PARENT=ftt-local-amd64 \
-  --file docker/local-train/Dockerfile \
+  --file docker/local-train.Dockerfile \
   --tag ftt-local-train-amd64 .

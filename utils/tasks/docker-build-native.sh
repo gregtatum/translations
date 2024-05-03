@@ -15,5 +15,5 @@ docker build \
 
 docker build \
   --build-arg DOCKER_IMAGE_PARENT=ftt-test-native \
-  --file docker/local/Dockerfile \
+  --file docker/local-test.Dockerfile \
   --tag ftt-local-native .
