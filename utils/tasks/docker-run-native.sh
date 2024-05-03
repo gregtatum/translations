@@ -11,4 +11,4 @@ docker run \
   --rm \
   --volume $(pwd):/builds/worker/checkouts \
   --workdir /builds/worker/checkouts \
-  ftt-local-native "$@"
+  ftt-local-test-native "$@"

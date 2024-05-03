@@ -16,4 +16,4 @@ docker run \
   --rm \
   --volume $(pwd):/builds/worker/checkouts \
   --workdir /builds/worker/checkouts \
-  ftt-local-train-amd64 "$@"
+  ftt-local-test-amd64 "$@"

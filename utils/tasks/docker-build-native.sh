@@ -1,19 +1,14 @@
 #!/bin/bash
-set -x
+set -ex
 
 # Build the local docker image, see the Taskfile.yml for usage. This uses the machine's
 # underlying chip architecture, which is not guaranteed to build certain training binaries.
 
-docker build \
-  --file taskcluster/docker/base/Dockerfile \
-  --tag ftt-base-native .
+source ./utils/tasks/docker-build.sh
 
-docker build \
-  --build-arg DOCKER_IMAGE_PARENT=ftt-base-native \
-  --file taskcluster/docker/test/Dockerfile \
-  --tag ftt-test-native .
+# Base the images off of the taskcluster images.
+build_first ftt-taskcluster-base-native  taskcluster/docker/base/Dockerfile
+build_next  ftt-taskcluster-test-native  taskcluster/docker/test/Dockerfile
 
-docker build \
-  --build-arg DOCKER_IMAGE_PARENT=ftt-test-native \
-  --file docker/local-test.Dockerfile \
-  --tag ftt-local-native .
+# Build out the local version.
+build_next  ftt-local-test-native  docker/local-test.Dockerfile
