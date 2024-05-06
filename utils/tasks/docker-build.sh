@@ -1,20 +1,32 @@
 #!/bin/bash
 set -x
 
-# Build the local docker image, see the Taskfile.yml for usage.
+# Utility functions for building the layers of docker images.
 
-source utils/tasks/docker-setup.sh
+PREV_TAG=""
 
-docker build \
-  --file taskcluster/docker/base/Dockerfile \
-  --tag ftt-base .
+build_first() {
+  TAG=$1
+  DOCKERFILE=$2
 
-docker build \
-  --build-arg DOCKER_IMAGE_PARENT=ftt-base \
-  --file taskcluster/docker/test/Dockerfile \
-  --tag ftt-test .
+  docker build \
+    --file $DOCKERFILE \
+    --tag $TAG .
 
-docker build \
-  --build-arg DOCKER_IMAGE_PARENT=ftt-test \
-  --file docker/Dockerfile \
-  --tag ftt-local .
+  PREV_TAG=$TAG
+}
+
+build_next() {
+  TAG=$1
+  DOCKERFILE=$2
+
+   docker build --progress=plain \
+    --build-arg DOCKER_IMAGE_PARENT=$PREV_TAG \
+    --file $DOCKERFILE \
+    --tag $TAG .
+
+  PREV_TAG=$TAG
+}
+
+export -f build_first
+export -f build_next
