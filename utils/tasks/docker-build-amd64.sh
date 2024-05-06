@@ -19,5 +19,5 @@ build_first ftt-taskcluster-base-amd64  taskcluster/docker/base/Dockerfile
 build_next  ftt-taskcluster-test-amd64  taskcluster/docker/test/Dockerfile
 
 # Build out the local version.
-build_next  ftt-local-test-amd64   docker/local-test.Dockerfile
 build_next  ftt-local-train-amd64  docker/local-train.Dockerfile
+build_next  ftt-local-test-amd64   docker/local-test.Dockerfile

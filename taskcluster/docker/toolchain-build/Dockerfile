@@ -5,6 +5,7 @@ RUN apt-get update -qq \
     # We need to install tzdata before all of the other packages. Otherwise it will show an interactive dialog that
     # we cannot navigate while building the Docker image.
     && apt-get install -y tzdata \
+    # This should be similar to docker/local-train.Dockerfile
     && apt-get install -y wget \
                           curl \
                           zip \
