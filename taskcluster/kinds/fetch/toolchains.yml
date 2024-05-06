@@ -7,6 +7,7 @@ marian:
     fetch:
         type: git
         repo: https://github.com/marian-nmt/marian-dev
+        # Also update `docker/local-train.Dockerfile`
         # v1.12.14 2d067afb 2024-02-16 11:44:13 -0500
         revision: 2d067afb9ce5e3a0b6c32585706affc6e7295920
         path-prefix: marian-source

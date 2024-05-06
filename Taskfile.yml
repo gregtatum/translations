@@ -94,7 +94,7 @@ tasks:
       - task: lint-ruff
 
   test:
-    desc: Run python pytests in the current host.
+    desc: Run all python pytests in the current host.
     summary: |
       Some tests only pass in Docker. You can run this command outside of docker for
       some of the tests, or after running `task docker` to run them in the docker image.
@@ -106,35 +106,49 @@ tasks:
         task test -- tests/test_alignments.py
     deps: [poetry-install-tests]
     cmds:
+      - poetry install --only tests --only utils --no-root
       - PYTHONPATH=$(pwd) poetry run pytest -vv {{.CLI_ARGS}}
 
+  test-native:
+    desc: Run only the pytests that do not require docker_amd64.
+    cmds:
+      - task test -- -k "not docker_amd64" -- {{.CLI_ARGS}}
+
   test-docker:
-    desc: Run the unit tests in the docker image. Some tests require the pre-built Linux executables.
+    desc: Run the full test suite in the pytests the amd64 docker image.
     cmds:
-      - task docker-run -- task test
+      - task docker-run-amd64 -- task test -- {{.CLI_ARGS}}
 
-  docker:
-    desc: Interactively run the local docker test image.
-    deps: [docker-build]
+  docker-native:
+    desc: Interactively run docker without training binaries.
     summary: |
-      The local docker image includes the Linux x86 image, and pre-built binaries
-      that are used in training.
+      docker-native is guaranteed to run python, but training binaries are not included.
+      This is because the training binaries require an amd64 machine which can be quite
+      slow when emulated on Apple Silicon.
     cmds:
-      - utils/tasks/docker-run.sh bash
+      - task docker-run-native -- bash
 
-  docker-run:
-    desc: Run a command in the local docker instance. e.g. `docker-run -- echo "hello"`
-    deps: [docker-build]
+  docker-amd64:
+    desc: Interactively run docker with training binaries.
     summary: |
-      The local docker image includes the Linux x86 image, and pre-built binaries
-      that are used in training.
+      This can run the full test suite as the training binaries will all be present.
     cmds:
-      - utils/tasks/docker-run.sh {{.CLI_ARGS}}
+      - task docker-run-amd64 -- bash
 
-  docker-build:
-    desc: Build the local docker image that includes the proper Linux binaries for training
+  docker-run-*:
+    desc: Run a command in the local docker instance. e.g. `docker-run-native -- echo "hello"`
+    vars:
+      CPU_TYPE: '{{index .MATCH 0}}'
     cmds:
-      - ./utils/tasks/docker-build.sh
+      - task docker-build-{{.CPU_TYPE}}
+      - utils/tasks/docker-run-{{.CPU_TYPE}}.sh {{.CLI_ARGS}}
+
+  docker-build-*:
+    desc: Build the local docker image.
+    vars:
+      CPU_TYPE: '{{index .MATCH 0}}'
+    cmds:
+      - ./utils/tasks/docker-build-{{.CPU_TYPE}}.sh
 
   taskgraph-requirements:
     desc: Installs the taskgraph requirements.
