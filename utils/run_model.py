@@ -165,11 +165,14 @@ def translate_over_websocket(port: int):
 
 
 def main() -> None:
-    if not os.environ.get("IS_DOCKER"):
+    dockerfile = os.environ.get("DOCKERFILE")
+    if not dockerfile:
         # Re-run the command in docker if it wasn't started.
         args = sys.argv[1:]
-        subprocess.check_call(["task", "docker-run", "--", "task", "run-model", "--", *args])
+        subprocess.check_call(["task", "docker-run-amd64", "--", "task", "run-model", "--", *args])
         return
+    if dockerfile != "local-train":
+        raise Exception("This script must be run from docker amd64")
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -192,7 +195,10 @@ def main() -> None:
         "--port", type=int, help="The port that the Marian server listens over", default=8886
     )
     parser.add_argument(
-        "--output_marian", default=False, help="Include the output from the Marian server."
+        "--output_marian",
+        default=False,
+        action="store_true",
+        help="Include the output from the Marian server.",
     )
 
     args = parser.parse_args()
@@ -233,7 +239,7 @@ def main() -> None:
         stderr = subprocess.DEVNULL
 
     command = (
-        "/builds/worker/tools/marian-dev/build/marian-server "
+        "/builds/worker/tools/bin/marian-dev/marian-server "
         f"--config {decoder} "
         f"--models {model} "
         f"--vocabs {vocab} {vocab} "
