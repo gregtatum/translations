@@ -7,8 +7,8 @@ set -ex
 source ./utils/tasks/docker-build.sh
 
 # Base the images off of the taskcluster images.
-build_first ftt-taskcluster-base-native  taskcluster/docker/base/Dockerfile
-build_next  ftt-taskcluster-test-native  taskcluster/docker/test/Dockerfile
+build_first ftt-taskcluster-base-multiplatform  taskcluster/docker/base/Dockerfile
+build_next  ftt-taskcluster-test-multiplatform  taskcluster/docker/test/Dockerfile
 
 # Build out the local version.
-build_next  ftt-local-test-native  docker/local-test.Dockerfile
+build_next  ftt-local-test-multiplatform  docker/local-test.Dockerfile

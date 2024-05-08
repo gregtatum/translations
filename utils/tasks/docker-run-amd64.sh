@@ -3,10 +3,7 @@ set -x
 
 # Run the local docker image, see the Taskfile.yml for usage.
 
-if [ $(uname -m) == 'arm64' ]; then
-  echo "Overriding the arm64 architecture as amd64.";
-  export DOCKER_DEFAULT_PLATFORM=linux/amd64;
-fi
+export DOCKER_DEFAULT_PLATFORM=linux/amd64;
 
 echo 'Running docker run'
 
