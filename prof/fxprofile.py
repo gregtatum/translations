@@ -9,7 +9,7 @@ from typing import Any, Generator, Iterator, Literal, Optional
 import socket
 import webbrowser
 
-stats = pstats.Stats("test_mtdata.prof")
+stats = pstats.Stats("test_opus.prof")
 
 FuncKeyTuple = tuple[
     # path, e.g. "/path/to/script.py
@@ -207,32 +207,52 @@ def get_free_port() -> int:
 
 waiting_for_request = True
 
+def calc_callers(stats: StatsDict):
+    # https://github.com/baverman/flameprof/blob/master/flameprof.py
+    roots: list[FuncKey] = []
+    # {'calls': [], 'called': [], 'stat': (cc, nc, tt, ct)}
+    funcs: dict[FuncKey, dict] = {}
+    calls: dict[Literal["root"] | FuncKey, FuncInfoTuple] = {}
+
+    for func, (cc, nc, tt, ct, clist) in stats.items():
+        funcs[func] = {'calls': [], 'called': [], 'stat': (cc, nc, tt, ct)}
+        if not clist:
+            roots.append(func)
+            calls[('root', func)] = funcs[func]['stat']
+
+    for func, (_, _, _, _, clist) in stats.items():
+        for cfunc, t in clist.items():
+            assert (cfunc, func) not in calls
+            funcs[cfunc]['calls'].append(func)
+            funcs[func]['called'].append(cfunc)
+            calls[(cfunc, func)] = t
+
+    total = sum(funcs[r]['stat'][3] for r in roots)
+    ttotal = sum(funcs[r]['stat'][2] for r in funcs)
+
+    if not (0.8 < total / ttotal < 1.2):
+        eprint('Warning: flameprof can\'t find proper roots, root cumtime is {} but sum tottime is {}'.format(total, ttotal))
+
+    # Try to find suitable root
+    newroot = max((r for r in funcs if r not in roots), key=lambda r: funcs[r]['stat'][3])
+    nstat = funcs[newroot]['stat']
+    ntotal = total + nstat[3]
+    if 0.8 < ntotal / ttotal < 1.2:
+        roots.append(newroot)
+        calls[('root', newroot)] = nstat
+        total = ntotal
+    else:
+        total = ttotal
+
+    funcs['root'] = {'calls': roots,
+                     'called': [],
+                     'stat': (1, 1, 0, total)}
+
+    print("roots", stats[roots[0]])
+    return funcs, roots, calls
+
 def build_profile(stats_dict: StatsDict):
-    roots: list[FuncKeyTuple] = []
-    funcs: dict[FuncKeyTuple, dict[str, Any]] = {}
-    calls: dict[tuple[FuncKeyTuple, FuncKeyTuple], FuncInfoTuple] = {}
-
-    # Compute the roots, and populate the FuncClass dict.
-    for func_key, func_info in stats_dict.items():
-        funcs[func_key] = {
-            "calls": [],
-            "called": [],
-            "info": func_info,
-        }
-        children_func_keys = func_info[4]
-        if len(children_func_keys) == 0:
-            # This is a root function.
-            roots.append(func_key)
-            # Add the calls without the caller information.
-            calls[(root_key, func_key)] = (func_info[0], func_info[1], func_info[2], func_info[3])
-
-    for parent_func_key, (_, _, _, _, children_func_keys) in stats_dict.items():
-        for child_func_key, func_info_tuple in children_func_keys.items():
-            call_key = (parent_func_key, child_func_key)
-            assert call_key not in calls
-            funcs[child_func_key]["calls"].append(parent_func_key)
-            funcs[parent_func_key]["called"].append(child_func_key)
-            calls[call_key] = func_info_tuple
+    roots = get_roots(stats_dict)
 
     profile = get_empty_profile()
     thread = get_empty_thread()
@@ -244,7 +264,7 @@ def build_profile(stats_dict: StatsDict):
     stack_table = thread["stackTable"]
     samples = thread["samples"]
     resource_table = thread["resourceTable"]
-    func_key_to_index: dict[tuple[str, str], int] = {}
+    gecko_func_key_to_func_index: dict[tuple[str, str], int] = {}
     frame_key_to_index: dict[tuple[str, int, str], int] = {}
 
     def get_string_index(string: str) -> int:
@@ -258,6 +278,7 @@ def build_profile(stats_dict: StatsDict):
     # Build out the resources, frame table, and func table
     for func_key, func_info in stats_dict.items():
         path, line_number, name = func_key
+        gecko_func_key = (path, name)
 
         # print(f"{name}:{line_number} - {int(func_info[2] * 1000)} - {int(func_info[3] * 1000)}")
 
@@ -271,9 +292,9 @@ def build_profile(stats_dict: StatsDict):
             resource_table["length"] += 1
 
         try:
-            func_index = func_key_to_index[(path, name)]
+            gecko_func_key_to_func_index[gecko_func_key]
         except KeyError:
-            func_index = func_table["length"]
+            gecko_func_key_to_func_index[gecko_func_key] = func_table["length"]
             func_table["isJS"].append(False)
             func_table["relevantForJS"].append(False)
             func_table["name"].append(get_string_index(name))
@@ -282,6 +303,20 @@ def build_profile(stats_dict: StatsDict):
             func_table["lineNumber"].append(line_number)
             func_table["columnNumber"].append(None)
             func_table["length"] += 1
+
+    visited_funcs = {}
+    func_key_to_frame_index = {}
+    def recursive_add_frame_table(func_key: FuncKey, prefix: Optional[int] = None, depth = 0) -> float:
+        if func_key in visited_funcs:
+            # This is a duplicated function entry, lie, and report as 0.
+            return 0
+        visited_funcs[func_key] = True
+
+        path = func_key[0]
+        name = func_key[2]
+        func_index = gecko_func_key_to_func_index[(path, name)]
+        func_info = stats_dict[func_key]
+        children = func_info[4]
 
         frame_table["address"].append(-1)
         frame_table["inlineDepth"].append(0)
@@ -293,29 +328,49 @@ def build_profile(stats_dict: StatsDict):
         frame_table["implementation"].append(None)
         frame_table["line"].append(line_number)
         frame_table["column"].append(None)
-        frame_key_to_index[func_key] = frame_table["length"]
+        frame_index = frame_table["length"]
+        func_key_to_frame_index[func_key] = frame_index
         frame_table["length"] += 1
 
-    for (parent_func_key, child_func_key), func_info in calls.items():
-        _, _, self_time, total_time = func_info
-        parent_frame_index = frame_key_to_index.get(parent_func_key)
-        child_frame_index = frame_key_to_index.get(child_func_key)
-
-        stack_table["frame"].append(child_frame_index)
+        stack_table["frame"].append(frame_index)
         stack_table["category"].append(0)
         stack_table["subcategory"].append(0)
-        stack_table["prefix"].append(parent_frame_index)
+        stack_table["prefix"].append(prefix)
         stack_index = stack_table["length"]
         stack_table["length"] += 1
 
-        samples["weight"].append(total_time * 1000)
+        # Compute the self time.
+        self_time = func_info[2]
+        total_time = func_info[2]
+
+        child_time = 0
+        for child_func_key in children:
+            print(child_func_key)
+            child_time += recursive_add_frame_table(child_func_key, frame_index, depth + 1)
+
+        # Lie better
+        if child_time > total_time:
+            total_time = child_time + self_time
+
+        if self_time + child_time < total_time:
+            self_time = total_time - child_time
+
+        samples["weight"].append(self_time * 1000)
         samples["stack"].append(stack_index)
         samples["time"].append(0)
         samples["length"] += 1
 
+        return total_time
+
+
+    for root in roots:
+        recursive_add_frame_table(root)
+
+
+
     profile_path = "fxprofile.json"
-    # print("Profile path", profile_path)
-    with open("fxprofile.json", 'w') as file:
+    print("Profile path", profile_path)
+    with open(profile_path, 'w') as file:
         json.dump(profile, file)
 
     port = get_free_port()
@@ -365,79 +420,37 @@ class ServeFile(http.server.BaseHTTPRequestHandler):
 
 
 
-def build_profile2(stats_dict: StatsDict):
-    test_mtdata_key = None
-    for func_key in stats_dict:
-        if func_key[2] == 'test_mtdata':
-            test_mtdata_key = func_key
-            break
-
-    # print(test_mtdata_key)
-
-    # return
-
-
-    # for func_key, func_info in stats_dict.items():
-    #     print(func_key, func_info)
-    #     for other_key, other_info in stats_dict.items():
-    #         callers_dict = other_info[4]
-    #         caller_info = callers_dict.get(func_key)
-    #         if caller_info:
-    #             print("   ", other_key, caller_info)
-
-
+def get_roots(stats_dict: StatsDict):
     child_to_parent = {}
     for child_key, child_func_info in stats_dict.items():
         parents = child_func_info[4]
         for parent_key in parents:
             child_to_parent[child_key] = parent_key
 
-    next_key = test_mtdata_key
-    while True:
-        print(next_key)
-        next_key = child_to_parent[next_key]
 
-
-def calc_callers(stats_dict: StatsDict):
-    # https://github.com/baverman/flameprof/blob/master/flameprof.py
     roots = []
-    funcs = {}
-    calls = {}
-    for func, (cc, nc, tt, ct, clist) in stats.items():
-        funcs[func] = {'calls': [], 'called': [], 'stat': (cc, nc, tt, ct)}
-        if not clist:
-            roots.append(func)
-            calls[('root', func)] = funcs[func]['stat']
+    for func_key in stats_dict:
+        if func_key not in child_to_parent:
+            roots.append(func_key)
 
-    for func, (_, _, _, _, clist) in stats.items():
-        for cfunc, t in clist.items():
-            assert (cfunc, func) not in calls
-            funcs[cfunc]['calls'].append(func)
-            funcs[func]['called'].append(cfunc)
-            calls[(cfunc, func)] = t
-
-    total = sum(funcs[r]['stat'][3] for r in roots)
-    ttotal = sum(funcs[r]['stat'][2] for r in funcs)
-
-    if not (0.8 < total / ttotal < 1.2):
-        eprint('Warning: flameprof can\'t find proper roots, root cumtime is {} but sum tottime is {}'.format(total, ttotal))
-
-    # Try to find suitable root
-    newroot = max((r for r in funcs if r not in roots), key=lambda r: funcs[r]['stat'][3])
-    nstat = funcs[newroot]['stat']
-    ntotal = total + nstat[3]
-    if 0.8 < ntotal / ttotal < 1.2:
-        roots.append(newroot)
-        calls[('root', newroot)] = nstat
-        total = ntotal
-    else:
-        total = ttotal
-
-    funcs['root'] = {'calls': roots,
-                     'called': [],
-                     'stat': (1, 1, 0, total)}
-
-    return funcs, calls
+    for func_key in stats_dict:
+        visited = {}
+        # Remove recursion
+        next_key = func_key
+        while next_key in child_to_parent:
+            prev_key = next_key
+            visited[prev_key] = True
+            next_key = child_to_parent[next_key]
+            if next_key in visited:
+                # Break recursion
+                del child_to_parent[prev_key]
+                roots.append(prev_key)
+                break
 
 
-build_profile2(stats.stats)
+    return roots
+
+
+
+
+build_profile(stats.stats)
