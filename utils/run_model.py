@@ -165,14 +165,14 @@ def translate_over_websocket(port: int):
 
 
 def main() -> None:
-    dockerfile = os.environ.get("DOCKERFILE")
-    if not dockerfile:
-        # Re-run the command in docker if it wasn't started.
+    # This command must be run from inside "local-train" docker image. If it's run outside of
+    # docker, then forward the command to the appropriate docker command.
+    if not os.environ.get("DOCKER_LOCAL_TRAIN"):
+        if os.environ.get("IS_DOCKER"):
+            raise Exception('This script must be run from the "local-train" docker image')
         args = sys.argv[1:]
         subprocess.check_call(["task", "docker-run-amd64", "--", "task", "run-model", "--", *args])
         return
-    if dockerfile != "local-train":
-        raise Exception("This script must be run from docker amd64")
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
