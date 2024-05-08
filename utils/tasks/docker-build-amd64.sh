@@ -3,14 +3,9 @@ set -ex
 
 # Build the local docker image, see the Taskfile.yml for usage.
 
-if [ $(uname -m) == 'arm64' ]; then
-  # Containers are usually multi-architecture, and so an AMD machine such as the new
-  # M1 processers for macbook will choose AMD over x86. The translations C++ code doesn't
-  # usually work nicely with AMD, so the Docker containers need to be forced to use x86_64
-  # architectures. This is quite slow, but will still be a usable Docker container.
-  echo "Overriding the arm64 architecture as amd64.";
-  export DOCKER_DEFAULT_PLATFORM=linux/amd64;
-fi
+# The base image is multi-platform, but the training binaries require amd64 CPUs.
+# In some systems (such as macOS) the CPU instructions will be emulated.
+export DOCKER_DEFAULT_PLATFORM=linux/amd64;
 
 source ./utils/tasks/docker-build.sh
 
