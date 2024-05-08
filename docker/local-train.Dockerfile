@@ -62,4 +62,5 @@ RUN rm -rf \
   preprocess \
   marian-dev \
 
-ENV DOCKERFILE=local-train
+ENV IS_DOCKER=1
+ENV DOCKER_LOCAL_TRAIN=1

@@ -18,4 +18,5 @@ RUN curl -sSLf "https://github.com/go-task/task/releases/download/v3.35.1/task_l
 # permissions escalation exploits that may be an issue in a production docker container.
 RUN git config --global --add safe.directory /builds/worker/checkouts
 
-ENV DOCKERFILE=local-test
+ENV IS_DOCKER=1
+ENV DOCKER_LOCAL_TEST=1

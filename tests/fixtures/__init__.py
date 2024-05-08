@@ -438,15 +438,22 @@ def get_python_bin_dir(requirements: Optional[str]) -> Optional[str]:
         ]
     )
 
-    dockerfile = os.environ.get("DOCKERFILE")
-    if not dockerfile:
-        dockerfile = "native"
+    if os.environ.get("IS_DOCKER"):
+        if os.environ.get("DOCKER_LOCAL_TRAIN"):
+            execution_env = "local-train"
+        elif os.environ.get("DOCKER_LOCAL_TEST"):
+            execution_env = "local-test"
+        else:
+            raise Exception("Unsupported docker configuration. Is there a new docker image?")
+    else:
+        execution_env = "host-system"
 
     # Create a hash based on files and contents that would invalidate the python library.
     md5 = hashlib.md5()
     hash_file(md5, requirements)
-    hash_file(md5, os.path.join(ROOT_PATH, "docker/local-test.Dockerfile"))
-    if dockerfile == "local-train":
+    if os.environ.get("DOCKER_LOCAL_TEST"):
+        hash_file(md5, os.path.join(ROOT_PATH, "docker/local-test.Dockerfile"))
+    if os.environ.get("DOCKER_LOCAL_TRAIN"):
         hash_file(md5, os.path.join(ROOT_PATH, "docker/local-train.Dockerfile"))
     md5.update(system_details.encode("utf-8"))
     hash = md5.hexdigest()
@@ -454,7 +461,7 @@ def get_python_bin_dir(requirements: Optional[str]) -> Optional[str]:
     requirements_stem = Path(requirements).stem
 
     venv_dir = os.path.abspath(
-        os.path.join(DATA_PATH, "task-venvs", f"{dockerfile}-{requirements_stem}-{hash}")
+        os.path.join(DATA_PATH, "task-venvs", f"{execution_env}-{requirements_stem}-{hash}")
     )
     python_bin_dir = os.path.join(venv_dir, "bin")
     python_bin = os.path.join(python_bin_dir, "python")
