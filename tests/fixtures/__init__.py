@@ -155,6 +155,13 @@ class DataDir:
         if not fetches_dir:
             fetches_dir = self.path
 
+        if extra_args:
+            command_parts.extend(extra_args)
+
+        # Ensure the environment variables are sorted so that the longer variables get replaced first.
+        sorted_env = sorted(task_env.items(), key=lambda kv: kv[0])
+        sorted_env.reverse()
+
         # Manually apply the environment variables, as they don't get added to the args
         # through the subprocess.run
         for index, p in enumerate(command_parts):
@@ -166,13 +173,20 @@ class DataDir:
             )
 
             # Apply the task environment.
-            for key, value in task_env.items():
-                part = part.replace(f"${key}", value)
+            for key, value in sorted_env:
+                if key == "MOZ_FETCHES_DIR":
+                    print("With part", part)
+                    print("Replace", f"${key}")
+                    print("With", value)
+                    part = part.replace(f"${key}", value)
+                    print("Result", part)
+                else:
+                    part = part.replace(f"${key}", value)
 
             command_parts[index] = part
 
-        if extra_args:
-            command_parts.extend(extra_args)
+        print("!!! command_parts", command_parts)
+        print("!!! sorted_env", sorted_env)
 
         # If using a venv, prepend the binary directory to the path so it is used.
         python_bin_dir = get_python_bin_dir(requirements)
@@ -354,7 +368,7 @@ def find_requirements(commands: Commands) -> Optional[str]:
     return None
 
 
-def get_task_command_and_env(task_name: str, script=None) -> tuple[str, dict[str, str]]:
+def get_task_command_and_env(task_name: str, script=None) -> tuple[str, Optional[str], dict[str, str]]:
     """
     Extracts a task's command from the full taskgraph. This allows for testing
     the full taskcluster pipeline and the scripts that it generates.
