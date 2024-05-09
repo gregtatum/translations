@@ -157,13 +157,19 @@ class DataDir:
 
         # Manually apply the environment variables, as they don't get added to the args
         # through the subprocess.run
-        command_parts = [
-            part.replace("$TASK_WORKDIR/$VCS_PATH", root_path)
-            .replace("$VCS_PATH", root_path)
-            .replace("$TASK_WORKDIR", work_dir)
-            .replace("$MOZ_FETCHES_DIR", fetches_dir)
-            for part in command_parts
-        ]
+        for index, p in enumerate(command_parts):
+            part = (
+                p.replace("$TASK_WORKDIR/$VCS_PATH", root_path)
+                .replace("$VCS_PATH", root_path)
+                .replace("$TASK_WORKDIR", work_dir)
+                .replace("$MOZ_FETCHES_DIR", fetches_dir)
+            )
+
+            # Apply the task environment.
+            for key, value in task_env.items():
+                part = part.replace(f"${key}", value)
+
+            command_parts[index] = part
 
         if extra_args:
             command_parts.extend(extra_args)

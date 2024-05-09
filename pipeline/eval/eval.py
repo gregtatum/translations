@@ -48,6 +48,7 @@ import subprocess
 from textwrap import dedent, indent
 from typing import Optional
 
+import comet
 from sacrebleu.metrics.bleu import BLEU, BLEUScore
 from sacrebleu.metrics.chrf import CHRF, CHRFScore
 
@@ -130,7 +131,8 @@ def main(args_list: Optional[list[str]] = None) -> None:
     parser.add_argument(
         "--gpus",
         required=False,
-        type=str,
+        default=0,
+        type=int,
         help="The number of GPUs to use (only for the gpu model variant)",
     )
     parser.add_argument(
@@ -162,11 +164,11 @@ def main(args_list: Optional[list[str]] = None) -> None:
     elif args.model_variant == "gpu":
         if not args.workspace:
             raise Exception("The workspace size was not provided")
-        if not args.gpus:
-            raise Exception("The number of GPUs was not provided")
+        # if not args.gpus:
+        #     raise Exception("The number of GPUs was not provided")
         marian_extra_args = [
             '--workspace', args.workspace,
-            '--devices', args.gpus,
+            '--devices', str(args.gpus),
         ]  # fmt: skip
     elif not args.model_variant == "cpu":
         raise Exception(f"Unsupported model variant {args.model_variant}")
@@ -229,6 +231,8 @@ def main(args_list: Optional[list[str]] = None) -> None:
         target_ref_lines = file.readlines()
     with open(target_file, "r") as file:
         target_lines = file.readlines()
+    with open(source_file, "r") as file:
+        source_lines = file.readlines()
 
     compute_bleu = BLEU(trg_lang=trg)
     compute_chrf = CHRF()
@@ -244,6 +248,20 @@ def main(args_list: Optional[list[str]] = None) -> None:
     chrf_details = json.loads(
         chrf_score.format(signature=compute_chrf.get_signature().format(), is_json=True)
     )
+
+    # The default comet model.
+    # It should match the model used in https://github.com/mozilla/firefox-translations-models/
+    model_name = "Unbabel/wmt22-comet-da"
+    logger.info(f"Computing the COMET score with {model_name}")
+    model = comet.load_from_checkpoint(comet.download_model(model_name))
+    data = []
+    for source, target, target_ref in zip(source_lines, target_lines, target_ref_lines):
+        data.append({"src": source, "mt": target, "ref": target_ref})
+
+    model_output = model.predict(data, gpus=int(args.gpus))
+    print(model_output)
+    print(model_output.scores)  # sentence-level scores
+    print(model_output.system_score)  # system-level score
 
     data = {
         "bleu": {
