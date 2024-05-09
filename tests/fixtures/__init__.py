@@ -158,9 +158,16 @@ class DataDir:
         if extra_args:
             command_parts.extend(extra_args)
 
+        # Expand out environment variables in environment, for instance MARIAN=$MOZ_FETCHES_DIR
+        # and FETCHES=./fetches will be expanded to MARIAN=./fetches
+        # for key, value in task_env.items():
+        #     expanded_value = task_env.get(value[1:])
+        #     if value[0] == '$' and expanded_value:
+        #         task_env[key] = expanded_value
+
         # Ensure the environment variables are sorted so that the longer variables get replaced first.
-        sorted_env = sorted(task_env.items(), key=lambda kv: kv[0])
-        sorted_env.reverse()
+        # sorted_env = sorted(task_env.items(), key=lambda kv: kv[0])
+        # sorted_env.reverse()
 
         # Manually apply the environment variables, as they don't get added to the args
         # through the subprocess.run
@@ -172,21 +179,21 @@ class DataDir:
                 .replace("$MOZ_FETCHES_DIR", fetches_dir)
             )
 
-            # Apply the task environment.
-            for key, value in sorted_env:
-                if key == "MOZ_FETCHES_DIR":
-                    print("With part", part)
-                    print("Replace", f"${key}")
-                    print("With", value)
-                    part = part.replace(f"${key}", value)
-                    print("Result", part)
-                else:
-                    part = part.replace(f"${key}", value)
+            # # Apply the task environment.
+            # for key, value in sorted_env:
+            #     if key == "MOZ_FETCHES_DIR":
+            #         print("With part", part)
+            #         print("Replace", f"${key}")
+            #         print("With", value)
+            #         part = part.replace(f"${key}", value)
+            #         print("Result", part)
+            #     else:
+            #         part = part.replace(f"${key}", value)
 
             command_parts[index] = part
 
-        print("!!! command_parts", command_parts)
-        print("!!! sorted_env", sorted_env)
+        print("!!! command_parts", ' '.join(command_parts))
+        # print("!!! sorted_env", sorted_env)
 
         # If using a venv, prepend the binary directory to the path so it is used.
         python_bin_dir = get_python_bin_dir(requirements)
@@ -198,7 +205,7 @@ class DataDir:
         print("└──────────────────────────────────────────────────────────")
 
         result = subprocess.run(
-            command_parts,
+            ' '.join(command_parts),
             env={
                 **os.environ,
                 **task_env,
