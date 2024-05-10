@@ -6,6 +6,7 @@ import re
 import shlex
 import shutil
 import subprocess
+import time
 from pathlib import Path
 from subprocess import CompletedProcess
 from typing import List, Optional, Union
@@ -140,6 +141,7 @@ class DataDir:
         """
 
         command_parts, requirements, task_env = get_task_command_and_env(task_name)
+        print("Original command parts", " ".join(command_parts))
 
         # There are some non-string environment variables that involve taskcluster references
         # Remove these.
@@ -158,19 +160,28 @@ class DataDir:
         if extra_args:
             command_parts.extend(extra_args)
 
+        final_env = {
+            **os.environ,
+            **task_env,
+            "TASK_WORKDIR": work_dir,
+            "MOZ_FETCHES_DIR": fetches_dir,
+            "VCS_PATH": root_path,
+            **env,
+        }
+
         # Expand out environment variables in environment, for instance MARIAN=$MOZ_FETCHES_DIR
         # and FETCHES=./fetches will be expanded to MARIAN=./fetches
-        # for key, value in task_env.items():
-        #     expanded_value = task_env.get(value[1:])
-        #     if value[0] == '$' and expanded_value:
-        #         task_env[key] = expanded_value
+        for key, value in final_env.items():
+            if not isinstance(value, str):
+                continue
+            expanded_value = final_env.get(value[1:])
+            if value and value[0] == "$" and expanded_value:
+                final_env[key] = expanded_value
 
         # Ensure the environment variables are sorted so that the longer variables get replaced first.
-        # sorted_env = sorted(task_env.items(), key=lambda kv: kv[0])
-        # sorted_env.reverse()
+        sorted_env = sorted(final_env.items(), key=lambda kv: kv[0])
+        sorted_env.reverse()
 
-        # Manually apply the environment variables, as they don't get added to the args
-        # through the subprocess.run
         for index, p in enumerate(command_parts):
             part = (
                 p.replace("$TASK_WORKDIR/$VCS_PATH", root_path)
@@ -179,21 +190,13 @@ class DataDir:
                 .replace("$MOZ_FETCHES_DIR", fetches_dir)
             )
 
-            # # Apply the task environment.
-            # for key, value in sorted_env:
-            #     if key == "MOZ_FETCHES_DIR":
-            #         print("With part", part)
-            #         print("Replace", f"${key}")
-            #         print("With", value)
-            #         part = part.replace(f"${key}", value)
-            #         print("Result", part)
-            #     else:
-            #         part = part.replace(f"${key}", value)
+            # Apply the task environment.
+            for key, value in sorted_env:
+                env_var = f"${key}"
+                if env_var in part:
+                    part = part.replace(env_var, value)
 
             command_parts[index] = part
-
-        print("!!! command_parts", ' '.join(command_parts))
-        # print("!!! sorted_env", sorted_env)
 
         # If using a venv, prepend the binary directory to the path so it is used.
         python_bin_dir = get_python_bin_dir(requirements)
@@ -205,15 +208,8 @@ class DataDir:
         print("└──────────────────────────────────────────────────────────")
 
         result = subprocess.run(
-            ' '.join(command_parts),
-            env={
-                **os.environ,
-                **task_env,
-                "TASK_WORKDIR": work_dir,
-                "MOZ_FETCHES_DIR": fetches_dir,
-                "VCS_PATH": root_path,
-                **env,
-            },
+            command_parts,
+            env=final_env,
             cwd=root_path,
             check=False,
         )
@@ -264,15 +260,26 @@ def get_full_taskgraph():
     global _full_taskgraph
     if _full_taskgraph:
         return _full_taskgraph
-    print("Generating the full taskgraph, this can take a second.")
-    current_folder = os.path.dirname(os.path.abspath(__file__))
-    config = os.path.join(current_folder, "config.pytest.yml")
-    task_graph_json = os.path.join(current_folder, "../../artifacts/full-task-graph.json")
 
-    run_taskgraph(config, get_taskgraph_parameters())
+    start = time.time()
+
+    current_folder = os.path.dirname(os.path.abspath(__file__))
+    task_graph_json = os.path.join(current_folder, "../../artifacts/full-task-graph.json")
+    config = os.path.join(current_folder, "config.pytest.yml")
+
+    if os.environ.get("SKIP_TASKGRAPH"):
+        print("Using existing taskgraph generation.")
+    else:
+        print(
+            "Generating the full taskgraph, this can take a second. Set SKIP_TASKGRAPH=1 to skip this step."
+        )
+        run_taskgraph(config, get_taskgraph_parameters())
 
     with open(task_graph_json, "rb") as file:
         _full_taskgraph = json.load(file)
+
+    elapsed_sec = time.time() - start
+    print(f"Taskgraph generated in {elapsed_sec:.2f} seconds.")
     return _full_taskgraph
 
 
@@ -375,7 +382,9 @@ def find_requirements(commands: Commands) -> Optional[str]:
     return None
 
 
-def get_task_command_and_env(task_name: str, script=None) -> tuple[str, Optional[str], dict[str, str]]:
+def get_task_command_and_env(
+    task_name: str, script=None
+) -> tuple[str, Optional[str], dict[str, str]]:
     """
     Extracts a task's command from the full taskgraph. This allows for testing
     the full taskcluster pipeline and the scripts that it generates.

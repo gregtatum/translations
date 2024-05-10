@@ -251,19 +251,21 @@ def main(args_list: Optional[list[str]] = None) -> None:
 
     # The default comet model.
     # It should match the model used in https://github.com/mozilla/firefox-translations-models/
-    model_name = "Unbabel/wmt22-comet-da"
-    logger.info(f"Computing the COMET score with {model_name}")
-    model = comet.load_from_checkpoint(comet.download_model(model_name))
-    data = []
+    comet_model_name = "Unbabel/wmt22-comet-da"
+    comet_mode = "cpu" if args.gpus == 0 else "gpu"
+    logger.info(f'Computing the COMET score with "{comet_model_name}" using the {comet_mode}')
+
+    # COMET_MODEL_DIR allows tests to place the model in a data directory
+    comet_checkpoint = comet.download_model(
+        comet_model_name, saving_directory=os.environ.get("COMET_MODEL_DIR")
+    )
+    comet_model = comet.load_from_checkpoint(comet_checkpoint)
+    comet_data = []
     for source, target, target_ref in zip(source_lines, target_lines, target_ref_lines):
-        data.append({"src": source, "mt": target, "ref": target_ref})
+        comet_data.append({"src": source, "mt": target, "ref": target_ref})
+    comet_score = comet_model.predict(comet_data, gpus=args.gpus)
 
-    model_output = model.predict(data, gpus=int(args.gpus))
-    print(model_output)
-    print(model_output.scores)  # sentence-level scores
-    print(model_output.system_score)  # system-level score
-
-    data = {
+    comet_data = {
         "bleu": {
             "score": bleu_details["score"],
             # Example details:
@@ -298,15 +300,26 @@ def main(args_list: Optional[list[str]] = None) -> None:
             # }
             "details": chrf_details,
         },
+        "comet": {
+            "score": comet_score.system_score,
+            "details": {
+                "model": comet_model_name,
+                "score": comet_score.system_score,
+            },
+        },
     }
 
     logger.info(f"Writing {metrics_json}")
     with open(metrics_json, "w") as file:
-        file.write(json.dumps(data, indent=2))
+        file.write(json.dumps(comet_data, indent=2))
 
     logger.info(f'Writing the metrics in the older "text" format: {metrics_file}')
     with open(metrics_file, "w") as file:
-        file.write(f"{bleu_details['score']}\n{chrf_details['score']}\n")
+        file.write(
+            f"{bleu_details['score']}\n"
+            f"{chrf_details['score']}\n"
+            f"{comet_score.system_score}\n"
+        )
 
 
 if __name__ == "__main__":
