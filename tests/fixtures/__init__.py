@@ -202,6 +202,9 @@ class DataDir:
         python_bin_dir = get_python_bin_dir(requirements)
         if python_bin_dir:
             env = {**env, "PATH": f'{python_bin_dir}:{os.environ.get("PATH", "")}'}
+            if command_parts[0].endswith(".py"):
+                # This script is relying on a shebang, add the python3 from the executable instead.
+                command_parts.insert(0, os.path.join(python_bin_dir, "python3"))
 
         print("┌──────────────────────────────────────────────────────────")
         print("│ run_task:", " ".join(command_parts))
