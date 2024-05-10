@@ -40,6 +40,9 @@ For instance for a value of: "fetches/wmt09":
   └── wmt09.ca.zst
 """
 
+import sys
+
+print("Python executable", sys.executable)
 
 import argparse
 import json
