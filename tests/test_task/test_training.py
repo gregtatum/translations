@@ -3,18 +3,14 @@ import shutil
 
 import pytest
 import sentencepiece as spm
-from fixtures import DataDir, en_sample, ru_sample
+
+from tests.fixtures import DataDir, en_sample, fixtures_path, root_path, ru_sample
 
 pytestmark = [pytest.mark.docker_amd64]
 
-current_folder = os.path.dirname(os.path.abspath(__file__))
-fixtures_path = os.path.join(current_folder, "fixtures")
-root_path = os.path.abspath(os.path.join(current_folder, ".."))
-bin_dir = os.environ["BIN"] if os.getenv("BIN") else os.path.join(root_path, "bin")
+bin_dir = os.environ["BIN"] if os.getenv("BIN") else root_path / "bin"
 marian_dir = (
-    os.environ["MARIAN"]
-    if os.getenv("MARIAN")
-    else os.path.join(root_path, "3rd_party", "marian-dev", "build")
+    os.environ["MARIAN"] if os.getenv("MARIAN") else root_path / "3rd_party/marian-dev/build"
 )
 
 
@@ -70,9 +66,7 @@ def alignments(data_dir, vocab, corpus):
         "TRG": "ru",
     }
     data_dir.run_task("alignments-original-en-ru", env=env)
-    shutil.copyfile(
-        os.path.join(data_dir.path, "artifacts", "corpus.aln.zst"), data_dir.join("corpus.aln.zst")
-    )
+    shutil.copyfile(data_dir.path / "artifacts/corpus.aln.zst", data_dir.join("corpus.aln.zst"))
     # recreate corpus
     data_dir.create_zst("corpus.en.zst", en_sample)
     data_dir.create_zst("corpus.ru.zst", ru_sample)
@@ -95,12 +89,8 @@ def test_train_student_mocked(alignments, data_dir):
 
     data_dir.run_task("train-student-en-ru", env=env)
 
-    assert os.path.isfile(
-        os.path.join(data_dir.path, "artifacts", "final.model.npz.best-chrf.npz")
-    )
-    assert os.path.isfile(
-        os.path.join(data_dir.path, "artifacts", "model.npz.best-chrf.npz.decoder.yml")
-    )
+    assert os.path.isfile(data_dir.path / "artifacts/final.model.npz.best-chrf.npz")
+    assert os.path.isfile(data_dir.path / "artifacts/model.npz.best-chrf.npz.decoder.yml")
     validate_alignments(data_dir.join("marian.input.txt"), data_dir.join("vocab.spm"))
 
 
@@ -133,9 +123,5 @@ def test_train_student(alignments, data_dir):
 
     data_dir.run_task("train-student-en-ru", env=env, extra_args=marian_args)
 
-    assert os.path.isfile(
-        os.path.join(data_dir.path, "artifacts", "final.model.npz.best-chrf.npz")
-    )
-    assert os.path.isfile(
-        os.path.join(data_dir.path, "artifacts", "model.npz.best-chrf.npz.decoder.yml")
-    )
+    assert os.path.isfile(data_dir.path / "artifacts/final.model.npz.best-chrf.npz")
+    assert os.path.isfile(data_dir.path / "artifacts/model.npz.best-chrf.npz.decoder.yml")

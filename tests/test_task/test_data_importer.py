@@ -2,13 +2,13 @@ import os
 
 import pytest
 import zstandard as zstd
-from fixtures import DataDir, en_sample, get_mocked_downloads, ru_sample
+
+from tests.fixtures import DataDir, en_sample, fixtures_path, get_mocked_downloads, ru_sample
 
 SRC = "ru"
 TRG = "en"
 ARTIFACT_EXT = "zst"
 COMPRESSION_CMD = "zstd"
-CURRENT_FOLDER = os.path.dirname(os.path.abspath(__file__))
 
 os.environ["ARTIFACT_EXT"] = ARTIFACT_EXT
 os.environ["COMPRESSION_CMD"] = COMPRESSION_CMD
@@ -107,7 +107,7 @@ def test_basic_corpus_import(importer, dataset, data_dir):
         env={
             "COMPRESSION_CMD": COMPRESSION_CMD,
             "ARTIFACT_EXT": ARTIFACT_EXT,
-            "WGET": os.path.join(CURRENT_FOLDER, "fixtures/wget"),
+            "WGET": fixtures_path / "wget",
             "MOCKED_DOWNLOADS": get_mocked_downloads(),
         },
     )
@@ -145,7 +145,7 @@ def test_mono_source_import(importer, language, dataset, sort_order, data_dir):
         env={
             "COMPRESSION_CMD": COMPRESSION_CMD,
             "ARTIFACT_EXT": ARTIFACT_EXT,
-            "WGET": os.path.join(CURRENT_FOLDER, "fixtures/wget"),
+            "WGET": fixtures_path / "wget",
             "MOCKED_DOWNLOADS": get_mocked_downloads(),
         },
     )

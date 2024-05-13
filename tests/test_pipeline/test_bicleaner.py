@@ -1,15 +1,16 @@
 import os
 import tarfile
+from pathlib import Path
 from subprocess import CompletedProcess
 
 import pytest
 import sh
 import yaml
-from fixtures import DataDir
 from pytest import fixture
 
 from pipeline.bicleaner import download_pack
 from pipeline.bicleaner.download_pack import main as download_model
+from tests.fixtures import DataDir
 
 
 @pytest.fixture(scope="function")
@@ -26,9 +27,9 @@ def init():
                 [], returncode=1, stderr=b"Error: language pack does not exist."
             )
 
-        pack_dir = os.path.join(dir, pair)
-        os.makedirs(pack_dir, exist_ok=True)
-        with open(os.path.join(pack_dir, "metadata.yaml"), "w") as f:
+        pack_dir = Path(dir) / pair
+        pack_dir.mkdir(exist_ok=True)
+        with open(pack_dir / "metadata.yaml", "w") as f:
             f.writelines([f"source_lang: {src}", "\n", f"target_lang: {trg}"])
 
         return CompletedProcess([], returncode=0)
@@ -54,13 +55,13 @@ def decompress(path):
 def test_model_download(src, trg, model_src, model_trg, init, data_dir):
     target_path = data_dir.join(f"bicleaner-ai-{src}-{trg}.tar.zst")
     decompressed_path = data_dir.join(f"bicleaner-ai-{src}-{trg}")
-    meta_path = os.path.join(decompressed_path, "metadata.yaml")
+    meta_path = decompressed_path / "metadata.yaml"
 
-    download_model([f"--src={src}", f"--trg={trg}", "--compression_cmd=zstd", target_path])
+    download_model([f"--src={src}", f"--trg={trg}", "--compression_cmd=zstd", str(target_path)])
 
-    assert os.path.isfile(target_path)
-    decompress(target_path)
-    assert os.path.isdir(decompressed_path)
+    assert target_path.is_file()
+    decompress(str(target_path))
+    assert decompressed_path.is_dir()
     with open(meta_path) as f:
         metadata = yaml.safe_load(f)
     assert metadata["source_lang"] == model_src

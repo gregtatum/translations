@@ -1,8 +1,8 @@
 import io
-import os
 from contextlib import redirect_stdout
 from typing import Optional
 
+from tests.fixtures import fixtures_path
 from utils.preflight_check import main as preflight_check
 
 
@@ -15,8 +15,7 @@ def get_preflight_check_output(*args):
         nonlocal opened_url
         opened_url = url
 
-    current_folder = os.path.dirname(os.path.abspath(__file__))
-    config = os.path.join(current_folder, "fixtures/config.pytest.yml")
+    config = str(fixtures_path / "config.pytest.yml")
 
     with redirect_stdout(f):
         preflight_check([*args, "--config", config], open_in_browser)

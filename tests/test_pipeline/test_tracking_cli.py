@@ -6,9 +6,10 @@ from pathlib import Path
 from unittest.mock import call, patch
 
 import pytest
-from fixtures import DataDir
 from translations_parser.cli import experiments as experiments_publish
 from translations_parser.cli import taskcluster as tc_publish
+
+from tests.fixtures import DataDir, fixture_data
 
 """
 Tests tracking parser and publication via CLI entrypoints
@@ -28,15 +29,10 @@ def disable_wandb(tmp_dir):
     os.environ["WANDB_DIR"] = str(tmp_dir / "wandb")
 
 
-@pytest.fixture
-def samples_dir():
-    return Path(__file__).parent / "data"
-
-
 @patch(
     "translations_parser.cli.taskcluster.get_args",
     return_value=argparse.Namespace(
-        input_file=Path(__file__).parent / "data" / "taskcluster.log",
+        input_file=fixture_data / "taskcluster.log",
         loglevel=logging.DEBUG,
         output_dir=Path(DataDir("test_tracking").path),
         from_stream=False,
@@ -52,7 +48,7 @@ def samples_dir():
     ),
 )
 @patch("translations_parser.publishers.wandb")
-def test_taskcluster(wandb_mock, getargs_mock, caplog, samples_dir, tmp_dir):
+def test_taskcluster(wandb_mock, getargs_mock, caplog, tmp_dir):
     caplog.set_level(logging.INFO)
     wandb_dir = tmp_dir / "wandb"
     wandb_dir.mkdir(parents=True)
@@ -65,7 +61,7 @@ def test_taskcluster(wandb_mock, getargs_mock, caplog, samples_dir, tmp_dir):
         (logging.INFO, "Found 102 training entries"),
         (logging.INFO, "Found 34 validation entries"),
     ]
-    with (samples_dir / "taskcluster_wandb_calls.json").open("r") as f:
+    with (fixture_data / "taskcluster_wandb_calls.json").open("r") as f:
         assert list(wandb_mock.init.return_value.log.call_args_list) == [
             call(**entry) for entry in json.load(f)
         ]
@@ -73,10 +69,10 @@ def test_taskcluster(wandb_mock, getargs_mock, caplog, samples_dir, tmp_dir):
 
 @patch(
     "translations_parser.cli.experiments.get_args",
-    return_value=argparse.Namespace(directory=Path(__file__).parent / "data" / "experiments_1_10"),
+    return_value=argparse.Namespace(directory=fixture_data / "experiments_1_10"),
 )
 @patch("translations_parser.publishers.wandb")
-def test_experiments_marian_1_10(wandb_mock, getargs_mock, caplog, samples_dir, tmp_dir):
+def test_experiments_marian_1_10(wandb_mock, getargs_mock, caplog, tmp_dir):
     caplog.set_level(logging.INFO)
     wandb_dir = tmp_dir / "wandb"
     wandb_dir.mkdir(parents=True)
@@ -84,6 +80,7 @@ def test_experiments_marian_1_10(wandb_mock, getargs_mock, caplog, samples_dir, 
     wandb_mock.plot.bar = lambda *args, **kwargs: (args, kwargs)
     wandb_mock.Table = lambda *args, **kwargs: (args, kwargs)
     experiments_publish.main()
+
     # Assert on a `set` since the logging order may vary between runs.
     assert set([(level, message) for _module, level, message in caplog.record_tuples]) == set(
         [
@@ -91,7 +88,7 @@ def test_experiments_marian_1_10(wandb_mock, getargs_mock, caplog, samples_dir, 
             # student
             (
                 logging.INFO,
-                f"Parsing folder {samples_dir}/experiments_1_10/models/en-nl/prod/student",
+                f"Parsing folder {fixture_data}/experiments_1_10/models/en-nl/prod/student",
             ),
             (logging.INFO, "Reading logs stream."),
             (logging.INFO, "Detected Marian version 1.10"),
@@ -101,18 +98,20 @@ def test_experiments_marian_1_10(wandb_mock, getargs_mock, caplog, samples_dir, 
             # teacher-finetuned0
             (
                 logging.INFO,
-                f"Parsing folder {samples_dir}/experiments_1_10/models/en-nl/prod/teacher-finetuned0",
+                f"Parsing folder {fixture_data}/experiments_1_10/models/en-nl/prod/teacher-finetuned0",
             ),
             (logging.INFO, "Reading logs stream."),
+            (logging.INFO, "Detected Marian version 1.10"),
             (logging.INFO, "Successfully parsed 993 lines"),
             (logging.INFO, "Found 567 training entries"),
             (logging.INFO, "Found 189 validation entries"),
             # teacher-finetuned1
             (
                 logging.INFO,
-                f"Parsing folder {samples_dir}/experiments_1_10/models/en-nl/prod/teacher-finetuned1",
+                f"Parsing folder {fixture_data}/experiments_1_10/models/en-nl/prod/teacher-finetuned1",
             ),
             (logging.INFO, "Reading logs stream."),
+            (logging.INFO, "Detected Marian version 1.10"),
             (logging.INFO, "Successfully parsed 1000 lines"),
             (logging.INFO, "Found 573 training entries"),
             (logging.INFO, "Found 191 validation entries"),
@@ -123,12 +122,30 @@ def test_experiments_marian_1_10(wandb_mock, getargs_mock, caplog, samples_dir, 
             ),
             (logging.INFO, "Found 2 quantized metrics from speed folder"),
             (logging.INFO, "Found 16 metrics from task logs"),
-            (logging.INFO, "Creating missing run backward with associated metrics"),
-            (logging.INFO, "Creating missing run quantized with associated metrics"),
-            (logging.INFO, "Creating missing run student-finetuned with associated metrics"),
-            (logging.INFO, "Creating missing run teacher-base0 with associated metrics"),
-            (logging.INFO, "Creating missing run teacher-base1 with associated metrics"),
-            (logging.INFO, "Creating missing run teacher-ensemble with associated metrics"),
+            (
+                logging.INFO,
+                "Creating missing run quantized with associated metrics",
+            ),
+            (
+                logging.INFO,
+                "Creating missing run backward with associated metrics",
+            ),
+            (
+                logging.INFO,
+                "Creating missing run student-finetuned with associated metrics",
+            ),
+            (
+                logging.INFO,
+                "Creating missing run teacher-base0 with associated metrics",
+            ),
+            (
+                logging.INFO,
+                "Creating missing run teacher-base1 with associated metrics",
+            ),
+            (
+                logging.INFO,
+                "Creating missing run teacher-ensemble with associated metrics",
+            ),
         ]
     )
     log_calls, metrics_calls = [], []
@@ -137,7 +154,7 @@ def test_experiments_marian_1_10(wandb_mock, getargs_mock, caplog, samples_dir, 
             metrics_calls.append(log)
         elif log.kwargs:
             log_calls.append(log)
-    with (samples_dir / "experiments_wandb_calls_1_10.json").open("r") as f:
+    with (fixture_data / "experiments_wandb_calls_1_10.json").open("r") as f:
         assert log_calls == [call(**entry) for entry in json.load(f)]
     # Custom calls for .metrics files publication (3 runs + 6 evaluation metrics)
     assert sorted([list(v.keys())[0] for c in metrics_calls for v in c.args]) == sorted(
@@ -168,10 +185,10 @@ def test_experiments_marian_1_10(wandb_mock, getargs_mock, caplog, samples_dir, 
 
 @patch(
     "translations_parser.cli.experiments.get_args",
-    return_value=argparse.Namespace(directory=Path(__file__).parent / "data" / "experiments_1_12"),
+    return_value=argparse.Namespace(directory=fixture_data / "experiments_1_12"),
 )
 @patch("translations_parser.publishers.wandb")
-def test_experiments_marian_1_12(wandb_mock, getargs_mock, caplog, samples_dir, tmp_dir):
+def test_experiments_marian_1_12(wandb_mock, getargs_mock, caplog, tmp_dir):
     caplog.set_level(logging.INFO)
     wandb_dir = tmp_dir / "wandb"
     wandb_dir.mkdir(parents=True)
@@ -185,7 +202,7 @@ def test_experiments_marian_1_12(wandb_mock, getargs_mock, caplog, samples_dir, 
             (logging.INFO, "Reading 2 train.log data"),
             (
                 logging.INFO,
-                f"Parsing folder {samples_dir}/experiments_1_12/models/fi-en/opusprod/student",
+                f"Parsing folder {fixture_data}/experiments_1_12/models/fi-en/opusprod/student",
             ),
             (logging.INFO, "Reading logs stream."),
             (logging.INFO, "Successfully parsed 786 lines"),
@@ -193,7 +210,7 @@ def test_experiments_marian_1_12(wandb_mock, getargs_mock, caplog, samples_dir, 
             (logging.INFO, "Found 79 validation entries"),
             (
                 logging.INFO,
-                f"Parsing folder {samples_dir}/experiments_1_12/models/fi-en/opusprod/student-finetuned",
+                f"Parsing folder {fixture_data}/experiments_1_12/models/fi-en/opusprod/student-finetuned",
             ),
             (logging.INFO, "Reading logs stream."),
             (logging.INFO, "Successfully parsed 660 lines"),
@@ -215,7 +232,7 @@ def test_experiments_marian_1_12(wandb_mock, getargs_mock, caplog, samples_dir, 
             metrics_calls.append(log)
         elif log.kwargs:
             log_calls.append(log)
-    with (samples_dir / "experiments_wandb_calls_1_12.json").open("r") as f:
+    with (fixture_data / "experiments_wandb_calls_1_12.json").open("r") as f:
         assert log_calls == [call(**entry) for entry in json.load(f)]
     # Custom calls for .metrics files publication (3 runs + 6 evaluation metrics)
     assert sorted([list(v.keys())[0] for c in metrics_calls for v in c.args]) == sorted(
@@ -241,7 +258,7 @@ def test_experiments_marian_1_12(wandb_mock, getargs_mock, caplog, samples_dir, 
 @patch(
     "translations_parser.cli.taskcluster.get_args",
     return_value=argparse.Namespace(
-        input_file=Path(__file__).parent / "data" / "taskcluster.log",
+        input_file=fixture_data / "taskcluster.log",
         loglevel=logging.DEBUG,
         output_dir=Path(DataDir("test_tracking").path),
         from_stream=False,
@@ -257,9 +274,7 @@ def test_experiments_marian_1_12(wandb_mock, getargs_mock, caplog, samples_dir, 
     ),
 )
 @patch("translations_parser.publishers.wandb")
-def test_taskcluster_wandb_initialization_failure(
-    wandb_mock, getargs_mock, caplog, samples_dir, tmp_dir
-):
+def test_taskcluster_wandb_initialization_failure(wandb_mock, getargs_mock, caplog, tmp_dir):
     """
     Ensures tracking continues despite W&B initialization failure
     """
@@ -282,7 +297,7 @@ def test_taskcluster_wandb_initialization_failure(
 @patch(
     "translations_parser.cli.taskcluster.get_args",
     return_value=argparse.Namespace(
-        input_file=Path(__file__).parent / "data" / "taskcluster.log",
+        input_file=fixture_data / "taskcluster.log",
         loglevel=logging.DEBUG,
         output_dir=Path(DataDir("test_tracking").path),
         from_stream=False,
@@ -298,7 +313,7 @@ def test_taskcluster_wandb_initialization_failure(
     ),
 )
 @patch("translations_parser.publishers.wandb")
-def test_taskcluster_wandb_log_failures(wandb_mock, getargs_mock, caplog, samples_dir, tmp_dir):
+def test_taskcluster_wandb_log_failures(wandb_mock, getargs_mock, caplog, tmp_dir):
     """
     Ensures tracking continues despite potential W&B data log failures
     """
@@ -326,7 +341,7 @@ def test_taskcluster_wandb_log_failures(wandb_mock, getargs_mock, caplog, sample
 @patch(
     "translations_parser.cli.taskcluster.get_args",
     return_value=argparse.Namespace(
-        input_file=Path(__file__).parent / "data" / "taskcluster.log",
+        input_file=fixture_data / "taskcluster.log",
         loglevel=logging.DEBUG,
         output_dir=Path(DataDir("test_tracking").path),
         from_stream=False,
@@ -342,7 +357,7 @@ def test_taskcluster_wandb_log_failures(wandb_mock, getargs_mock, caplog, sample
     ),
 )
 @patch("translations_parser.publishers.wandb")
-def test_taskcluster_wandb_disabled(wandb_mock, getargs_mock, caplog, samples_dir, tmp_dir):
+def test_taskcluster_wandb_disabled(wandb_mock, getargs_mock, caplog, tmp_dir):
     """
     Ensures tracking continues without Weight & Biases publication
     """

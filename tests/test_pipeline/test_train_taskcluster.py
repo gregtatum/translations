@@ -1,19 +1,11 @@
-import os
 from unittest import mock
 
 import pytest
 import train_taskcluster
 
-TRAIN_TASKCLUSTER_SH = os.path.normpath(
-    os.path.join(
-        os.path.dirname(os.path.realpath(__file__)),
-        "..",
-        "taskcluster",
-        "scripts",
-        "pipeline",
-        "train-taskcluster.sh",
-    )
-)
+from tests.fixtures import root_path
+
+TRAIN_TASKCLUSTER_SH = root_path / "taskcluster/scripts/pipeline/train-taskcluster.sh"
 
 
 @pytest.mark.parametrize(

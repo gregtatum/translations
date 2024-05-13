@@ -15,10 +15,11 @@ import zstandard as zstd
 
 from utils.preflight_check import get_taskgraph_parameters, run_taskgraph
 
-FIXTURES_PATH = os.path.dirname(os.path.abspath(__file__))
-ROOT_PATH = os.path.abspath(os.path.join(FIXTURES_PATH, "../.."))
-DATA_PATH = os.path.abspath(os.path.join(ROOT_PATH, "data"))
-TESTS_DATA = os.path.join(DATA_PATH, "tests_data")
+fixtures_path = Path(__file__).parent
+root_path = (fixtures_path / "../..").resolve()
+data_path = root_path / "data"
+tests_data = root_path / "data/tests_data"
+fixture_data = root_path / "tests/data"
 
 
 en_sample = """The little girl, seeing she had lost one of her pretty shoes, grew angry, and said to the Witch, “Give me back my shoe!”
@@ -52,13 +53,13 @@ class DataDir:
     """
 
     def __init__(self, dir_name: str) -> None:
-        self.path = os.path.join(TESTS_DATA, dir_name)
+        self.path: Path = tests_data / dir_name
 
         # Ensure the base /data directory exists.
-        os.makedirs(TESTS_DATA, exist_ok=True)
+        tests_data.mkdir(parents=True, exist_ok=True)
 
         # Clean up a previous run if this exists.
-        if os.path.exists(self.path):
+        if self.path.exists():
             shutil.rmtree(self.path)
 
         os.makedirs(self.path)
@@ -66,7 +67,7 @@ class DataDir:
 
     def join(self, name: str):
         """Create a folder or file name by joining it to the test directory."""
-        return os.path.join(self.path, name)
+        return self.path / name
 
     def load(self, name: str):
         """Load a text file"""
@@ -77,7 +78,7 @@ class DataDir:
         """
         Creates a compressed zst file and returns the path to it.
         """
-        zst_path = os.path.join(self.path, name)
+        zst_path = self.path / name
         if not os.path.exists(self.path):
             raise Exception(f"Directory for the compressed file does not exist: {self.path}")
         if os.path.exists(zst_path):
@@ -97,7 +98,7 @@ class DataDir:
         """
         Creates a text file and returns the path to it.
         """
-        text_path = os.path.join(self.path, name)
+        text_path = self.path / name
         if not os.path.exists(self.path):
             raise Exception(f"Directory for the text file does not exist: {self.path}")
         if os.path.exists(text_path):
@@ -148,9 +149,6 @@ class DataDir:
             if not isinstance(task_env[key], str):
                 task_env[key] = ""
 
-        current_folder = os.path.dirname(os.path.abspath(__file__))
-        root_path = os.path.abspath(os.path.join(current_folder, "../.."))
-
         if not work_dir:
             work_dir = self.path
         if not fetches_dir:
@@ -168,10 +166,10 @@ class DataDir:
         # Manually apply the environment variables, as they don't get added to the args
         # through the subprocess.run
         command_parts = [
-            part.replace("$TASK_WORKDIR/$VCS_PATH", root_path)
-            .replace("$VCS_PATH", root_path)
-            .replace("$TASK_WORKDIR", work_dir)
-            .replace("$MOZ_FETCHES_DIR", fetches_dir)
+            part.replace("$TASK_WORKDIR/$VCS_PATH", str(root_path))
+            .replace("$VCS_PATH", str(root_path))
+            .replace("$TASK_WORKDIR", str(work_dir))
+            .replace("$MOZ_FETCHES_DIR", str(fetches_dir))
             for part in command_parts
         ]
 
@@ -184,7 +182,7 @@ class DataDir:
             final_env = {**final_env, "PATH": f'{python_bin_dir}:{os.environ.get("PATH", "")}'}
             if command_parts[0].endswith(".py"):
                 # This script is relying on a shebang, add the python3 from the executable instead.
-                command_parts.insert(0, os.path.join(python_bin_dir, "python3"))
+                command_parts.insert(0, python_bin_dir / "python3")
 
         print("┌──────────────────────────────────────────────────────────")
         print("│ run_task:", " ".join(command_parts))
@@ -207,7 +205,7 @@ class DataDir:
         print(f"┌{span}┐")
 
         for root, dirs, files in os.walk(self.path):
-            level = root.replace(self.path, "").count(os.sep)
+            level = root.replace(str(self.path), "").count(os.sep)
             indent = " " * 4 * (level)
             folder_text = f"│ {indent}{os.path.basename(root)}/"
             print(f"{folder_text.ljust(span_len)} │")
@@ -246,9 +244,8 @@ def get_full_taskgraph():
 
     start = time.time()
 
-    current_folder = os.path.dirname(os.path.abspath(__file__))
-    task_graph_json = os.path.join(current_folder, "../../artifacts/full-task-graph.json")
-    config = os.path.join(current_folder, "config.pytest.yml")
+    task_graph_json = root_path / "artifacts/full-task-graph.json"
+    config = fixtures_path / "config.pytest.yml"
 
     if os.environ.get("SKIP_TASKGRAPH"):
         print("Using existing taskgraph generation.")
@@ -411,32 +408,29 @@ def get_task_command_and_env(task_name: str) -> tuple[str, Optional[str], dict[s
 
 
 def get_mocked_downloads() -> str:
-    corpus_samples = os.path.abspath(os.path.join(FIXTURES_PATH, "../data/corpus_samples"))
-
-    def get_path(name: str):
-        return os.path.join(corpus_samples, name)
+    corpus_samples = fixture_data / "corpus_samples"
 
     return json.dumps(
         {
             "https://dl.fbaipublicfiles.com/flores101/dataset/flores101_dataset.tar.gz":
-                get_path("flores101_dataset.tar.gz"),
+                corpus_samples /"flores101_dataset.tar.gz",
             "https://object.pouta.csc.fi/OPUS-ELRC-3075-wikipedia_health/v1/moses/en-ru.txt.zip":
-                get_path("en-ru.txt.zip"),
+                corpus_samples /"en-ru.txt.zip",
             "https://object.pouta.csc.fi/OPUS-ELRC-3075-wikipedia_health/v1/moses/ru-en.txt.zip":
                 "404",
             "http://data.statmt.org/news-crawl/en/news.2021.en.shuffled.deduped.gz":
-                get_path("pytest-dataset.en.gz"),
+                corpus_samples /"pytest-dataset.en.gz",
             "http://data.statmt.org/news-crawl/ru/news.2021.ru.shuffled.deduped.gz":
-                get_path("pytest-dataset.ru.gz"),
+                corpus_samples /"pytest-dataset.ru.gz",
             "https://storage.googleapis.com/releng-translations-dev/data/en-ru/pytest-dataset.en.zst":
-                get_path("pytest-dataset.en.zst"),
+                corpus_samples /"pytest-dataset.en.zst",
             "https://storage.googleapis.com/releng-translations-dev/data/en-ru/pytest-dataset.ru.zst":
-                get_path("pytest-dataset.ru.zst"),
+                corpus_samples /"pytest-dataset.ru.zst",
         }
     )  # fmt: skip
 
 
-def get_python_bin_dir(requirements: Optional[str]) -> Optional[str]:
+def get_python_bin_dir(requirements: Optional[str]) -> Optional[Path]:
     """
     Creates a virtual environment for each requirements file that a task needs. The virtual
     environment is hashed based on the requirements file contents, and the system details. This
@@ -458,19 +452,17 @@ def get_python_bin_dir(requirements: Optional[str]) -> Optional[str]:
     hash_file(md5, requirements)
     md5.update(system_details.encode("utf-8"))
     if os.environ.get("IS_DOCKER"):
-        hash_file(md5, os.path.join(ROOT_PATH, "docker/Dockerfile"))
+        hash_file(md5, root_path / "docker/Dockerfile")
     hash = md5.hexdigest()
 
     requirements_stem = Path(requirements).stem
     environment = "docker" if os.environ.get("IS_DOCKER") else "native"
-    venv_dir = os.path.abspath(
-        os.path.join(DATA_PATH, "task-venvs", f"{environment}-{requirements_stem}-{hash}")
-    )
-    python_bin_dir = os.path.join(venv_dir, "bin")
-    python_bin = os.path.join(python_bin_dir, "python")
+    venv_dir = data_path / f"task-venvs/{environment}-{requirements_stem}-{hash}"
+    python_bin_dir = venv_dir / "bin"
+    python_bin = python_bin_dir / "python"
 
     # Create the venv only if it doesn't exist.
-    if not os.path.exists(venv_dir):
+    if not venv_dir.exists():
         try:
             print("Creating virtual environment")
             subprocess.check_call(

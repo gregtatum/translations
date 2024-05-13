@@ -7,9 +7,9 @@ import subprocess
 
 import pytest
 import sh
-from fixtures import DataDir
 
 from pipeline.translate.splitter import main as split_file
+from tests.fixtures import DataDir
 
 COMPRESSION_CMD = "zstdmt"
 
@@ -69,8 +69,8 @@ def test_split_collect_mono(data_dir):
     )
 
     # file.1.zst, file.2.zst ... file.10.zst
-    expected_files = set([data_dir.join(f"file.{i}.zst") for i in range(1, 11)])
-    assert set(glob.glob(data_dir.join("file.*.zst"))) == expected_files
+    expected_files = set([str(data_dir.join(f"file.{i}.zst")) for i in range(1, 11)])
+    assert set(glob.glob(str(data_dir.join("file.*.zst")))) == expected_files
 
     imitate_translate(data_dir.path, suffix=".out")
     subprocess.run(
@@ -115,7 +115,7 @@ def test_split_collect_corpus(data_dir):
     expected_files = set([data_dir.join(f"file.{i}.zst") for i in range(1, 11)]) | set(
         [data_dir.join(f"file.{i}.ref.zst") for i in range(1, 11)]
     )
-    assert set(glob.glob(data_dir.join("file.*.zst"))) == expected_files
+    assert set(glob.glob(str(data_dir.join("file.*.zst")))) == expected_files
 
     imitate_translate(data_dir.path, suffix=".nbest.out")
     subprocess.run(

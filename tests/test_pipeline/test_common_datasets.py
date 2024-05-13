@@ -2,9 +2,9 @@ import io
 from typing import Iterator
 
 import pytest
-from fixtures import DataDir
 
 from pipeline.common.datasets import shuffle_in_temp_files, shuffle_with_max_lines
+from tests.fixtures import DataDir
 
 ITEMS = 100_000
 # ITEMS = 1_000

@@ -3,18 +3,14 @@ import shutil
 
 import pytest
 import sh
-from fixtures import DataDir
+
+from tests.fixtures import DataDir, root_path
 
 pytestmark = [pytest.mark.docker_amd64]
 
-current_folder = os.path.dirname(os.path.abspath(__file__))
-fixtures_path = os.path.join(current_folder, "fixtures")
-root_path = os.path.abspath(os.path.join(current_folder, ".."))
-bin_dir = os.environ["BIN"] if os.getenv("BIN") else os.path.join(root_path, "bin")
+bin_dir = os.environ["BIN"] if os.getenv("BIN") else root_path / "bin"
 marian_dir = (
-    os.environ["MARIAN"]
-    if os.getenv("MARIAN")
-    else os.path.join(root_path, "3rd_party", "marian-dev", "build")
+    os.environ["MARIAN"] if os.getenv("MARIAN") else root_path / "3rd_party/marian-dev/build"
 )
 
 # "|||" in the text can cause issues if joint fast_align style input is used
@@ -40,7 +36,7 @@ ru_sample = """Маленькая девочка, увидев, что поте�
 
 
 def verify_alignments(data_dir, dataset, src_corpus, trg_corpus):
-    aln_path = os.path.join(data_dir.path, "artifacts", f"{dataset}.aln.zst")
+    aln_path = data_dir.path / f"artifacts/{dataset}.aln.zst"
     assert os.path.exists(aln_path)
 
     sh.zstd("-d", aln_path)
@@ -99,8 +95,8 @@ def test_teacher_backtranslated_alignments():
     # get priors using the "original" task
     data_dir.run_task("alignments-original-en-ru", env=env)
     shutil.copyfile(
-        os.path.join(data_dir.path, "artifacts", "corpus.priors"),
-        os.path.join(data_dir.path, "corpus.priors"),
+        data_dir.path / "artifacts/corpus.priors",
+        data_dir.path / "corpus.priors",
     )
 
     data_dir.run_task("alignments-backtranslated-en-ru", env=env)
@@ -123,10 +119,10 @@ def test_student_alignments():
     # get priors using the "original" task
     data_dir.run_task("alignments-original-en-ru", env=env)
     shutil.copyfile(
-        os.path.join(data_dir.path, "artifacts", "corpus.priors"),
-        os.path.join(data_dir.path, "corpus.priors"),
+        data_dir.path / "artifacts/corpus.priors",
+        data_dir.path / "corpus.priors",
     )
-    os.remove(os.path.join(data_dir.path, "artifacts", "corpus.aln.zst"))
+    (data_dir.path / "artifacts/corpus.aln.zst").unlink()
     data_dir.create_zst("corpus.en.zst", en_sample)
     data_dir.create_zst("corpus.ru.zst", ru_sample)
 
@@ -148,9 +144,9 @@ def test_shortlist():
         "SRC": "en",
         "TRG": "ru",
     }
-    shutil.copyfile("tests/data/vocab.spm", os.path.join(data_dir.path, "vocab.spm"))
+    shutil.copyfile("tests/data/vocab.spm", data_dir.path / "vocab.spm")
 
     data_dir.run_task("shortlist-en-ru", env=env)
 
-    shortlist_path = os.path.join(data_dir.path, "artifacts", "lex.s2t.pruned.zst")
+    shortlist_path = data_dir.path / "artifacts/lex.s2t.pruned.zst"
     assert os.path.exists(shortlist_path)

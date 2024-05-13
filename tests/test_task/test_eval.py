@@ -3,17 +3,13 @@ Tests evaluations
 """
 
 import json
-import os
 
 import pytest
-from fixtures import DataDir, en_sample, ru_sample
+
+from tests.fixtures import DataDir, en_sample, fixtures_path, root_path, ru_sample
 
 en_fake_translated = "\n".join([line.upper() for line in ru_sample.split("\n")])
 ru_fake_translated = "\n".join([line.upper() for line in en_sample.split("\n")])
-
-current_folder = os.path.dirname(os.path.abspath(__file__))
-fixtures_path = os.path.join(current_folder, "fixtures")
-root_path = os.path.abspath(os.path.join(current_folder, ".."))
 
 
 def get_base_marian_args(data_dir: DataDir, model_name: str):
@@ -31,7 +27,7 @@ def get_base_marian_args(data_dir: DataDir, model_name: str):
 def get_quantized_marian_args(data_dir: DataDir, model_name: str):
     return [
         "--models", data_dir.join(model_name),
-        "--config", os.path.join(root_path, "pipeline/quantize/decoder.yml"),
+        "--config", root_path / "pipeline/quantize/decoder.yml",
         "--quiet",
         "--quiet-translation",
         "--log", data_dir.join("artifacts/wmt09.log"),
