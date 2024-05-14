@@ -113,6 +113,15 @@ tasks:
     cmds:
       - task docker-run -- task test
 
+  test-fast:
+    desc: Run tests with a somewhat faster configuration
+    summary: |
+      Do not install poetry dependencies, and do not generate the full task graph for
+      every test run. This can cause the tests to fail if dependencies need updating
+      or the taskgraph kind.yml files have changed.
+    cmds:
+        - SKIP_TASKGRAPH=1 PYTHONPATH="$(pwd):$(pwd)/taskcluster/scripts/pipeline" poetry run pytest -vv {{.CLI_ARGS}}
+
   docker:
     desc: Interactively run the local docker test image.
     deps: [docker-build]
