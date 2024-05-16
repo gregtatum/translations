@@ -146,3 +146,6 @@ dmypy.json
 # Tracking
 output
 wandb
+
+# Python's profiler format
+*.prof
