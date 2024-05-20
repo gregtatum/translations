@@ -191,6 +191,12 @@ tasks:
     cmds:
       - poetry run python -W ignore utils/preflight_check.py {{.CLI_ARGS}}
 
+  task-profiler:
+    desc: Generate a Firefox Profile of a task by its log file
+    deps: [poetry-install-utils]
+    cmds:
+      - poetry run python -W ignore utils/task-profiler.py {{.CLI_ARGS}}
+
   tensorboard:
     desc: Visualize training logs from task `download-logs` at http://localhost:6006
     summary: |
