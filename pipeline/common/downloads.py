@@ -267,7 +267,7 @@ class DownloadChunkStreamer(io.IOBase):
                 # Report the download size.
                 if not total_bytes and "content-length" in self.response.headers:
                     total_bytes = int(self.response.headers["content-length"])
-                    logger.info(f"Download size: {total_bytes} bytes")
+                    logger.info(f"Download size: {total_bytes:,} bytes")
 
                 for chunk in self.response.iter_content(chunk_size=self.chunk_bytes):
                     if not chunk:
@@ -279,7 +279,7 @@ class DownloadChunkStreamer(io.IOBase):
                     if total_bytes and self.downloaded_bytes >= next_report_percent * total_bytes:
                         logger.info(
                             f"{self.downloaded_bytes / total_bytes * 100.0:.0f}% downloaded "
-                            f"({self.downloaded_bytes}/{total_bytes} bytes)"
+                            f"({self.downloaded_bytes:,}/{total_bytes:,} bytes)"
                         )
                         next_report_percent += self.report_every
 
