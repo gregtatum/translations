@@ -19,12 +19,23 @@ cd "${marian_dir}"
 if [ "${use_gpu}" == "true" ]; then
   # this is a production version that runs on GPU
   test -v CUDA_DIR
-  cmake .. -DUSE_SENTENCEPIECE=on -DUSE_FBGEMM=on -DCOMPILE_CPU=on -DCMAKE_BUILD_TYPE=Release \
+  cmake .. \
+    -DUSE_SENTENCEPIECE=on \
+    -DUSE_FBGEMM=on \
+    -DCOMPILE_CPU=on \
+    -DCMAKE_BUILD_TYPE=Release \
     -DCUDA_TOOLKIT_ROOT_DIR="${CUDA_DIR}" "${extra_args[@]}"
 else
   # this is a CPU version that we use for testing
-  cmake .. -DUSE_SENTENCEPIECE=on -DUSE_FBGEMM=on -DCOMPILE_CPU=on -DCMAKE_BUILD_TYPE=Release \
-    -DCOMPILE_CUDA=off -DCOMPILE_SERVER=on "${extra_args[@]}"
+  cmake .. \
+    -DUSE_SENTENCEPIECE=on \
+    -DUSE_ONNX=ON \
+    -DUSE_FBGEMM=on \
+    -DCOMPILE_CPU=on \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCOMPILE_CUDA=off \
+    -DCOMPILE_SERVER=on \
+    "${extra_args[@]}"
 fi
 
 make -j "${threads}"

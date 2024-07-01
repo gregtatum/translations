@@ -49,6 +49,13 @@ RUN ./compile-fast-align.sh fast_align/build $(nproc)
 RUN git clone https://github.com/kpu/preprocess.git preprocess
 RUN ./compile-preprocess.sh preprocess/build $(nproc)
 
+# Add the protobuf includes.
+RUN git clone https://github.com/protocolbuffers/protobuf.git protobuf
+# version v17
+RUN cd protobuf \
+    && git checkout v3.17.3 \
+    && cp -r src/google /usr/include/
+
 RUN git clone https://github.com/marian-nmt/marian-dev.git marian-dev
 # Use the same revision as in taskcluster/kinds/fetch/toolchains.yml
 # it corresponds to v1.12.14 2d067afb 2024-02-16 11:44:13 -0500
