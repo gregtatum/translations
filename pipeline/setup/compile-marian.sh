@@ -33,6 +33,7 @@ else
     -DUSE_FBGEMM=on \
     -DCOMPILE_CPU=on \
     -DCMAKE_BUILD_TYPE=Release \
+    -DProtobuf_INCLUDE_DIRS=/usr/include \
     -DCOMPILE_CUDA=off \
     -DCOMPILE_SERVER=on \
     "${extra_args[@]}"

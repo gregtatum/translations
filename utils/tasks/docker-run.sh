@@ -14,5 +14,6 @@ docker run \
   --tty \
   --rm \
   --volume $(pwd):/builds/worker/checkouts \
+  --volume /Users/greg/dev/marian-dev:/builds/worker/tools/marian-dev \
   --workdir /builds/worker/checkouts \
   ftt-local "$@"

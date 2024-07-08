@@ -49,37 +49,54 @@ RUN ./compile-fast-align.sh fast_align/build $(nproc)
 RUN git clone https://github.com/kpu/preprocess.git preprocess
 RUN ./compile-preprocess.sh preprocess/build $(nproc)
 
-# Add the protobuf includes.
-RUN git clone https://github.com/protocolbuffers/protobuf.git protobuf
-# version v17
-RUN cd protobuf \
-    && git checkout v3.17.3 \
-    && cp -r src/google /usr/include/
+# Get the header files for the protobuf version that matches sentencepiece in Marian.
+# e.g. if the marian build complains about the C++ define: GOOGLE_PROTOBUF_MIN_LIBRARY_VERSION 3006001
+# This 3006001 maps to version v3.6.1. This checkout will need to change.
+RUN git clone --branch v3.6.1.3 --single-branch https://github.com/protocolbuffers/protobuf.git && \
+    rm -rf /usr/include/google && \
+    ./compile-protoc.sh ./protobuf
 
-RUN git clone https://github.com/marian-nmt/marian-dev.git marian-dev
+# # Get the correct version of the Protobuf Compiler.
+# #
+# # protoc-3.6.1-linux-x86_64.zip
+# # ├── bin
+# # │   └── protoc
+# # └── include
+# RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v3.6.1/protoc-3.6.1-linux-x86_64.zip && \
+#     unzip protoc-3.6.1-linux-x86_64.zip -d protoc && \
+#     rm protoc-3.6.1-linux-x86_64.zip && \
+#     mv protoc/bin/protoc $BIN
+
+# RUN git clone https://github.com/marian-nmt/marian-dev.git marian-dev
+
+# # Re-build the onnx model definitions with the correct version of
+# RUN cd marian-dev/src/3rd_party/onnx/protobuf && \
+#     ${BIN}/protoc onnx-ml.proto --cpp_out .
+
 # Use the same revision as in taskcluster/kinds/fetch/toolchains.yml
 # it corresponds to v1.12.14 2d067afb 2024-02-16 11:44:13 -0500
-RUN cd marian-dev && git checkout 2d067afb9ce5e3a0b6c32585706affc6e7295920
-RUN ./compile-marian.sh marian-dev/build $(nproc) false
+# RUN cd marian-dev && git checkout 2d067afb9ce5e3a0b6c32585706affc6e7295920
 
-ENV MARIAN=/builds/worker/tools/marian-dev/build
+# RUN ./compile-marian.sh marian-dev/build $(nproc) false
 
-# Work around poetry not finding `python`.
-# https://github.com/python-poetry/poetry/issues/6371
-RUN ln -s /bin/python3 /bin/python
+# ENV MARIAN=/builds/worker/tools/marian-dev/build
 
-# Have poetry ignore any venvs in the workdir by using a system install.
-RUN poetry config virtualenvs.create false
+# # Work around poetry not finding `python`.
+# # https://github.com/python-poetry/poetry/issues/6371
+# RUN ln -s /bin/python3 /bin/python
 
-# Install taskfile - https://taskfile.dev/
-# Keep the version in sync with taskcluster/docker/test/Dockerfile.
-RUN curl -sSLf "https://github.com/go-task/task/releases/download/v3.35.1/task_linux_amd64.tar.gz" \
-    | tar -xz -C /usr/local/bin
+# # Have poetry ignore any venvs in the workdir by using a system install.
+# RUN poetry config virtualenvs.create false
 
-# In some operating systems, the .git configuration will complain if the users
-# do not match for the .git. Since this is a local environment, we don't worry about
-# permissions escalation exploits that may be an issue in a production docker container.
-RUN git config --global --add safe.directory /builds/worker/checkouts
+# # Install taskfile - https://taskfile.dev/
+# # Keep the version in sync with taskcluster/docker/test/Dockerfile.
+# RUN curl -sSLf "https://github.com/go-task/task/releases/download/v3.35.1/task_linux_amd64.tar.gz" \
+#     | tar -xz -C /usr/local/bin
 
-# Allow scripts to detect if they are running in docker
-ENV IS_DOCKER 1
+# # In some operating systems, the .git configuration will complain if the users
+# # do not match for the .git. Since this is a local environment, we don't worry about
+# # permissions escalation exploits that may be an issue in a production docker container.
+# RUN git config --global --add safe.directory /builds/worker/checkouts
+
+# # Allow scripts to detect if they are running in docker
+# ENV IS_DOCKER 1
