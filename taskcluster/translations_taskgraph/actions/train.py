@@ -29,8 +29,7 @@ WORKER_CLASSES = (
 
 def can_train(parameters):
     return parameters["head_repository"] in TRAIN_ON_PROJECTS or (
-        parameters["base_repository"] in TRAIN_ON_PROJECTS
-        and parameters["tasks_for"].startswith("github-pull-request")
+        parameters["base_repository"] in TRAIN_ON_PROJECTS and parameters["tasks_for"].startswith("github-pull-request")
     )
 
 
@@ -433,23 +432,18 @@ def train_action(parameters, graph_config, input, task_group_id, task_id):
     }
 
     if overridden_existing_tasks:
-        logger.info(
-            f"Old values for `overridden_existing_tasks`: {json.dumps(overridden_existing_tasks, indent=2)}"
-        )
+        logger.info(f"Old values for `overridden_existing_tasks`: {json.dumps(overridden_existing_tasks, indent=2)}")
 
     # Do the override!
     parameters["existing_tasks"].update(existing_tasks)
 
     # Log the new values for the `overridden_existing_tasks`
     new_values_for_overridden = {
-        existing_task: parameters["existing_tasks"][existing_task]
-        for existing_task in overridden_existing_tasks.keys()
+        existing_task: parameters["existing_tasks"][existing_task] for existing_task in overridden_existing_tasks.keys()
     }
 
     if new_values_for_overridden:
-        logger.info(
-            f"New values for `overridden_existing_tasks`: {json.dumps(new_values_for_overridden, indent=2)}"
-        )
+        logger.info(f"New values for `overridden_existing_tasks`: {json.dumps(new_values_for_overridden, indent=2)}")
 
     parameters["target_tasks_method"] = "train-target-tasks"
     parameters["optimize_target_tasks"] = True

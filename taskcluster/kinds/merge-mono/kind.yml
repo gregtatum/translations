@@ -14,7 +14,7 @@ transforms:
 
 kind-dependencies:
     - clean-mono
-    - toolchain
+    - merge-corpus
 
 task-defaults:
     description: merge mono for {locale}
@@ -25,7 +25,7 @@ task-defaults:
         cache:
             type: merge-mono
             resources:
-                - pipeline/clean/merge-mono.sh
+                - pipeline/clean/merge-mono.py
 
     task-context:
         from-parameters:
@@ -35,7 +35,8 @@ task-defaults:
             - label
             - description
             - name
-            - worker.env
+            - dependencies
+            - fetches
             - upstreams-config.locale
             - attributes
             - run.command
@@ -47,6 +48,9 @@ task-defaults:
         upstream-artifacts:
             - "{dataset_sanitized}.{locale}.zst"
 
+    dependencies:
+        merge-corpus: merge-corpus-{src_locale}-{trg_locale}
+
     worker-type: b-cpu-largedisk
     worker:
         docker-image: { "in-tree": "train" }
@@ -55,9 +59,7 @@ task-defaults:
             - name: public/build
               path: /builds/worker/artifacts
               type: directory
-        env:
-            LOCALE: "{locale}"
-            COMPRESSION_CMD: zstdmt
+        env: {}
         # 128 happens when cloning this repository fails
         retry-exit-status: [128]
 
@@ -75,14 +77,16 @@ task-defaults:
             # 3) datasets
             - >-
                 export BIN=$MOZ_FETCHES_DIR &&
-                $VCS_PATH/pipeline/clean/merge-mono.sh
-                /builds/worker/artifacts/mono.$LOCALE.zst
-                {max_sent}
-                $MOZ_FETCHES_DIR/*.zst
+                python3 $VCS_PATH/pipeline/clean/merge-mono.py
+                --parallel_corpus $MOZ_FETCHES_DIR/corpus/corpus.{locale}.zst
+                --output $TASK_WORKDIR/artifacts/mono.{locale}.zst
+                --max_sentences {max_sentences}
+                --datasets_glob $MOZ_FETCHES_DIR/*.zst
 
     fetches:
-        toolchain:
-            - preprocess
+        merge-corpus:
+            - artifact: corpus.{locale}.zst
+              dest: corpus/corpus.{locale}.zst
 
 tasks:
     src:
