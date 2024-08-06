@@ -21,10 +21,10 @@ from typing import Optional
 import eflomal
 import zstandard
 
+from pipeline.common.downloads import decompress_file
 from pipeline.common.logging import get_logger
 
 logger = get_logger("alignments")
-COMPRESSION_CMD = "zstdmt"
 
 
 def run(
@@ -41,13 +41,11 @@ def run(
 
     if corpus_src.endswith(".zst"):
         logger.info("Decompressing source corpus...")
-        subprocess.check_call([COMPRESSION_CMD, "-d", "-f", "--rm", corpus_src])
-        corpus_src = corpus_src[:-4]
+        corpus_src = str(decompress_file(corpus_src, keep_original=False))
 
     if corpus_trg.endswith(".zst"):
         logger.info("Decompressing target corpus...")
-        subprocess.check_call([COMPRESSION_CMD, "-d", "-f", "--rm", corpus_trg])
-        corpus_trg = corpus_trg[:-4]
+        corpus_trg = str(decompress_file(corpus_trg, keep_original=False))
 
     with ExitStack() as stack:
         fwd_path, rev_path = align(
