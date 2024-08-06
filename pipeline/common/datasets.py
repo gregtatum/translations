@@ -1,7 +1,6 @@
 import hashlib
 import os
 import tempfile
-from collections import deque
 from io import TextIOWrapper
 from pathlib import Path
 from random import Random
