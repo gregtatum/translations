@@ -473,6 +473,15 @@ def write_lines(path: Path | str):
         stack.close()
 
 
+def count_lines(path: Path | str) -> int:
+    """
+    Similar to wc -l, this counts the lines in a file. However, this command does so regardless
+    of the compression strategy used on the file.
+    """
+    with read_lines(path) as lines:
+        return sum(1 for _ in lines)
+
+
 def compress_file(
     path: Union[str, Path], keep_original: bool = True, compression: Literal["zst", "gz"] = "zst"
 ) -> Path:
