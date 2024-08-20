@@ -1,5 +1,4 @@
 import argparse
-import glob
 import json
 import os
 import unicodedata
@@ -189,12 +188,13 @@ def main() -> None:
         "--max_sentences", type=int, help="The maximum number of sentences that will be merged."
     )
     parser.add_argument(
-        "--datasets_glob",
-        type=str,
-        help="A glob-style path to the mono datasets, e.g. /path/to/*.zst",
+        "--sample_size", type=int, default=10_000, help="Generate a random sample of sentences."
     )
     parser.add_argument(
-        "--sample_size", type=int, default=10_000, help="Generate a random sample of sentences."
+        "--datasets",
+        type=str,
+        nargs="+",
+        help="A list of mono datasets",
     )
 
     args = parser.parse_args()
@@ -202,10 +202,7 @@ def main() -> None:
     output_path: Path = args.output
     max_sentences: int = args.max_sentences
     parallel_corpus: str = args.parallel_corpus
-    mono_dataset_paths: list[str] = glob.glob(args.datasets_glob)
-
-    if not mono_dataset_paths:
-        raise FileNotFoundError(f"No files found matching glob pattern: {args.datasets_glob}")
+    mono_dataset_paths: list[str] = args.datasets
 
     logger.info("Monolingual datasets:")
     for path in mono_dataset_paths:

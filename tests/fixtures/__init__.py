@@ -1,3 +1,4 @@
+import glob
 import hashlib
 import json
 import os
@@ -208,6 +209,8 @@ class DataDir:
             # This script does not require a virtual environment.
             command_parts.insert(0, "python3")
 
+        command_parts = expand_glob_patterns(command_parts)
+
         print("┌──────────────────────────────────────────────────────────")
         print("│ run_task:", " ".join(command_parts))
         print("└──────────────────────────────────────────────────────────")
@@ -245,6 +248,22 @@ class DataDir:
                 print(f"{file_text.ljust(span_len - len(bytes))}{bytes} │")
 
         print(f"└{span}┘")
+
+
+def expand_glob_patterns(command_parts: list[str]) -> list[str]:
+    """
+    When run from bash, glob patterns are automatically expanded. Mimic this behavior
+    in the test environment.
+    """
+    expanded_parts: list[str] = []
+
+    for command_part in command_parts:
+        if "*" in command_part:
+            expanded_parts.extend(glob.glob(command_part))
+        else:
+            expanded_parts.append(command_part)
+
+    return expanded_parts
 
 
 def fail_on_error(result: CompletedProcess[bytes]):
