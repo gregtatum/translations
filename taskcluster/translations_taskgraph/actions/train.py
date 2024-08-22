@@ -134,6 +134,10 @@ which allows for specifying task group ids to fetch existing tasks from.""",
                         "type": "number",
                         "description": "limits per downloaded src dataset",
                     },
+                    "truncate": {
+                        "type": "number",
+                        "description": "artificially truncate data",
+                    },
                     "mono-max-sentences-trg": {
                         "type": "number",
                         "description": "limits per downloaded trg dataset",

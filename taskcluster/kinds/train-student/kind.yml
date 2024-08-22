@@ -49,10 +49,12 @@ tasks:
                     - pipeline/train/configs/opustrainer/student.yml
                     - pipeline/train/configs/training/student.train.yml
                     - pipeline/train/train.sh
+                    - pipeline/train/truncate.sh
                     - taskcluster/scripts/pipeline/train_taskcluster.py
                     - taskcluster/scripts/pipeline/train-taskcluster.sh
                 from-parameters:
                     marian_args: training_config.marian-args.training-student
+                    truncate: training_config.experiment.truncate
         worker-type:
             by-tasks-for:
                 github-pull-request: b-largegpu-largedisk
@@ -99,6 +101,8 @@ tasks:
                     pip3 install $VCS_PATH/tracking &&
                     export PATH="$HOME/.local/bin:$PATH" &&
                     export MARIAN=$MOZ_FETCHES_DIR &&
+                    $VCS_PATH/pipeline/train/truncate.sh corpus.{src_locale}.zst {truncate} &&
+                    $VCS_PATH/pipeline/train/truncate.sh corpus.{trg_locale}.zst {truncate} &&
                     $VCS_PATH/taskcluster/scripts/pipeline/train_taskcluster.py
                     student
                     train

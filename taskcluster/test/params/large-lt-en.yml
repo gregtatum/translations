@@ -136,6 +136,7 @@ training_config:
       default-threshold: 0.5
     mono-max-sentences-src: 500000000
     mono-max-sentences-trg: 500000000
+    truncate: 10000
     name: opustrainer
     split-length: 2000000
     spm-sample-size: 10000000
