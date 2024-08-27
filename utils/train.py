@@ -111,6 +111,8 @@ def main() -> None:
                 break
             elif decision_task.status == "queued":
                 print(f"Decision task is queued, trying again in {timeout} seconds")
+            elif decision_task.status == "inprogress":
+                print(f"Decision task is in progress, trying again in {timeout} seconds")
             else:
                 # The task failed.
                 print(
