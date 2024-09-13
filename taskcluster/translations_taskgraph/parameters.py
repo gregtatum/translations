@@ -55,6 +55,15 @@ def get_defaults(_) -> dict:
                     "after": "50u",
                     "dim-vocabs": "1000 1000",
                     "task": "transformer-base",
+                    # Drastically shrink the size of the model.
+                    "enc-depth": "2",
+                    "dec-depth": "2",
+                    "dim-emb": "64",
+                    "dim-rnn": "64",
+                    "transformer-dim-ffn": "256",
+                    "transformer-dim-aan": "256",
+                    "transformer-heads": "2",
+                    "beam-size": "2",
                 },
                 "training-student": {
                     "disp-freq": "1",
