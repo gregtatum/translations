@@ -253,18 +253,29 @@ class TrainCLI:
             file.write(config_text)
 
     def get_opustrainer_cmd(self):
+        temp = self.artifacts / "opus-tmp"
+        temp.mkdir()
+        batch_size = 16 * 10
+        chunks = 16
+        chunk_size = int(batch_size / chunks)
         return [
             "opustrainer-train",
             *apply_command_args(
                 {
-                    "config": str(self.opustrainer_config),
-                    "log-file": str(self.artifacts / "opustrainer.log"),
-                    "log-level": "ERROR",
+                    "config": self.opustrainer_config,
+                    "log-file": self.artifacts / "opustrainer.log",
+                    "log-level": "DEBUG",  # DEBUG, INFO, WARNING, ERROR, or CRITICAL
+                    "temporary-directory": temp,
+                    # How many lines are written via stdin into Marian at a time.
+                    "batch-size": batch_size,
+                    # In a batch
+                    "chunk-size": chunk_size,
                 }
             ),
         ]
 
     def get_marian_cmd(self):
+        return ["python3", "pipeline/train/save.py"]
         all_model_metrics = ["chrf", "ce-mean-words", "bleu-detok"]
         validation_metrics = [
             # Place the best model metric first.

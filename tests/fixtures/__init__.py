@@ -161,6 +161,10 @@ class DataDir:
                 command_parts_split.extend(extra_args)
 
             final_env = {
+                # Mock Taskcluster specific environment variables.
+                "TASK_ID": "fake_id",
+                "RUN_ID": "0",
+                "TASKCLUSTER_ROOT_URL": "https://firefox-ci-tc.services.mozilla.com",
                 **os.environ,
                 **task_env,
                 "TASK_WORKDIR": work_dir,

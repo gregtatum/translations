@@ -72,8 +72,8 @@ def alignments(data_dir, vocab, corpus):
         os.path.join(data_dir.path, "artifacts", "corpus.aln.zst"), data_dir.join("corpus.aln.zst")
     )
     # recreate corpus
-    data_dir.create_zst("corpus.en.zst", en_sample)
-    data_dir.create_zst("corpus.ru.zst", ru_sample)
+    data_dir.create_zst("corpus.en.zst", en_sample * 1714)
+    data_dir.create_zst("corpus.ru.zst", ru_sample * 1714)
     data_dir.print_tree()
 
 

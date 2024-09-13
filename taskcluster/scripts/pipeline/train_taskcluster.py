@@ -48,6 +48,7 @@ def main(args):
     task_id = os.environ["TASK_ID"]
     run_id = int(os.environ["RUN_ID"])
     root_url = os.environ["TASKCLUSTER_ROOT_URL"]
+
     # Must line up with where model_dir is in `train-taskcluster.sh` while that script
     # still exists.
     model_dir = script_args[6]
@@ -64,9 +65,7 @@ def main(args):
 
         while prev_run_id >= 0:
             try:
-                resp = requests.get(
-                    ARTIFACTS_URL.format(root_url=root_url, task_id=task_id, run_id=prev_run_id)
-                )
+                resp = requests.get(ARTIFACTS_URL.format(root_url=root_url, task_id=task_id, run_id=prev_run_id))
                 resp.raise_for_status()
             except Exception:
                 logging.exception("Caught exception, exiting with distinct code...")
@@ -76,9 +75,7 @@ def main(args):
 
             resumable = True
             if run_artifacts.issuperset(CONTINUATION_ARTIFACTS):
-                logging.info(
-                    f"Run {prev_run_id} appears to have the artifacts we need! Downloading them..."
-                )
+                logging.info(f"Run {prev_run_id} appears to have the artifacts we need! Downloading them...")
             else:
                 logging.info(f"Run {prev_run_id} is missing some necessary artifacts...")
                 resumable = False
@@ -101,9 +98,7 @@ def main(args):
                         stream=True,
                     )
                     if 400 <= r.status_code <= 500:
-                        logging.exception(
-                            f"Got 4xx error for {artifact['name']}, run {run_id} is not resumable..."
-                        )
+                        logging.exception(f"Got 4xx error for {artifact['name']}, run {run_id} is not resumable...")
                         resumable = False
                         break
                     elif r.status_code >= 500:
