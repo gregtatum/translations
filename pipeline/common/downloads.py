@@ -337,7 +337,7 @@ class DownloadChunkStreamer(io.IOBase):
 def _read_lines_multiple_files(
     files: list[Union[str, Path]],
     path_in_archive: Optional[str],
-    on_enter_location: Optional[Callable[[], None]] = None,
+    on_enter_location: Optional[Callable[[str], None]] = None,
 ) -> Generator[str, None, None]:
     """
     Iterates through each line in multiple files, combining it into a single stream.
@@ -361,7 +361,7 @@ def _read_lines_multiple_files(
 def _read_lines_single_file(
     location: Union[Path, str],
     path_in_archive: Optional[str] = None,
-    on_enter_location: Optional[Callable[[], None]] = None,
+    on_enter_location: Optional[Callable[[str], None]] = None,
 ):
     """
     A smart function to efficiently stream lines from a local or remote file.
@@ -375,7 +375,7 @@ def _read_lines_single_file(
     """
     location = str(location)
     if on_enter_location:
-        on_enter_location()
+        on_enter_location(location)
 
     if location.startswith("http://") or location.startswith("https://"):
         # If this is mocked for a test, use the locally mocked path.
@@ -440,7 +440,7 @@ def _read_lines_single_file(
 def read_lines(
     location_or_locations: Union[Path, str, list[Union[str, Path]]],
     path_in_archive: Optional[str] = None,
-    on_enter_location: Optional[Callable[[], None]] = None,
+    on_enter_location: Optional[Callable[[str], None]] = None,
 ) -> Generator[str, None, None]:
     """
     A smart function to efficiently stream lines from a local or remote file.

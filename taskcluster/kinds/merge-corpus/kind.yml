@@ -51,7 +51,8 @@ tasks:
                     max_sentences:
                         - training_config.experiment.corpus-max-sentences
                 resources:
-                    - pipeline/clean/merge-corpus.sh
+                    - pipeline/clean/merge-corpus.py
+                    - pipeline/clean/requirements/merge.txt
 
         upstreams-config:
             upstream-artifacts:
@@ -83,16 +84,14 @@ tasks:
             command:
                 - bash
                 - -c
-                # Arguments are:
-                # 1) output prefix
-                # 2) max_sentences
-                # 3) input files
                 - >-
-                    export BIN=$MOZ_FETCHES_DIR &&
-                    $VCS_PATH/pipeline/clean/merge-corpus.sh
-                    $TASK_WORKDIR/artifacts/corpus
-                    {max_sentences}
-                    $MOZ_FETCHES_DIR/*.zst
+                    pip install -r $VCS_PATH/pipeline/clean/requirements/merge.txt &&
+                    export PYTHONPATH=$PYTHONPATH:$VCS_PATH &&
+                    $VCS_PATH/pipeline/clean/merge-corpus.py
+                    --artifacts     $TASK_WORKDIR/artifacts
+                    --name          corpus
+                    --max_lines     {max_sentences}
+                    --datasets_glob "$MOZ_FETCHES_DIR/*.zst"
         fetches:
             toolchain:
                 - preprocess
