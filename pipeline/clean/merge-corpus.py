@@ -17,7 +17,7 @@ from contextlib import ExitStack
 from dataclasses import dataclass
 from glob import glob
 from pathlib import Path
-from typing import Generator
+from typing import Generator, Optional
 from pipeline.common.datasets import (
     FilteringStep,
     Statistics,
@@ -48,11 +48,16 @@ class FilteringStatistics(Statistics):
             dataset_path,
             "How much of the data was retained across all of the parallel corpora",
         )
+        self.datasets = []
 
     def add_parallel_dataset(self, location: str):
+        # e.g. /path/to/ada83_v1.en.zst
         path = Path(location)
-        location_stem = path.parent / Path(path.stem).stem
-        step = FilteringStep(location_stem)
+        # e.g. ada83_v1
+        dataset_stem = Path(path.stem).stem
+        # e.g. /path/to/ada83_v1
+        location_stem = path.parent / dataset_stem
+        step = FilteringStep(location_stem, dataset_stem)
         self.datasets.append(step)
         return step
 
@@ -69,7 +74,7 @@ class DeduplicateCorpus:
         src_outpath: Path,
         trg_outpath: Path,
         stats: FilteringStatistics,
-        max_lines: int,
+        max_lines: Optional[int],
         total_corpus_bytes: int,
     ) -> None:
         self.datasets_src: list[Path] = datasets_src
@@ -102,15 +107,17 @@ class DeduplicateCorpus:
     def yield_lines_tuple(self, stack: ExitStack) -> Generator[tuple[str, str], None, None]:
         strings_seen = WeakStringSet()
         stats = self.stats
-        src_lines = stack.enter_context(
+        src_lines: Generator[str, None, None] = stack.enter_context(
             read_lines(self.datasets_src, on_enter_location=self.on_enter_location)
         )
-        trg_lines = stack.enter_context(
+        trg_lines: Generator[str, None, None] = stack.enter_context(
             read_lines(self.datasets_trg, on_enter_location=log_dataset)
         )
 
         for src_line, trg_line in zip(src_lines, trg_lines):
+            # No separator is needed as the newline is included.
             line = src_line + trg_line
+
             if line in strings_seen:
                 stats.parallel_corpus.filtered += 1
                 self.dataset_stats.filtered += 1
@@ -118,10 +125,9 @@ class DeduplicateCorpus:
                 stats.parallel_corpus.kept += 1
                 self.dataset_stats.kept += 1
 
-            # No separator is needed as the newline is included.
-            strings_seen.add(src_line + trg_line)
+                strings_seen.add(line)
 
-            yield src_line, trg_line
+                yield src_line, trg_line
 
     def yield_lines_string(self, stack: ExitStack) -> Generator[str, None, None]:
         for src_line, trg_line in self.yield_lines_tuple(stack):
@@ -135,43 +141,6 @@ class DeduplicateCorpus:
     def on_enter_location(self, location):
         log_dataset(location)
         self.dataset_stats = self.stats.add_parallel_dataset(location)
-
-
-def deduplicate_data(
-    datasets_src: list[Path],
-    datasets_trg: list[Path],
-    src_outpath: Path,
-    trg_outpath: Path,
-    stats: FilteringStatistics,
-) -> None:
-    strings_seen = WeakStringSet()
-    dataset_stats: FilteringStep = None
-
-    def on_enter_src(location: str):
-        log_dataset(location)
-        nonlocal dataset_stats
-        dataset_stats = stats.add_parallel_dataset(location)
-
-    with ExitStack() as stack:
-        src_lines = stack.enter_context(read_lines(datasets_src, on_enter_location=on_enter_src))
-        trg_lines = stack.enter_context(read_lines(datasets_trg, on_enter_location=log_dataset))
-        src_outfile = stack.enter_context(write_lines(src_outpath))
-        trg_outfile = stack.enter_context(write_lines(trg_outpath))
-
-        for src_line, trg_line in zip(src_lines, trg_lines):
-            line = src_line + trg_line
-            if line in strings_seen:
-                stats.parallel_corpus.filtered += 1
-                dataset_stats.filtered += 1
-            else:
-                stats.parallel_corpus.kept += 1
-                dataset_stats.kept += 1
-
-            # No separator is needed as the newline is included.
-            strings_seen.add(src_line + trg_line)
-
-            src_outfile.write(src_line)
-            trg_outfile.write(trg_line)
 
 
 def sample_corpus(
@@ -224,6 +193,7 @@ def get_datasets(src: str, trg: str, datasets_glob: str):
     dataset_paths: list[str] = glob(datasets_glob)
     datasets_src: list[Path] = []
     datasets_trg: list[Path] = []
+    dataset_paths.sort()
 
     total_corpus_bytes = 0
 
@@ -248,6 +218,17 @@ def main() -> None:
         description=__doc__,
         # Preserves whitespace in the help text.
         formatter_class=argparse.RawTextHelpFormatter,
+    )
+    parser.add_argument(
+        "--src",
+        type=str,
+        help="The source locale",
+    )
+
+    parser.add_argument(
+        "--trg",
+        type=str,
+        help="The target locale",
     )
 
     parser.add_argument(
@@ -290,13 +271,18 @@ def main() -> None:
     src_outpath = args.artifacts / f"{args.name}.{args.src}.zst"
     trg_outpath = args.artifacts / f"{args.name}.{args.trg}.zst"
 
-    stats = FilteringStatistics()
+    stats = FilteringStatistics(args.artifacts / args.name)
 
-    deduplicate_data(
+    max_lines: Optional[int] = None
+    if args.max_lines != "None":
+        max_lines = int(args.max_lines)
+
+    DeduplicateCorpus(
         datasets_src=datasets_src,
         datasets_trg=datasets_trg,
         src_outpath=src_outpath,
         trg_outpath=trg_outpath,
+        max_lines=max_lines,
         stats=stats,
         total_corpus_bytes=total_corpus_bytes,
     )

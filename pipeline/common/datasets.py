@@ -310,6 +310,7 @@ class Statistics:
         with open(path, "w", encoding="utf-8") as json_file:
             json.dump(obj, json_file, indent=2)
             json_file.write("\n")
+
         return path
 
     def _is_subclass(value: any):
@@ -400,12 +401,6 @@ class CountingStep(Statistics):
         super().__init__(dataset_path)
         self.description = description
         self.value = value
-
-    def as_json(self) -> dict:
-        return {
-            "description": self.description,
-            "value": self.value,
-        }
 
 
 class WeakStringSet(Set):

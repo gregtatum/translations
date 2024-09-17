@@ -71,7 +71,7 @@ class FilteringStatistics(Statistics):
             "How many lines were actually written. Smaller lines will be combined together.",
         )
 
-    def count_shards_visited(self):
+    def count_shards_visited(self, *_args):
         self.shards.filtered -= 1
         self.shards.kept += 1
 
@@ -148,7 +148,7 @@ def download_hplt(
         # enough fluent sentences are collected. At this point the remaining shards
         # will not be visited.
         document_stream = stack.enter_context(
-            read_lines(shuffled_shard_urls, on_enter_location=stats.count_shards_visited)
+            read_lines(shuffled_shard_urls, on_enter_location=stats.count_shards_visited())
         )
 
         strings_seen = WeakStringSet()

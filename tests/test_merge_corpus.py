@@ -1,185 +1,207 @@
+import json
 import pytest
 from fixtures import DataDir
 
 from pipeline.common.downloads import read_lines
 
-ada_en = """ADA 1
-ADA 2
-ADA 3
-SHARED 1
-SHARED 2
-ADA 4
-ADA 5
-"""
+ada = [
+    ("ADA 1", "АДА 1"),
+    ("ADA 2", "АДА 2"),
+    ("ADA 3", "АДА 3"),
+    ("SHARED 1", "ШАРЕД 1"),
+    ("SHARED 2", "ШАРЕД 2"),
+    ("ADA 4", "АДА 4"),
+    ("ADA 5", "АДА 5"),
+]
+wiki = [
+    ("WIKI 1", "WИКИ 1"),
+    ("WIKI 2", "WИКИ 2"),
+    ("SHARED 3", "ШАРЕД 3"),
+    ("SHARED 4", "ШАРЕД 4"),
+    ("WIKI 3", "WИКИ 3"),
+    ("SHARED 1", "ШАРЕД 1"),
+    ("WIKI 4", "WИКИ 4"),
+]
+web_acquired = [
+    ("WEB_ACQUIRED 1", "WЕБ_АЦQУИРЕД 1"),
+    ("WEB_ACQUIRED 2", "WЕБ_АЦQУИРЕД 2"),
+    ("SHARED 3", "ШАРЕД 3"),
+    ("SHARED 4", "ШАРЕД 4"),
+    ("WEB_ACQUIRED 3", "WЕБ_АЦQУИРЕД 3"),
+    ("SHARED 2", "ШАРЕД 2"),
+    ("WEB_ACQUIRED 4", "WЕБ_АЦQУИРЕД 4"),
+]
 
-wiki_en = """WIKI 1
-WIKI 2
-SHARED 3
-SHARED 4
-WIKI 3
-SHARED 1
-WIKI 4
-"""
 
-web_acquired_en = """WEB_ACQUIRED 1
-WEB_ACQUIRED 2
-SHARED 3
-SHARED 4
-WEB_ACQUIRED 3
-SHARED 2
-WEB_ACQUIRED 4
-"""
-
-ada_ru = """АДА 1
-АДА 2
-АДА 3
-ШАРЕД 1
-ШАРЕД 2
-АДА 4
-АДА 5
-"""
-
-wiki_ru = """WИКИ 1
-WИКИ 2
-ШАРЕД 3
-ШАРЕД 4
-WИКИ 3
-ШАРЕД 1
-WИКИ 4
-"""
-
-web_acquired_ru = """WЕБ_АЦQУИРЕД 1
-WЕБ_АЦQУИРЕД 2
-ШАРЕД 3
-ШАРЕД 4
-WЕБ_АЦQУИРЕД 3
-ШАРЕД 2
-WЕБ_АЦQУИРЕД 4
-"""
+def build_dataset_contents(lines: list[tuple[str, str]], index):
+    return "\n".join([line[index] for line in lines]) + "\n"
 
 
 @pytest.fixture(scope="function")
 def data_dir():
     data_dir = DataDir("test_merge_corpus")
     data_dir.mkdir("artifacts")
-    data_dir.create_zst("ada83_v1.en.zst", ada_en)
-    data_dir.create_zst("ada83_v1.ru.zst", ada_ru)
-    data_dir.create_zst("ELRC-3075-wikipedia_health_v1.en.zst", wiki_en)
-    data_dir.create_zst("ELRC-3075-wikipedia_health_v1.ru.zst", wiki_ru)
-    data_dir.create_zst("ELRC-web_acquired_data.en.zst", web_acquired_en)
-    data_dir.create_zst("ELRC-web_acquired_data.ru.zst", web_acquired_ru)
+    data_dir.create_zst("ada83_v1.en.zst", build_dataset_contents(ada, 0))
+    data_dir.create_zst("ada83_v1.ru.zst", build_dataset_contents(ada, 1))
+    data_dir.create_zst("ELRC-3075-wikipedia_health_v1.en.zst", build_dataset_contents(wiki, 0))
+    data_dir.create_zst("ELRC-3075-wikipedia_health_v1.ru.zst", build_dataset_contents(wiki, 1))
+    data_dir.create_zst("ELRC-web_acquired_data.en.zst", build_dataset_contents(web_acquired, 0))
+    data_dir.create_zst("ELRC-web_acquired_data.ru.zst", build_dataset_contents(web_acquired, 1))
     return data_dir
 
 
-def assert_datasets(data_dir: DataDir, en_path: str, ru_path: str):
-    with read_lines(data_dir.join(en_path)) as lines_iter:
+def assert_dataset(data_dir: DataDir, path: str, sorted_lines: list[str]):
+    with read_lines(data_dir.join(path)) as lines_iter:
+        # Sort the dataset, as the sorted lines are easier to scan and reason with.
+        # The datasets is still checked to be shuffled by comparing the original
+        # and sorted lines.
         corpus_lines = list(lines_iter)
-        assert corpus_lines == [
-            "WIKI 1\n",
-            "ADA 5\n",
-            "WEB_ACQUIRED 2\n",
-            "SHARED 3\n",
-            "ADA 3\n",
-            "WEB_ACQUIRED 1\n",
-            "SHARED 4\n",
-            "WEB_ACQUIRED 4\n",
+        corpus_lines_sorted = list(corpus_lines)
+        corpus_lines_sorted.sort()
+
+        assert corpus_lines_sorted == sorted_lines
+        assert corpus_lines != corpus_lines_sorted, "The results are shuffled."
+
+
+@pytest.mark.parametrize(
+    "name",
+    ["corpus", "devset"],
+)
+def test_merge_corpus(data_dir, name):
+    data_dir.run_task(
+        # Tasks merge-corpus-en-ru, and merge-devset-en-ru.
+        f"merge-{name}-en-ru",
+    )
+    data_dir.print_tree()
+    assert_dataset(
+        data_dir,
+        f"artifacts/{name}.en.zst",
+        sorted_lines=[
+            "ADA 1\n",
             "ADA 2\n",
-            "WIKI 4\n",
-            "WIKI 3\n",
-            "SHARED 2\n",
-            "WIKI 2\n",
-            "SHARED 1\n",
-            "ADA 4\n",
-            "ADA 1\n",
-            "WEB_ACQUIRED 3\n",
-        ]
-
-    with read_lines(data_dir.join(ru_path)) as lines_iter:
-        corpus_lines = list(lines_iter)
-        assert corpus_lines == [
-            "WИКИ 1\n",
-            "АДА 5\n",
-            "WЕБ_АЦQУИРЕД 2\n",
-            "ШАРЕД 3\n",
-            "АДА 3\n",
-            "WЕБ_АЦQУИРЕД 1\n",
-            "ШАРЕД 4\n",
-            "WЕБ_АЦQУИРЕД 4\n",
-            "АДА 2\n",
-            "WИКИ 4\n",
-            "WИКИ 3\n",
-            "ШАРЕД 2\n",
-            "WИКИ 2\n",
-            "ШАРЕД 1\n",
-            "АДА 4\n",
-            "АДА 1\n",
-            "WЕБ_АЦQУИРЕД 3\n",
-        ]
-
-
-def test_merge_corpus(data_dir):
-    data_dir.run_task(
-        "merge-corpus-en-ru",
-    )
-    data_dir.print_tree()
-    assert_datasets(data_dir, "artifacts/corpus.en.zst", "artifacts/corpus.ru.zst")
-
-
-def test_merge_devset(data_dir):
-    data_dir.run_task(
-        "merge-devset-en-ru",
-    )
-    data_dir.print_tree()
-    assert_datasets(data_dir, "artifacts/devset.en.zst", "artifacts/devset.ru.zst")
-
-
-def assert_trimmed_datasets(data_dir: DataDir, en_path: str, ru_path: str):
-    with read_lines(data_dir.join(en_path)) as lines_iter:
-        corpus_lines = list(lines_iter)
-        assert corpus_lines == [
-            "ADA 1\n",
-            "WEB_ACQUIRED 4\n",
-            "WEB_ACQUIRED 3\n",
-            "ADA 4\n",
-            "WEB_ACQUIRED 2\n",
-            "SHARED 2\n",
-            "SHARED 1\n",
-            "WIKI 2\n",
-            "ADA 5\n",
             "ADA 3\n",
-        ]
+            "ADA 4\n",
+            "ADA 5\n",
+            "SHARED 1\n",
+            "SHARED 2\n",
+            "SHARED 3\n",
+            "SHARED 4\n",
+            "WEB_ACQUIRED 1\n",
+            "WEB_ACQUIRED 2\n",
+            "WEB_ACQUIRED 3\n",
+            "WEB_ACQUIRED 4\n",
+            "WIKI 1\n",
+            "WIKI 2\n",
+            "WIKI 3\n",
+            "WIKI 4\n",
+        ],
+    )
 
-    with read_lines(data_dir.join(ru_path)) as lines_iter:
-        corpus_lines = list(lines_iter)
-        assert corpus_lines == [
-            "АДА 1\n",
-            "WЕБ_АЦQУИРЕД 4\n",
-            "WЕБ_АЦQУИРЕД 3\n",
-            "АДА 4\n",
+    assert_dataset(
+        data_dir,
+        f"artifacts/{name}.ru.zst",
+        sorted_lines=[
+            "WЕБ_АЦQУИРЕД 1\n",
             "WЕБ_АЦQУИРЕД 2\n",
-            "ШАРЕД 2\n",
-            "ШАРЕД 1\n",
+            "WЕБ_АЦQУИРЕД 3\n",
+            "WЕБ_АЦQУИРЕД 4\n",
+            "WИКИ 1\n",
             "WИКИ 2\n",
-            "АДА 5\n",
+            "WИКИ 3\n",
+            "WИКИ 4\n",
+            "АДА 1\n",
+            "АДА 2\n",
             "АДА 3\n",
-        ]
+            "АДА 4\n",
+            "АДА 5\n",
+            "ШАРЕД 1\n",
+            "ШАРЕД 2\n",
+            "ШАРЕД 3\n",
+            "ШАРЕД 4\n",
+        ],
+    )
+
+    assert json.loads(data_dir.load(f"artifacts/{name}.stats.json")) == {
+        "parallel_corpus": {
+            "description": "How much of the data was retained across all of the parallel corpora",
+            "filtered": 4,
+            "kept": 17,
+            "visited": 21,
+        },
+        "datasets": [
+            {
+                "description": "ELRC-3075-wikipedia_health_v1",
+                "filtered": 0,
+                "kept": 7,
+                "visited": 7,
+            },
+            {"description": "ELRC-web_acquired_data", "filtered": 2, "kept": 5, "visited": 7},
+            {"description": "ada83_v1", "filtered": 2, "kept": 5, "visited": 7},
+        ],
+    }
 
 
-def test_merge_devset_trimmed(data_dir):
+@pytest.mark.parametrize(
+    "name",
+    ["corpus", "devset"],
+)
+def test_merge_devset_trimmed(data_dir, name):
     data_dir.run_task(
-        "merge-devset-en-ru",
+        # Tasks merge-corpus-en-ru, and merge-devset-en-ru.
+        f"merge-{name}-en-ru",
         # Replace the max_sentences.
         replace_args=[("None", "10")],
     )
     data_dir.print_tree()
-    assert_trimmed_datasets(data_dir, "artifacts/devset.en.zst", "artifacts/devset.ru.zst")
-
-
-def test_merge_corpus_trimmed(data_dir):
-    data_dir.run_task(
-        "merge-corpus-en-ru",
-        # Replace the max_sentences.
-        replace_args=[("None", "10")],
+    assert_dataset(
+        data_dir,
+        f"artifacts/{name}.en.zst",
+        sorted_lines=[
+            "ADA 1\n",
+            "ADA 3\n",
+            "ADA 4\n",
+            "ADA 5\n",
+            "SHARED 1\n",
+            "SHARED 2\n",
+            "SHARED 3\n",
+            "WIKI 1\n",
+            "WIKI 2\n",
+            "WIKI 4\n",
+        ],
     )
-    data_dir.print_tree()
-    assert_trimmed_datasets(data_dir, "artifacts/corpus.en.zst", "artifacts/corpus.ru.zst")
+
+    assert_dataset(
+        data_dir,
+        f"artifacts/{name}.ru.zst",
+        sorted_lines=[
+            "WИКИ 1\n",
+            "WИКИ 2\n",
+            "WИКИ 4\n",
+            "АДА 1\n",
+            "АДА 3\n",
+            "АДА 4\n",
+            "АДА 5\n",
+            "ШАРЕД 1\n",
+            "ШАРЕД 2\n",
+            "ШАРЕД 3\n",
+        ],
+    )
+
+    assert json.loads(data_dir.load(f"artifacts/{name}.stats.json")) == {
+        "parallel_corpus": {
+            "description": "How much of the data was retained across all of the parallel corpora",
+            "filtered": 4,
+            "kept": 17,
+            "visited": 21,
+        },
+        "datasets": [
+            {
+                "description": "ELRC-3075-wikipedia_health_v1",
+                "filtered": 0,
+                "kept": 7,
+                "visited": 7,
+            },
+            {"description": "ELRC-web_acquired_data", "filtered": 2, "kept": 5, "visited": 7},
+            {"description": "ada83_v1", "filtered": 2, "kept": 5, "visited": 7},
+        ],
+    }
