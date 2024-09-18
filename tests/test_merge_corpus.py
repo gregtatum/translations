@@ -123,10 +123,16 @@ def test_merge_corpus(data_dir, name):
 
     assert json.loads(data_dir.load(f"artifacts/{name}.stats.json")) == {
         "parallel_corpus": {
-            "description": "How much of the data was retained across all of the parallel corpora",
+            "description": "The parallel corpora are merged and deduplicated",
             "filtered": 4,
             "kept": 17,
             "visited": 21,
+        },
+        "final_truncated": {
+            "description": "The final result can be truncated by max_lines",
+            "filtered": 0,
+            "kept": 17,
+            "visited": 17,
         },
         "datasets": [
             {
@@ -189,10 +195,16 @@ def test_merge_devset_trimmed(data_dir, name):
 
     assert json.loads(data_dir.load(f"artifacts/{name}.stats.json")) == {
         "parallel_corpus": {
-            "description": "How much of the data was retained across all of the parallel corpora",
+            "description": "The parallel corpora are merged and deduplicated",
             "filtered": 4,
             "kept": 17,
             "visited": 21,
+        },
+        "final_truncated": {
+            "description": "The final result can be truncated by max_lines",
+            "filtered": 7,
+            "kept": 10,
+            "visited": 17,
         },
         "datasets": [
             {
