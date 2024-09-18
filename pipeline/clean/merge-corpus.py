@@ -19,6 +19,7 @@ from glob import glob
 from pathlib import Path
 from typing import Generator, Optional
 from pipeline.common.datasets import (
+    CountingStep,
     FilteringStep,
     Statistics,
     WeakStringSet,
@@ -33,21 +34,17 @@ logger = get_logger(__file__)
 MAX_WORDS_IN_SENTENCE = 100
 
 
-@dataclass
 class FilteringStatistics(Statistics):
     """
     Gather statistics about the filtering process.
     """
 
-    parallel_corpus: FilteringStep
-    datasets: list[FilteringStep]
-
     def __init__(self, dataset_path: Path) -> None:
         super().__init__(dataset_path)
         self.parallel_corpus = FilteringStep(
-            dataset_path,
-            "How much of the data was retained across all of the parallel corpora",
+            "The parallel corpora are merged and deduplicated",
         )
+        self.final_truncated = FilteringStep("The final result can be truncated by max_lines")
         self.datasets = []
 
     def add_parallel_dataset(self, location: str):
@@ -55,9 +52,7 @@ class FilteringStatistics(Statistics):
         path = Path(location)
         # e.g. ada83_v1
         dataset_stem = Path(path.stem).stem
-        # e.g. /path/to/ada83_v1
-        location_stem = path.parent / dataset_stem
-        step = FilteringStep(location_stem, dataset_stem)
+        step = FilteringStep(dataset_stem)
         self.datasets.append(step)
         return step
 
@@ -99,10 +94,16 @@ class DeduplicateCorpus:
                     src_line, trg_line = line.split("\t")
                     src_outfile.write(src_line)
                     trg_outfile.write(trg_line)
+
+                stats.final_truncated.visited = stats.parallel_corpus.kept
+                stats.final_truncated.kept = min(max_lines, stats.parallel_corpus.kept)
             else:
                 for src_line, trg_line in self.yield_lines_tuple(stack):
                     src_outfile.write(src_line)
                     trg_outfile.write(trg_line)
+
+                stats.final_truncated.kept = stats.parallel_corpus.kept
+                stats.final_truncated.visited = stats.parallel_corpus.kept
 
     def yield_lines_tuple(self, stack: ExitStack) -> Generator[tuple[str, str], None, None]:
         strings_seen = WeakStringSet()
