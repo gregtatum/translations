@@ -195,16 +195,16 @@ hplt_stats = {
             "description": "How many lines were visited and kept from the HPLT documents.",
         },
         "document_count": {
-            "value": 15,
             "description": "How many documents were visited. This can help represent data diversity.",
+            "value": 15,
         },
         "duplicate_lines": {
-            "value": 27,
             "description": "Of the collected lines, this counts how many were duplicates and discarded.",
+            "value": 27,
         },
         "final_lines": {
-            "value": 100,
             "description": "How many lines were actually written. Smaller lines will be combined together.",
+            "value": 100,
         },
     },
     "ru": {
@@ -219,16 +219,16 @@ hplt_stats = {
             "description": "How many lines were visited and kept from the HPLT documents.",
         },
         "document_count": {
-            "value": 22,
             "description": "How many documents were visited. This can help represent data diversity.",
+            "value": 22,
         },
         "duplicate_lines": {
-            "value": 33,
             "description": "Of the collected lines, this counts how many were duplicates and discarded.",
+            "value": 33,
         },
         "final_lines": {
-            "value": 100,
             "description": "How many lines were actually written. Smaller lines will be combined together.",
+            "value": 100,
         },
     },
 }
