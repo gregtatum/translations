@@ -99,6 +99,7 @@ tasks:
             env:
                 CUDA_DIR: fetches/cuda-toolkit
                 CUDNN_DIR: fetches/cuda-toolkit
+                # This is provided as an environment variable to allow tests to override it.
                 MARIAN: $MOZ_FETCHES_DIR
             # 128 happens when cloning this repository fails
             retry-exit-status: [128]

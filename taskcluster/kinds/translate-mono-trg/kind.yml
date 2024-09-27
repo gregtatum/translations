@@ -99,6 +99,8 @@ tasks:
             env:
                 CUDA_DIR: fetches/cuda-toolkit
                 CUDNN_DIR: fetches/cuda-toolkit
+                # This is provided as an environment variable to allow tests to override it.
+                MARIAN: $MOZ_FETCHES_DIR
             # 128 happens when cloning this repository fails
             retry-exit-status: [128]
 
@@ -115,10 +117,12 @@ tasks:
                 - >-
                     export PYTHONPATH=$PYTHONPATH:$VCS_PATH &&
                     python3 $VCS_PATH/pipeline/translate/translate.py
-                    --input      $MOZ_FETCHES_DIR/file.{{this_chunk}}.zst
-                    --models     $MOZ_FETCHES_DIR/*.npz
-                    --artifacts  $TASK_WORKDIR/artifacts
-                    --vocab      $MOZ_FETCHES_DIR/vocab.spm
-                    --marian_dir $MOZ_FETCHES_DIR
+                    --input       "$MOZ_FETCHES_DIR/file.{{this_chunk}}.zst"
+                    --models_glob "$MOZ_FETCHES_DIR/*.npz"
+                    --artifacts   "$TASK_WORKDIR/artifacts"
+                    --vocab       "$MOZ_FETCHES_DIR/vocab.spm"
+                    --marian_dir  "$MARIAN"
+                    --gpus        "$GPUS"
+                    --workspace   "$WORKSPACE"
                     --
                     {marian_args}
