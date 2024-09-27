@@ -37,8 +37,8 @@ tasks:
             cache:
                 type: translate-mono-src
                 resources:
-                    - pipeline/translate/translate.sh
-                    - taskcluster/scripts/pipeline/translate-taskcluster.sh
+                    - pipeline/translate/translate-ctranslate2.py
+                    - pipeline/translate/requirements/translate-ctranslate2.txt
                 from-parameters:
                     split_chunks: training_config.taskcluster.split-chunks
 
@@ -107,13 +107,12 @@ tasks:
                 - bash
                 - -xc
                 - >-
-                    export MARIAN=$MOZ_FETCHES_DIR &&
-                    $VCS_PATH/taskcluster/scripts/pipeline/translate-taskcluster.sh
-                    $MOZ_FETCHES_DIR/file.{this_chunk}.zst
-                    artifacts
-                    plain
-                    $MOZ_FETCHES_DIR/vocab.spm
-                    $MOZ_FETCHES_DIR/model*/*.npz
+                    pip3 install -r $VCS_PATH/pipeline/translate/requirements/translate-ctranslate2.txt &&
+                    python3 $VCS_PATH/pipeline/translate/translate-ctranslate2.py
+                    --data $MOZ_FETCHES_DIR/file.{this_chunk}.zst
+                    --teacher_models $MOZ_FETCHES_DIR/model*/*.npz
+                    --vocab $MOZ_FETCHES_DIR/vocab.spm
+                    --output_dir $TASK_WORKDIR/artifacts
 
         fetches:
             toolchain:
