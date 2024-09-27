@@ -1,13 +1,15 @@
 from collections.abc import Iterable
 import hashlib
 import json
+from logging import Logger
 import os
+import subprocess
 import tempfile
 from dataclasses import dataclass
 from io import TextIOWrapper
 from pathlib import Path
 from random import Random
-from typing import Callable, Iterator, Optional, Set, Union
+from typing import Callable, Iterator, Literal, Optional, Set, Union
 from urllib.parse import urlparse
 import unicodedata
 
@@ -450,3 +452,111 @@ class WeakStringSet(Set):
         """
         cleaned_line = unicodedata.normalize("NFC", string.strip())
         return hash(cleaned_line)
+
+
+def decompress(
+    source: Union[str, Path],
+    remove: bool = False,
+    destination: Optional[Union[Path, str]] = None,
+    logger: Optional[Logger] = None,
+) -> Path:
+    """
+    Decompresses a file using the appropriate command based on its file extension.
+
+    Args:
+    file_path: The path to the file to be decompressed
+    remove: If set to `True`, the original compressed file will be removed after decompression.
+    destination: Be default the file will be decompressed next to the original. This arguments
+                 allows for overriding the destination.
+    logger: Log information about the decompression
+    """
+    if isinstance(source, str):
+        source = Path(source)
+    if not destination:
+        destination = source.parent / source.stem
+
+    if source.suffix == ".zst":
+        command = "zstdmt"
+    elif source.suffix == ".gz":
+        command = "gz"
+    else:
+        raise Exception(f"Unknown file type to decompress: {source}")
+
+    extra_args = []
+    if remove:
+        extra_args.append("--rm")
+
+    if logger:
+        logger.info(f"[decompress] From: {source}")
+        logger.info(f"[decompress] To: {destination}")
+
+    subprocess.check_call(
+        [command, "--decompress", "--force", "-o", destination, *extra_args, source]
+    )
+
+    if remove:
+        logger.info(f"[decompress] Removed: {source}")
+
+    return destination
+
+
+def compress(
+    source: Union[str, Path],
+    destination: Optional[Union[Path, str]] = None,
+    remove: bool = False,
+    compression_type: Union[Literal["zst"], Literal["gz"]] = None,
+    logger: Optional[Logger] = None,
+) -> Path:
+    """
+    Compress a file using the appropriate command based on its file extension.
+
+    Args:
+    source:     The path to the file to be compressed
+    destination: Be default the file will be compressed next to the original. This arguments
+                 allows for overriding the destination.
+    remove:      If set to `True`, the original decompressed file will be removed.
+    type:        The type defaults to "zst", and is implied by the destination, however it can
+                 be explicitly set.
+    logger:      Log information about the compression
+    """
+    if isinstance(source, str):
+        source = Path(source)
+    if isinstance(destination, str):
+        destination = Path(destination)
+
+    # Ensure the compression type is valid and present
+    if compression_type and destination:
+        assert f".{type}" == destination.suffix, "The compression type and destination must match."
+
+    if not compression_type:
+        if destination:
+            compression_type = destination.suffix[1:]
+        else:
+            compression_type = "zst"
+
+    if compression_type == "zst":
+        command = "zstdmt"
+    elif compression_type == ".gz":
+        command = "gz"
+    else:
+        raise Exception("Unsupported compression type: {compression_type}")
+
+    # Set default destination if not provided
+    if not destination:
+        destination = source.with_suffix(f"{source.suffix}.{compression_type}")
+
+    extra_args = []
+    if remove:
+        extra_args.append("--rm")
+
+    if logger:
+        logger.info(f"Compressing: {source}")
+        logger.info(f"Destination: {destination}")
+    subprocess.check_call(
+        [command, "--compress", "--force", *extra_args, source, "-o", destination]
+    )
+
+    if remove:
+        logger.info(f"Removed {source}")
+
+    return destination

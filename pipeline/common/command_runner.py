@@ -62,7 +62,7 @@ def run_command_pipeline(
         it will log the constructed pipeline commands. Defaults to None.
 
     Example:
-      python_scripts = run_pipeline(
+      python_scripts = run_command_pipeline(
         [
             ["ls", "-l"],
             ["grep", ".py"],
@@ -94,3 +94,32 @@ def run_command_pipeline(
         return subprocess.check_output(command_string, shell=True).decode("utf-8")
 
     subprocess.check_call(command_string, shell=True)
+
+
+def run_command(command: list[str], capture=False, logger=None) -> str | None:
+    """
+    Runs a command and outputs a nice representation of the command to a logger, if supplied.
+
+    Args:
+      command: The command arguments provided to subprocess.check_call
+      capture: If True, captures and returns the output of the final command in the
+        pipeline. If False, output is printed to stdout.
+      logger: A logger instance used for logging the command execution. If provided,
+        it will log the pipeline commands.
+
+    Example:
+      directory_listing = run_command(
+        ["ls", "-l"],
+        capture=True
+      )
+    """
+    if logger:
+        # Log out a nice representation of this command.
+        logger.info("Running:")
+        for line in _get_indented_command_string(command).split("\n"):
+            logger.info(line)
+
+    if capture:
+        return subprocess.check_output(command).decode("utf-8")
+
+    subprocess.check_call(command)
