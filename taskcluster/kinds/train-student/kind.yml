@@ -100,8 +100,8 @@ tasks:
                     pip3 install $VCS_PATH/tracking &&
                     export PATH="$HOME/.local/bin:$PATH" &&
                     export MARIAN=$MOZ_FETCHES_DIR &&
-                    $VCS_PATH/pipeline/train/truncate.sh corpus.{src_locale}.zst &&
-                    $VCS_PATH/pipeline/train/truncate.sh corpus.{trg_locale}.zst &&
+                    $VCS_PATH/pipeline/train/truncate.sh $MOZ_FETCHES_DIR/corpus.{src_locale}.zst &&
+                    $VCS_PATH/pipeline/train/truncate.sh $MOZ_FETCHES_DIR/corpus.{trg_locale}.zst &&
                     $VCS_PATH/taskcluster/scripts/pipeline/train_taskcluster.py
                     student
                     train
