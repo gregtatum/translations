@@ -5,7 +5,7 @@ experiment:
     default-threshold: 0.5
   mono-max-sentences-src: 500000000
   mono-max-sentences-trg: 200000000
-  name: mono_50_percent
+  name: mono_25_percent
   opuscleaner-mode: defaults
   pretrained-models: {}
   spm-sample-size: 10000000
