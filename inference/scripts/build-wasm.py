@@ -41,8 +41,13 @@ parser.add_argument(
     action="store_true",
     help="Build with debug symbols, useful for profiling",
 )
+parser.add_argument(
+    "-j",
+    type=int,
+    help="Number of cores to use for building (default: all available cores)",
+)
 
-ArgNamespace = namedtuple("ArgNamespace", ["clobber", "debug"])
+ArgNamespace = namedtuple("ArgNamespace", ["clobber", "debug", "j"])
 
 
 def ensure_docker():
@@ -158,8 +163,9 @@ def build_bergamot(args: ArgNamespace):
         print("\n🏃 Running CMake for Bergamot\n")
         run_shell(f"emcmake cmake -DCOMPILE_WASM=on -DWORMHOLE=off {flags} {INFERENCE_PATH}")
 
-        print("\n🏃 Building Bergamot with emmake\n")
-        run_shell(f"emmake make -j {multiprocessing.cpu_count()}")
+        cores = args.j if args.j else multiprocessing.cpu_count()
+        print(f"\n🏃 Building Bergamot with emmake using {cores} cores\n")
+        run_shell(f"emmake make -j {cores}")
 
         print("\n🪚 Patching Bergamot for gemm support\n")
         subprocess.check_call(["bash", GEMM_SCRIPT, BUILD_PATH])
