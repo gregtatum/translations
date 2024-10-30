@@ -3,6 +3,7 @@ Translate a corpus using either Marian or CTranslate2.
 """
 
 import argparse
+from enum import Enum
 from glob import glob
 from pathlib import Path
 import tempfile
@@ -11,8 +12,19 @@ from pipeline.common.command_runner import apply_command_args, run_command
 from pipeline.common.datasets import compress, decompress
 from pipeline.common.downloads import count_lines, is_file_empty, write_lines
 from pipeline.common.logging import get_logger
+from pipeline.translate.translate_ctranslate2 import translate_with_ctranslate2
 
 logger = get_logger(__file__)
+
+
+class Decoder(Enum):
+    marian = "marian"
+    ctranslate2 = "ctranslate2"
+
+
+class Device(Enum):
+    cpu = "cpu"
+    gpu = "gpu"
 
 
 def run_marian(
@@ -30,7 +42,7 @@ def run_marian(
     marian_bin = str(marian_dir / "marian-decoder")
     log = input.parent / f"{input.name}.log"
     if is_nbest:
-        extra_args = ["--nbest", *extra_args]
+        extra_args = ["--n-best", *extra_args]
 
     logger.info("Starting Marian to translate")
 
@@ -92,6 +104,18 @@ def main() -> None:
         help="The amount of Marian memory (in MB) to preallocate",
     )
     parser.add_argument(
+        "--decoder",
+        type=Decoder,
+        default=Decoder.marian,
+        help="Either use the normal marian decoder, or opt for CTranslate2.",
+    )
+    parser.add_argument(
+        "--device",
+        type=Device,
+        default=Device.gpu,
+        help="Either use the normal marian decoder, or opt for CTranslate2.",
+    )
+    parser.add_argument(
         "extra_marian_args",
         nargs=argparse.REMAINDER,
         help="Additional parameters for the training script",
@@ -110,6 +134,9 @@ def main() -> None:
     vocab: Path = args.vocab
     gpus: list[str] = args.gpus.split(" ")
     extra_marian_args: list[str] = args.extra_marian_args
+    decoder: Decoder = args.decoder
+    is_nbest: bool = args.nbest
+    device: Device = args.device
 
     # Do some light validation of the arguments.
     assert input_zst.exists(), f"The input file exists: {input_zst}"
@@ -136,6 +163,29 @@ def main() -> None:
             pass
         return
 
+    if decoder == Decoder.ctranslate2:
+        translate_with_ctranslate2(
+            input_zst=input_zst,
+            artifacts=artifacts,
+            extra_marian_args=extra_marian_args,
+            models_glob=models_glob,
+            is_nbest=is_nbest,
+            vocab=[str(vocab)],
+            device=device.value,
+        )
+        return
+
+    # The device flag is for use with CTranslate, but add some assertions here so that
+    # we can be consistent in usage.
+    if device == Device.cpu:
+        assert (
+            "--cpu-threads" in extra_marian_args
+        ), "Marian's cpu should be controlled with the flag --cpu-threads"
+    else:
+        assert (
+            "--cpu-threads" not in extra_marian_args
+        ), "Requested a GPU device, but --cpu-threads was provided"
+
     # Run the training.
     with tempfile.TemporaryDirectory() as temp_dir_str:
         temp_dir = Path(temp_dir_str)
@@ -152,7 +202,7 @@ def main() -> None:
             output=output_txt,
             gpus=gpus,
             workspace=args.workspace,
-            is_nbest=args.nbest,
+            is_nbest=is_nbest,
             # Take off the initial "--"
             extra_args=extra_marian_args[1:],
         )
