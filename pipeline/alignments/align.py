@@ -33,6 +33,7 @@ import zstandard
 from tqdm import tqdm
 
 from pipeline.alignments.tokenizer import tokenize_moses
+from pipeline.common.datasets import decompress
 from pipeline.common.logging import get_logger
 
 logger = get_logger("alignments")
@@ -59,8 +60,8 @@ def run(
     tmp_dir = os.path.join(os.path.dirname(output_path), "tmp_aln")
     os.makedirs(tmp_dir, exist_ok=True)
 
-    corpus_src = decompress(corpus_src)
-    corpus_trg = decompress(corpus_trg)
+    corpus_src = maybe_decompress(corpus_src)
+    corpus_trg = maybe_decompress(corpus_trg)
 
     if tokenization == Tokenization.moses:
         tokenized_src, tokenized_trg = corpus_src + ".moses", corpus_trg + ".moses"
@@ -104,11 +105,9 @@ def run(
     shutil.rmtree(tmp_dir)
 
 
-def decompress(file_path: str):
+def maybe_decompress(file_path: str):
     if file_path.endswith(".zst"):
-        logger.info(f"Decompressing file {file_path}")
-        subprocess.check_call(["zstdmt", "-d", "-f", "--rm", file_path])
-        return file_path[:-4]
+        return str(decompress(file_path, remove=True, logger=logger))
     return file_path
 
 
