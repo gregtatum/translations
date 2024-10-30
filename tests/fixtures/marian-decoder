@@ -8,6 +8,7 @@ source sentences, and saving the arguments to marian-decoder.args.txt.
 
 import json
 import os
+from pathlib import Path
 import sys
 
 artifacts_dir = os.environ.get("TEST_ARTIFACTS")
@@ -20,9 +21,27 @@ if not os.path.exists(artifacts_dir):
 
 # Write the arguments to disk
 arguments = sys.argv[1:]
-with open(os.path.join(artifacts_dir, "marian-decoder.args.txt"), "w") as file:
-    json.dump(arguments, file)
+with open(os.path.join(artifacts_dir, "marian-decoder.args.txt"), "w") as input_path:
+    json.dump(arguments, input_path)
 
 # Output the input but uppercase.
-for line in sys.stdin:
-    print(line.upper(), end="")
+try:
+    # The input was provided as a file.
+
+    input_path = Path(arguments[arguments.index("--input") + 1])
+    output_path = Path(arguments[arguments.index("--output") + 1])
+    assert input_path.exists(), "The input file exists"
+
+    print(f"[marian-decoder] open {input_path}")
+    print(f"[marian-decoder] write out uppercase lines to {output_path}")
+
+    with input_path.open("rt") as input:
+        with output_path.open("wt") as outfile:
+            for line in input:
+                outfile.write(line.upper())
+
+
+except ValueError:
+    # The input is being provided as stdin.
+    for line in sys.stdin:
+        print(line.upper(), end="")

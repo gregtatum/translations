@@ -1,9 +1,44 @@
 normalize: 1.0
 word-penalty: 0
-mini-batch: 16
-mini-batch-words: 500
-maxi-batch: 1000
+precision: float16
+
+# "maxi" and "mini" ares used like "maxi dress" and "mini dress". Each * below represents a token
+# in a src sentence. The sentences are sorted from smallest to largest in the maxi batch, and then
+# chunked into a mini batch. Note that "mini-batch-words" and "mini-batch" are mutually exclusive
+# options. "mini-batch" uses the sentence count, so "mini-batch-words" is prefereable as a more
+# stable metric.
+#
+# "maxi" batch
+# ┌────────────────────────────┐
+# │  "mini" batch              │
+# │  ┌──────────────────────┐  │
+# │  │ *                    │  │
+# │  │ **                   │  │
+# │  │ ****                 │  │
+# │  │ ******               │  │
+# │  │ ********             │  │
+# │  │ *********            │  │
+# │  │ *********            │  │
+# │  └──────────────────────┘  │
+# │  "mini" batch              │
+# │  ┌──────────────────────┐  │
+# │  │ *********            │  │
+# │  │ **********           │  │
+# │  │ **********           │  │
+# │  │ ************         │  │
+# │  │ *************        │  │
+# │  └──────────────────────┘  │
+# │  "mini" batch              │
+# │  ┌──────────────────────┐  │
+# │  │ ***************      │  │
+# │  │ *****************    │  │
+# │  │ ******************** │  │
+# │  └──────────────────────┘  │
+# └────────────────────────────┘
+mini-batch-words: 500 # How many tokens to use to form a mini batch.
+maxi-batch: 1000 # sentences in the maxi batch.
 maxi-batch-sort: src
+
 max-length: 200
 max-length-crop: true
 beam-size: 8
