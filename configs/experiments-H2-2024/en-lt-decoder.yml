@@ -213,7 +213,8 @@ taskcluster:
 target-stage: all-pipeline
 start-stage: train-student
 previous_group_ids:
+  - b8_PxNNiSKWyuugT0V8faA # cefilter
   - YxrSV7eHR62FHcMmWmsZ6w # New kick off. Contains a non-expired base run.
   - LtiIriAwSpeT1-GCYqd9Iw # spring-2024 Evaluate only
   - e6HrD2nFT8S-Hckt18pxlQ # Train teacher 1
-  - WDNdtYFhTG6gh7c1wnAEyw # Train teacher 2
+  # - WDNdtYFhTG6gh7c1wnAEyw # Train teacher 2
