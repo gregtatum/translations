@@ -5,6 +5,7 @@ Translate a corpus using either Marian or CTranslate2.
 import argparse
 from enum import Enum
 from glob import glob
+import os
 from pathlib import Path
 import tempfile
 
@@ -64,6 +65,7 @@ def run_marian(
             *extra_args,
         ],
         logger=logger,
+        env={**os.environ},
     )
 
 

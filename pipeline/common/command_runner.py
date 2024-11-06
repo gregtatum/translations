@@ -97,7 +97,7 @@ def run_command_pipeline(
     subprocess.check_call(command_string, shell=True)
 
 
-def run_command(command: list[str], capture=False, logger=None) -> str | None:
+def run_command(command: list[str], capture=False, logger=None, env=None) -> str | None:
     """
     Runs a command and outputs a nice representation of the command to a logger, if supplied.
 
@@ -107,6 +107,7 @@ def run_command(command: list[str], capture=False, logger=None) -> str | None:
         pipeline. If False, output is printed to stdout.
       logger: A logger instance used for logging the command execution. If provided,
         it will log the pipeline commands.
+      env: The environment object.
 
     Example:
       directory_listing = run_command(
@@ -123,7 +124,7 @@ def run_command(command: list[str], capture=False, logger=None) -> str | None:
     if capture:
         return subprocess.check_output(command).decode("utf-8")
 
-    subprocess.check_call(command)
+    subprocess.check_call(command, env=env)
 
 
 def marian_args_to_dict(extra_marian_args: list[str]) -> dict[str, Union[str, list[str]]]:
