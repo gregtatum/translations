@@ -40,6 +40,7 @@ def download_and_cache(data_dir: DataDir, url: str, cached_filename: str, data_d
     """
     src_dir = Path(__file__).parent.parent
     cached_file = src_dir / "data/tests" / cached_filename
+    cached_file.parent.mkdir(parents=True, exist_ok=True)
     if not cached_file.exists():
         stream_download_to_file(url, cached_file)
     shutil.copy(cached_file, data_dir.join(data_dir_name))
