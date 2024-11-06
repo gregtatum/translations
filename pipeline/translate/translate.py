@@ -66,6 +66,7 @@ def run_marian(
         ],
         logger=logger,
         env={**os.environ},
+        shell=True,
     )
 
 
