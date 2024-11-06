@@ -58,6 +58,7 @@ translations_parser = {path="./tracking/", develop=true}
 taskcluster-taskgraph = "^10.0.1"
 translations_taskgraph = {path="./taskcluster/", develop=true}
 sacremoses = "0.1.1"
+ctranslate2 = "4.3.1"
 
 [tool.black]
 extend-exclude= "/3rd_party"
