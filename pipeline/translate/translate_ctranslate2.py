@@ -7,7 +7,6 @@ https://github.com/OpenNMT/CTranslate2/
 """
 
 from typing import Any, Generator, TextIO
-import yaml
 from enum import Enum
 from glob import glob
 from pathlib import Path

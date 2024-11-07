@@ -3,7 +3,6 @@ import re
 from shlex import join
 import shlex
 import subprocess
-from typing import Union
 
 
 def _get_indented_command_string(command_parts: list[str]) -> str:
