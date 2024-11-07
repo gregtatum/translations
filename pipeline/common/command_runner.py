@@ -131,29 +131,3 @@ def run_command(
         return subprocess.check_output(command).decode("utf-8")
 
     subprocess.check_call(command, env=env)
-
-
-def marian_args_to_dict(extra_marian_args: list[str]) -> dict[str, Union[str, list[str]]]:
-    """
-    Converts marian args, to the dict format.
-
-    e.g. `--precision float16` becomes {"precision": "float16"}
-    """
-    decoder_config = {}
-    key = None
-    for arg in extra_marian_args:
-        if arg.startswith("--"):
-            key = arg[2:]
-        elif key:
-            existing_arg = decoder_config.get(key)
-            if existing_arg is None:
-                decoder_config[key] = arg
-            elif isinstance(existing_arg, list):
-                existing_arg.append(arg)
-            else:
-                # Convert these arguments into a list, since there are multiple
-                decoder_config[key] = [existing_arg, arg]
-        else:
-            raise ValueError("Marian args should start with a --key")
-
-    return decoder_config

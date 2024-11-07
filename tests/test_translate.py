@@ -4,7 +4,7 @@ import shutil
 
 import pytest
 from fixtures import DataDir, en_sample
-from pipeline.common.command_runner import marian_args_to_dict
+from pipeline.common.marian import marian_args_to_dict
 
 fixtures_path = Path(__file__).parent / "fixtures"
 
@@ -16,7 +16,7 @@ def data_dir():
     return data_dir
 
 
-def sanitize_marian_args(data_dir: DataDir, args_list: list[str]):
+def sanitize_marian_args(args_list: list[str]):
     """
     Marian args can have details that reflect the host machine or are unique per run.
     Sanitize those here.
@@ -26,11 +26,12 @@ def sanitize_marian_args(data_dir: DataDir, args_list: list[str]):
     for key, value in args_dict.items():
         if isinstance(value, list):
             for index, value_inner in enumerate(value):
-                if value_inner.startswith("/tmp"):
-                    args_dict[key][index] = "<tmp>/" + Path(value_inner).name
-                if value_inner.startswith(base_dir):
-                    args_dict[key][index] = value_inner.replace(base_dir, "<src>")
-        else:
+                if isinstance(value_inner, str):
+                    if value_inner.startswith("/tmp"):
+                        args_dict[key][index] = "<tmp>/" + Path(value_inner).name
+                    if value_inner.startswith(base_dir):
+                        args_dict[key][index] = value_inner.replace(base_dir, "<src>")
+        elif isinstance(value, str):
             if value.startswith("/tmp"):
                 args_dict[key] = "<tmp>/" + Path(value).name
             if value.startswith(base_dir):
@@ -51,12 +52,12 @@ def test_translate_corpus(data_dir: DataDir):
     )
     data_dir.print_tree()
 
-    assert (
-        data_dir.read_text("artifacts/file.1.nbest.zst") == en_sample.upper()
-    ), "The text is pseudo-translated"
+    output = data_dir.read_text("artifacts/file.1.nbest.zst")
+    for pseudo_translated in en_sample.upper().split("\n"):
+        assert pseudo_translated in output
 
     args = json.loads(data_dir.read_text("marian-decoder.args.txt"))
-    assert sanitize_marian_args(data_dir, args) == {
+    assert sanitize_marian_args(args) == {
         "config": "<src>/pipeline/translate/decoder.yml",
         "vocabs": [
             "<src>/data/tests_data/test_translate/vocab.spm",
@@ -64,6 +65,7 @@ def test_translate_corpus(data_dir: DataDir):
         ],
         "input": "<tmp>/file.1",
         "output": "<tmp>/file.1.nbest",
+        "n-best": True,
         "log": "<tmp>/file.1.log",
         "devices": ["0", "1", "2", "3"],
         "workspace": "12000",
@@ -111,7 +113,7 @@ def test_translate_mono(direction: str, data_dir: DataDir):
     ), "The text is pseudo-translated"
 
     args = json.loads(data_dir.read_text("marian-decoder.args.txt"))
-    assert sanitize_marian_args(data_dir, args) == {
+    assert sanitize_marian_args(args) == {
         "config": "<src>/pipeline/translate/decoder.yml",
         "vocabs": [
             "<src>/data/tests_data/test_translate/vocab.spm",

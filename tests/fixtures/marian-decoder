@@ -11,6 +11,13 @@ import os
 from pathlib import Path
 import sys
 
+src_dir = Path(__file__).parent / "../.."
+if src_dir not in sys.path:
+    sys.path.append(src_dir)
+
+from pipeline.common.marian import get_combined_config
+
+
 artifacts_dir = os.environ.get("TEST_ARTIFACTS")
 
 if not artifacts_dir:
@@ -24,24 +31,53 @@ arguments = sys.argv[1:]
 with open(os.path.join(artifacts_dir, "marian-decoder.args.txt"), "w") as input_path:
     json.dump(arguments, input_path)
 
-# Output the input but uppercase.
-try:
-    # The input was provided as a file.
+for beam_index, arg in enumerate(arguments):
+    if arg in ("-c", "--config"):
+        config_path = Path(arguments[beam_index + 1])
+        break
 
+config_dict = get_combined_config(config_path, arguments)
+is_nbest = "--n-best" in arguments
+beam_size = config_dict.get("beam-size")
+
+
+def output_to_file():
+    """
+    Output to file when the input was a file.
+    """
     input_path = Path(arguments[arguments.index("--input") + 1])
     output_path = Path(arguments[arguments.index("--output") + 1])
     assert input_path.exists(), "The input file exists"
 
     print(f"[marian-decoder] open {input_path}")
     print(f"[marian-decoder] write out uppercase lines to {output_path}")
+    if is_nbest:
+        print(f"[marian-decoder] outputing nbest with a beam size of: {beam_size}")
 
     with input_path.open("rt") as input:
         with output_path.open("wt") as outfile:
-            for line in input:
-                outfile.write(line.upper())
+            for line_index, line in enumerate(input):
+                if is_nbest:
+                    for beam_index in range(beam_size):
+                        outfile.write(f"{line_index} ||| {line.upper().strip()} {beam_index}\n")
+                else:
+                    outfile.write(line.upper())
 
 
-except ValueError:
+def output_to_stdout():
+    """
+    Output to stdout when no input file was provided.
+    """
     # The input is being provided as stdin.
-    for line in sys.stdin:
-        print(line.upper(), end="")
+    for line_index, line in enumerate(sys.stdin):
+        if is_nbest:
+            for beam_index in range(beam_size):
+                print(f"{line_index} ||| {line.upper().strip()} {beam_index}")
+        else:
+            print(line.upper(), end="")
+
+
+try:
+    output_to_file()
+except ValueError:
+    output_to_stdout()

@@ -18,6 +18,7 @@ from ctranslate2.converters.marian import MarianConverter
 
 from pipeline.common.downloads import read_lines, write_lines
 from pipeline.common.logging import get_logger
+from pipeline.common.marian import get_combined_config
 
 
 def load_vocab(path: str):
@@ -59,14 +60,8 @@ def get_model(models_glob: str) -> Path:
 class DecoderConfig:
     def __init__(self, extra_marian_args: list[str]) -> None:
         super().__init__()
-
-        decoder_path = Path(__file__).parent / "decoder.yml"
-
         # Combine the two configs.
-        self.config: dict[str, any] = {
-            **yaml.safe_load(decoder_path.open()),
-            **self.marian_args_to_dict(extra_marian_args),
-        }
+        self.config = get_combined_config(Path(__file__).parent / "decoder.yml", extra_marian_args)
 
         self.mini_batch_words: int = self.get_from_config("mini-batch-words", int)
         self.maxi_batch_sentences: int = self.get_from_config("maxi-batch", int)
@@ -83,23 +78,6 @@ class DecoderConfig:
         if type == int and isinstance(value, str):
             return int(value)
         raise ValueError(f'Expected "{key}" to be of a type "{type}" in the decoder.yml config')
-
-    @staticmethod
-    def marian_args_to_dict(extra_marian_args: list[str]) -> dict:
-        """
-        Converts marian args, to the dict format. This will make the decoder.yml
-        and extra marian args combinable.
-
-        e.g. `--precision float16` becomes {"precision": "float16"}
-        """
-        decoder_config = {}
-        assert len(extra_marian_args) % 2 == 0, "The extra marian args always come in pairs"
-        for index in range(int(len(extra_marian_args) / 2)):
-            key = extra_marian_args[index * 2]
-            value = extra_marian_args[index * 2 + 1]
-            assert key[:2] == "--", "Marian args must start with a --"
-            decoder_config[key[2:]] = value
-        return decoder_config
 
 
 def make_batches(

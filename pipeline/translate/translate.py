@@ -9,13 +9,18 @@ import os
 from pathlib import Path
 import tempfile
 
+import yaml
+
 from pipeline.common.command_runner import apply_command_args, run_command
 from pipeline.common.datasets import compress, decompress
 from pipeline.common.downloads import count_lines, is_file_empty, write_lines
 from pipeline.common.logging import get_logger
+from pipeline.common.marian import get_combined_config
 from pipeline.translate.translate_ctranslate2 import translate_with_ctranslate2
 
 logger = get_logger(__file__)
+
+DECODER_CONFIG_PATH = Path(__file__).parent / "decoder.yml"
 
 
 class Decoder(Enum):
@@ -26,6 +31,10 @@ class Decoder(Enum):
 class Device(Enum):
     cpu = "cpu"
     gpu = "gpu"
+
+
+def get_beam_size(extra_marian_args: list[str]):
+    return get_combined_config(DECODER_CONFIG_PATH, extra_marian_args)["beam-size"]
 
 
 def run_marian(
@@ -213,11 +222,21 @@ def main() -> None:
             # Take off the initial "--"
             extra_args=extra_marian_args[1:],
         )
-        assert count_lines(input_txt) == count_lines(
-            output_txt
-        ), "The input and output had the same number of lines"
 
         compress(output_txt, destination=output_zst, remove=True, logger=logger)
+
+        input_count = count_lines(input_txt)
+        output_count = count_lines(output_zst)
+        if is_nbest:
+            beam_size = get_beam_size(extra_marian_args)
+            expected_output = input_count * beam_size
+            assert (
+                expected_output == output_count
+            ), f"The nbest output had {beam_size}x as many lines ({expected_output} vs {output_count})"
+        else:
+            assert (
+                input_count == output_count
+            ), f"The input ({input_count} and output ({output_count}) had the same number of lines"
 
 
 if __name__ == "__main__":
