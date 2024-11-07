@@ -66,7 +66,6 @@ def run_marian(
         ],
         logger=logger,
         env={**os.environ},
-        shell=True,
     )
 
 
@@ -84,6 +83,7 @@ def main() -> None:
         "--models_glob",
         type=str,
         required=True,
+        nargs="+",
         help="A glob pattern to the Marian model(s)",
     )
     parser.add_argument(
@@ -130,8 +130,11 @@ def main() -> None:
     marian_dir: Path = args.marian_dir
     input_zst: Path = args.input
     artifacts: Path = args.artifacts
-    models_glob: str = args.models_glob
-    models: list[Path] = [Path(path) for path in glob(models_glob)]
+    models_globs: str = args.models_glob
+    models: list[Path] = []
+    for models_glob in models_globs:
+        for path in glob(models_glob):
+            models.append(Path(path))
     postfix = "nbest" if args.nbest else "out"
     output_zst = artifacts / f"{input_zst.stem}.{postfix}.zst"
     vocab: Path = args.vocab
@@ -148,6 +151,7 @@ def main() -> None:
         artifacts.mkdir()
     for gpu_index in gpus:
         assert gpu_index.isdigit(), f'GPUs must be list of numbers: "{gpu_index}"'
+    assert models, "There must be at least one model"
     for model in models:
         assert model.exists(), f"The model file exists {model}"
     if extra_marian_args and extra_marian_args[0] != "--":

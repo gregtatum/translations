@@ -41,6 +41,7 @@ def sanitize_marian_args(data_dir: DataDir, args_list: list[str]):
 
 def test_translate_corpus(data_dir: DataDir):
     data_dir.create_zst("file.1.zst", en_sample)
+    data_dir.create_file("fake-model.npz", "")
     data_dir.run_task(
         "translate-corpus-en-ru-1/10",
         env={
@@ -67,6 +68,7 @@ def test_translate_corpus(data_dir: DataDir):
         "devices": ["0", "1", "2", "3"],
         "workspace": "12000",
         "mini-batch-words": "4000",
+        "models": "<src>/data/tests_data/test_translate/fake-model.npz",
         "precision": "float16",
     }
 
@@ -76,6 +78,7 @@ def test_translate_corpus_empty(data_dir: DataDir):
     Test the case of an empty file.
     """
     data_dir.create_zst("file.1.zst", "")
+    data_dir.create_file("fake-model.npz", "")
     data_dir.run_task(
         "translate-corpus-en-ru-1/10",
         env={
@@ -92,6 +95,7 @@ def test_translate_corpus_empty(data_dir: DataDir):
 @pytest.mark.parametrize("direction", ["src", "trg"])
 def test_translate_mono(direction: str, data_dir: DataDir):
     data_dir.create_zst("file.1.zst", en_sample)
+    data_dir.create_file("fake-model.npz", "")
     data_dir.print_tree()
     data_dir.run_task(
         f"translate-mono-{direction}-en-ru-1/10",
@@ -119,5 +123,6 @@ def test_translate_mono(direction: str, data_dir: DataDir):
         "devices": ["0", "1", "2", "3"],
         "workspace": "12000",
         "mini-batch-words": "4000",
+        "models": "<src>/data/tests_data/test_translate/fake-model.npz",
         "precision": "float16",
     }

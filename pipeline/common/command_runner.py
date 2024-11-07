@@ -1,3 +1,4 @@
+import os
 import re
 from shlex import join
 import shlex
@@ -117,6 +118,9 @@ def run_command(
         capture=True
       )
     """
+    # Expand any environment variables.
+    command = [os.path.expandvars(part) for part in command]
+
     if logger:
         # Log out a nice representation of this command.
         logger.info("Running:")
@@ -126,14 +130,7 @@ def run_command(
     if capture:
         return subprocess.check_output(command).decode("utf-8")
 
-    if env:
-        print("!!! run_command with an environment")
-        print("!!! command", command)
-        print('!!! env["MOZ_FETCHES_DIR"]', env["MOZ_FETCHES_DIR"])
-    else:
-        print("!!! run_command without an environment")
-
-    subprocess.check_call(command, env=env, shell=shell)
+    subprocess.check_call(command, env=env)
 
 
 def marian_args_to_dict(extra_marian_args: list[str]) -> dict[str, Union[str, list[str]]]:
