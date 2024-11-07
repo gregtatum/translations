@@ -126,6 +126,13 @@ def run_command(
     if capture:
         return subprocess.check_output(command).decode("utf-8")
 
+    if env:
+        print("!!! run_command with an environment")
+        print("!!! command", command)
+        print('!!! env["MOZ_FETCHES_DIR"]', env["MOZ_FETCHES_DIR"])
+    else:
+        print("!!! run_command without an environment")
+
     subprocess.check_call(command, env=env, shell=shell)
 
 
