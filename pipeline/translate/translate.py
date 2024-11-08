@@ -4,6 +4,7 @@ Translate a corpus using either Marian or CTranslate2.
 
 import argparse
 from glob import glob
+import os
 from pathlib import Path
 import tempfile
 
