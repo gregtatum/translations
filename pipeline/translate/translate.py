@@ -11,8 +11,15 @@ from pipeline.common.command_runner import apply_command_args, run_command
 from pipeline.common.datasets import compress, decompress
 from pipeline.common.downloads import count_lines, is_file_empty, write_lines
 from pipeline.common.logging import get_logger
+from pipeline.common.marian import get_combined_config
 
 logger = get_logger(__file__)
+
+DECODER_CONFIG_PATH = Path(__file__).parent / "decoder.yml"
+
+
+def get_beam_size(extra_marian_args: list[str]):
+    return get_combined_config(DECODER_CONFIG_PATH, extra_marian_args)["beam-size"]
 
 
 def run_marian(
@@ -30,7 +37,7 @@ def run_marian(
     marian_bin = str(marian_dir / "marian-decoder")
     log = input.parent / f"{input.name}.log"
     if is_nbest:
-        extra_args = ["--nbest", *extra_args]
+        extra_args = ["--n-best", *extra_args]
 
     logger.info("Starting Marian to translate")
 
@@ -52,6 +59,7 @@ def run_marian(
             *extra_args,
         ],
         logger=logger,
+        env={**os.environ},
     )
 
 
@@ -69,6 +77,7 @@ def main() -> None:
         "--models_glob",
         type=str,
         required=True,
+        nargs="+",
         help="A glob pattern to the Marian model(s)",
     )
     parser.add_argument(
@@ -103,13 +112,17 @@ def main() -> None:
     marian_dir: Path = args.marian_dir
     input_zst: Path = args.input
     artifacts: Path = args.artifacts
-    models_glob: str = args.models_glob
-    models: list[Path] = [Path(path) for path in glob(models_glob)]
+    models_globs: str = args.models_glob
+    models: list[Path] = []
+    for models_glob in models_globs:
+        for path in glob(models_glob):
+            models.append(Path(path))
     postfix = "nbest" if args.nbest else "out"
     output_zst = artifacts / f"{input_zst.stem}.{postfix}.zst"
     vocab: Path = args.vocab
     gpus: list[str] = args.gpus.split(" ")
     extra_marian_args: list[str] = args.extra_marian_args
+    is_nbest: bool = args.nbest
 
     # Do some light validation of the arguments.
     assert input_zst.exists(), f"The input file exists: {input_zst}"
@@ -118,6 +131,7 @@ def main() -> None:
         artifacts.mkdir()
     for gpu_index in gpus:
         assert gpu_index.isdigit(), f'GPUs must be list of numbers: "{gpu_index}"'
+    assert models, "There must be at least one model"
     for model in models:
         assert model.exists(), f"The model file exists {model}"
     if extra_marian_args and extra_marian_args[0] != "--":
@@ -152,15 +166,25 @@ def main() -> None:
             output=output_txt,
             gpus=gpus,
             workspace=args.workspace,
-            is_nbest=args.nbest,
+            is_nbest=is_nbest,
             # Take off the initial "--"
             extra_args=extra_marian_args[1:],
         )
-        assert count_lines(input_txt) == count_lines(
-            output_txt
-        ), "The input and output had the same number of lines"
 
         compress(output_txt, destination=output_zst, remove=True, logger=logger)
+
+        input_count = count_lines(input_txt)
+        output_count = count_lines(output_zst)
+        if is_nbest:
+            beam_size = get_beam_size(extra_marian_args)
+            expected_output = input_count * beam_size
+            assert (
+                expected_output == output_count
+            ), f"The nbest output had {beam_size}x as many lines ({expected_output} vs {output_count})"
+        else:
+            assert (
+                input_count == output_count
+            ), f"The input ({input_count} and output ({output_count}) had the same number of lines"
 
 
 if __name__ == "__main__":
