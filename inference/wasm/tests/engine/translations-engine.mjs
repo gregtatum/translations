@@ -43,28 +43,35 @@ export class TranslationsEngine {
    *
    * @param {string} sourceLanguage - The source language code (e.g., 'es').
    * @param {string} targetLanguage - The target language code (e.g., 'fr').
+   * @param {LanguageTranslationModelFiles[]} [languageModelFiles]
    */
-  constructor(sourceLanguage, targetLanguage) {
+  constructor(sourceLanguage, targetLanguage, languageModelFiles) {
     this.#worker = new Worker(WORKER_PATH);
 
     this.#worker.on("message", (data) => this.#handleMessage({ data }));
     this.#worker.on("error", (error) => this.#handleError({ error }));
 
-    this.#isReady = this.#initWorker(sourceLanguage, targetLanguage);
+    this.#isReady = this.#initWorker(
+      sourceLanguage,
+      targetLanguage,
+      languageModelFiles
+    );
   }
 
   /**
    * Private method to initialize the worker by reading necessary files and sending the initialization message.
-   *
+   * @param {LanguageTranslationModelFiles[]} [languageModelFiles]
    * @returns {Promise<void>}
    */
-  async #initWorker(sourceLanguage, targetLanguage) {
+  async #initWorker(sourceLanguage, targetLanguage, languageModelFiles) {
     try {
       const wasmBuffer = await fs.readFile(WASM_PATH);
-      const languageModelFiles = await this.#prepareLanguageModelFiles(
-        sourceLanguage,
-        targetLanguage,
-      );
+      if (!languageModelFiles) {
+        languageModelFiles = await this.#prepareLanguageModelFiles(
+          sourceLanguage,
+          targetLanguage
+        );
+      }
 
       // Return a promise that resolves or rejects based on worker messages
       const isReadyPromise = new Promise((resolve, reject) => {
@@ -132,15 +139,15 @@ export class TranslationsEngine {
 
     const lexPath = path.join(
       langPairDirectory,
-      `lex.50.50.${sourceLanguage}${targetLanguage}.s2t.bin`,
+      `lex.50.50.${sourceLanguage}${targetLanguage}.s2t.bin`
     );
     const modelPath = path.join(
       langPairDirectory,
-      `model.${sourceLanguage}${targetLanguage}.intgemm.alphas.bin`,
+      `model.${sourceLanguage}${targetLanguage}.intgemm.alphas.bin`
     );
     const vocabPath = path.join(
       langPairDirectory,
-      `vocab.${sourceLanguage}${targetLanguage}.spm`,
+      `vocab.${sourceLanguage}${targetLanguage}.spm`
     );
 
     const [lexBuffer, modelBuffer, vocabBuffer] = await Promise.all([

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+from enum import Enum
 import hashlib
 import os
 import shutil
@@ -16,6 +17,11 @@ MODELS_PATH = os.path.join(WASM_TESTS_PATH, "models")
 WASM_ARTIFACT = os.path.join(BUILD_PATH, "bergamot-translator.wasm")
 JS_ARTIFACT = os.path.join(BUILD_PATH, "bergamot-translator.js")
 JS_ARTIFACT_HASH = os.path.join(GENERATED_PATH, "bergamot-translator.js.sha256")
+
+
+class TestSuite(Enum):
+    test = "test"
+    perf = "perf"
 
 
 def calculate_sha256(file_path):
@@ -43,8 +49,10 @@ def main():
         type=int,
         help="Number of cores to use for building (default: all available cores)",
     )
+    parser.add_argument("--test_suite", type=TestSuite, default=TestSuite.test)
     args = parser.parse_args()
 
+    test_suite: TestSuite = args.test_suite
     build_wasm_script = os.path.join(SCRIPTS_PATH, "build-wasm.py")
     build_command = [sys.executable, build_wasm_script]
     if args.clobber:
@@ -86,7 +94,7 @@ def main():
     subprocess.run(["npm", "install"], cwd=WASM_TESTS_PATH, check=True)
 
     print("\n📊 Running Translations WASM JS tests\n")
-    subprocess.run(["npm", "run", "test"], cwd=WASM_TESTS_PATH, check=True)
+    subprocess.run(["npm", "run", test_suite.value], cwd=WASM_TESTS_PATH, check=True)
 
     print("\n✅ test-wasm.py completed successfully.\n")
 

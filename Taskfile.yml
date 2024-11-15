@@ -291,6 +291,12 @@ tasks:
     cmds:
       - poetry run python -W ignore utils/find_corpus.py {{.CLI_ARGS}}
 
+  perf-test:
+    desc: Runs a perf test on a quantized model
+    deps: [poetry-install-utils]
+    cmds:
+      - PYTHONPATH=$(pwd) poetry run python -W ignore utils/perf_test.py {{.CLI_ARGS}}
+
   run-model:
     desc: Run a Marian server that loads a model from data/models/$MODEL_TASK
     deps: [poetry-install-utils]
