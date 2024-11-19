@@ -6,11 +6,13 @@ import re
 import shlex
 import shutil
 import subprocess
+import tarfile
 import time
 from pathlib import Path
 from subprocess import CompletedProcess
 from typing import Iterable, List, Optional, Tuple, Union
 
+import yaml
 import zstandard as zstd
 
 from utils.preflight_check import get_taskgraph_parameters, run_taskgraph
@@ -297,6 +299,69 @@ class DataDir:
                 print(f"{file_text.ljust(span_len - len(bytes))}{bytes} │")
 
         print(f"└{span}┘")
+
+    def install_python_fetches(self, fetches: list[str]):
+        # Load fetch configurations
+        python_fetches = yaml.safe_load(
+            (Path(ROOT_PATH) / "taskcluster/kinds/fetch/python.yml").open()
+        )
+        test_fetches_path = Path(DATA_PATH) / "test_fetches"
+
+        for package in fetches:
+            print(f"Installing {package}")
+            fetch = python_fetches[package]["fetch"]
+
+            if fetch["type"] == "static-url":
+                url: str = fetch["url"]
+                artifact_name: str = fetch["artifact-name"]
+                add_prefix: str = fetch.get("add-prefix", "")
+
+                # Download and unpack the artifact
+                target_dir = test_fetches_path / str(add_prefix)
+                target_dir.mkdir(parents=True, exist_ok=True)
+                artifact_path = target_dir / artifact_name
+
+                # Fetch the artifact
+                subprocess.run(["curl", "-o", artifact_path, url], check=True)
+
+                # Unpack and apply prefix
+                assert artifact_name.endswith(
+                    ".tar.gz"
+                ), "Only .tar.gz files are supported right now"
+                with tarfile.open(artifact_path, "r:gz") as tar:
+                    members = tar.getmembers()
+                    for member in members:
+                        member.path = f"{add_prefix}/{member.path}"
+                    tar.extractall(target_dir)
+
+                # Build the wheel for Python packages
+                if package == "cyhunspell":
+                    setup_path = target_dir / "setup.py"
+                    subprocess.run(
+                        ["python", str(setup_path), "bdist_wheel"], cwd=target_dir, check=True
+                    )
+                    dist_dir = target_dir / "dist"
+                    wheel_files = list(dist_dir.glob("*.whl"))
+                    assert (
+                        len(wheel_files) == 1
+                    ), "Wheel build failed or generated multiple wheels."
+                    wheel_path = wheel_files[0]
+
+                    # Install the wheel
+                    subprocess.run(["pip", "install", str(wheel_path)], check=True)
+
+            elif fetch["type"] == "git":
+                # Handle git fetch type (e.g., for kenlm)
+                repo = fetch["repo"]
+                revision = fetch["revision"]
+                path_prefix = fetch.get("path-prefix", "")
+
+                target_dir = Path(f"./{path_prefix}")
+                if not target_dir.exists():
+                    subprocess.run(["git", "clone", repo, str(target_dir)], check=True)
+                    subprocess.run(["git", "checkout", revision], cwd=target_dir, check=True)
+            else:
+                raise ValueError(f'Unknown fetch type {fetch["type"]}')
 
 
 def split_on_ampersands_operator(command_parts: list[str]) -> list[list[str]]:

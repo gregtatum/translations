@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import tarfile
 from subprocess import CompletedProcess
 
@@ -64,3 +65,22 @@ def test_model_download(src, trg, model_src, model_trg, init, data_dir):
         metadata = yaml.safe_load(f)
     assert metadata["source_lang"] == model_src
     assert metadata["target_lang"] == model_trg
+
+
+def test_bicleaner_task(data_dir: DataDir):
+
+    python_fetches = yaml.safe_load(
+        (Path(__file__).parent / "../taskcluster/kinds/fetch/python.yml").open()
+    )
+    for package in ["hunspell", "cyhunspell", "kenlm"]:
+        python_fetches[package]
+
+    data_dir.run_task("bicleaner-ai-opus-CCMatrix_v1-en-ru")
+    data_dir.print_tree()
+
+
+def test_bicleaner_task2(data_dir: DataDir):
+    # Execute the bicleaner task
+    data_dir.install_python_fetches(["hunspell", "cyhunspell", "kenlm"])
+    data_dir.run_task("bicleaner-ai-opus-CCMatrix_v1-en-ru")
+    data_dir.print_tree()
