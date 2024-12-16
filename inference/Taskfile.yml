@@ -1,0 +1,37 @@
+version: '3'
+
+# This Taskfile can be run from the root directory with `task inference:build` or from the
+# ./inference subdirectory without a namespace `task build`.
+
+tasks:
+  clean:
+    desc: Clean build artifacts from the inference directory.
+    cmds:
+      - ./scripts/clean.sh
+
+  build:
+    desc: Build inference engine.
+    cmds:
+      - ./scripts/build-local.sh
+
+  build-wasm:
+    desc: Build inference engine WASM.
+    cmds:
+      - ./scripts/build-wasm.py {{.CLI_ARGS}}
+
+  build-marian-debug:
+    desc: Performs a release with debug info build of the browsermt Marian fork for native testing.
+    cmds:
+      - cd 3rd_party/browsermt-marian-dev
+      - cmake .. -DCMAKE_BUILD_TYPE=RelWithDebInfo
+      - make
+
+  test-local:
+    desc: Run inference build-local C++ tests.
+    cmds:
+      - ./scripts/unit-tests.sh
+
+  test-wasm:
+    desc: Run inference build-wasm JS tests.
+    cmds:
+      - ./scripts/test-wasm.py {{.CLI_ARGS}}
