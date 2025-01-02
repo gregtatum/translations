@@ -3,7 +3,7 @@ import io
 import json
 import os
 import time
-from contextlib import ExitStack, contextmanager
+from contextlib import AbstractContextManager, ExitStack, contextmanager
 from io import BufferedReader
 from pathlib import Path
 from typing import Callable, Generator, Literal, Optional, Union
@@ -446,7 +446,7 @@ def read_lines(
     path_in_archive: Optional[str] = None,
     on_enter_location: Optional[Callable[[str], None]] = None,
     encoding="utf-8",
-) -> Generator[str, None, None]:
+) -> AbstractContextManager[Generator[str, None, None]]:
     """
     A smart function to efficiently stream lines from a local or remote file.
     The location can either be a URL or a local file system path.
