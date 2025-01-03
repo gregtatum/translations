@@ -4,7 +4,7 @@
 # The documentation for this config can be found here:
 # https://github.com/mozilla/firefox-translations-training/blob/b0b5f25d0289a90619a12e645683cfd671332a85/taskcluster/configs/config.prod.yml
 experiment:
-  name: decoder-emb-depth-5
+  name: decoder-emb-384-depth-4
   src: en
   trg: lt
   best-model: chrf
@@ -204,14 +204,14 @@ marian-args:
   training-student:
     early-stopping: '20'
     # Decoder settings
-    dec-depth: 5
-    dim-emb: 512
+    dec-depth: 4
+    dim-emb: 384
     transformer-dim-ffn: 1536
   training-student-finetuned:
     early-stopping: '20'
     # Decoder settings
-    dec-depth: 5
-    dim-emb: 512
+    dec-depth: 4
+    dim-emb: 384
     transformer-dim-ffn: 1536
 wandb-publication: true
 taskcluster:
