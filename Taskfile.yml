@@ -1,5 +1,10 @@
 version: '3'
 
+includes:
+  inference:
+    taskfile: ./inference/Taskfile.yml
+    dir: ./inference
+
 tasks:
   poetry-install-*:
     internal: true
@@ -85,36 +90,6 @@ tasks:
     deps: [poetry-install-opuscleaner]
     cmds:
       - poetry run opuscleaner-server serve --host=0.0.0.0 --port=8000
-
-  inference-clean:
-    desc: Clean build artifacts from the inference directory.
-    cmds:
-      - >-
-          ./inference/scripts/clean.sh
-
-  inference-build:
-    desc: Build inference engine.
-    cmds:
-      - >-
-          ./inference/scripts/build-local.sh
-
-  inference-build-wasm:
-    desc: Build inference engine WASM.
-    cmds:
-      - >-
-          ./inference/scripts/build-wasm.py {{.CLI_ARGS}}
-
-  inference-test-local:
-    desc: Run inference build-local C++ tests.
-    cmds:
-      - >-
-          ./inference/scripts/unit-tests.sh
-
-  inference-test-wasm:
-    desc: Run inference build-wasm JS tests.
-    cmds:
-      - >-
-          ./inference/scripts/test-wasm.py {{.CLI_ARGS}}
 
   lint-eslint:
     desc: Checks the styling of the JS code with eslint.
