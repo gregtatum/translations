@@ -25,7 +25,7 @@ TranslationModel::TranslationModel(const Config &options, MemoryBundle &&memory 
       textProcessor_(options, vocabs_, std::move(memory_.ssplitPrefixFile)),
 #elif defined(WASM)
       textProcessor_(vocabs_),
-#endif // defined(WASM)
+#endif  // defined(WASM)
       batchingPool_(options),
       qualityEstimator_(createQualityEstimator(getQualityEstimatorModel(memory, options))) {
   ABORT_IF(replicas == 0, "At least one replica needs to be created.");
@@ -100,7 +100,23 @@ void TranslationModel::loadBackend(size_t idx) {
       scorer->setShortlistGenerator(shortlistGenerator_);
     }
   }
+
+  printf("!!! Running the graph forward\n");
   graph->forward();
+  printf("!!! Clearing the model memory\n");
+
+  // At this point the ExpressionGraph has consumed the `std::vector<marian::io::Item>`
+  // and converted them to `Tensor`s. This happens the first time that
+  // `ExpressionGraph::forward` is called. It is relatively safe to clear the `Item`s owned
+  // by the scorer since they will not practically be used again. This will free up memory
+  // in the memory-constrained environment of the browser.
+  for (auto scorer : scorerEnsemble) {
+    scorer->clearItems();
+  }
+
+  // Similarly to the scorers, there is an extra copy of the model in the MemoryBundle. Since
+  // the ExpressionGraph is loaded, it is relatively safe to clear this memory.
+  memory_.models.clear();
 }
 
 // Make request process is shared between Async and Blocking workflow of translating.
@@ -114,7 +130,7 @@ Ptr<Request> TranslationModel::makeRequest(size_t requestId, std::string &&sourc
   ResponseBuilder responseBuilder(responseOptions, std::move(annotatedSource), vocabs_, callback, *qualityEstimator_);
 #if defined(WASM)
   responseBuilder.registerTargetLanguage(targetLanguage_);
-#endif // defined(WASM)
+#endif  // defined(WASM)
 
   Ptr<Request> request =
       New<Request>(requestId, /*model=*/*this, std::move(segments), std::move(responseBuilder), cache);
@@ -130,7 +146,7 @@ Ptr<Request> TranslationModel::makePivotRequest(size_t requestId, AnnotatedText 
   ResponseBuilder responseBuilder(responseOptions, std::move(previousTarget), vocabs_, callback, *qualityEstimator_);
 #if defined(WASM)
   responseBuilder.registerTargetLanguage(targetLanguage_);
-#endif // defined(WASM)
+#endif  // defined(WASM)
 
   Ptr<Request> request = New<Request>(requestId, *this, std::move(segments), std::move(responseBuilder), cache);
   return request;
