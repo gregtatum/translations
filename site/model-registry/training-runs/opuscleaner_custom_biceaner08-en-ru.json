@@ -1,0 +1,166 @@
+{
+  "name": "opuscleaner_custom_biceaner08",
+  "langpair": "en-ru",
+  "source_lang": "en",
+  "target_lang": "ru",
+  "task_group_ids": [
+    "OqeauVDjQdKLrHcqZTT2Fg"
+  ],
+  "date_started": "2024-04-20T17:02:04.632000",
+  "comet_flores_comparison": {
+    "bergamot": 0.8743,
+    "google": 0.9029,
+    "opusmt": 0.8489,
+    "microsoft": 0.8912,
+    "nllb": 0.8586,
+    "argos": 0.8485
+  },
+  "bleu_flores_comparison": {
+    "bergamot": 31.5,
+    "argos": 27.9,
+    "nllb": 27.3,
+    "opusmt": 26.5,
+    "microsoft": 33.5,
+    "google": 34.9
+  },
+  "parallel_corpus_aligned": null,
+  "backtranslations_corpus_aligned": null,
+  "distillation_corpus_aligned": null,
+  "parallel_corpus": {
+    "source_url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/D3NyU70YSSumbxj06D_a0Q/artifacts/public/build/corpus.en.zst",
+    "source_bytes": 1413217698,
+    "target_url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/D3NyU70YSSumbxj06D_a0Q/artifacts/public/build/corpus.ru.zst",
+    "target_bytes": 2120806083
+  },
+  "backtranslations_corpus": null,
+  "distillation_corpus": null,
+  "backwards": {
+    "date": "2024-04-22T01:30:23.577000",
+    "config": {
+      "datasets": {
+        "devtest": [
+          "flores_dev",
+          "sacrebleu_aug-mix_wmt19",
+          "sacrebleu_aug-mix_wmt17",
+          "sacrebleu_aug-mix_wmt15",
+          "sacrebleu_aug-mix_wmt14"
+        ],
+        "mono-src": [
+          "news-crawl_news.2008"
+        ],
+        "mono-trg": [
+          "news-crawl_news.2008"
+        ],
+        "test": [
+          "flores_devtest",
+          "sacrebleu_wmt20",
+          "sacrebleu_wmt20",
+          "sacrebleu_wmt18",
+          "sacrebleu_wmt16",
+          "sacrebleu_wmt13"
+        ],
+        "train": [
+          "opus_Books/v1",
+          "opus_CCAligned/v1",
+          "opus_ELRC-3075-wikipedia_health/v1",
+          "opus_ELRC-3855-SWPS_University_Soci/v1",
+          "opus_ELRC-5067-SciPar/v1",
+          "opus_ELRC-5183-SciPar_Ukraine/v1",
+          "opus_ELRC-wikipedia_health/v1",
+          "opus_ELRC_2922/v1",
+          "opus_EUbookshop/v2",
+          "opus_GNOME/v1",
+          "opus_GlobalVoices/v2018q4",
+          "opus_KDE4/v2",
+          "opus_LinguaTools-WikiTitles/v2014",
+          "opus_NeuLab-TedTalks/v1",
+          "opus_News-Commentary/v16",
+          "opus_OpenSubtitles/v2018",
+          "opus_PHP/v1",
+          "opus_ParaCrawl/v9",
+          "opus_QED/v2.0a",
+          "opus_TED2013/v1.1",
+          "opus_TED2020/v1",
+          "opus_Tanzil/v1",
+          "opus_Tatoeba/v2023-04-12",
+          "opus_TildeMODEL/v2018",
+          "opus_UNPC/v1.0",
+          "opus_Ubuntu/v14.10",
+          "opus_WikiMatrix/v1",
+          "opus_WikiTitles/v3",
+          "opus_Wikipedia/v1.0",
+          "opus_XLEnt/v1.2",
+          "opus_ada83/v1",
+          "opus_bible-uedin/v1",
+          "opus_infopankki/v1",
+          "opus_tico-19/v2020-10-28",
+          "opus_tldr-pages/v2023-08-29",
+          "opus_wikimedia/v20230407",
+          "mtdata_Statmt-commoncrawl_wmt13-1-rus-eng",
+          "mtdata_Statmt-news_commentary_wmt18-13-rus-eng",
+          "mtdata_Tilde-airbaltic-1-eng-rus",
+          "mtdata_Tilde-czechtourism-1-eng-rus",
+          "mtdata_Tilde-worldbank-1-eng-rus",
+          "mtdata_UN-un_dev-1-eng-rus",
+          "mtdata_UN-un_test-1-eng-rus"
+        ]
+      },
+      "experiment": {
+        "backward-model": "NOT-YET-SUPPORTED",
+        "best-model": "chrf",
+        "bicleaner": {
+          "dataset-thresholds": {},
+          "default-threshold": 0.8
+        },
+        "mono-max-sentences-src": 500000000,
+        "mono-max-sentences-trg": 500000000,
+        "name": "opuscleaner_custom_biceaner08",
+        "split-length": 2000000,
+        "spm-sample-size": 10000000,
+        "spm-vocab-size": 32000,
+        "src": "en",
+        "teacher-ensemble": 1,
+        "trg": "ru",
+        "use-opuscleaner": "true",
+        "vocab": "NOT-YET-SUPPORTED"
+      },
+      "marian-args": {
+        "decoding-backward": {
+          "beam-size": "8",
+          "mini-batch-words": "2000"
+        },
+        "decoding-teacher": {
+          "mini-batch-words": "4000",
+          "precision": "float16"
+        },
+        "training-backward": {
+          "after": "10e"
+        },
+        "training-student": {
+          "early-stopping": "20"
+        },
+        "training-student-finetuned": {
+          "early-stopping": "20"
+        },
+        "training-teacher": {
+          "early-stopping": "20"
+        }
+      },
+      "target-stage": "train-backwards",
+      "taskcluster": {
+        "split-chunks": 10
+      }
+    },
+    "task_group_id": "OqeauVDjQdKLrHcqZTT2Fg",
+    "flores": null,
+    "artifact_folder": "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-ru/opuscleaner_custom_biceaner08_OqeauVDjQdKLrHcqZTT2Fg/backward/",
+    "artifact_urls": []
+  },
+  "teacher_1": null,
+  "teacher_2": null,
+  "teacher_ensemble_flores": null,
+  "student": null,
+  "student_finetuned": null,
+  "student_quantized": null,
+  "student_exported": null
+}

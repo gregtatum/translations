@@ -63,21 +63,3 @@
     text-align: right;
   }
 }
-
-.noodles {
-  position: relative;
-
-  img {
-    position: absolute;
-    z-index: -1;
-    width: 293px;
-    top: -94px;
-    left: -80px;
-
-    @media (max-width: 991.98px) {
-      & {
-        display: none;
-      }
-    }
-  }
-}

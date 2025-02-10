@@ -1,0 +1,42 @@
+{
+  "name": "baseline_enhu",
+  "langpair": "en-hu",
+  "source_lang": "en",
+  "target_lang": "hu",
+  "task_group_ids": [
+    "PuI6mYZPTUqAfyZMTgeUng",
+    "S5E71GihQM6Te_KdrUmATw",
+    "aY25-4fXTcuJNuMcWXUYtQ"
+  ],
+  "date_started": null,
+  "comet_flores_comparison": {
+    "argos": 0.7899,
+    "nllb": 0.8356,
+    "microsoft": 0.9023,
+    "google": 0.9002,
+    "opusmt": 0.8512,
+    "bergamot": 0.8552
+  },
+  "bleu_flores_comparison": {
+    "argos": 21.4,
+    "nllb": 19.0,
+    "google": 30.2,
+    "opusmt": 24.8,
+    "microsoft": 31.8,
+    "bergamot": 26.8
+  },
+  "parallel_corpus_aligned": null,
+  "backtranslations_corpus_aligned": null,
+  "distillation_corpus_aligned": null,
+  "parallel_corpus": null,
+  "backtranslations_corpus": null,
+  "distillation_corpus": null,
+  "backwards": null,
+  "teacher_1": null,
+  "teacher_2": null,
+  "teacher_ensemble_flores": null,
+  "student": null,
+  "student_finetuned": null,
+  "student_quantized": null,
+  "student_exported": null
+}
