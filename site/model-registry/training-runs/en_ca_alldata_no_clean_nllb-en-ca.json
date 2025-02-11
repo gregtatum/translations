@@ -1,0 +1,165 @@
+{
+  "name": "en_ca_alldata_no_clean_nllb",
+  "langpair": "en-ca",
+  "source_lang": "en",
+  "target_lang": "ca",
+  "task_group_ids": [
+    "GP10M3UTSpabKNgt-BqoLw",
+    "K9HejTo6Rhq0y2zK-oiddg"
+  ],
+  "date_started": "2024-04-05T20:05:03.453000",
+  "comet_flores_comparison": {
+    "opusmt": 0.7688,
+    "bergamot": 0.8631,
+    "argos": 0.7705,
+    "google": 0.8778,
+    "microsoft": 0.8824,
+    "nllb": 0.8506
+  },
+  "bleu_flores_comparison": {
+    "opusmt": 29.6,
+    "argos": 30.3,
+    "microsoft": 44.8,
+    "bergamot": 41.9,
+    "google": 35.4,
+    "nllb": 35.1
+  },
+  "parallel_corpus_aligned": null,
+  "backtranslations_corpus_aligned": null,
+  "distillation_corpus_aligned": null,
+  "parallel_corpus": {
+    "source_url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/QEp3LcFrR1KO1AzZCo_DDQ/artifacts/public/build/corpus.en.zst",
+    "source_bytes": 1323951064,
+    "target_url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/QEp3LcFrR1KO1AzZCo_DDQ/artifacts/public/build/corpus.ca.zst",
+    "target_bytes": 1406333378
+  },
+  "backtranslations_corpus": null,
+  "distillation_corpus": null,
+  "teacher_1": {
+    "date": "2024-04-10T11:13:01.142000",
+    "config": {
+      "datasets": {
+        "devtest": [
+          "flores_devtest"
+        ],
+        "mono-src": [
+          "news-crawl_news.2021",
+          "news-crawl_news.2020",
+          "news-crawl_news.2019",
+          "news-crawl_news.2018",
+          "news-crawl_news.2017",
+          "news-crawl_news.2016",
+          "news-crawl_news.2015",
+          "news-crawl_news.2014",
+          "news-crawl_news.2013",
+          "news-crawl_news.2012",
+          "news-crawl_news.2011",
+          "news-crawl_news.2010",
+          "news-crawl_news.2009",
+          "news-crawl_news.2008",
+          "news-crawl_news.2007"
+        ],
+        "mono-trg": [
+          "bucket_releng-translations-dev/data/en-ca/catalan_textual_corpus"
+        ],
+        "test": [
+          "flores_dev"
+        ],
+        "train": [
+          "opus_Books/v1",
+          "opus_CCAligned/v1",
+          "opus_ELRC-3040-wikipedia_health/v1",
+          "opus_ELRC-5129-GEnCaTA_a/v1",
+          "opus_ELRC-5189-Catalan_WMT2013_Mach/v1",
+          "opus_ELRC-5190-Cyber_MT_Test/v1",
+          "opus_ELRC-wikipedia_health/v1",
+          "opus_ELRC_2922/v1",
+          "opus_EUbookshop/v2",
+          "opus_GNOME/v1",
+          "opus_GlobalVoices/v2018q4",
+          "opus_HPLT/v1.1",
+          "opus_KDE4/v2",
+          "opus_MaCoCu/v2",
+          "opus_MultiHPLT/v1.1",
+          "opus_MultiMaCoCu/v2",
+          "opus_NLLB/v1",
+          "opus_OpenSubtitles/v2018",
+          "opus_QED/v2.0a",
+          "opus_TED2020/v1",
+          "opus_Tatoeba/v2023-04-12",
+          "opus_Ubuntu/v14.10",
+          "opus_WikiMatrix/v1",
+          "opus_XLEnt/v1.2",
+          "opus_tldr-pages/v2023-08-29",
+          "opus_wikimedia/v20230407"
+        ]
+      },
+      "experiment": {
+        "backward-model": "NOT-YET-SUPPORTED",
+        "best-model": "chrf",
+        "bicleaner": {
+          "dataset-thresholds": {
+            "opus_NLLB/v1": 0,
+            "opus_OpenSubtitles/v2018": 0.8
+          },
+          "default-threshold": 0.5
+        },
+        "mono-max-sentences-src": 100000000,
+        "mono-max-sentences-trg": 100000000,
+        "name": "en_ca_alldata_no_clean_nllb",
+        "split-length": 2000000,
+        "spm-sample-size": 10000000,
+        "src": "en",
+        "teacher-ensemble": 1,
+        "trg": "ca",
+        "use-opuscleaner": "false",
+        "vocab": "NOT-YET-SUPPORTED"
+      },
+      "marian-args": {
+        "decoding-backward": {
+          "beam-size": "12",
+          "mini-batch-words": "2000"
+        },
+        "decoding-teacher": {
+          "mini-batch-words": "4000",
+          "precision": "float16"
+        },
+        "training-backward": {
+          "early-stopping": "5"
+        },
+        "training-student": {
+          "early-stopping": "20"
+        },
+        "training-student-finetuned": {
+          "early-stopping": "20"
+        },
+        "training-teacher": {
+          "early-stopping": "30"
+        }
+      },
+      "target-stage": "train-teacher",
+      "taskcluster": {
+        "split-chunks": 10
+      }
+    },
+    "task_group_id": "GP10M3UTSpabKNgt-BqoLw",
+    "flores": null,
+    "artifact_folder": "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-ca/en_ca_alldata_no_clean_nllb_GP10M3UTSpabKNgt-BqoLw/teacher0/",
+    "artifact_urls": [
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-ca/en_ca_alldata_no_clean_nllb_GP10M3UTSpabKNgt-BqoLw/teacher0/config.opustrainer.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-ca/en_ca_alldata_no_clean_nllb_GP10M3UTSpabKNgt-BqoLw/teacher0/config.opustrainer.yml.state",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-ca/en_ca_alldata_no_clean_nllb_GP10M3UTSpabKNgt-BqoLw/teacher0/devset.out",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-ca/en_ca_alldata_no_clean_nllb_GP10M3UTSpabKNgt-BqoLw/teacher0/final.model.npz.best-chrf.npz",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-ca/en_ca_alldata_no_clean_nllb_GP10M3UTSpabKNgt-BqoLw/teacher0/final.model.npz.best-chrf.npz.decoder.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-ca/en_ca_alldata_no_clean_nllb_GP10M3UTSpabKNgt-BqoLw/teacher0/model.npz.progress.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-ca/en_ca_alldata_no_clean_nllb_GP10M3UTSpabKNgt-BqoLw/teacher0/model.npz.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-ca/en_ca_alldata_no_clean_nllb_GP10M3UTSpabKNgt-BqoLw/teacher0/vocab.spm"
+    ]
+  },
+  "teacher_2": null,
+  "teacher_ensemble_flores": null,
+  "student": null,
+  "student_finetuned": null,
+  "student_quantized": null,
+  "student_exported": null
+}

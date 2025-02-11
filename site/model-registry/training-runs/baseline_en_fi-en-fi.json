@@ -1,0 +1,45 @@
+{
+  "name": "baseline_en_fi",
+  "langpair": "en-fi",
+  "source_lang": "en",
+  "target_lang": "fi",
+  "task_group_ids": [
+    "KM2hK-92SFmqkXpxgxc6Iw",
+    "SAA2l6yXQnSnoHXUD3VFug"
+  ],
+  "date_started": "2024-04-30T18:40:28.658000",
+  "comet_flores_comparison": {
+    "opusmt": 0.9091,
+    "microsoft": 0.9259,
+    "google": 0.9202,
+    "bergamot": 0.8845,
+    "nllb": 0.8506,
+    "argos": 0.8626
+  },
+  "bleu_flores_comparison": {
+    "argos": 19.5,
+    "microsoft": 30.0,
+    "opusmt": 25.4,
+    "google": 27.9,
+    "bergamot": 24.6,
+    "nllb": 17.0
+  },
+  "parallel_corpus_aligned": null,
+  "backtranslations_corpus_aligned": null,
+  "distillation_corpus_aligned": null,
+  "parallel_corpus": {
+    "source_url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/Ai3vOz7zRxiym7H6W1ekXQ/artifacts/public/build/corpus.en.zst",
+    "source_bytes": 2809883608,
+    "target_url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/Ai3vOz7zRxiym7H6W1ekXQ/artifacts/public/build/corpus.fi.zst",
+    "target_bytes": 3052006802
+  },
+  "backtranslations_corpus": null,
+  "distillation_corpus": null,
+  "teacher_1": null,
+  "teacher_2": null,
+  "teacher_ensemble_flores": null,
+  "student": null,
+  "student_finetuned": null,
+  "student_quantized": null,
+  "student_exported": null
+}

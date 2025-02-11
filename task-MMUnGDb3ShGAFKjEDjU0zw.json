@@ -1,0 +1,1552 @@
+[
+  {
+    "status": {
+      "taskId": "NtK0TBNBQUyFjlZj2KY0YA",
+      "provisionerId": "translations-1",
+      "workerType": "b-linux-v100-gpu",
+      "taskQueueId": "translations-1/b-linux-v100-gpu",
+      "schedulerId": "translations-level-1",
+      "projectId": "none",
+      "taskGroupId": "MMUnGDb3ShGAFKjEDjU0zw",
+      "deadline": "2024-07-18T21:35:17.981Z",
+      "expires": "2025-06-28T21:35:17.981Z",
+      "retriesLeft": 5,
+      "state": "completed",
+      "runs": [
+        {
+          "runId": 0,
+          "state": "completed",
+          "reasonCreated": "scheduled",
+          "reasonResolved": "completed",
+          "workerGroup": "us-central1-f",
+          "workerId": "7930898865977651674",
+          "takenUntil": "2024-07-06T05:21:34.038Z",
+          "scheduled": "2024-07-06T04:59:24.518Z",
+          "started": "2024-07-06T05:01:34.041Z",
+          "resolved": "2024-07-06T05:11:57.159Z"
+        }
+      ]
+    },
+    "task": {
+      "provisionerId": "translations-1",
+      "workerType": "b-linux-v100-gpu",
+      "taskQueueId": "translations-1/b-linux-v100-gpu",
+      "schedulerId": "translations-level-1",
+      "projectId": "none",
+      "taskGroupId": "MMUnGDb3ShGAFKjEDjU0zw",
+      "dependencies": [
+        "CGwYNJ7gSN6n71PJgVioSw",
+        "EeQKsoMQRfKZ00Gl75b5Qg",
+        "UhTBpEBAQziV5CGZ7mOECQ",
+        "cCr_z2sITDGiow53WiHs8g"
+      ],
+      "requires": "all-completed",
+      "routes": [
+        "index.translations.cache.level-1.evaluate-teacher-ensemble.evaluate-teacher-ensemble-mtdata-Neulab-tedtalks_test-1-eng-slk-sk-en.hash.e76b8e3d475c3ee956d05d08fee2bacc07c79ca5b28b79ddd6fdf7f9d483d311",
+        "index.translations.cache.level-1.evaluate-teacher-ensemble.evaluate-teacher-ensemble-mtdata-Neulab-tedtalks_test-1-eng-slk-sk-en.latest",
+        "index.translations.cache.level-1.evaluate-teacher-ensemble.evaluate-teacher-ensemble-mtdata-Neulab-tedtalks_test-1-eng-slk-sk-en.pushdate.2024.06.28.20240628204803",
+        "checks"
+      ],
+      "priority": "low",
+      "retries": 5,
+      "created": "2024-06-28T21:35:17.981Z",
+      "deadline": "2024-07-18T21:35:17.981Z",
+      "expires": "2025-06-28T21:35:17.981Z",
+      "scopes": [
+        "secrets:get:project/translations/level-1/weights-and-biases",
+        "generic-worker:cache:translations-level-1-checkouts"
+      ],
+      "payload": {
+        "env": {
+          "GPUS": "0",
+          "MARIAN": "$MOZ_FETCHES_DIR",
+          "VCS_PATH": "./checkouts/vcs",
+          "WORKSPACE": "12000",
+          "MOZ_FETCHES": "[{\"artifact\": \"public/build/Neulab-tedtalks_test-1-eng-slk.en.zst\", \"extract\": false, \"task\": \"UhTBpEBAQziV5CGZ7mOECQ\"}, {\"artifact\": \"public/build/Neulab-tedtalks_test-1-eng-slk.sk.zst\", \"extract\": false, \"task\": \"UhTBpEBAQziV5CGZ7mOECQ\"}, {\"artifact\": \"public/build/marian.tar.zst\", \"extract\": true, \"task\": \"cCr_z2sITDGiow53WiHs8g\"}, {\"artifact\": \"public/build/final.model.npz.best-chrf.npz\", \"dest\": \"model1\", \"extract\": true, \"task\": \"EeQKsoMQRfKZ00Gl75b5Qg\"}, {\"artifact\": \"public/build/final.model.npz.best-chrf.npz.decoder.yml\", \"extract\": true, \"task\": \"EeQKsoMQRfKZ00Gl75b5Qg\"}, {\"artifact\": \"public/build/vocab.spm\", \"extract\": false, \"task\": \"EeQKsoMQRfKZ00Gl75b5Qg\"}, {\"artifact\": \"public/build/final.model.npz.best-chrf.npz\", \"dest\": \"model2\", \"extract\": true, \"task\": \"CGwYNJ7gSN6n71PJgVioSw\"}, {\"artifact\": \"public/build/final.model.npz.best-chrf.npz.decoder.yml\", \"extract\": true, \"task\": \"CGwYNJ7gSN6n71PJgVioSw\"}, {\"artifact\": \"public/build/vocab.spm\", \"extract\": false, \"task\": \"CGwYNJ7gSN6n71PJgVioSw\"}]",
+          "REPOSITORIES": "{\"firefox_translations_training\": \"firefox-translations-training\"}",
+          "HG_STORE_PATH": "./checkouts/hg-shared",
+          "MOZ_SCM_LEVEL": "1",
+          "MOZ_AUTOMATION": "1",
+          "MOZ_FETCHES_DIR": "fetches",
+          "SCCACHE_DISABLE": "1",
+          "WANDB_PUBLICATION": "True",
+          "TASKCLUSTER_SECRET": "project/translations/level-1/weights-and-biases",
+          "FIREFOX_TRANSLATIONS_TRAINING_HEAD_REF": "refs/heads/release_stages",
+          "FIREFOX_TRANSLATIONS_TRAINING_HEAD_REV": "518bee6174aa6af547197204d8d13f4ec51a1044",
+          "FIREFOX_TRANSLATIONS_TRAINING_BASE_REPOSITORY": "https://github.com/mozilla/firefox-translations-training",
+          "FIREFOX_TRANSLATIONS_TRAINING_HEAD_REPOSITORY": "https://github.com/mozilla/firefox-translations-training",
+          "FIREFOX_TRANSLATIONS_TRAINING_REPOSITORY_TYPE": "git"
+        },
+        "mounts": [
+          {
+            "cacheName": "translations-level-1-checkouts",
+            "directory": "./checkouts"
+          },
+          {
+            "file": "./run-task",
+            "content": {
+              "url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/MMUnGDb3ShGAFKjEDjU0zw/artifacts/public/run-task"
+            }
+          },
+          {
+            "file": "./fetch-content",
+            "content": {
+              "url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/MMUnGDb3ShGAFKjEDjU0zw/artifacts/public/fetch-content"
+            }
+          }
+        ],
+        "command": [
+          [
+            "chmod",
+            "+x",
+            "run-task"
+          ],
+          [
+            "./run-task",
+            "--firefox_translations_training-checkout=./checkouts/vcs/",
+            "--",
+            "bash",
+            "-c",
+            "export PATH=$PATH:~/.local/bin && export PYTHONPATH=$PYTHONPATH:$VCS_PATH && pip install --upgrade pip && pip install -r $VCS_PATH/pipeline/eval/requirements/eval.txt && pip install $VCS_PATH/tracking && sed -i -e \"s,- .*fetches,- $MOZ_FETCHES_DIR,\" $TASK_WORKDIR/fetches/*.yml && sed -i -e \"s,- .*artifacts,- $MOZ_FETCHES_DIR,\" $TASK_WORKDIR/fetches/*.yml && $VCS_PATH/pipeline/eval/eval.py --src              sk --trg              en --compression_cmd  zstdmt --artifact_ext     zst --dataset_prefix   \"$MOZ_FETCHES_DIR/Neulab-tedtalks_test-1-eng-slk\" --marian_config    \"$MOZ_FETCHES_DIR/final.model.npz.best-chrf.npz.decoder.yml\" --models           \"$MOZ_FETCHES_DIR/model*/*.npz\" --artifacts_prefix \"$TASK_WORKDIR/artifacts/Neulab-tedtalks_test-1-eng-slk\" --marian           \"$MARIAN\" --workspace        \"$WORKSPACE\" --gpus             \"$GPUS\" --model_variant    gpu"
+          ]
+        ],
+        "features": {
+          "taskclusterProxy": true
+        },
+        "artifacts": [
+          {
+            "name": "public/build",
+            "path": "artifacts",
+            "type": "directory"
+          }
+        ],
+        "maxRunTime": 2592000,
+        "onExitStatus": {
+          "retry": [
+            128
+          ]
+        }
+      },
+      "metadata": {
+        "name": "evaluate-teacher-ensemble-mtdata-Neulab-tedtalks_test-1-eng-slk-sk-en",
+        "owner": "pavlov89@gmail.com",
+        "source": "https://github.com/mozilla/firefox-translations-training/blob/518bee6174aa6af547197204d8d13f4ec51a1044/taskcluster/kinds/evaluate-teacher-ensemble",
+        "description": "teacher evaluation for mtdata_Neulab-tedtalks_test-1-eng-slk sk-en"
+      },
+      "tags": {
+        "os": "linux",
+        "kind": "evaluate-teacher-ensemble",
+        "label": "evaluate-teacher-ensemble-mtdata-Neulab-tedtalks_test-1-eng-slk-sk-en",
+        "createdForUser": "pavlov89@gmail.com",
+        "worker-implementation": "generic-worker"
+      },
+      "extra": {
+        "index": {
+          "rank": 0
+        },
+        "parent": "MMUnGDb3ShGAFKjEDjU0zw"
+      }
+    }
+  },
+  {
+    "status": {
+      "taskId": "cypPZHI-TDaMxjltP9CjlA",
+      "provisionerId": "translations-1",
+      "workerType": "b-linux-v100-gpu",
+      "taskQueueId": "translations-1/b-linux-v100-gpu",
+      "schedulerId": "translations-level-1",
+      "projectId": "none",
+      "taskGroupId": "MMUnGDb3ShGAFKjEDjU0zw",
+      "deadline": "2024-07-18T21:35:17.972Z",
+      "expires": "2025-06-28T21:35:17.972Z",
+      "retriesLeft": 5,
+      "state": "completed",
+      "runs": [
+        {
+          "runId": 0,
+          "state": "completed",
+          "reasonCreated": "scheduled",
+          "reasonResolved": "completed",
+          "workerGroup": "us-central1-c",
+          "workerId": "3791366384880284123",
+          "takenUntil": "2024-07-06T05:21:27.248Z",
+          "scheduled": "2024-07-06T04:59:24.451Z",
+          "started": "2024-07-06T05:01:27.251Z",
+          "resolved": "2024-07-06T05:10:29.050Z"
+        }
+      ]
+    },
+    "task": {
+      "provisionerId": "translations-1",
+      "workerType": "b-linux-v100-gpu",
+      "taskQueueId": "translations-1/b-linux-v100-gpu",
+      "schedulerId": "translations-level-1",
+      "projectId": "none",
+      "taskGroupId": "MMUnGDb3ShGAFKjEDjU0zw",
+      "dependencies": [
+        "CGwYNJ7gSN6n71PJgVioSw",
+        "EeQKsoMQRfKZ00Gl75b5Qg",
+        "WU9Oy4oNR-yd_ebi-qZhsw",
+        "cCr_z2sITDGiow53WiHs8g"
+      ],
+      "requires": "all-completed",
+      "routes": [
+        "index.translations.cache.level-1.evaluate-teacher-ensemble.evaluate-teacher-ensemble-flores-aug-noise_devtest-sk-en.hash.3442f036e4d63db609309936befa3280f0d0d43ae349963ff35eae6fc0ee7ef5",
+        "index.translations.cache.level-1.evaluate-teacher-ensemble.evaluate-teacher-ensemble-flores-aug-noise_devtest-sk-en.latest",
+        "index.translations.cache.level-1.evaluate-teacher-ensemble.evaluate-teacher-ensemble-flores-aug-noise_devtest-sk-en.pushdate.2024.06.28.20240628204803",
+        "checks"
+      ],
+      "priority": "low",
+      "retries": 5,
+      "created": "2024-06-28T21:35:17.972Z",
+      "deadline": "2024-07-18T21:35:17.972Z",
+      "expires": "2025-06-28T21:35:17.972Z",
+      "scopes": [
+        "secrets:get:project/translations/level-1/weights-and-biases",
+        "generic-worker:cache:translations-level-1-checkouts"
+      ],
+      "payload": {
+        "env": {
+          "GPUS": "0",
+          "MARIAN": "$MOZ_FETCHES_DIR",
+          "VCS_PATH": "./checkouts/vcs",
+          "WORKSPACE": "12000",
+          "MOZ_FETCHES": "[{\"artifact\": \"public/build/aug-noise_devtest.en.zst\", \"extract\": false, \"task\": \"WU9Oy4oNR-yd_ebi-qZhsw\"}, {\"artifact\": \"public/build/aug-noise_devtest.sk.zst\", \"extract\": false, \"task\": \"WU9Oy4oNR-yd_ebi-qZhsw\"}, {\"artifact\": \"public/build/marian.tar.zst\", \"extract\": true, \"task\": \"cCr_z2sITDGiow53WiHs8g\"}, {\"artifact\": \"public/build/final.model.npz.best-chrf.npz\", \"dest\": \"model1\", \"extract\": true, \"task\": \"EeQKsoMQRfKZ00Gl75b5Qg\"}, {\"artifact\": \"public/build/final.model.npz.best-chrf.npz.decoder.yml\", \"extract\": true, \"task\": \"EeQKsoMQRfKZ00Gl75b5Qg\"}, {\"artifact\": \"public/build/vocab.spm\", \"extract\": false, \"task\": \"EeQKsoMQRfKZ00Gl75b5Qg\"}, {\"artifact\": \"public/build/final.model.npz.best-chrf.npz\", \"dest\": \"model2\", \"extract\": true, \"task\": \"CGwYNJ7gSN6n71PJgVioSw\"}, {\"artifact\": \"public/build/final.model.npz.best-chrf.npz.decoder.yml\", \"extract\": true, \"task\": \"CGwYNJ7gSN6n71PJgVioSw\"}, {\"artifact\": \"public/build/vocab.spm\", \"extract\": false, \"task\": \"CGwYNJ7gSN6n71PJgVioSw\"}]",
+          "REPOSITORIES": "{\"firefox_translations_training\": \"firefox-translations-training\"}",
+          "HG_STORE_PATH": "./checkouts/hg-shared",
+          "MOZ_SCM_LEVEL": "1",
+          "MOZ_AUTOMATION": "1",
+          "MOZ_FETCHES_DIR": "fetches",
+          "SCCACHE_DISABLE": "1",
+          "WANDB_PUBLICATION": "True",
+          "TASKCLUSTER_SECRET": "project/translations/level-1/weights-and-biases",
+          "FIREFOX_TRANSLATIONS_TRAINING_HEAD_REF": "refs/heads/release_stages",
+          "FIREFOX_TRANSLATIONS_TRAINING_HEAD_REV": "518bee6174aa6af547197204d8d13f4ec51a1044",
+          "FIREFOX_TRANSLATIONS_TRAINING_BASE_REPOSITORY": "https://github.com/mozilla/firefox-translations-training",
+          "FIREFOX_TRANSLATIONS_TRAINING_HEAD_REPOSITORY": "https://github.com/mozilla/firefox-translations-training",
+          "FIREFOX_TRANSLATIONS_TRAINING_REPOSITORY_TYPE": "git"
+        },
+        "mounts": [
+          {
+            "cacheName": "translations-level-1-checkouts",
+            "directory": "./checkouts"
+          },
+          {
+            "file": "./run-task",
+            "content": {
+              "url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/MMUnGDb3ShGAFKjEDjU0zw/artifacts/public/run-task"
+            }
+          },
+          {
+            "file": "./fetch-content",
+            "content": {
+              "url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/MMUnGDb3ShGAFKjEDjU0zw/artifacts/public/fetch-content"
+            }
+          }
+        ],
+        "command": [
+          [
+            "chmod",
+            "+x",
+            "run-task"
+          ],
+          [
+            "./run-task",
+            "--firefox_translations_training-checkout=./checkouts/vcs/",
+            "--",
+            "bash",
+            "-c",
+            "export PATH=$PATH:~/.local/bin && export PYTHONPATH=$PYTHONPATH:$VCS_PATH && pip install --upgrade pip && pip install -r $VCS_PATH/pipeline/eval/requirements/eval.txt && pip install $VCS_PATH/tracking && sed -i -e \"s,- .*fetches,- $MOZ_FETCHES_DIR,\" $TASK_WORKDIR/fetches/*.yml && sed -i -e \"s,- .*artifacts,- $MOZ_FETCHES_DIR,\" $TASK_WORKDIR/fetches/*.yml && $VCS_PATH/pipeline/eval/eval.py --src              sk --trg              en --compression_cmd  zstdmt --artifact_ext     zst --dataset_prefix   \"$MOZ_FETCHES_DIR/aug-noise_devtest\" --marian_config    \"$MOZ_FETCHES_DIR/final.model.npz.best-chrf.npz.decoder.yml\" --models           \"$MOZ_FETCHES_DIR/model*/*.npz\" --artifacts_prefix \"$TASK_WORKDIR/artifacts/aug-noise_devtest\" --marian           \"$MARIAN\" --workspace        \"$WORKSPACE\" --gpus             \"$GPUS\" --model_variant    gpu"
+          ]
+        ],
+        "features": {
+          "taskclusterProxy": true
+        },
+        "artifacts": [
+          {
+            "name": "public/build",
+            "path": "artifacts",
+            "type": "directory"
+          }
+        ],
+        "maxRunTime": 2592000,
+        "onExitStatus": {
+          "retry": [
+            128
+          ]
+        }
+      },
+      "metadata": {
+        "name": "evaluate-teacher-ensemble-flores-aug-noise_devtest-sk-en",
+        "owner": "pavlov89@gmail.com",
+        "source": "https://github.com/mozilla/firefox-translations-training/blob/518bee6174aa6af547197204d8d13f4ec51a1044/taskcluster/kinds/evaluate-teacher-ensemble",
+        "description": "teacher evaluation for flores_aug-noise_devtest sk-en"
+      },
+      "tags": {
+        "os": "linux",
+        "kind": "evaluate-teacher-ensemble",
+        "label": "evaluate-teacher-ensemble-flores-aug-noise_devtest-sk-en",
+        "createdForUser": "pavlov89@gmail.com",
+        "worker-implementation": "generic-worker"
+      },
+      "extra": {
+        "index": {
+          "rank": 0
+        },
+        "parent": "MMUnGDb3ShGAFKjEDjU0zw"
+      }
+    }
+  },
+  {
+    "status": {
+      "taskId": "Iq89vutrRBCy2sFcnwb9Qw",
+      "provisionerId": "translations-1",
+      "workerType": "b-linux-v100-gpu",
+      "taskQueueId": "translations-1/b-linux-v100-gpu",
+      "schedulerId": "translations-level-1",
+      "projectId": "none",
+      "taskGroupId": "MMUnGDb3ShGAFKjEDjU0zw",
+      "deadline": "2024-07-18T21:35:17.983Z",
+      "expires": "2025-06-28T21:35:17.983Z",
+      "retriesLeft": 5,
+      "state": "completed",
+      "runs": [
+        {
+          "runId": 0,
+          "state": "completed",
+          "reasonCreated": "scheduled",
+          "reasonResolved": "completed",
+          "workerGroup": "us-central1-c",
+          "workerId": "8407268927320977883",
+          "takenUntil": "2024-07-06T05:21:29.201Z",
+          "scheduled": "2024-07-06T04:59:24.473Z",
+          "started": "2024-07-06T05:01:29.204Z",
+          "resolved": "2024-07-06T05:10:20.453Z"
+        }
+      ]
+    },
+    "task": {
+      "provisionerId": "translations-1",
+      "workerType": "b-linux-v100-gpu",
+      "taskQueueId": "translations-1/b-linux-v100-gpu",
+      "schedulerId": "translations-level-1",
+      "projectId": "none",
+      "taskGroupId": "MMUnGDb3ShGAFKjEDjU0zw",
+      "dependencies": [
+        "CGwYNJ7gSN6n71PJgVioSw",
+        "EeQKsoMQRfKZ00Gl75b5Qg",
+        "QHUAcmVVRPuM2VxHbz0V_A",
+        "cCr_z2sITDGiow53WiHs8g"
+      ],
+      "requires": "all-completed",
+      "routes": [
+        "index.translations.cache.level-1.evaluate-teacher-ensemble.evaluate-teacher-ensemble-flores-devtest-sk-en.hash.cb028d5db93475c9c5972e56cfc28396b399fbe7c16a8641591195896d25b04b",
+        "index.translations.cache.level-1.evaluate-teacher-ensemble.evaluate-teacher-ensemble-flores-devtest-sk-en.latest",
+        "index.translations.cache.level-1.evaluate-teacher-ensemble.evaluate-teacher-ensemble-flores-devtest-sk-en.pushdate.2024.06.28.20240628204803",
+        "checks"
+      ],
+      "priority": "low",
+      "retries": 5,
+      "created": "2024-06-28T21:35:17.983Z",
+      "deadline": "2024-07-18T21:35:17.983Z",
+      "expires": "2025-06-28T21:35:17.983Z",
+      "scopes": [
+        "secrets:get:project/translations/level-1/weights-and-biases",
+        "generic-worker:cache:translations-level-1-checkouts"
+      ],
+      "payload": {
+        "env": {
+          "GPUS": "0",
+          "MARIAN": "$MOZ_FETCHES_DIR",
+          "VCS_PATH": "./checkouts/vcs",
+          "WORKSPACE": "12000",
+          "MOZ_FETCHES": "[{\"artifact\": \"public/build/devtest.en.zst\", \"extract\": false, \"task\": \"QHUAcmVVRPuM2VxHbz0V_A\"}, {\"artifact\": \"public/build/devtest.sk.zst\", \"extract\": false, \"task\": \"QHUAcmVVRPuM2VxHbz0V_A\"}, {\"artifact\": \"public/build/marian.tar.zst\", \"extract\": true, \"task\": \"cCr_z2sITDGiow53WiHs8g\"}, {\"artifact\": \"public/build/final.model.npz.best-chrf.npz\", \"dest\": \"model1\", \"extract\": true, \"task\": \"EeQKsoMQRfKZ00Gl75b5Qg\"}, {\"artifact\": \"public/build/final.model.npz.best-chrf.npz.decoder.yml\", \"extract\": true, \"task\": \"EeQKsoMQRfKZ00Gl75b5Qg\"}, {\"artifact\": \"public/build/vocab.spm\", \"extract\": false, \"task\": \"EeQKsoMQRfKZ00Gl75b5Qg\"}, {\"artifact\": \"public/build/final.model.npz.best-chrf.npz\", \"dest\": \"model2\", \"extract\": true, \"task\": \"CGwYNJ7gSN6n71PJgVioSw\"}, {\"artifact\": \"public/build/final.model.npz.best-chrf.npz.decoder.yml\", \"extract\": true, \"task\": \"CGwYNJ7gSN6n71PJgVioSw\"}, {\"artifact\": \"public/build/vocab.spm\", \"extract\": false, \"task\": \"CGwYNJ7gSN6n71PJgVioSw\"}]",
+          "REPOSITORIES": "{\"firefox_translations_training\": \"firefox-translations-training\"}",
+          "HG_STORE_PATH": "./checkouts/hg-shared",
+          "MOZ_SCM_LEVEL": "1",
+          "MOZ_AUTOMATION": "1",
+          "MOZ_FETCHES_DIR": "fetches",
+          "SCCACHE_DISABLE": "1",
+          "WANDB_PUBLICATION": "True",
+          "TASKCLUSTER_SECRET": "project/translations/level-1/weights-and-biases",
+          "FIREFOX_TRANSLATIONS_TRAINING_HEAD_REF": "refs/heads/release_stages",
+          "FIREFOX_TRANSLATIONS_TRAINING_HEAD_REV": "518bee6174aa6af547197204d8d13f4ec51a1044",
+          "FIREFOX_TRANSLATIONS_TRAINING_BASE_REPOSITORY": "https://github.com/mozilla/firefox-translations-training",
+          "FIREFOX_TRANSLATIONS_TRAINING_HEAD_REPOSITORY": "https://github.com/mozilla/firefox-translations-training",
+          "FIREFOX_TRANSLATIONS_TRAINING_REPOSITORY_TYPE": "git"
+        },
+        "mounts": [
+          {
+            "cacheName": "translations-level-1-checkouts",
+            "directory": "./checkouts"
+          },
+          {
+            "file": "./run-task",
+            "content": {
+              "url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/MMUnGDb3ShGAFKjEDjU0zw/artifacts/public/run-task"
+            }
+          },
+          {
+            "file": "./fetch-content",
+            "content": {
+              "url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/MMUnGDb3ShGAFKjEDjU0zw/artifacts/public/fetch-content"
+            }
+          }
+        ],
+        "command": [
+          [
+            "chmod",
+            "+x",
+            "run-task"
+          ],
+          [
+            "./run-task",
+            "--firefox_translations_training-checkout=./checkouts/vcs/",
+            "--",
+            "bash",
+            "-c",
+            "export PATH=$PATH:~/.local/bin && export PYTHONPATH=$PYTHONPATH:$VCS_PATH && pip install --upgrade pip && pip install -r $VCS_PATH/pipeline/eval/requirements/eval.txt && pip install $VCS_PATH/tracking && sed -i -e \"s,- .*fetches,- $MOZ_FETCHES_DIR,\" $TASK_WORKDIR/fetches/*.yml && sed -i -e \"s,- .*artifacts,- $MOZ_FETCHES_DIR,\" $TASK_WORKDIR/fetches/*.yml && $VCS_PATH/pipeline/eval/eval.py --src              sk --trg              en --compression_cmd  zstdmt --artifact_ext     zst --dataset_prefix   \"$MOZ_FETCHES_DIR/devtest\" --marian_config    \"$MOZ_FETCHES_DIR/final.model.npz.best-chrf.npz.decoder.yml\" --models           \"$MOZ_FETCHES_DIR/model*/*.npz\" --artifacts_prefix \"$TASK_WORKDIR/artifacts/devtest\" --marian           \"$MARIAN\" --workspace        \"$WORKSPACE\" --gpus             \"$GPUS\" --model_variant    gpu"
+          ]
+        ],
+        "features": {
+          "taskclusterProxy": true
+        },
+        "artifacts": [
+          {
+            "name": "public/build",
+            "path": "artifacts",
+            "type": "directory"
+          }
+        ],
+        "maxRunTime": 2592000,
+        "onExitStatus": {
+          "retry": [
+            128
+          ]
+        }
+      },
+      "metadata": {
+        "name": "evaluate-teacher-ensemble-flores-devtest-sk-en",
+        "owner": "pavlov89@gmail.com",
+        "source": "https://github.com/mozilla/firefox-translations-training/blob/518bee6174aa6af547197204d8d13f4ec51a1044/taskcluster/kinds/evaluate-teacher-ensemble",
+        "description": "teacher evaluation for flores_devtest sk-en"
+      },
+      "tags": {
+        "os": "linux",
+        "kind": "evaluate-teacher-ensemble",
+        "label": "evaluate-teacher-ensemble-flores-devtest-sk-en",
+        "createdForUser": "pavlov89@gmail.com",
+        "worker-implementation": "generic-worker"
+      },
+      "extra": {
+        "index": {
+          "rank": 0
+        },
+        "parent": "MMUnGDb3ShGAFKjEDjU0zw"
+      }
+    }
+  },
+  {
+    "status": {
+      "taskId": "Q9oXIFQZSZSoLgdH_6IYSA",
+      "provisionerId": "translations-1",
+      "workerType": "b-linux-v100-gpu",
+      "taskQueueId": "translations-1/b-linux-v100-gpu",
+      "schedulerId": "translations-level-1",
+      "projectId": "none",
+      "taskGroupId": "MMUnGDb3ShGAFKjEDjU0zw",
+      "deadline": "2024-07-18T21:35:17.977Z",
+      "expires": "2025-06-28T21:35:17.977Z",
+      "retriesLeft": 5,
+      "state": "completed",
+      "runs": [
+        {
+          "runId": 0,
+          "state": "completed",
+          "reasonCreated": "scheduled",
+          "reasonResolved": "completed",
+          "workerGroup": "us-central1-c",
+          "workerId": "5102271359458046427",
+          "takenUntil": "2024-07-06T05:22:01.164Z",
+          "scheduled": "2024-07-06T04:59:24.559Z",
+          "started": "2024-07-06T05:02:01.167Z",
+          "resolved": "2024-07-06T05:10:05.807Z"
+        }
+      ]
+    },
+    "task": {
+      "provisionerId": "translations-1",
+      "workerType": "b-linux-v100-gpu",
+      "taskQueueId": "translations-1/b-linux-v100-gpu",
+      "schedulerId": "translations-level-1",
+      "projectId": "none",
+      "taskGroupId": "MMUnGDb3ShGAFKjEDjU0zw",
+      "dependencies": [
+        "CGwYNJ7gSN6n71PJgVioSw",
+        "EeQKsoMQRfKZ00Gl75b5Qg",
+        "cCr_z2sITDGiow53WiHs8g",
+        "fRt-mpLuRte7JggWTfWd5A"
+      ],
+      "requires": "all-completed",
+      "routes": [
+        "index.translations.cache.level-1.evaluate-teacher-ensemble.evaluate-teacher-ensemble-flores-aug-title_devtest-sk-en.hash.868e8ab9a13782f497e1fd3057d98e37b163d12f2580b4fcc5841dcacb46609f",
+        "index.translations.cache.level-1.evaluate-teacher-ensemble.evaluate-teacher-ensemble-flores-aug-title_devtest-sk-en.latest",
+        "index.translations.cache.level-1.evaluate-teacher-ensemble.evaluate-teacher-ensemble-flores-aug-title_devtest-sk-en.pushdate.2024.06.28.20240628204803",
+        "checks"
+      ],
+      "priority": "low",
+      "retries": 5,
+      "created": "2024-06-28T21:35:17.977Z",
+      "deadline": "2024-07-18T21:35:17.977Z",
+      "expires": "2025-06-28T21:35:17.977Z",
+      "scopes": [
+        "secrets:get:project/translations/level-1/weights-and-biases",
+        "generic-worker:cache:translations-level-1-checkouts"
+      ],
+      "payload": {
+        "env": {
+          "GPUS": "0",
+          "MARIAN": "$MOZ_FETCHES_DIR",
+          "VCS_PATH": "./checkouts/vcs",
+          "WORKSPACE": "12000",
+          "MOZ_FETCHES": "[{\"artifact\": \"public/build/aug-title_devtest.en.zst\", \"extract\": false, \"task\": \"fRt-mpLuRte7JggWTfWd5A\"}, {\"artifact\": \"public/build/aug-title_devtest.sk.zst\", \"extract\": false, \"task\": \"fRt-mpLuRte7JggWTfWd5A\"}, {\"artifact\": \"public/build/marian.tar.zst\", \"extract\": true, \"task\": \"cCr_z2sITDGiow53WiHs8g\"}, {\"artifact\": \"public/build/final.model.npz.best-chrf.npz\", \"dest\": \"model1\", \"extract\": true, \"task\": \"EeQKsoMQRfKZ00Gl75b5Qg\"}, {\"artifact\": \"public/build/final.model.npz.best-chrf.npz.decoder.yml\", \"extract\": true, \"task\": \"EeQKsoMQRfKZ00Gl75b5Qg\"}, {\"artifact\": \"public/build/vocab.spm\", \"extract\": false, \"task\": \"EeQKsoMQRfKZ00Gl75b5Qg\"}, {\"artifact\": \"public/build/final.model.npz.best-chrf.npz\", \"dest\": \"model2\", \"extract\": true, \"task\": \"CGwYNJ7gSN6n71PJgVioSw\"}, {\"artifact\": \"public/build/final.model.npz.best-chrf.npz.decoder.yml\", \"extract\": true, \"task\": \"CGwYNJ7gSN6n71PJgVioSw\"}, {\"artifact\": \"public/build/vocab.spm\", \"extract\": false, \"task\": \"CGwYNJ7gSN6n71PJgVioSw\"}]",
+          "REPOSITORIES": "{\"firefox_translations_training\": \"firefox-translations-training\"}",
+          "HG_STORE_PATH": "./checkouts/hg-shared",
+          "MOZ_SCM_LEVEL": "1",
+          "MOZ_AUTOMATION": "1",
+          "MOZ_FETCHES_DIR": "fetches",
+          "SCCACHE_DISABLE": "1",
+          "WANDB_PUBLICATION": "True",
+          "TASKCLUSTER_SECRET": "project/translations/level-1/weights-and-biases",
+          "FIREFOX_TRANSLATIONS_TRAINING_HEAD_REF": "refs/heads/release_stages",
+          "FIREFOX_TRANSLATIONS_TRAINING_HEAD_REV": "518bee6174aa6af547197204d8d13f4ec51a1044",
+          "FIREFOX_TRANSLATIONS_TRAINING_BASE_REPOSITORY": "https://github.com/mozilla/firefox-translations-training",
+          "FIREFOX_TRANSLATIONS_TRAINING_HEAD_REPOSITORY": "https://github.com/mozilla/firefox-translations-training",
+          "FIREFOX_TRANSLATIONS_TRAINING_REPOSITORY_TYPE": "git"
+        },
+        "mounts": [
+          {
+            "cacheName": "translations-level-1-checkouts",
+            "directory": "./checkouts"
+          },
+          {
+            "file": "./run-task",
+            "content": {
+              "url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/MMUnGDb3ShGAFKjEDjU0zw/artifacts/public/run-task"
+            }
+          },
+          {
+            "file": "./fetch-content",
+            "content": {
+              "url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/MMUnGDb3ShGAFKjEDjU0zw/artifacts/public/fetch-content"
+            }
+          }
+        ],
+        "command": [
+          [
+            "chmod",
+            "+x",
+            "run-task"
+          ],
+          [
+            "./run-task",
+            "--firefox_translations_training-checkout=./checkouts/vcs/",
+            "--",
+            "bash",
+            "-c",
+            "export PATH=$PATH:~/.local/bin && export PYTHONPATH=$PYTHONPATH:$VCS_PATH && pip install --upgrade pip && pip install -r $VCS_PATH/pipeline/eval/requirements/eval.txt && pip install $VCS_PATH/tracking && sed -i -e \"s,- .*fetches,- $MOZ_FETCHES_DIR,\" $TASK_WORKDIR/fetches/*.yml && sed -i -e \"s,- .*artifacts,- $MOZ_FETCHES_DIR,\" $TASK_WORKDIR/fetches/*.yml && $VCS_PATH/pipeline/eval/eval.py --src              sk --trg              en --compression_cmd  zstdmt --artifact_ext     zst --dataset_prefix   \"$MOZ_FETCHES_DIR/aug-title_devtest\" --marian_config    \"$MOZ_FETCHES_DIR/final.model.npz.best-chrf.npz.decoder.yml\" --models           \"$MOZ_FETCHES_DIR/model*/*.npz\" --artifacts_prefix \"$TASK_WORKDIR/artifacts/aug-title_devtest\" --marian           \"$MARIAN\" --workspace        \"$WORKSPACE\" --gpus             \"$GPUS\" --model_variant    gpu"
+          ]
+        ],
+        "features": {
+          "taskclusterProxy": true
+        },
+        "artifacts": [
+          {
+            "name": "public/build",
+            "path": "artifacts",
+            "type": "directory"
+          }
+        ],
+        "maxRunTime": 2592000,
+        "onExitStatus": {
+          "retry": [
+            128
+          ]
+        }
+      },
+      "metadata": {
+        "name": "evaluate-teacher-ensemble-flores-aug-title_devtest-sk-en",
+        "owner": "pavlov89@gmail.com",
+        "source": "https://github.com/mozilla/firefox-translations-training/blob/518bee6174aa6af547197204d8d13f4ec51a1044/taskcluster/kinds/evaluate-teacher-ensemble",
+        "description": "teacher evaluation for flores_aug-title_devtest sk-en"
+      },
+      "tags": {
+        "os": "linux",
+        "kind": "evaluate-teacher-ensemble",
+        "label": "evaluate-teacher-ensemble-flores-aug-title_devtest-sk-en",
+        "createdForUser": "pavlov89@gmail.com",
+        "worker-implementation": "generic-worker"
+      },
+      "extra": {
+        "index": {
+          "rank": 0
+        },
+        "parent": "MMUnGDb3ShGAFKjEDjU0zw"
+      }
+    }
+  },
+  {
+    "status": {
+      "taskId": "QZ7s1v-GSVaCdW9xbTUVYQ",
+      "provisionerId": "translations-1",
+      "workerType": "b-linux-v100-gpu",
+      "taskQueueId": "translations-1/b-linux-v100-gpu",
+      "schedulerId": "translations-level-1",
+      "projectId": "none",
+      "taskGroupId": "MMUnGDb3ShGAFKjEDjU0zw",
+      "deadline": "2024-07-18T21:35:17.986Z",
+      "expires": "2025-06-28T21:35:17.986Z",
+      "retriesLeft": 5,
+      "state": "completed",
+      "runs": [
+        {
+          "runId": 0,
+          "state": "completed",
+          "reasonCreated": "scheduled",
+          "reasonResolved": "completed",
+          "workerGroup": "us-central1-c",
+          "workerId": "7748733999985816027",
+          "takenUntil": "2024-07-06T05:22:01.235Z",
+          "scheduled": "2024-07-06T04:59:24.579Z",
+          "started": "2024-07-06T05:02:01.238Z",
+          "resolved": "2024-07-06T05:09:48.032Z"
+        }
+      ]
+    },
+    "task": {
+      "provisionerId": "translations-1",
+      "workerType": "b-linux-v100-gpu",
+      "taskQueueId": "translations-1/b-linux-v100-gpu",
+      "schedulerId": "translations-level-1",
+      "projectId": "none",
+      "taskGroupId": "MMUnGDb3ShGAFKjEDjU0zw",
+      "dependencies": [
+        "CGwYNJ7gSN6n71PJgVioSw",
+        "CS07BYSRQuuAxw0ej2pMqg",
+        "EeQKsoMQRfKZ00Gl75b5Qg",
+        "cCr_z2sITDGiow53WiHs8g"
+      ],
+      "requires": "all-completed",
+      "routes": [
+        "index.translations.cache.level-1.evaluate-teacher-ensemble.evaluate-teacher-ensemble-flores-aug-mix_devtest-sk-en.hash.8be4e95eb50401c0e5adacc3314abfa54cd0395fa7a068aef480bf3e7921f5f8",
+        "index.translations.cache.level-1.evaluate-teacher-ensemble.evaluate-teacher-ensemble-flores-aug-mix_devtest-sk-en.latest",
+        "index.translations.cache.level-1.evaluate-teacher-ensemble.evaluate-teacher-ensemble-flores-aug-mix_devtest-sk-en.pushdate.2024.06.28.20240628204803",
+        "checks"
+      ],
+      "priority": "low",
+      "retries": 5,
+      "created": "2024-06-28T21:35:17.986Z",
+      "deadline": "2024-07-18T21:35:17.986Z",
+      "expires": "2025-06-28T21:35:17.986Z",
+      "scopes": [
+        "secrets:get:project/translations/level-1/weights-and-biases",
+        "generic-worker:cache:translations-level-1-checkouts"
+      ],
+      "payload": {
+        "env": {
+          "GPUS": "0",
+          "MARIAN": "$MOZ_FETCHES_DIR",
+          "VCS_PATH": "./checkouts/vcs",
+          "WORKSPACE": "12000",
+          "MOZ_FETCHES": "[{\"artifact\": \"public/build/aug-mix_devtest.en.zst\", \"extract\": false, \"task\": \"CS07BYSRQuuAxw0ej2pMqg\"}, {\"artifact\": \"public/build/aug-mix_devtest.sk.zst\", \"extract\": false, \"task\": \"CS07BYSRQuuAxw0ej2pMqg\"}, {\"artifact\": \"public/build/marian.tar.zst\", \"extract\": true, \"task\": \"cCr_z2sITDGiow53WiHs8g\"}, {\"artifact\": \"public/build/final.model.npz.best-chrf.npz\", \"dest\": \"model1\", \"extract\": true, \"task\": \"EeQKsoMQRfKZ00Gl75b5Qg\"}, {\"artifact\": \"public/build/final.model.npz.best-chrf.npz.decoder.yml\", \"extract\": true, \"task\": \"EeQKsoMQRfKZ00Gl75b5Qg\"}, {\"artifact\": \"public/build/vocab.spm\", \"extract\": false, \"task\": \"EeQKsoMQRfKZ00Gl75b5Qg\"}, {\"artifact\": \"public/build/final.model.npz.best-chrf.npz\", \"dest\": \"model2\", \"extract\": true, \"task\": \"CGwYNJ7gSN6n71PJgVioSw\"}, {\"artifact\": \"public/build/final.model.npz.best-chrf.npz.decoder.yml\", \"extract\": true, \"task\": \"CGwYNJ7gSN6n71PJgVioSw\"}, {\"artifact\": \"public/build/vocab.spm\", \"extract\": false, \"task\": \"CGwYNJ7gSN6n71PJgVioSw\"}]",
+          "REPOSITORIES": "{\"firefox_translations_training\": \"firefox-translations-training\"}",
+          "HG_STORE_PATH": "./checkouts/hg-shared",
+          "MOZ_SCM_LEVEL": "1",
+          "MOZ_AUTOMATION": "1",
+          "MOZ_FETCHES_DIR": "fetches",
+          "SCCACHE_DISABLE": "1",
+          "WANDB_PUBLICATION": "True",
+          "TASKCLUSTER_SECRET": "project/translations/level-1/weights-and-biases",
+          "FIREFOX_TRANSLATIONS_TRAINING_HEAD_REF": "refs/heads/release_stages",
+          "FIREFOX_TRANSLATIONS_TRAINING_HEAD_REV": "518bee6174aa6af547197204d8d13f4ec51a1044",
+          "FIREFOX_TRANSLATIONS_TRAINING_BASE_REPOSITORY": "https://github.com/mozilla/firefox-translations-training",
+          "FIREFOX_TRANSLATIONS_TRAINING_HEAD_REPOSITORY": "https://github.com/mozilla/firefox-translations-training",
+          "FIREFOX_TRANSLATIONS_TRAINING_REPOSITORY_TYPE": "git"
+        },
+        "mounts": [
+          {
+            "cacheName": "translations-level-1-checkouts",
+            "directory": "./checkouts"
+          },
+          {
+            "file": "./run-task",
+            "content": {
+              "url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/MMUnGDb3ShGAFKjEDjU0zw/artifacts/public/run-task"
+            }
+          },
+          {
+            "file": "./fetch-content",
+            "content": {
+              "url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/MMUnGDb3ShGAFKjEDjU0zw/artifacts/public/fetch-content"
+            }
+          }
+        ],
+        "command": [
+          [
+            "chmod",
+            "+x",
+            "run-task"
+          ],
+          [
+            "./run-task",
+            "--firefox_translations_training-checkout=./checkouts/vcs/",
+            "--",
+            "bash",
+            "-c",
+            "export PATH=$PATH:~/.local/bin && export PYTHONPATH=$PYTHONPATH:$VCS_PATH && pip install --upgrade pip && pip install -r $VCS_PATH/pipeline/eval/requirements/eval.txt && pip install $VCS_PATH/tracking && sed -i -e \"s,- .*fetches,- $MOZ_FETCHES_DIR,\" $TASK_WORKDIR/fetches/*.yml && sed -i -e \"s,- .*artifacts,- $MOZ_FETCHES_DIR,\" $TASK_WORKDIR/fetches/*.yml && $VCS_PATH/pipeline/eval/eval.py --src              sk --trg              en --compression_cmd  zstdmt --artifact_ext     zst --dataset_prefix   \"$MOZ_FETCHES_DIR/aug-mix_devtest\" --marian_config    \"$MOZ_FETCHES_DIR/final.model.npz.best-chrf.npz.decoder.yml\" --models           \"$MOZ_FETCHES_DIR/model*/*.npz\" --artifacts_prefix \"$TASK_WORKDIR/artifacts/aug-mix_devtest\" --marian           \"$MARIAN\" --workspace        \"$WORKSPACE\" --gpus             \"$GPUS\" --model_variant    gpu"
+          ]
+        ],
+        "features": {
+          "taskclusterProxy": true
+        },
+        "artifacts": [
+          {
+            "name": "public/build",
+            "path": "artifacts",
+            "type": "directory"
+          }
+        ],
+        "maxRunTime": 2592000,
+        "onExitStatus": {
+          "retry": [
+            128
+          ]
+        }
+      },
+      "metadata": {
+        "name": "evaluate-teacher-ensemble-flores-aug-mix_devtest-sk-en",
+        "owner": "pavlov89@gmail.com",
+        "source": "https://github.com/mozilla/firefox-translations-training/blob/518bee6174aa6af547197204d8d13f4ec51a1044/taskcluster/kinds/evaluate-teacher-ensemble",
+        "description": "teacher evaluation for flores_aug-mix_devtest sk-en"
+      },
+      "tags": {
+        "os": "linux",
+        "kind": "evaluate-teacher-ensemble",
+        "label": "evaluate-teacher-ensemble-flores-aug-mix_devtest-sk-en",
+        "createdForUser": "pavlov89@gmail.com",
+        "worker-implementation": "generic-worker"
+      },
+      "extra": {
+        "index": {
+          "rank": 0
+        },
+        "parent": "MMUnGDb3ShGAFKjEDjU0zw"
+      }
+    }
+  },
+  {
+    "status": {
+      "taskId": "P1eEdY61TGKb4CKgqqJbjw",
+      "provisionerId": "translations-1",
+      "workerType": "b-linux-v100-gpu",
+      "taskQueueId": "translations-1/b-linux-v100-gpu",
+      "schedulerId": "translations-level-1",
+      "projectId": "none",
+      "taskGroupId": "MMUnGDb3ShGAFKjEDjU0zw",
+      "deadline": "2024-07-18T21:35:17.969Z",
+      "expires": "2025-06-28T21:35:17.969Z",
+      "retriesLeft": 5,
+      "state": "completed",
+      "runs": [
+        {
+          "runId": 0,
+          "state": "completed",
+          "reasonCreated": "scheduled",
+          "reasonResolved": "completed",
+          "workerGroup": "us-central1-a",
+          "workerId": "5422629199085400539",
+          "takenUntil": "2024-07-06T05:21:51.607Z",
+          "scheduled": "2024-07-06T04:59:24.538Z",
+          "started": "2024-07-06T05:01:51.617Z",
+          "resolved": "2024-07-06T05:09:09.689Z"
+        }
+      ]
+    },
+    "task": {
+      "provisionerId": "translations-1",
+      "workerType": "b-linux-v100-gpu",
+      "taskQueueId": "translations-1/b-linux-v100-gpu",
+      "schedulerId": "translations-level-1",
+      "projectId": "none",
+      "taskGroupId": "MMUnGDb3ShGAFKjEDjU0zw",
+      "dependencies": [
+        "CGwYNJ7gSN6n71PJgVioSw",
+        "EeQKsoMQRfKZ00Gl75b5Qg",
+        "cCr_z2sITDGiow53WiHs8g",
+        "dZqhlbDEQtOwknKTvxu1NA"
+      ],
+      "requires": "all-completed",
+      "routes": [
+        "index.translations.cache.level-1.evaluate-teacher-ensemble.evaluate-teacher-ensemble-flores-aug-typos_devtest-sk-en.hash.20dbc94b7731aa3877c1e49d000a327978f40671ab7c180d7a37f1d6a0923c6b",
+        "index.translations.cache.level-1.evaluate-teacher-ensemble.evaluate-teacher-ensemble-flores-aug-typos_devtest-sk-en.latest",
+        "index.translations.cache.level-1.evaluate-teacher-ensemble.evaluate-teacher-ensemble-flores-aug-typos_devtest-sk-en.pushdate.2024.06.28.20240628204803",
+        "checks"
+      ],
+      "priority": "low",
+      "retries": 5,
+      "created": "2024-06-28T21:35:17.969Z",
+      "deadline": "2024-07-18T21:35:17.969Z",
+      "expires": "2025-06-28T21:35:17.969Z",
+      "scopes": [
+        "secrets:get:project/translations/level-1/weights-and-biases",
+        "generic-worker:cache:translations-level-1-checkouts"
+      ],
+      "payload": {
+        "env": {
+          "GPUS": "0",
+          "MARIAN": "$MOZ_FETCHES_DIR",
+          "VCS_PATH": "./checkouts/vcs",
+          "WORKSPACE": "12000",
+          "MOZ_FETCHES": "[{\"artifact\": \"public/build/aug-typos_devtest.en.zst\", \"extract\": false, \"task\": \"dZqhlbDEQtOwknKTvxu1NA\"}, {\"artifact\": \"public/build/aug-typos_devtest.sk.zst\", \"extract\": false, \"task\": \"dZqhlbDEQtOwknKTvxu1NA\"}, {\"artifact\": \"public/build/marian.tar.zst\", \"extract\": true, \"task\": \"cCr_z2sITDGiow53WiHs8g\"}, {\"artifact\": \"public/build/final.model.npz.best-chrf.npz\", \"dest\": \"model1\", \"extract\": true, \"task\": \"EeQKsoMQRfKZ00Gl75b5Qg\"}, {\"artifact\": \"public/build/final.model.npz.best-chrf.npz.decoder.yml\", \"extract\": true, \"task\": \"EeQKsoMQRfKZ00Gl75b5Qg\"}, {\"artifact\": \"public/build/vocab.spm\", \"extract\": false, \"task\": \"EeQKsoMQRfKZ00Gl75b5Qg\"}, {\"artifact\": \"public/build/final.model.npz.best-chrf.npz\", \"dest\": \"model2\", \"extract\": true, \"task\": \"CGwYNJ7gSN6n71PJgVioSw\"}, {\"artifact\": \"public/build/final.model.npz.best-chrf.npz.decoder.yml\", \"extract\": true, \"task\": \"CGwYNJ7gSN6n71PJgVioSw\"}, {\"artifact\": \"public/build/vocab.spm\", \"extract\": false, \"task\": \"CGwYNJ7gSN6n71PJgVioSw\"}]",
+          "REPOSITORIES": "{\"firefox_translations_training\": \"firefox-translations-training\"}",
+          "HG_STORE_PATH": "./checkouts/hg-shared",
+          "MOZ_SCM_LEVEL": "1",
+          "MOZ_AUTOMATION": "1",
+          "MOZ_FETCHES_DIR": "fetches",
+          "SCCACHE_DISABLE": "1",
+          "WANDB_PUBLICATION": "True",
+          "TASKCLUSTER_SECRET": "project/translations/level-1/weights-and-biases",
+          "FIREFOX_TRANSLATIONS_TRAINING_HEAD_REF": "refs/heads/release_stages",
+          "FIREFOX_TRANSLATIONS_TRAINING_HEAD_REV": "518bee6174aa6af547197204d8d13f4ec51a1044",
+          "FIREFOX_TRANSLATIONS_TRAINING_BASE_REPOSITORY": "https://github.com/mozilla/firefox-translations-training",
+          "FIREFOX_TRANSLATIONS_TRAINING_HEAD_REPOSITORY": "https://github.com/mozilla/firefox-translations-training",
+          "FIREFOX_TRANSLATIONS_TRAINING_REPOSITORY_TYPE": "git"
+        },
+        "mounts": [
+          {
+            "cacheName": "translations-level-1-checkouts",
+            "directory": "./checkouts"
+          },
+          {
+            "file": "./run-task",
+            "content": {
+              "url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/MMUnGDb3ShGAFKjEDjU0zw/artifacts/public/run-task"
+            }
+          },
+          {
+            "file": "./fetch-content",
+            "content": {
+              "url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/MMUnGDb3ShGAFKjEDjU0zw/artifacts/public/fetch-content"
+            }
+          }
+        ],
+        "command": [
+          [
+            "chmod",
+            "+x",
+            "run-task"
+          ],
+          [
+            "./run-task",
+            "--firefox_translations_training-checkout=./checkouts/vcs/",
+            "--",
+            "bash",
+            "-c",
+            "export PATH=$PATH:~/.local/bin && export PYTHONPATH=$PYTHONPATH:$VCS_PATH && pip install --upgrade pip && pip install -r $VCS_PATH/pipeline/eval/requirements/eval.txt && pip install $VCS_PATH/tracking && sed -i -e \"s,- .*fetches,- $MOZ_FETCHES_DIR,\" $TASK_WORKDIR/fetches/*.yml && sed -i -e \"s,- .*artifacts,- $MOZ_FETCHES_DIR,\" $TASK_WORKDIR/fetches/*.yml && $VCS_PATH/pipeline/eval/eval.py --src              sk --trg              en --compression_cmd  zstdmt --artifact_ext     zst --dataset_prefix   \"$MOZ_FETCHES_DIR/aug-typos_devtest\" --marian_config    \"$MOZ_FETCHES_DIR/final.model.npz.best-chrf.npz.decoder.yml\" --models           \"$MOZ_FETCHES_DIR/model*/*.npz\" --artifacts_prefix \"$TASK_WORKDIR/artifacts/aug-typos_devtest\" --marian           \"$MARIAN\" --workspace        \"$WORKSPACE\" --gpus             \"$GPUS\" --model_variant    gpu"
+          ]
+        ],
+        "features": {
+          "taskclusterProxy": true
+        },
+        "artifacts": [
+          {
+            "name": "public/build",
+            "path": "artifacts",
+            "type": "directory"
+          }
+        ],
+        "maxRunTime": 2592000,
+        "onExitStatus": {
+          "retry": [
+            128
+          ]
+        }
+      },
+      "metadata": {
+        "name": "evaluate-teacher-ensemble-flores-aug-typos_devtest-sk-en",
+        "owner": "pavlov89@gmail.com",
+        "source": "https://github.com/mozilla/firefox-translations-training/blob/518bee6174aa6af547197204d8d13f4ec51a1044/taskcluster/kinds/evaluate-teacher-ensemble",
+        "description": "teacher evaluation for flores_aug-typos_devtest sk-en"
+      },
+      "tags": {
+        "os": "linux",
+        "kind": "evaluate-teacher-ensemble",
+        "label": "evaluate-teacher-ensemble-flores-aug-typos_devtest-sk-en",
+        "createdForUser": "pavlov89@gmail.com",
+        "worker-implementation": "generic-worker"
+      },
+      "extra": {
+        "index": {
+          "rank": 0
+        },
+        "parent": "MMUnGDb3ShGAFKjEDjU0zw"
+      }
+    }
+  },
+  {
+    "status": {
+      "taskId": "C4c9wTpJTnG_Z_VDGvyFHg",
+      "provisionerId": "translations-1",
+      "workerType": "b-linux-v100-gpu",
+      "taskQueueId": "translations-1/b-linux-v100-gpu",
+      "schedulerId": "translations-level-1",
+      "projectId": "none",
+      "taskGroupId": "MMUnGDb3ShGAFKjEDjU0zw",
+      "deadline": "2024-07-18T21:35:17.971Z",
+      "expires": "2025-06-28T21:35:17.971Z",
+      "retriesLeft": 5,
+      "state": "completed",
+      "runs": [
+        {
+          "runId": 0,
+          "state": "completed",
+          "reasonCreated": "scheduled",
+          "reasonResolved": "completed",
+          "workerGroup": "us-west1-b",
+          "workerId": "3390861655190893019",
+          "takenUntil": "2024-07-06T05:21:18.639Z",
+          "scheduled": "2024-07-06T04:59:24.421Z",
+          "started": "2024-07-06T05:01:18.642Z",
+          "resolved": "2024-07-06T05:08:39.984Z"
+        }
+      ]
+    },
+    "task": {
+      "provisionerId": "translations-1",
+      "workerType": "b-linux-v100-gpu",
+      "taskQueueId": "translations-1/b-linux-v100-gpu",
+      "schedulerId": "translations-level-1",
+      "projectId": "none",
+      "taskGroupId": "MMUnGDb3ShGAFKjEDjU0zw",
+      "dependencies": [
+        "CGwYNJ7gSN6n71PJgVioSw",
+        "EeQKsoMQRfKZ00Gl75b5Qg",
+        "LYwKtGnBSW-IKilzrDedOg",
+        "cCr_z2sITDGiow53WiHs8g"
+      ],
+      "requires": "all-completed",
+      "routes": [
+        "index.translations.cache.level-1.evaluate-teacher-ensemble.evaluate-teacher-ensemble-flores-aug-upper_devtest-sk-en.hash.29db26a0ddaefb619cf894196dbe3f7818602b1cc34df310cfd4e099799b6374",
+        "index.translations.cache.level-1.evaluate-teacher-ensemble.evaluate-teacher-ensemble-flores-aug-upper_devtest-sk-en.latest",
+        "index.translations.cache.level-1.evaluate-teacher-ensemble.evaluate-teacher-ensemble-flores-aug-upper_devtest-sk-en.pushdate.2024.06.28.20240628204803",
+        "checks"
+      ],
+      "priority": "low",
+      "retries": 5,
+      "created": "2024-06-28T21:35:17.971Z",
+      "deadline": "2024-07-18T21:35:17.971Z",
+      "expires": "2025-06-28T21:35:17.971Z",
+      "scopes": [
+        "secrets:get:project/translations/level-1/weights-and-biases",
+        "generic-worker:cache:translations-level-1-checkouts"
+      ],
+      "payload": {
+        "env": {
+          "GPUS": "0",
+          "MARIAN": "$MOZ_FETCHES_DIR",
+          "VCS_PATH": "./checkouts/vcs",
+          "WORKSPACE": "12000",
+          "MOZ_FETCHES": "[{\"artifact\": \"public/build/aug-upper_devtest.en.zst\", \"extract\": false, \"task\": \"LYwKtGnBSW-IKilzrDedOg\"}, {\"artifact\": \"public/build/aug-upper_devtest.sk.zst\", \"extract\": false, \"task\": \"LYwKtGnBSW-IKilzrDedOg\"}, {\"artifact\": \"public/build/marian.tar.zst\", \"extract\": true, \"task\": \"cCr_z2sITDGiow53WiHs8g\"}, {\"artifact\": \"public/build/final.model.npz.best-chrf.npz\", \"dest\": \"model1\", \"extract\": true, \"task\": \"EeQKsoMQRfKZ00Gl75b5Qg\"}, {\"artifact\": \"public/build/final.model.npz.best-chrf.npz.decoder.yml\", \"extract\": true, \"task\": \"EeQKsoMQRfKZ00Gl75b5Qg\"}, {\"artifact\": \"public/build/vocab.spm\", \"extract\": false, \"task\": \"EeQKsoMQRfKZ00Gl75b5Qg\"}, {\"artifact\": \"public/build/final.model.npz.best-chrf.npz\", \"dest\": \"model2\", \"extract\": true, \"task\": \"CGwYNJ7gSN6n71PJgVioSw\"}, {\"artifact\": \"public/build/final.model.npz.best-chrf.npz.decoder.yml\", \"extract\": true, \"task\": \"CGwYNJ7gSN6n71PJgVioSw\"}, {\"artifact\": \"public/build/vocab.spm\", \"extract\": false, \"task\": \"CGwYNJ7gSN6n71PJgVioSw\"}]",
+          "REPOSITORIES": "{\"firefox_translations_training\": \"firefox-translations-training\"}",
+          "HG_STORE_PATH": "./checkouts/hg-shared",
+          "MOZ_SCM_LEVEL": "1",
+          "MOZ_AUTOMATION": "1",
+          "MOZ_FETCHES_DIR": "fetches",
+          "SCCACHE_DISABLE": "1",
+          "WANDB_PUBLICATION": "True",
+          "TASKCLUSTER_SECRET": "project/translations/level-1/weights-and-biases",
+          "FIREFOX_TRANSLATIONS_TRAINING_HEAD_REF": "refs/heads/release_stages",
+          "FIREFOX_TRANSLATIONS_TRAINING_HEAD_REV": "518bee6174aa6af547197204d8d13f4ec51a1044",
+          "FIREFOX_TRANSLATIONS_TRAINING_BASE_REPOSITORY": "https://github.com/mozilla/firefox-translations-training",
+          "FIREFOX_TRANSLATIONS_TRAINING_HEAD_REPOSITORY": "https://github.com/mozilla/firefox-translations-training",
+          "FIREFOX_TRANSLATIONS_TRAINING_REPOSITORY_TYPE": "git"
+        },
+        "mounts": [
+          {
+            "cacheName": "translations-level-1-checkouts",
+            "directory": "./checkouts"
+          },
+          {
+            "file": "./run-task",
+            "content": {
+              "url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/MMUnGDb3ShGAFKjEDjU0zw/artifacts/public/run-task"
+            }
+          },
+          {
+            "file": "./fetch-content",
+            "content": {
+              "url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/MMUnGDb3ShGAFKjEDjU0zw/artifacts/public/fetch-content"
+            }
+          }
+        ],
+        "command": [
+          [
+            "chmod",
+            "+x",
+            "run-task"
+          ],
+          [
+            "./run-task",
+            "--firefox_translations_training-checkout=./checkouts/vcs/",
+            "--",
+            "bash",
+            "-c",
+            "export PATH=$PATH:~/.local/bin && export PYTHONPATH=$PYTHONPATH:$VCS_PATH && pip install --upgrade pip && pip install -r $VCS_PATH/pipeline/eval/requirements/eval.txt && pip install $VCS_PATH/tracking && sed -i -e \"s,- .*fetches,- $MOZ_FETCHES_DIR,\" $TASK_WORKDIR/fetches/*.yml && sed -i -e \"s,- .*artifacts,- $MOZ_FETCHES_DIR,\" $TASK_WORKDIR/fetches/*.yml && $VCS_PATH/pipeline/eval/eval.py --src              sk --trg              en --compression_cmd  zstdmt --artifact_ext     zst --dataset_prefix   \"$MOZ_FETCHES_DIR/aug-upper_devtest\" --marian_config    \"$MOZ_FETCHES_DIR/final.model.npz.best-chrf.npz.decoder.yml\" --models           \"$MOZ_FETCHES_DIR/model*/*.npz\" --artifacts_prefix \"$TASK_WORKDIR/artifacts/aug-upper_devtest\" --marian           \"$MARIAN\" --workspace        \"$WORKSPACE\" --gpus             \"$GPUS\" --model_variant    gpu"
+          ]
+        ],
+        "features": {
+          "taskclusterProxy": true
+        },
+        "artifacts": [
+          {
+            "name": "public/build",
+            "path": "artifacts",
+            "type": "directory"
+          }
+        ],
+        "maxRunTime": 2592000,
+        "onExitStatus": {
+          "retry": [
+            128
+          ]
+        }
+      },
+      "metadata": {
+        "name": "evaluate-teacher-ensemble-flores-aug-upper_devtest-sk-en",
+        "owner": "pavlov89@gmail.com",
+        "source": "https://github.com/mozilla/firefox-translations-training/blob/518bee6174aa6af547197204d8d13f4ec51a1044/taskcluster/kinds/evaluate-teacher-ensemble",
+        "description": "teacher evaluation for flores_aug-upper_devtest sk-en"
+      },
+      "tags": {
+        "os": "linux",
+        "kind": "evaluate-teacher-ensemble",
+        "label": "evaluate-teacher-ensemble-flores-aug-upper_devtest-sk-en",
+        "createdForUser": "pavlov89@gmail.com",
+        "worker-implementation": "generic-worker"
+      },
+      "extra": {
+        "index": {
+          "rank": 0
+        },
+        "parent": "MMUnGDb3ShGAFKjEDjU0zw"
+      }
+    }
+  },
+  {
+    "status": {
+      "taskId": "KoZkYdM-T2u4lmmRb13vpg",
+      "provisionerId": "translations-1",
+      "workerType": "b-linux-v100-gpu",
+      "taskQueueId": "translations-1/b-linux-v100-gpu",
+      "schedulerId": "translations-level-1",
+      "projectId": "none",
+      "taskGroupId": "MMUnGDb3ShGAFKjEDjU0zw",
+      "deadline": "2024-07-18T21:35:17.976Z",
+      "expires": "2025-06-28T21:35:17.976Z",
+      "retriesLeft": 5,
+      "state": "completed",
+      "runs": [
+        {
+          "runId": 0,
+          "state": "completed",
+          "reasonCreated": "scheduled",
+          "reasonResolved": "completed",
+          "workerGroup": "us-west1-b",
+          "workerId": "2207643129155514843",
+          "takenUntil": "2024-07-06T05:21:31.198Z",
+          "scheduled": "2024-07-06T04:59:24.498Z",
+          "started": "2024-07-06T05:01:31.202Z",
+          "resolved": "2024-07-06T05:08:18.784Z"
+        }
+      ]
+    },
+    "task": {
+      "provisionerId": "translations-1",
+      "workerType": "b-linux-v100-gpu",
+      "taskQueueId": "translations-1/b-linux-v100-gpu",
+      "schedulerId": "translations-level-1",
+      "projectId": "none",
+      "taskGroupId": "MMUnGDb3ShGAFKjEDjU0zw",
+      "dependencies": [
+        "CGwYNJ7gSN6n71PJgVioSw",
+        "EeQKsoMQRfKZ00Gl75b5Qg",
+        "cCr_z2sITDGiow53WiHs8g",
+        "cpzZaFwNSSGJXzwCjfgF1w"
+      ],
+      "requires": "all-completed",
+      "routes": [
+        "index.translations.cache.level-1.evaluate-teacher-ensemble.evaluate-teacher-ensemble-flores-aug-inline-noise_devtest-sk-en.hash.70c44d131373b10fe857f05b478b30595a2aa5cdcac7e1b019e913888e25786e",
+        "index.translations.cache.level-1.evaluate-teacher-ensemble.evaluate-teacher-ensemble-flores-aug-inline-noise_devtest-sk-en.latest",
+        "index.translations.cache.level-1.evaluate-teacher-ensemble.evaluate-teacher-ensemble-flores-aug-inline-noise_devtest-sk-en.pushdate.2024.06.28.20240628204803",
+        "checks"
+      ],
+      "priority": "low",
+      "retries": 5,
+      "created": "2024-06-28T21:35:17.976Z",
+      "deadline": "2024-07-18T21:35:17.976Z",
+      "expires": "2025-06-28T21:35:17.976Z",
+      "scopes": [
+        "secrets:get:project/translations/level-1/weights-and-biases",
+        "generic-worker:cache:translations-level-1-checkouts"
+      ],
+      "payload": {
+        "env": {
+          "GPUS": "0",
+          "MARIAN": "$MOZ_FETCHES_DIR",
+          "VCS_PATH": "./checkouts/vcs",
+          "WORKSPACE": "12000",
+          "MOZ_FETCHES": "[{\"artifact\": \"public/build/aug-inline-noise_devtest.en.zst\", \"extract\": false, \"task\": \"cpzZaFwNSSGJXzwCjfgF1w\"}, {\"artifact\": \"public/build/aug-inline-noise_devtest.sk.zst\", \"extract\": false, \"task\": \"cpzZaFwNSSGJXzwCjfgF1w\"}, {\"artifact\": \"public/build/marian.tar.zst\", \"extract\": true, \"task\": \"cCr_z2sITDGiow53WiHs8g\"}, {\"artifact\": \"public/build/final.model.npz.best-chrf.npz\", \"dest\": \"model1\", \"extract\": true, \"task\": \"EeQKsoMQRfKZ00Gl75b5Qg\"}, {\"artifact\": \"public/build/final.model.npz.best-chrf.npz.decoder.yml\", \"extract\": true, \"task\": \"EeQKsoMQRfKZ00Gl75b5Qg\"}, {\"artifact\": \"public/build/vocab.spm\", \"extract\": false, \"task\": \"EeQKsoMQRfKZ00Gl75b5Qg\"}, {\"artifact\": \"public/build/final.model.npz.best-chrf.npz\", \"dest\": \"model2\", \"extract\": true, \"task\": \"CGwYNJ7gSN6n71PJgVioSw\"}, {\"artifact\": \"public/build/final.model.npz.best-chrf.npz.decoder.yml\", \"extract\": true, \"task\": \"CGwYNJ7gSN6n71PJgVioSw\"}, {\"artifact\": \"public/build/vocab.spm\", \"extract\": false, \"task\": \"CGwYNJ7gSN6n71PJgVioSw\"}]",
+          "REPOSITORIES": "{\"firefox_translations_training\": \"firefox-translations-training\"}",
+          "HG_STORE_PATH": "./checkouts/hg-shared",
+          "MOZ_SCM_LEVEL": "1",
+          "MOZ_AUTOMATION": "1",
+          "MOZ_FETCHES_DIR": "fetches",
+          "SCCACHE_DISABLE": "1",
+          "WANDB_PUBLICATION": "True",
+          "TASKCLUSTER_SECRET": "project/translations/level-1/weights-and-biases",
+          "FIREFOX_TRANSLATIONS_TRAINING_HEAD_REF": "refs/heads/release_stages",
+          "FIREFOX_TRANSLATIONS_TRAINING_HEAD_REV": "518bee6174aa6af547197204d8d13f4ec51a1044",
+          "FIREFOX_TRANSLATIONS_TRAINING_BASE_REPOSITORY": "https://github.com/mozilla/firefox-translations-training",
+          "FIREFOX_TRANSLATIONS_TRAINING_HEAD_REPOSITORY": "https://github.com/mozilla/firefox-translations-training",
+          "FIREFOX_TRANSLATIONS_TRAINING_REPOSITORY_TYPE": "git"
+        },
+        "mounts": [
+          {
+            "cacheName": "translations-level-1-checkouts",
+            "directory": "./checkouts"
+          },
+          {
+            "file": "./run-task",
+            "content": {
+              "url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/MMUnGDb3ShGAFKjEDjU0zw/artifacts/public/run-task"
+            }
+          },
+          {
+            "file": "./fetch-content",
+            "content": {
+              "url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/MMUnGDb3ShGAFKjEDjU0zw/artifacts/public/fetch-content"
+            }
+          }
+        ],
+        "command": [
+          [
+            "chmod",
+            "+x",
+            "run-task"
+          ],
+          [
+            "./run-task",
+            "--firefox_translations_training-checkout=./checkouts/vcs/",
+            "--",
+            "bash",
+            "-c",
+            "export PATH=$PATH:~/.local/bin && export PYTHONPATH=$PYTHONPATH:$VCS_PATH && pip install --upgrade pip && pip install -r $VCS_PATH/pipeline/eval/requirements/eval.txt && pip install $VCS_PATH/tracking && sed -i -e \"s,- .*fetches,- $MOZ_FETCHES_DIR,\" $TASK_WORKDIR/fetches/*.yml && sed -i -e \"s,- .*artifacts,- $MOZ_FETCHES_DIR,\" $TASK_WORKDIR/fetches/*.yml && $VCS_PATH/pipeline/eval/eval.py --src              sk --trg              en --compression_cmd  zstdmt --artifact_ext     zst --dataset_prefix   \"$MOZ_FETCHES_DIR/aug-inline-noise_devtest\" --marian_config    \"$MOZ_FETCHES_DIR/final.model.npz.best-chrf.npz.decoder.yml\" --models           \"$MOZ_FETCHES_DIR/model*/*.npz\" --artifacts_prefix \"$TASK_WORKDIR/artifacts/aug-inline-noise_devtest\" --marian           \"$MARIAN\" --workspace        \"$WORKSPACE\" --gpus             \"$GPUS\" --model_variant    gpu"
+          ]
+        ],
+        "features": {
+          "taskclusterProxy": true
+        },
+        "artifacts": [
+          {
+            "name": "public/build",
+            "path": "artifacts",
+            "type": "directory"
+          }
+        ],
+        "maxRunTime": 2592000,
+        "onExitStatus": {
+          "retry": [
+            128
+          ]
+        }
+      },
+      "metadata": {
+        "name": "evaluate-teacher-ensemble-flores-aug-inline-noise_devtest-sk-en",
+        "owner": "pavlov89@gmail.com",
+        "source": "https://github.com/mozilla/firefox-translations-training/blob/518bee6174aa6af547197204d8d13f4ec51a1044/taskcluster/kinds/evaluate-teacher-ensemble",
+        "description": "teacher evaluation for flores_aug-inline-noise_devtest sk-en"
+      },
+      "tags": {
+        "os": "linux",
+        "kind": "evaluate-teacher-ensemble",
+        "label": "evaluate-teacher-ensemble-flores-aug-inline-noise_devtest-sk-en",
+        "createdForUser": "pavlov89@gmail.com",
+        "worker-implementation": "generic-worker"
+      },
+      "extra": {
+        "index": {
+          "rank": 0
+        },
+        "parent": "MMUnGDb3ShGAFKjEDjU0zw"
+      }
+    }
+  },
+  {
+    "status": {
+      "taskId": "CGwYNJ7gSN6n71PJgVioSw",
+      "provisionerId": "translations-1",
+      "workerType": "b-linux-v100-gpu-4-1tb",
+      "taskQueueId": "translations-1/b-linux-v100-gpu-4-1tb",
+      "schedulerId": "translations-level-1",
+      "projectId": "none",
+      "taskGroupId": "MMUnGDb3ShGAFKjEDjU0zw",
+      "deadline": "2024-07-18T21:35:17.855Z",
+      "expires": "2025-06-28T21:35:17.855Z",
+      "retriesLeft": 2,
+      "state": "completed",
+      "runs": [
+        {
+          "runId": 0,
+          "state": "exception",
+          "reasonCreated": "scheduled",
+          "reasonResolved": "claim-expired",
+          "workerGroup": "us-central1-a",
+          "workerId": "1281625704574516481",
+          "takenUntil": "2024-07-01T22:38:31.249Z",
+          "scheduled": "2024-06-30T20:45:24.085Z",
+          "started": "2024-06-30T20:48:21.727Z",
+          "resolved": "2024-07-01T22:38:32.056Z"
+        },
+        {
+          "runId": 1,
+          "state": "exception",
+          "reasonCreated": "retry",
+          "reasonResolved": "claim-expired",
+          "workerGroup": "us-central1-c",
+          "workerId": "968015129720295702",
+          "takenUntil": "2024-07-02T18:34:20.834Z",
+          "scheduled": "2024-07-01T22:38:32.056Z",
+          "started": "2024-07-01T22:41:16.256Z",
+          "resolved": "2024-07-02T18:34:21.278Z"
+        },
+        {
+          "runId": 2,
+          "state": "exception",
+          "reasonCreated": "retry",
+          "reasonResolved": "claim-expired",
+          "workerGroup": "us-central1-c",
+          "workerId": "6107346255647209170",
+          "takenUntil": "2024-07-03T21:52:17.241Z",
+          "scheduled": "2024-07-02T18:34:21.278Z",
+          "started": "2024-07-02T18:37:11.056Z",
+          "resolved": "2024-07-03T21:52:17.844Z"
+        },
+        {
+          "runId": 3,
+          "state": "completed",
+          "reasonCreated": "retry",
+          "reasonResolved": "completed",
+          "workerGroup": "us-west1-a",
+          "workerId": "2651916620723156723",
+          "takenUntil": "2024-07-06T05:13:16.300Z",
+          "scheduled": "2024-07-03T21:52:17.844Z",
+          "started": "2024-07-03T21:54:53.603Z",
+          "resolved": "2024-07-06T04:59:22.866Z"
+        }
+      ]
+    },
+    "task": {
+      "provisionerId": "translations-1",
+      "workerType": "b-linux-v100-gpu-4-1tb",
+      "taskQueueId": "translations-1/b-linux-v100-gpu-4-1tb",
+      "schedulerId": "translations-level-1",
+      "projectId": "none",
+      "taskGroupId": "MMUnGDb3ShGAFKjEDjU0zw",
+      "dependencies": [
+        "CNFWNR6VT4ylXC35QV7hxw",
+        "Itm68PnlTNajweuhTkcjEQ",
+        "JWimqYO6SveNH_9yHAqurQ",
+        "LAfr3-36QDuC1zUTZ3nTnw",
+        "LVgzYH3aSDiUkZMZCx4mhQ",
+        "cCr_z2sITDGiow53WiHs8g",
+        "dZbU--aYQZiNpq5ZN1q9_g",
+        "fKO6HuQoT52wzFkzqYQvIA"
+      ],
+      "requires": "all-completed",
+      "routes": [
+        "index.translations.cache.level-1.train-teacher.train-teacher-sk-en-2.hash.927a2a3946de1c61bd6188e8eed910d2d572b4ebe8b318793474fd8ff8249a3d",
+        "index.translations.cache.level-1.train-teacher.train-teacher-sk-en-2.latest",
+        "index.translations.cache.level-1.train-teacher.train-teacher-sk-en-2.pushdate.2024.06.28.20240628204803",
+        "checks"
+      ],
+      "priority": "low",
+      "retries": 5,
+      "created": "2024-06-28T21:35:17.855Z",
+      "deadline": "2024-07-18T21:35:17.855Z",
+      "expires": "2025-06-28T21:35:17.855Z",
+      "scopes": [
+        "secrets:get:project/translations/level-1/weights-and-biases",
+        "generic-worker:cache:translations-level-1-checkouts"
+      ],
+      "payload": {
+        "env": {
+          "GPUS": "0 1 2 3",
+          "VCS_PATH": "./checkouts/vcs",
+          "WORKSPACE": "12000",
+          "MOZ_FETCHES": "[{\"artifact\": \"public/build/mono.aln.zst\", \"extract\": true, \"task\": \"CNFWNR6VT4ylXC35QV7hxw\"}, {\"artifact\": \"public/build/corpus.aln.zst\", \"extract\": true, \"task\": \"JWimqYO6SveNH_9yHAqurQ\"}, {\"artifact\": \"public/build/mono.sk.zst\", \"extract\": false, \"task\": \"fKO6HuQoT52wzFkzqYQvIA\"}, {\"artifact\": \"public/build/corpus.en.zst\", \"extract\": false, \"task\": \"dZbU--aYQZiNpq5ZN1q9_g\"}, {\"artifact\": \"public/build/corpus.sk.zst\", \"extract\": false, \"task\": \"dZbU--aYQZiNpq5ZN1q9_g\"}, {\"artifact\": \"public/build/devset.en.zst\", \"extract\": false, \"task\": \"LAfr3-36QDuC1zUTZ3nTnw\"}, {\"artifact\": \"public/build/devset.sk.zst\", \"extract\": false, \"task\": \"LAfr3-36QDuC1zUTZ3nTnw\"}, {\"artifact\": \"public/build/mono.en.zst\", \"extract\": false, \"task\": \"Itm68PnlTNajweuhTkcjEQ\"}, {\"artifact\": \"public/build/marian.tar.zst\", \"extract\": true, \"task\": \"cCr_z2sITDGiow53WiHs8g\"}, {\"artifact\": \"public/build/vocab.spm\", \"extract\": false, \"task\": \"LVgzYH3aSDiUkZMZCx4mhQ\"}]",
+          "ARTIFACT_EXT": "zst",
+          "REPOSITORIES": "{\"firefox_translations_training\": \"firefox-translations-training\"}",
+          "HG_STORE_PATH": "./checkouts/hg-shared",
+          "MOZ_SCM_LEVEL": "1",
+          "MOZ_AUTOMATION": "1",
+          "COMPRESSION_CMD": "zstdmt",
+          "MOZ_FETCHES_DIR": "fetches",
+          "SCCACHE_DISABLE": "1",
+          "WANDB_PUBLICATION": "True",
+          "TASKCLUSTER_SECRET": "project/translations/level-1/weights-and-biases",
+          "FIREFOX_TRANSLATIONS_TRAINING_HEAD_REF": "refs/heads/release_stages",
+          "FIREFOX_TRANSLATIONS_TRAINING_HEAD_REV": "518bee6174aa6af547197204d8d13f4ec51a1044",
+          "FIREFOX_TRANSLATIONS_TRAINING_BASE_REPOSITORY": "https://github.com/mozilla/firefox-translations-training",
+          "FIREFOX_TRANSLATIONS_TRAINING_HEAD_REPOSITORY": "https://github.com/mozilla/firefox-translations-training",
+          "FIREFOX_TRANSLATIONS_TRAINING_REPOSITORY_TYPE": "git"
+        },
+        "mounts": [
+          {
+            "cacheName": "translations-level-1-checkouts",
+            "directory": "./checkouts"
+          },
+          {
+            "file": "./run-task",
+            "content": {
+              "url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/MMUnGDb3ShGAFKjEDjU0zw/artifacts/public/run-task"
+            }
+          },
+          {
+            "file": "./fetch-content",
+            "content": {
+              "url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/MMUnGDb3ShGAFKjEDjU0zw/artifacts/public/fetch-content"
+            }
+          }
+        ],
+        "command": [
+          [
+            "chmod",
+            "+x",
+            "run-task"
+          ],
+          [
+            "./run-task",
+            "--firefox_translations_training-checkout=./checkouts/vcs/",
+            "--",
+            "bash",
+            "-cx",
+            "pip3 install --upgrade pip setuptools && pip3 install -r $VCS_PATH/pipeline/train/requirements/train.txt && pip3 install $VCS_PATH/tracking && export PATH=\"$HOME/.local/bin:$PATH\" && export MARIAN=$MOZ_FETCHES_DIR && $VCS_PATH/taskcluster/scripts/pipeline/train_taskcluster.py teacher train sk en $MOZ_FETCHES_DIR/corpus,$MOZ_FETCHES_DIR/mono $MOZ_FETCHES_DIR/devset $TASK_WORKDIR/artifacts chrf $MOZ_FETCHES_DIR/corpus.aln.zst,$MOZ_FETCHES_DIR/mono.aln.zst 2 two-stage None None  --early-stopping 20"
+          ]
+        ],
+        "features": {
+          "taskclusterProxy": true
+        },
+        "artifacts": [
+          {
+            "name": "public/build",
+            "path": "artifacts",
+            "type": "directory"
+          }
+        ],
+        "maxRunTime": 2592000,
+        "onExitStatus": {
+          "retry": [
+            17,
+            128
+          ]
+        }
+      },
+      "metadata": {
+        "name": "train-teacher-sk-en-2",
+        "owner": "pavlov89@gmail.com",
+        "source": "https://github.com/mozilla/firefox-translations-training/blob/518bee6174aa6af547197204d8d13f4ec51a1044/taskcluster/kinds/train-teacher",
+        "description": "train teacher for sk-en 2"
+      },
+      "tags": {
+        "os": "linux",
+        "kind": "train-teacher",
+        "label": "train-teacher-sk-en-2",
+        "createdForUser": "pavlov89@gmail.com",
+        "worker-implementation": "generic-worker"
+      },
+      "extra": {
+        "index": {
+          "rank": 0
+        },
+        "parent": "MMUnGDb3ShGAFKjEDjU0zw"
+      }
+    }
+  },
+  {
+    "status": {
+      "taskId": "EeQKsoMQRfKZ00Gl75b5Qg",
+      "provisionerId": "translations-1",
+      "workerType": "b-linux-v100-gpu-4-1tb",
+      "taskQueueId": "translations-1/b-linux-v100-gpu-4-1tb",
+      "schedulerId": "translations-level-1",
+      "projectId": "none",
+      "taskGroupId": "MMUnGDb3ShGAFKjEDjU0zw",
+      "deadline": "2024-07-18T21:35:17.855Z",
+      "expires": "2025-06-28T21:35:17.855Z",
+      "retriesLeft": 4,
+      "state": "completed",
+      "runs": [
+        {
+          "runId": 0,
+          "state": "exception",
+          "reasonCreated": "scheduled",
+          "reasonResolved": "claim-expired",
+          "workerGroup": "us-central1-a",
+          "workerId": "8797618348573359361",
+          "takenUntil": "2024-07-01T21:47:31.157Z",
+          "scheduled": "2024-06-30T20:45:24.112Z",
+          "started": "2024-06-30T20:48:22.366Z",
+          "resolved": "2024-07-01T21:47:31.573Z"
+        },
+        {
+          "runId": 1,
+          "state": "completed",
+          "reasonCreated": "retry",
+          "reasonResolved": "completed",
+          "workerGroup": "us-central1-c",
+          "workerId": "1062863898994973979",
+          "takenUntil": "2024-07-04T00:02:18.848Z",
+          "scheduled": "2024-07-01T21:47:31.573Z",
+          "started": "2024-07-01T21:50:06.648Z",
+          "resolved": "2024-07-03T23:50:01.426Z"
+        }
+      ]
+    },
+    "task": {
+      "provisionerId": "translations-1",
+      "workerType": "b-linux-v100-gpu-4-1tb",
+      "taskQueueId": "translations-1/b-linux-v100-gpu-4-1tb",
+      "schedulerId": "translations-level-1",
+      "projectId": "none",
+      "taskGroupId": "MMUnGDb3ShGAFKjEDjU0zw",
+      "dependencies": [
+        "CNFWNR6VT4ylXC35QV7hxw",
+        "Itm68PnlTNajweuhTkcjEQ",
+        "JWimqYO6SveNH_9yHAqurQ",
+        "LAfr3-36QDuC1zUTZ3nTnw",
+        "LVgzYH3aSDiUkZMZCx4mhQ",
+        "cCr_z2sITDGiow53WiHs8g",
+        "dZbU--aYQZiNpq5ZN1q9_g",
+        "fKO6HuQoT52wzFkzqYQvIA"
+      ],
+      "requires": "all-completed",
+      "routes": [
+        "index.translations.cache.level-1.train-teacher.train-teacher-sk-en-1.hash.df4f81bff28f3a879d53d0f7a87d72cfee045edff204d689668bba8f667a32e5",
+        "index.translations.cache.level-1.train-teacher.train-teacher-sk-en-1.latest",
+        "index.translations.cache.level-1.train-teacher.train-teacher-sk-en-1.pushdate.2024.06.28.20240628204803",
+        "checks"
+      ],
+      "priority": "low",
+      "retries": 5,
+      "created": "2024-06-28T21:35:17.855Z",
+      "deadline": "2024-07-18T21:35:17.855Z",
+      "expires": "2025-06-28T21:35:17.855Z",
+      "scopes": [
+        "secrets:get:project/translations/level-1/weights-and-biases",
+        "generic-worker:cache:translations-level-1-checkouts"
+      ],
+      "payload": {
+        "env": {
+          "GPUS": "0 1 2 3",
+          "VCS_PATH": "./checkouts/vcs",
+          "WORKSPACE": "12000",
+          "MOZ_FETCHES": "[{\"artifact\": \"public/build/mono.aln.zst\", \"extract\": true, \"task\": \"CNFWNR6VT4ylXC35QV7hxw\"}, {\"artifact\": \"public/build/corpus.aln.zst\", \"extract\": true, \"task\": \"JWimqYO6SveNH_9yHAqurQ\"}, {\"artifact\": \"public/build/mono.sk.zst\", \"extract\": false, \"task\": \"fKO6HuQoT52wzFkzqYQvIA\"}, {\"artifact\": \"public/build/corpus.en.zst\", \"extract\": false, \"task\": \"dZbU--aYQZiNpq5ZN1q9_g\"}, {\"artifact\": \"public/build/corpus.sk.zst\", \"extract\": false, \"task\": \"dZbU--aYQZiNpq5ZN1q9_g\"}, {\"artifact\": \"public/build/devset.en.zst\", \"extract\": false, \"task\": \"LAfr3-36QDuC1zUTZ3nTnw\"}, {\"artifact\": \"public/build/devset.sk.zst\", \"extract\": false, \"task\": \"LAfr3-36QDuC1zUTZ3nTnw\"}, {\"artifact\": \"public/build/mono.en.zst\", \"extract\": false, \"task\": \"Itm68PnlTNajweuhTkcjEQ\"}, {\"artifact\": \"public/build/marian.tar.zst\", \"extract\": true, \"task\": \"cCr_z2sITDGiow53WiHs8g\"}, {\"artifact\": \"public/build/vocab.spm\", \"extract\": false, \"task\": \"LVgzYH3aSDiUkZMZCx4mhQ\"}]",
+          "ARTIFACT_EXT": "zst",
+          "REPOSITORIES": "{\"firefox_translations_training\": \"firefox-translations-training\"}",
+          "HG_STORE_PATH": "./checkouts/hg-shared",
+          "MOZ_SCM_LEVEL": "1",
+          "MOZ_AUTOMATION": "1",
+          "COMPRESSION_CMD": "zstdmt",
+          "MOZ_FETCHES_DIR": "fetches",
+          "SCCACHE_DISABLE": "1",
+          "WANDB_PUBLICATION": "True",
+          "TASKCLUSTER_SECRET": "project/translations/level-1/weights-and-biases",
+          "FIREFOX_TRANSLATIONS_TRAINING_HEAD_REF": "refs/heads/release_stages",
+          "FIREFOX_TRANSLATIONS_TRAINING_HEAD_REV": "518bee6174aa6af547197204d8d13f4ec51a1044",
+          "FIREFOX_TRANSLATIONS_TRAINING_BASE_REPOSITORY": "https://github.com/mozilla/firefox-translations-training",
+          "FIREFOX_TRANSLATIONS_TRAINING_HEAD_REPOSITORY": "https://github.com/mozilla/firefox-translations-training",
+          "FIREFOX_TRANSLATIONS_TRAINING_REPOSITORY_TYPE": "git"
+        },
+        "mounts": [
+          {
+            "cacheName": "translations-level-1-checkouts",
+            "directory": "./checkouts"
+          },
+          {
+            "file": "./run-task",
+            "content": {
+              "url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/MMUnGDb3ShGAFKjEDjU0zw/artifacts/public/run-task"
+            }
+          },
+          {
+            "file": "./fetch-content",
+            "content": {
+              "url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/MMUnGDb3ShGAFKjEDjU0zw/artifacts/public/fetch-content"
+            }
+          }
+        ],
+        "command": [
+          [
+            "chmod",
+            "+x",
+            "run-task"
+          ],
+          [
+            "./run-task",
+            "--firefox_translations_training-checkout=./checkouts/vcs/",
+            "--",
+            "bash",
+            "-cx",
+            "pip3 install --upgrade pip setuptools && pip3 install -r $VCS_PATH/pipeline/train/requirements/train.txt && pip3 install $VCS_PATH/tracking && export PATH=\"$HOME/.local/bin:$PATH\" && export MARIAN=$MOZ_FETCHES_DIR && $VCS_PATH/taskcluster/scripts/pipeline/train_taskcluster.py teacher train sk en $MOZ_FETCHES_DIR/corpus,$MOZ_FETCHES_DIR/mono $MOZ_FETCHES_DIR/devset $TASK_WORKDIR/artifacts chrf $MOZ_FETCHES_DIR/corpus.aln.zst,$MOZ_FETCHES_DIR/mono.aln.zst 1 two-stage None None  --early-stopping 20"
+          ]
+        ],
+        "features": {
+          "taskclusterProxy": true
+        },
+        "artifacts": [
+          {
+            "name": "public/build",
+            "path": "artifacts",
+            "type": "directory"
+          }
+        ],
+        "maxRunTime": 2592000,
+        "onExitStatus": {
+          "retry": [
+            17,
+            128
+          ]
+        }
+      },
+      "metadata": {
+        "name": "train-teacher-sk-en-1",
+        "owner": "pavlov89@gmail.com",
+        "source": "https://github.com/mozilla/firefox-translations-training/blob/518bee6174aa6af547197204d8d13f4ec51a1044/taskcluster/kinds/train-teacher",
+        "description": "train teacher for sk-en 1"
+      },
+      "tags": {
+        "os": "linux",
+        "kind": "train-teacher",
+        "label": "train-teacher-sk-en-1",
+        "createdForUser": "pavlov89@gmail.com",
+        "worker-implementation": "generic-worker"
+      },
+      "extra": {
+        "index": {
+          "rank": 0
+        },
+        "parent": "MMUnGDb3ShGAFKjEDjU0zw"
+      }
+    }
+  }
+]

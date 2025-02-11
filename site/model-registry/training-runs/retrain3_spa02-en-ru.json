@@ -1,0 +1,43 @@
+{
+  "name": "retrain3_spa02",
+  "langpair": "en-ru",
+  "source_lang": "en",
+  "target_lang": "ru",
+  "task_group_ids": [
+    "YxSGB_9sTTy7d6HiWHxtEA",
+    "Cjzd04QgRDaL-w0AAJ0TlQ",
+    "FgNRsJFdQ1CkjT8I20utGg",
+    "EFSRZZ-MSzSA5FL49Ja_FQ",
+    "daBcFxZfS_WDp_31N5zrDw"
+  ],
+  "date_started": null,
+  "comet_flores_comparison": {
+    "bergamot": 0.8743,
+    "google": 0.9029,
+    "opusmt": 0.8489,
+    "microsoft": 0.8912,
+    "nllb": 0.8586,
+    "argos": 0.8485
+  },
+  "bleu_flores_comparison": {
+    "bergamot": 31.5,
+    "argos": 27.9,
+    "nllb": 27.3,
+    "opusmt": 26.5,
+    "microsoft": 33.5,
+    "google": 34.9
+  },
+  "parallel_corpus_aligned": null,
+  "backtranslations_corpus_aligned": null,
+  "distillation_corpus_aligned": null,
+  "parallel_corpus": null,
+  "backtranslations_corpus": null,
+  "distillation_corpus": null,
+  "teacher_1": null,
+  "teacher_2": null,
+  "teacher_ensemble_flores": null,
+  "student": null,
+  "student_finetuned": null,
+  "student_quantized": null,
+  "student_exported": null
+}
