@@ -1,0 +1,1652 @@
+{
+  "name": "spring-2024",
+  "langpair": "en-fi",
+  "source_lang": "en",
+  "target_lang": "fi",
+  "task_group_ids": [
+    "e1DqKwpxQTCbTgn_rgQy-g",
+    "bNBrAkLqQpCpuxfMe3I-mw"
+  ],
+  "date_started": "2024-07-16T00:21:26.432000",
+  "comet_flores_comparison": {
+    "opusmt": 0.9091,
+    "microsoft": 0.9259,
+    "google": 0.9202,
+    "bergamot": 0.8845,
+    "nllb": 0.8506,
+    "argos": 0.8626
+  },
+  "bleu_flores_comparison": {
+    "argos": 19.5,
+    "microsoft": 30.0,
+    "opusmt": 25.4,
+    "google": 27.9,
+    "bergamot": 24.6,
+    "nllb": 17.0
+  },
+  "parallel_corpus_aligned": null,
+  "backtranslations_corpus_aligned": null,
+  "distillation_corpus_aligned": null,
+  "parallel_corpus": {
+    "source_url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/Vh3XpY-rS-yL23uD9y_pGA/artifacts/public/build/corpus.en.zst",
+    "source_bytes": 2557109269,
+    "target_url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/Vh3XpY-rS-yL23uD9y_pGA/artifacts/public/build/corpus.fi.zst",
+    "target_bytes": 2776293527
+  },
+  "backtranslations_corpus": {
+    "source_url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/drw4gUNdRaiChQ2ZWrayZg/artifacts/public/build/mono.en.zst",
+    "source_bytes": 2138843052,
+    "target_url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/RJjtpWlvSzOq_UMHbUY9iw/artifacts/public/build/mono.fi.zst",
+    "target_bytes": 21860339027
+  },
+  "distillation_corpus": {
+    "source_url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/JQantEAqR66oMqwtht2D1A/artifacts/public/build/corpus.en.zst",
+    "source_bytes": 22496860350,
+    "target_url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/JQantEAqR66oMqwtht2D1A/artifacts/public/build/corpus.fi.zst",
+    "target_bytes": 23660626810
+  },
+  "backwards": {
+    "date": "2024-07-16T03:23:34.559000",
+    "config": {
+      "datasets": {
+        "devtest": [
+          "mtdata_aug-mix_Neulab-tedtalks_dev-1-eng-fin",
+          "flores_aug-mix_dev",
+          "sacrebleu_aug-mix_wmt18",
+          "sacrebleu_aug-mix_wmt17",
+          "sacrebleu_aug-mix_wmt15"
+        ],
+        "mono-src": [
+          "news-crawl_news.2007",
+          "news-crawl_news.2008",
+          "news-crawl_news.2009",
+          "news-crawl_news.2010",
+          "news-crawl_news.2011",
+          "news-crawl_news.2012",
+          "news-crawl_news.2013",
+          "news-crawl_news.2014",
+          "news-crawl_news.2015",
+          "news-crawl_news.2016",
+          "news-crawl_news.2017",
+          "news-crawl_news.2018",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023"
+        ],
+        "mono-trg": [
+          "news-crawl_news.2015",
+          "news-crawl_news.2016",
+          "news-crawl_news.2017",
+          "news-crawl_news.2018",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_fi_1.txt.zst",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_fi_2.txt.zst"
+        ],
+        "test": [
+          "mtdata_Neulab-tedtalks_test-1-eng-fin",
+          "flores_devtest",
+          "flores_aug-mix_devtest",
+          "flores_aug-title_devtest",
+          "flores_aug-upper_devtest",
+          "flores_aug-typos_devtest",
+          "flores_aug-noise_devtest",
+          "flores_aug-inline-noise_devtest",
+          "sacrebleu_wmt19",
+          "sacrebleu_wmt16"
+        ],
+        "train": [
+          "opus_NLLB/v1",
+          "opus_ParaCrawl/v9",
+          "opus_OpenSubtitles/v2018",
+          "opus_HPLT/v1.1",
+          "opus_ELRC-EMEA/v1",
+          "opus_ELRC-4239-NTEU_TierA/v1",
+          "opus_CCAligned/v1",
+          "opus_DGT/v2019",
+          "opus_LinguaTools-WikiTitles/v2014",
+          "opus_TildeMODEL/v2018",
+          "opus_XLEnt/v1.2",
+          "opus_EUbookshop/v2",
+          "opus_Europarl/v8",
+          "opus_EMEA/v3",
+          "opus_ELRC-2708-EMEA/v1",
+          "opus_ELRC-5067-SciPar/v1",
+          "opus_WikiMatrix/v1",
+          "opus_ELITR-ECA/v1",
+          "opus_ECB/v1",
+          "opus_ELRC-www.turku.fi/v1",
+          "opus_ELRC-Finnish_Information/v1",
+          "opus_ELRC-www.visitestonia.com/v1",
+          "opus_KDE4/v2",
+          "opus_ELRC-presscorner_covid/v1",
+          "opus_QED/v2.0a",
+          "opus_infopankki/v1",
+          "opus_Tatoeba/v2023-04-12",
+          "opus_GNOME/v1",
+          "opus_bible-uedin/v1",
+          "opus_ELRC-724-Hallituskausi_2007_2/v1",
+          "opus_ELRA-W0220/v1",
+          "opus_ELRC-1769-valtioneuvosto.fi/v1",
+          "opus_ELRC-valtioneuvosto.fi/v1",
+          "opus_TED2020/v1",
+          "opus_wikimedia/v20230407",
+          "opus_ELRC-735-www.norden.org/v1",
+          "opus_ELRC-www.norden.org/v1",
+          "opus_ELRC-1127-www.vtv.fi/v1",
+          "opus_ELRC-www.vtv.fi/v1",
+          "opus_WMT-News/v2019",
+          "opus_ELRC-1771-vnk.fi/v1",
+          "opus_ELRC-vnk.fi/v1",
+          "opus_ELRC-725-Hallituskausi_2011_2/v1",
+          "opus_PHP/v1",
+          "opus_NeuLab-TedTalks/v1",
+          "opus_ELRC-3559-EUR_LEX_covid/v1",
+          "opus_ELRC-EUR_LEX/v1",
+          "opus_ELRC-2036-www.vero.fi/v1",
+          "opus_ELRC-www.vero.fi/v1",
+          "opus_JRC-Acquis/v3.0",
+          "opus_ELRC-2032-www.turku.fi/v1",
+          "opus_ELRC-2017-EUIPO_2017/v1",
+          "opus_ELRC-EUIPO_2017/v1",
+          "opus_ELRC-EUROPARL_covid/v1",
+          "opus_ELRC-1128-www.visitestonia.com/v1",
+          "opus_ELRC-2869-EU_publications_medi/v1",
+          "opus_ELRC-EU_publications/v1",
+          "opus_ELRC-antibiotic/v1",
+          "opus_EUconst/v1",
+          "opus_ELRC-716-Finnish_Information_/v1",
+          "opus_ELRA-W0217/v1",
+          "opus_ELRC-3600-presscorner_covid/v1",
+          "opus_Books/v1",
+          "opus_ELRC_3382/v1",
+          "opus_ECDC/v2016-03-16",
+          "opus_ELRC-3458-EC_EUROPA_covid/v1",
+          "opus_ELRC-EC_EUROPA/v1",
+          "opus_ELRC-Swedish_Labour/v1",
+          "opus_ELRC-4995-Finnish_Financial_MT/v1",
+          "opus_ELRC-3196-antibiotic/v1",
+          "opus_ELRC-416-Swedish_Social_Secur/v1",
+          "opus_ELRC-416-Swedish_Social_Secur/v1",
+          "opus_ELRC-3287-EUROPARL_covid/v1",
+          "opus_ELRC-2739-vaccination/v1",
+          "opus_ELRC-vaccination/v1",
+          "opus_ELRC_2923/v1",
+          "opus_ELRC-3045-wikipedia_health/v1",
+          "opus_ELRC-wikipedia_health/v1",
+          "opus_ELRC_2922/v1",
+          "mtdata_ELRC-swedish_social_security-1-eng-fin",
+          "mtdata_ELRC-finnish_information_bank-1-eng-fin",
+          "mtdata_ELRC-eu_publications_medical_v2-1-eng-fin",
+          "mtdata_ELRC-nteu_tierb-1-eng-fin",
+          "mtdata_EU-eac_forms-1-eng-fin",
+          "mtdata_EU-eac_reference-1-eng-fin",
+          "mtdata_EU-dcep-1-eng-fin",
+          "mtdata_Statmt-wiki_titles-1-fin-eng",
+          "mtdata_Statmt-newsdev_fien-2015-fin-eng",
+          "mtdata_Statmt-newsdev_enfi-2015-eng-fin",
+          "mtdata_Tilde-eesc-2017-eng-fin",
+          "mtdata_Tilde-ema-2016-eng-fin",
+          "mtdata_Tilde-airbaltic-1-eng-fin",
+          "mtdata_Tilde-rapid-2016-eng-fin"
+        ]
+      },
+      "experiment": {
+        "best-model": "chrf",
+        "bicleaner": {
+          "dataset-thresholds": {},
+          "default-threshold": 0.5
+        },
+        "mono-max-sentences-src": 500000000,
+        "mono-max-sentences-trg": 200000000,
+        "name": "spring-2024",
+        "opuscleaner-mode": "defaults",
+        "pretrained-models": {
+          "train-backwards": {
+            "mode": "use",
+            "type": "default",
+            "urls": [
+              "https://storage.googleapis.com/releng-translations-dev/models/fi-en/opusprod/student"
+            ]
+          }
+        },
+        "spm-sample-size": 10000000,
+        "spm-vocab-size": 32000,
+        "src": "en",
+        "teacher-ensemble": 2,
+        "teacher-mode": "two-stage",
+        "trg": "fi",
+        "use-opuscleaner": "true"
+      },
+      "marian-args": {
+        "decoding-backward": {
+          "beam-size": "12",
+          "mini-batch-words": "2000"
+        },
+        "decoding-teacher": {
+          "mini-batch-words": "4000",
+          "precision": "float16"
+        },
+        "training-backward": {
+          "early-stopping": "5"
+        },
+        "training-student": {
+          "early-stopping": "20"
+        },
+        "training-student-finetuned": {
+          "early-stopping": "20"
+        },
+        "training-teacher": {
+          "early-stopping": "20"
+        }
+      },
+      "target-stage": "all",
+      "taskcluster": {
+        "split-chunks": 20,
+        "worker-classes": {
+          "alignments-backtranslated": "gcp-standard",
+          "alignments-original": "gcp-standard",
+          "alignments-student": "gcp-standard",
+          "default": "gcp-spot",
+          "shortlist": "gcp-standard"
+        }
+      },
+      "wandb-publication": true
+    },
+    "task_group_id": "bNBrAkLqQpCpuxfMe3I-mw",
+    "flores": null,
+    "artifact_folder": "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_bNBrAkLqQpCpuxfMe3I-mw/backward/",
+    "artifact_urls": [
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_bNBrAkLqQpCpuxfMe3I-mw/backward/devset.out",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_bNBrAkLqQpCpuxfMe3I-mw/backward/final.model.npz.best-chrf.npz",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_bNBrAkLqQpCpuxfMe3I-mw/backward/final.model.npz.best-chrf.npz.decoder.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_bNBrAkLqQpCpuxfMe3I-mw/backward/model.npz.progress.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_bNBrAkLqQpCpuxfMe3I-mw/backward/model.npz.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_bNBrAkLqQpCpuxfMe3I-mw/backward/vocab.spm"
+    ]
+  },
+  "teacher_1": {
+    "date": "2024-07-22T18:55:37.735000",
+    "config": {
+      "datasets": {
+        "devtest": [
+          "mtdata_aug-mix_Neulab-tedtalks_dev-1-eng-fin",
+          "flores_aug-mix_dev",
+          "sacrebleu_aug-mix_wmt18",
+          "sacrebleu_aug-mix_wmt17",
+          "sacrebleu_aug-mix_wmt15"
+        ],
+        "mono-src": [
+          "news-crawl_news.2007",
+          "news-crawl_news.2008",
+          "news-crawl_news.2009",
+          "news-crawl_news.2010",
+          "news-crawl_news.2011",
+          "news-crawl_news.2012",
+          "news-crawl_news.2013",
+          "news-crawl_news.2014",
+          "news-crawl_news.2015",
+          "news-crawl_news.2016",
+          "news-crawl_news.2017",
+          "news-crawl_news.2018",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023"
+        ],
+        "mono-trg": [
+          "news-crawl_news.2015",
+          "news-crawl_news.2016",
+          "news-crawl_news.2017",
+          "news-crawl_news.2018",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_fi_1.txt.zst",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_fi_2.txt.zst"
+        ],
+        "test": [
+          "mtdata_Neulab-tedtalks_test-1-eng-fin",
+          "flores_devtest",
+          "flores_aug-mix_devtest",
+          "flores_aug-title_devtest",
+          "flores_aug-upper_devtest",
+          "flores_aug-typos_devtest",
+          "flores_aug-noise_devtest",
+          "flores_aug-inline-noise_devtest",
+          "sacrebleu_wmt19",
+          "sacrebleu_wmt16"
+        ],
+        "train": [
+          "opus_NLLB/v1",
+          "opus_ParaCrawl/v9",
+          "opus_OpenSubtitles/v2018",
+          "opus_HPLT/v1.1",
+          "opus_ELRC-EMEA/v1",
+          "opus_ELRC-4239-NTEU_TierA/v1",
+          "opus_CCAligned/v1",
+          "opus_DGT/v2019",
+          "opus_LinguaTools-WikiTitles/v2014",
+          "opus_TildeMODEL/v2018",
+          "opus_XLEnt/v1.2",
+          "opus_EUbookshop/v2",
+          "opus_Europarl/v8",
+          "opus_EMEA/v3",
+          "opus_ELRC-2708-EMEA/v1",
+          "opus_ELRC-5067-SciPar/v1",
+          "opus_WikiMatrix/v1",
+          "opus_ELITR-ECA/v1",
+          "opus_ECB/v1",
+          "opus_ELRC-www.turku.fi/v1",
+          "opus_ELRC-Finnish_Information/v1",
+          "opus_ELRC-www.visitestonia.com/v1",
+          "opus_KDE4/v2",
+          "opus_ELRC-presscorner_covid/v1",
+          "opus_QED/v2.0a",
+          "opus_infopankki/v1",
+          "opus_Tatoeba/v2023-04-12",
+          "opus_GNOME/v1",
+          "opus_bible-uedin/v1",
+          "opus_ELRC-724-Hallituskausi_2007_2/v1",
+          "opus_ELRA-W0220/v1",
+          "opus_ELRC-1769-valtioneuvosto.fi/v1",
+          "opus_ELRC-valtioneuvosto.fi/v1",
+          "opus_TED2020/v1",
+          "opus_wikimedia/v20230407",
+          "opus_ELRC-735-www.norden.org/v1",
+          "opus_ELRC-www.norden.org/v1",
+          "opus_ELRC-1127-www.vtv.fi/v1",
+          "opus_ELRC-www.vtv.fi/v1",
+          "opus_WMT-News/v2019",
+          "opus_ELRC-1771-vnk.fi/v1",
+          "opus_ELRC-vnk.fi/v1",
+          "opus_ELRC-725-Hallituskausi_2011_2/v1",
+          "opus_PHP/v1",
+          "opus_NeuLab-TedTalks/v1",
+          "opus_ELRC-3559-EUR_LEX_covid/v1",
+          "opus_ELRC-EUR_LEX/v1",
+          "opus_ELRC-2036-www.vero.fi/v1",
+          "opus_ELRC-www.vero.fi/v1",
+          "opus_JRC-Acquis/v3.0",
+          "opus_ELRC-2032-www.turku.fi/v1",
+          "opus_ELRC-2017-EUIPO_2017/v1",
+          "opus_ELRC-EUIPO_2017/v1",
+          "opus_ELRC-EUROPARL_covid/v1",
+          "opus_ELRC-1128-www.visitestonia.com/v1",
+          "opus_ELRC-2869-EU_publications_medi/v1",
+          "opus_ELRC-EU_publications/v1",
+          "opus_ELRC-antibiotic/v1",
+          "opus_EUconst/v1",
+          "opus_ELRC-716-Finnish_Information_/v1",
+          "opus_ELRA-W0217/v1",
+          "opus_ELRC-3600-presscorner_covid/v1",
+          "opus_Books/v1",
+          "opus_ELRC_3382/v1",
+          "opus_ECDC/v2016-03-16",
+          "opus_ELRC-3458-EC_EUROPA_covid/v1",
+          "opus_ELRC-EC_EUROPA/v1",
+          "opus_ELRC-Swedish_Labour/v1",
+          "opus_ELRC-4995-Finnish_Financial_MT/v1",
+          "opus_ELRC-3196-antibiotic/v1",
+          "opus_ELRC-416-Swedish_Social_Secur/v1",
+          "opus_ELRC-416-Swedish_Social_Secur/v1",
+          "opus_ELRC-3287-EUROPARL_covid/v1",
+          "opus_ELRC-2739-vaccination/v1",
+          "opus_ELRC-vaccination/v1",
+          "opus_ELRC_2923/v1",
+          "opus_ELRC-3045-wikipedia_health/v1",
+          "opus_ELRC-wikipedia_health/v1",
+          "opus_ELRC_2922/v1",
+          "mtdata_ELRC-swedish_social_security-1-eng-fin",
+          "mtdata_ELRC-finnish_information_bank-1-eng-fin",
+          "mtdata_ELRC-eu_publications_medical_v2-1-eng-fin",
+          "mtdata_ELRC-nteu_tierb-1-eng-fin",
+          "mtdata_EU-eac_forms-1-eng-fin",
+          "mtdata_EU-eac_reference-1-eng-fin",
+          "mtdata_EU-dcep-1-eng-fin",
+          "mtdata_Statmt-wiki_titles-1-fin-eng",
+          "mtdata_Statmt-newsdev_fien-2015-fin-eng",
+          "mtdata_Statmt-newsdev_enfi-2015-eng-fin",
+          "mtdata_Tilde-eesc-2017-eng-fin",
+          "mtdata_Tilde-ema-2016-eng-fin",
+          "mtdata_Tilde-airbaltic-1-eng-fin",
+          "mtdata_Tilde-rapid-2016-eng-fin"
+        ]
+      },
+      "experiment": {
+        "best-model": "chrf",
+        "bicleaner": {
+          "dataset-thresholds": {},
+          "default-threshold": 0.5
+        },
+        "mono-max-sentences-src": 500000000,
+        "mono-max-sentences-trg": 200000000,
+        "name": "spring-2024",
+        "opuscleaner-mode": "defaults",
+        "pretrained-models": {
+          "train-backwards": {
+            "mode": "use",
+            "type": "default",
+            "urls": [
+              "https://storage.googleapis.com/releng-translations-dev/models/fi-en/opusprod/student"
+            ]
+          }
+        },
+        "spm-sample-size": 10000000,
+        "spm-vocab-size": 32000,
+        "src": "en",
+        "teacher-ensemble": 2,
+        "teacher-mode": "two-stage",
+        "trg": "fi",
+        "use-opuscleaner": "true"
+      },
+      "marian-args": {
+        "decoding-backward": {
+          "beam-size": "12",
+          "mini-batch-words": "2000"
+        },
+        "decoding-teacher": {
+          "mini-batch-words": "4000",
+          "precision": "float16"
+        },
+        "training-backward": {
+          "early-stopping": "5"
+        },
+        "training-student": {
+          "early-stopping": "20"
+        },
+        "training-student-finetuned": {
+          "early-stopping": "20"
+        },
+        "training-teacher": {
+          "early-stopping": "20"
+        }
+      },
+      "target-stage": "all",
+      "taskcluster": {
+        "split-chunks": 20,
+        "worker-classes": {
+          "alignments-backtranslated": "gcp-standard",
+          "alignments-original": "gcp-standard",
+          "alignments-student": "gcp-standard",
+          "default": "gcp-spot",
+          "shortlist": "gcp-standard"
+        }
+      },
+      "wandb-publication": true
+    },
+    "task_group_id": "bNBrAkLqQpCpuxfMe3I-mw",
+    "flores": {
+      "chrf": 61.16,
+      "bleu": 27.19,
+      "comet": 91.67999999999999
+    },
+    "artifact_folder": "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_bNBrAkLqQpCpuxfMe3I-mw/teacher0/",
+    "artifact_urls": [
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_bNBrAkLqQpCpuxfMe3I-mw/teacher0/config.opustrainer.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_bNBrAkLqQpCpuxfMe3I-mw/teacher0/config.opustrainer.yml.state",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_bNBrAkLqQpCpuxfMe3I-mw/teacher0/devset.out",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_bNBrAkLqQpCpuxfMe3I-mw/teacher0/final.model.npz.best-chrf.npz",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_bNBrAkLqQpCpuxfMe3I-mw/teacher0/final.model.npz.best-chrf.npz.decoder.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_bNBrAkLqQpCpuxfMe3I-mw/teacher0/model.npz.progress.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_bNBrAkLqQpCpuxfMe3I-mw/teacher0/model.npz.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_bNBrAkLqQpCpuxfMe3I-mw/teacher0/vocab.spm"
+    ]
+  },
+  "teacher_2": {
+    "date": "2024-07-22T18:55:14.552000",
+    "config": {
+      "datasets": {
+        "devtest": [
+          "mtdata_aug-mix_Neulab-tedtalks_dev-1-eng-fin",
+          "flores_aug-mix_dev",
+          "sacrebleu_aug-mix_wmt18",
+          "sacrebleu_aug-mix_wmt17",
+          "sacrebleu_aug-mix_wmt15"
+        ],
+        "mono-src": [
+          "news-crawl_news.2007",
+          "news-crawl_news.2008",
+          "news-crawl_news.2009",
+          "news-crawl_news.2010",
+          "news-crawl_news.2011",
+          "news-crawl_news.2012",
+          "news-crawl_news.2013",
+          "news-crawl_news.2014",
+          "news-crawl_news.2015",
+          "news-crawl_news.2016",
+          "news-crawl_news.2017",
+          "news-crawl_news.2018",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023"
+        ],
+        "mono-trg": [
+          "news-crawl_news.2015",
+          "news-crawl_news.2016",
+          "news-crawl_news.2017",
+          "news-crawl_news.2018",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_fi_1.txt.zst",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_fi_2.txt.zst"
+        ],
+        "test": [
+          "mtdata_Neulab-tedtalks_test-1-eng-fin",
+          "flores_devtest",
+          "flores_aug-mix_devtest",
+          "flores_aug-title_devtest",
+          "flores_aug-upper_devtest",
+          "flores_aug-typos_devtest",
+          "flores_aug-noise_devtest",
+          "flores_aug-inline-noise_devtest",
+          "sacrebleu_wmt19",
+          "sacrebleu_wmt16"
+        ],
+        "train": [
+          "opus_NLLB/v1",
+          "opus_ParaCrawl/v9",
+          "opus_OpenSubtitles/v2018",
+          "opus_HPLT/v1.1",
+          "opus_ELRC-EMEA/v1",
+          "opus_ELRC-4239-NTEU_TierA/v1",
+          "opus_CCAligned/v1",
+          "opus_DGT/v2019",
+          "opus_LinguaTools-WikiTitles/v2014",
+          "opus_TildeMODEL/v2018",
+          "opus_XLEnt/v1.2",
+          "opus_EUbookshop/v2",
+          "opus_Europarl/v8",
+          "opus_EMEA/v3",
+          "opus_ELRC-2708-EMEA/v1",
+          "opus_ELRC-5067-SciPar/v1",
+          "opus_WikiMatrix/v1",
+          "opus_ELITR-ECA/v1",
+          "opus_ECB/v1",
+          "opus_ELRC-www.turku.fi/v1",
+          "opus_ELRC-Finnish_Information/v1",
+          "opus_ELRC-www.visitestonia.com/v1",
+          "opus_KDE4/v2",
+          "opus_ELRC-presscorner_covid/v1",
+          "opus_QED/v2.0a",
+          "opus_infopankki/v1",
+          "opus_Tatoeba/v2023-04-12",
+          "opus_GNOME/v1",
+          "opus_bible-uedin/v1",
+          "opus_ELRC-724-Hallituskausi_2007_2/v1",
+          "opus_ELRA-W0220/v1",
+          "opus_ELRC-1769-valtioneuvosto.fi/v1",
+          "opus_ELRC-valtioneuvosto.fi/v1",
+          "opus_TED2020/v1",
+          "opus_wikimedia/v20230407",
+          "opus_ELRC-735-www.norden.org/v1",
+          "opus_ELRC-www.norden.org/v1",
+          "opus_ELRC-1127-www.vtv.fi/v1",
+          "opus_ELRC-www.vtv.fi/v1",
+          "opus_WMT-News/v2019",
+          "opus_ELRC-1771-vnk.fi/v1",
+          "opus_ELRC-vnk.fi/v1",
+          "opus_ELRC-725-Hallituskausi_2011_2/v1",
+          "opus_PHP/v1",
+          "opus_NeuLab-TedTalks/v1",
+          "opus_ELRC-3559-EUR_LEX_covid/v1",
+          "opus_ELRC-EUR_LEX/v1",
+          "opus_ELRC-2036-www.vero.fi/v1",
+          "opus_ELRC-www.vero.fi/v1",
+          "opus_JRC-Acquis/v3.0",
+          "opus_ELRC-2032-www.turku.fi/v1",
+          "opus_ELRC-2017-EUIPO_2017/v1",
+          "opus_ELRC-EUIPO_2017/v1",
+          "opus_ELRC-EUROPARL_covid/v1",
+          "opus_ELRC-1128-www.visitestonia.com/v1",
+          "opus_ELRC-2869-EU_publications_medi/v1",
+          "opus_ELRC-EU_publications/v1",
+          "opus_ELRC-antibiotic/v1",
+          "opus_EUconst/v1",
+          "opus_ELRC-716-Finnish_Information_/v1",
+          "opus_ELRA-W0217/v1",
+          "opus_ELRC-3600-presscorner_covid/v1",
+          "opus_Books/v1",
+          "opus_ELRC_3382/v1",
+          "opus_ECDC/v2016-03-16",
+          "opus_ELRC-3458-EC_EUROPA_covid/v1",
+          "opus_ELRC-EC_EUROPA/v1",
+          "opus_ELRC-Swedish_Labour/v1",
+          "opus_ELRC-4995-Finnish_Financial_MT/v1",
+          "opus_ELRC-3196-antibiotic/v1",
+          "opus_ELRC-416-Swedish_Social_Secur/v1",
+          "opus_ELRC-416-Swedish_Social_Secur/v1",
+          "opus_ELRC-3287-EUROPARL_covid/v1",
+          "opus_ELRC-2739-vaccination/v1",
+          "opus_ELRC-vaccination/v1",
+          "opus_ELRC_2923/v1",
+          "opus_ELRC-3045-wikipedia_health/v1",
+          "opus_ELRC-wikipedia_health/v1",
+          "opus_ELRC_2922/v1",
+          "mtdata_ELRC-swedish_social_security-1-eng-fin",
+          "mtdata_ELRC-finnish_information_bank-1-eng-fin",
+          "mtdata_ELRC-eu_publications_medical_v2-1-eng-fin",
+          "mtdata_ELRC-nteu_tierb-1-eng-fin",
+          "mtdata_EU-eac_forms-1-eng-fin",
+          "mtdata_EU-eac_reference-1-eng-fin",
+          "mtdata_EU-dcep-1-eng-fin",
+          "mtdata_Statmt-wiki_titles-1-fin-eng",
+          "mtdata_Statmt-newsdev_fien-2015-fin-eng",
+          "mtdata_Statmt-newsdev_enfi-2015-eng-fin",
+          "mtdata_Tilde-eesc-2017-eng-fin",
+          "mtdata_Tilde-ema-2016-eng-fin",
+          "mtdata_Tilde-airbaltic-1-eng-fin",
+          "mtdata_Tilde-rapid-2016-eng-fin"
+        ]
+      },
+      "experiment": {
+        "best-model": "chrf",
+        "bicleaner": {
+          "dataset-thresholds": {},
+          "default-threshold": 0.5
+        },
+        "mono-max-sentences-src": 500000000,
+        "mono-max-sentences-trg": 200000000,
+        "name": "spring-2024",
+        "opuscleaner-mode": "defaults",
+        "pretrained-models": {
+          "train-backwards": {
+            "mode": "use",
+            "type": "default",
+            "urls": [
+              "https://storage.googleapis.com/releng-translations-dev/models/fi-en/opusprod/student"
+            ]
+          }
+        },
+        "spm-sample-size": 10000000,
+        "spm-vocab-size": 32000,
+        "src": "en",
+        "teacher-ensemble": 2,
+        "teacher-mode": "two-stage",
+        "trg": "fi",
+        "use-opuscleaner": "true"
+      },
+      "marian-args": {
+        "decoding-backward": {
+          "beam-size": "12",
+          "mini-batch-words": "2000"
+        },
+        "decoding-teacher": {
+          "mini-batch-words": "4000",
+          "precision": "float16"
+        },
+        "training-backward": {
+          "early-stopping": "5"
+        },
+        "training-student": {
+          "early-stopping": "20"
+        },
+        "training-student-finetuned": {
+          "early-stopping": "20"
+        },
+        "training-teacher": {
+          "early-stopping": "20"
+        }
+      },
+      "target-stage": "all",
+      "taskcluster": {
+        "split-chunks": 20,
+        "worker-classes": {
+          "alignments-backtranslated": "gcp-standard",
+          "alignments-original": "gcp-standard",
+          "alignments-student": "gcp-standard",
+          "default": "gcp-spot",
+          "shortlist": "gcp-standard"
+        }
+      },
+      "wandb-publication": true
+    },
+    "task_group_id": "bNBrAkLqQpCpuxfMe3I-mw",
+    "flores": {
+      "chrf": 61.1,
+      "bleu": 27.54,
+      "comet": 91.74
+    },
+    "artifact_folder": "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_bNBrAkLqQpCpuxfMe3I-mw/teacher1/",
+    "artifact_urls": [
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_bNBrAkLqQpCpuxfMe3I-mw/teacher1/config.opustrainer.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_bNBrAkLqQpCpuxfMe3I-mw/teacher1/config.opustrainer.yml.state",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_bNBrAkLqQpCpuxfMe3I-mw/teacher1/devset.out",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_bNBrAkLqQpCpuxfMe3I-mw/teacher1/final.model.npz.best-chrf.npz",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_bNBrAkLqQpCpuxfMe3I-mw/teacher1/final.model.npz.best-chrf.npz.decoder.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_bNBrAkLqQpCpuxfMe3I-mw/teacher1/model.npz.progress.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_bNBrAkLqQpCpuxfMe3I-mw/teacher1/model.npz.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_bNBrAkLqQpCpuxfMe3I-mw/teacher1/vocab.spm"
+    ]
+  },
+  "teacher_ensemble_flores": null,
+  "student": {
+    "date": "2024-08-21T07:41:45.041000",
+    "config": {
+      "datasets": {
+        "devtest": [
+          "mtdata_aug-mix_Neulab-tedtalks_dev-1-eng-fin",
+          "flores_aug-mix_dev",
+          "sacrebleu_aug-mix_wmt18",
+          "sacrebleu_aug-mix_wmt17",
+          "sacrebleu_aug-mix_wmt15"
+        ],
+        "mono-src": [
+          "news-crawl_news.2007",
+          "news-crawl_news.2008",
+          "news-crawl_news.2009",
+          "news-crawl_news.2010",
+          "news-crawl_news.2011",
+          "news-crawl_news.2012",
+          "news-crawl_news.2013",
+          "news-crawl_news.2014",
+          "news-crawl_news.2015",
+          "news-crawl_news.2016",
+          "news-crawl_news.2017",
+          "news-crawl_news.2018",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023"
+        ],
+        "mono-trg": [
+          "news-crawl_news.2015",
+          "news-crawl_news.2016",
+          "news-crawl_news.2017",
+          "news-crawl_news.2018",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_fi_1.txt.zst",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_fi_2.txt.zst"
+        ],
+        "test": [
+          "mtdata_Neulab-tedtalks_test-1-eng-fin",
+          "flores_devtest",
+          "flores_aug-mix_devtest",
+          "flores_aug-title_devtest",
+          "flores_aug-upper_devtest",
+          "flores_aug-typos_devtest",
+          "flores_aug-noise_devtest",
+          "flores_aug-inline-noise_devtest",
+          "sacrebleu_wmt19",
+          "sacrebleu_wmt16"
+        ],
+        "train": [
+          "opus_NLLB/v1",
+          "opus_ParaCrawl/v9",
+          "opus_OpenSubtitles/v2018",
+          "opus_HPLT/v1.1",
+          "opus_ELRC-EMEA/v1",
+          "opus_ELRC-4239-NTEU_TierA/v1",
+          "opus_CCAligned/v1",
+          "opus_DGT/v2019",
+          "opus_LinguaTools-WikiTitles/v2014",
+          "opus_TildeMODEL/v2018",
+          "opus_XLEnt/v1.2",
+          "opus_EUbookshop/v2",
+          "opus_Europarl/v8",
+          "opus_EMEA/v3",
+          "opus_ELRC-2708-EMEA/v1",
+          "opus_ELRC-5067-SciPar/v1",
+          "opus_WikiMatrix/v1",
+          "opus_ELITR-ECA/v1",
+          "opus_ECB/v1",
+          "opus_ELRC-www.turku.fi/v1",
+          "opus_ELRC-Finnish_Information/v1",
+          "opus_ELRC-www.visitestonia.com/v1",
+          "opus_KDE4/v2",
+          "opus_ELRC-presscorner_covid/v1",
+          "opus_QED/v2.0a",
+          "opus_infopankki/v1",
+          "opus_Tatoeba/v2023-04-12",
+          "opus_GNOME/v1",
+          "opus_bible-uedin/v1",
+          "opus_ELRC-724-Hallituskausi_2007_2/v1",
+          "opus_ELRA-W0220/v1",
+          "opus_ELRC-1769-valtioneuvosto.fi/v1",
+          "opus_ELRC-valtioneuvosto.fi/v1",
+          "opus_TED2020/v1",
+          "opus_wikimedia/v20230407",
+          "opus_ELRC-735-www.norden.org/v1",
+          "opus_ELRC-www.norden.org/v1",
+          "opus_ELRC-1127-www.vtv.fi/v1",
+          "opus_ELRC-www.vtv.fi/v1",
+          "opus_WMT-News/v2019",
+          "opus_ELRC-1771-vnk.fi/v1",
+          "opus_ELRC-vnk.fi/v1",
+          "opus_ELRC-725-Hallituskausi_2011_2/v1",
+          "opus_PHP/v1",
+          "opus_NeuLab-TedTalks/v1",
+          "opus_ELRC-3559-EUR_LEX_covid/v1",
+          "opus_ELRC-EUR_LEX/v1",
+          "opus_ELRC-2036-www.vero.fi/v1",
+          "opus_ELRC-www.vero.fi/v1",
+          "opus_JRC-Acquis/v3.0",
+          "opus_ELRC-2032-www.turku.fi/v1",
+          "opus_ELRC-2017-EUIPO_2017/v1",
+          "opus_ELRC-EUIPO_2017/v1",
+          "opus_ELRC-EUROPARL_covid/v1",
+          "opus_ELRC-1128-www.visitestonia.com/v1",
+          "opus_ELRC-2869-EU_publications_medi/v1",
+          "opus_ELRC-EU_publications/v1",
+          "opus_ELRC-antibiotic/v1",
+          "opus_EUconst/v1",
+          "opus_ELRC-716-Finnish_Information_/v1",
+          "opus_ELRA-W0217/v1",
+          "opus_ELRC-3600-presscorner_covid/v1",
+          "opus_Books/v1",
+          "opus_ELRC_3382/v1",
+          "opus_ECDC/v2016-03-16",
+          "opus_ELRC-3458-EC_EUROPA_covid/v1",
+          "opus_ELRC-EC_EUROPA/v1",
+          "opus_ELRC-Swedish_Labour/v1",
+          "opus_ELRC-4995-Finnish_Financial_MT/v1",
+          "opus_ELRC-3196-antibiotic/v1",
+          "opus_ELRC-416-Swedish_Social_Secur/v1",
+          "opus_ELRC-416-Swedish_Social_Secur/v1",
+          "opus_ELRC-3287-EUROPARL_covid/v1",
+          "opus_ELRC-2739-vaccination/v1",
+          "opus_ELRC-vaccination/v1",
+          "opus_ELRC_2923/v1",
+          "opus_ELRC-3045-wikipedia_health/v1",
+          "opus_ELRC-wikipedia_health/v1",
+          "opus_ELRC_2922/v1",
+          "mtdata_ELRC-swedish_social_security-1-eng-fin",
+          "mtdata_ELRC-finnish_information_bank-1-eng-fin",
+          "mtdata_ELRC-eu_publications_medical_v2-1-eng-fin",
+          "mtdata_ELRC-nteu_tierb-1-eng-fin",
+          "mtdata_EU-eac_forms-1-eng-fin",
+          "mtdata_EU-eac_reference-1-eng-fin",
+          "mtdata_EU-dcep-1-eng-fin",
+          "mtdata_Statmt-wiki_titles-1-fin-eng",
+          "mtdata_Statmt-newsdev_fien-2015-fin-eng",
+          "mtdata_Statmt-newsdev_enfi-2015-eng-fin",
+          "mtdata_Tilde-eesc-2017-eng-fin",
+          "mtdata_Tilde-ema-2016-eng-fin",
+          "mtdata_Tilde-airbaltic-1-eng-fin",
+          "mtdata_Tilde-rapid-2016-eng-fin"
+        ]
+      },
+      "experiment": {
+        "best-model": "chrf",
+        "bicleaner": {
+          "dataset-thresholds": {},
+          "default-threshold": 0.5
+        },
+        "mono-max-sentences-src": 500000000,
+        "mono-max-sentences-trg": 200000000,
+        "name": "spring-2024",
+        "opuscleaner-mode": "defaults",
+        "pretrained-models": {
+          "train-backwards": {
+            "mode": "use",
+            "type": "default",
+            "urls": [
+              "https://storage.googleapis.com/releng-translations-dev/models/fi-en/opusprod/student"
+            ]
+          }
+        },
+        "spm-sample-size": 10000000,
+        "spm-vocab-size": 32000,
+        "src": "en",
+        "teacher-ensemble": 2,
+        "teacher-mode": "two-stage",
+        "trg": "fi",
+        "use-opuscleaner": "true"
+      },
+      "marian-args": {
+        "decoding-backward": {
+          "beam-size": "12",
+          "mini-batch-words": "2000"
+        },
+        "decoding-teacher": {
+          "mini-batch-words": "4000",
+          "precision": "float16"
+        },
+        "training-backward": {
+          "early-stopping": "5"
+        },
+        "training-student": {
+          "early-stopping": "20"
+        },
+        "training-student-finetuned": {
+          "early-stopping": "20"
+        },
+        "training-teacher": {
+          "early-stopping": "20"
+        }
+      },
+      "target-stage": "all",
+      "taskcluster": {
+        "split-chunks": 20,
+        "worker-classes": {
+          "alignments-backtranslated": "gcp-standard",
+          "alignments-original": "gcp-standard",
+          "alignments-student": "gcp-standard",
+          "default": "gcp-spot",
+          "shortlist": "gcp-standard"
+        }
+      },
+      "wandb-publication": true
+    },
+    "task_group_id": "e1DqKwpxQTCbTgn_rgQy-g",
+    "flores": {
+      "chrf": 59.41,
+      "bleu": 24.47,
+      "comet": 89.47
+    },
+    "artifact_folder": "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_e1DqKwpxQTCbTgn_rgQy-g/student/",
+    "artifact_urls": [
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_e1DqKwpxQTCbTgn_rgQy-g/student/config.opustrainer.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_e1DqKwpxQTCbTgn_rgQy-g/student/config.opustrainer.yml.state",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_e1DqKwpxQTCbTgn_rgQy-g/student/devset.out",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_e1DqKwpxQTCbTgn_rgQy-g/student/final.model.npz.best-chrf.npz",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_e1DqKwpxQTCbTgn_rgQy-g/student/final.model.npz.best-chrf.npz.decoder.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_e1DqKwpxQTCbTgn_rgQy-g/student/model.npz.progress.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_e1DqKwpxQTCbTgn_rgQy-g/student/model.npz.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_e1DqKwpxQTCbTgn_rgQy-g/student/vocab.spm"
+    ]
+  },
+  "student_finetuned": {
+    "date": "2024-08-21T13:56:37.568000",
+    "config": {
+      "datasets": {
+        "devtest": [
+          "mtdata_aug-mix_Neulab-tedtalks_dev-1-eng-fin",
+          "flores_aug-mix_dev",
+          "sacrebleu_aug-mix_wmt18",
+          "sacrebleu_aug-mix_wmt17",
+          "sacrebleu_aug-mix_wmt15"
+        ],
+        "mono-src": [
+          "news-crawl_news.2007",
+          "news-crawl_news.2008",
+          "news-crawl_news.2009",
+          "news-crawl_news.2010",
+          "news-crawl_news.2011",
+          "news-crawl_news.2012",
+          "news-crawl_news.2013",
+          "news-crawl_news.2014",
+          "news-crawl_news.2015",
+          "news-crawl_news.2016",
+          "news-crawl_news.2017",
+          "news-crawl_news.2018",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023"
+        ],
+        "mono-trg": [
+          "news-crawl_news.2015",
+          "news-crawl_news.2016",
+          "news-crawl_news.2017",
+          "news-crawl_news.2018",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_fi_1.txt.zst",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_fi_2.txt.zst"
+        ],
+        "test": [
+          "mtdata_Neulab-tedtalks_test-1-eng-fin",
+          "flores_devtest",
+          "flores_aug-mix_devtest",
+          "flores_aug-title_devtest",
+          "flores_aug-upper_devtest",
+          "flores_aug-typos_devtest",
+          "flores_aug-noise_devtest",
+          "flores_aug-inline-noise_devtest",
+          "sacrebleu_wmt19",
+          "sacrebleu_wmt16"
+        ],
+        "train": [
+          "opus_NLLB/v1",
+          "opus_ParaCrawl/v9",
+          "opus_OpenSubtitles/v2018",
+          "opus_HPLT/v1.1",
+          "opus_ELRC-EMEA/v1",
+          "opus_ELRC-4239-NTEU_TierA/v1",
+          "opus_CCAligned/v1",
+          "opus_DGT/v2019",
+          "opus_LinguaTools-WikiTitles/v2014",
+          "opus_TildeMODEL/v2018",
+          "opus_XLEnt/v1.2",
+          "opus_EUbookshop/v2",
+          "opus_Europarl/v8",
+          "opus_EMEA/v3",
+          "opus_ELRC-2708-EMEA/v1",
+          "opus_ELRC-5067-SciPar/v1",
+          "opus_WikiMatrix/v1",
+          "opus_ELITR-ECA/v1",
+          "opus_ECB/v1",
+          "opus_ELRC-www.turku.fi/v1",
+          "opus_ELRC-Finnish_Information/v1",
+          "opus_ELRC-www.visitestonia.com/v1",
+          "opus_KDE4/v2",
+          "opus_ELRC-presscorner_covid/v1",
+          "opus_QED/v2.0a",
+          "opus_infopankki/v1",
+          "opus_Tatoeba/v2023-04-12",
+          "opus_GNOME/v1",
+          "opus_bible-uedin/v1",
+          "opus_ELRC-724-Hallituskausi_2007_2/v1",
+          "opus_ELRA-W0220/v1",
+          "opus_ELRC-1769-valtioneuvosto.fi/v1",
+          "opus_ELRC-valtioneuvosto.fi/v1",
+          "opus_TED2020/v1",
+          "opus_wikimedia/v20230407",
+          "opus_ELRC-735-www.norden.org/v1",
+          "opus_ELRC-www.norden.org/v1",
+          "opus_ELRC-1127-www.vtv.fi/v1",
+          "opus_ELRC-www.vtv.fi/v1",
+          "opus_WMT-News/v2019",
+          "opus_ELRC-1771-vnk.fi/v1",
+          "opus_ELRC-vnk.fi/v1",
+          "opus_ELRC-725-Hallituskausi_2011_2/v1",
+          "opus_PHP/v1",
+          "opus_NeuLab-TedTalks/v1",
+          "opus_ELRC-3559-EUR_LEX_covid/v1",
+          "opus_ELRC-EUR_LEX/v1",
+          "opus_ELRC-2036-www.vero.fi/v1",
+          "opus_ELRC-www.vero.fi/v1",
+          "opus_JRC-Acquis/v3.0",
+          "opus_ELRC-2032-www.turku.fi/v1",
+          "opus_ELRC-2017-EUIPO_2017/v1",
+          "opus_ELRC-EUIPO_2017/v1",
+          "opus_ELRC-EUROPARL_covid/v1",
+          "opus_ELRC-1128-www.visitestonia.com/v1",
+          "opus_ELRC-2869-EU_publications_medi/v1",
+          "opus_ELRC-EU_publications/v1",
+          "opus_ELRC-antibiotic/v1",
+          "opus_EUconst/v1",
+          "opus_ELRC-716-Finnish_Information_/v1",
+          "opus_ELRA-W0217/v1",
+          "opus_ELRC-3600-presscorner_covid/v1",
+          "opus_Books/v1",
+          "opus_ELRC_3382/v1",
+          "opus_ECDC/v2016-03-16",
+          "opus_ELRC-3458-EC_EUROPA_covid/v1",
+          "opus_ELRC-EC_EUROPA/v1",
+          "opus_ELRC-Swedish_Labour/v1",
+          "opus_ELRC-4995-Finnish_Financial_MT/v1",
+          "opus_ELRC-3196-antibiotic/v1",
+          "opus_ELRC-416-Swedish_Social_Secur/v1",
+          "opus_ELRC-416-Swedish_Social_Secur/v1",
+          "opus_ELRC-3287-EUROPARL_covid/v1",
+          "opus_ELRC-2739-vaccination/v1",
+          "opus_ELRC-vaccination/v1",
+          "opus_ELRC_2923/v1",
+          "opus_ELRC-3045-wikipedia_health/v1",
+          "opus_ELRC-wikipedia_health/v1",
+          "opus_ELRC_2922/v1",
+          "mtdata_ELRC-swedish_social_security-1-eng-fin",
+          "mtdata_ELRC-finnish_information_bank-1-eng-fin",
+          "mtdata_ELRC-eu_publications_medical_v2-1-eng-fin",
+          "mtdata_ELRC-nteu_tierb-1-eng-fin",
+          "mtdata_EU-eac_forms-1-eng-fin",
+          "mtdata_EU-eac_reference-1-eng-fin",
+          "mtdata_EU-dcep-1-eng-fin",
+          "mtdata_Statmt-wiki_titles-1-fin-eng",
+          "mtdata_Statmt-newsdev_fien-2015-fin-eng",
+          "mtdata_Statmt-newsdev_enfi-2015-eng-fin",
+          "mtdata_Tilde-eesc-2017-eng-fin",
+          "mtdata_Tilde-ema-2016-eng-fin",
+          "mtdata_Tilde-airbaltic-1-eng-fin",
+          "mtdata_Tilde-rapid-2016-eng-fin"
+        ]
+      },
+      "experiment": {
+        "best-model": "chrf",
+        "bicleaner": {
+          "dataset-thresholds": {},
+          "default-threshold": 0.5
+        },
+        "mono-max-sentences-src": 500000000,
+        "mono-max-sentences-trg": 200000000,
+        "name": "spring-2024",
+        "opuscleaner-mode": "defaults",
+        "pretrained-models": {
+          "train-backwards": {
+            "mode": "use",
+            "type": "default",
+            "urls": [
+              "https://storage.googleapis.com/releng-translations-dev/models/fi-en/opusprod/student"
+            ]
+          }
+        },
+        "spm-sample-size": 10000000,
+        "spm-vocab-size": 32000,
+        "src": "en",
+        "teacher-ensemble": 2,
+        "teacher-mode": "two-stage",
+        "trg": "fi",
+        "use-opuscleaner": "true"
+      },
+      "marian-args": {
+        "decoding-backward": {
+          "beam-size": "12",
+          "mini-batch-words": "2000"
+        },
+        "decoding-teacher": {
+          "mini-batch-words": "4000",
+          "precision": "float16"
+        },
+        "training-backward": {
+          "early-stopping": "5"
+        },
+        "training-student": {
+          "early-stopping": "20"
+        },
+        "training-student-finetuned": {
+          "early-stopping": "20"
+        },
+        "training-teacher": {
+          "early-stopping": "20"
+        }
+      },
+      "target-stage": "all",
+      "taskcluster": {
+        "split-chunks": 20,
+        "worker-classes": {
+          "alignments-backtranslated": "gcp-standard",
+          "alignments-original": "gcp-standard",
+          "alignments-student": "gcp-standard",
+          "default": "gcp-spot",
+          "shortlist": "gcp-standard"
+        }
+      },
+      "wandb-publication": true
+    },
+    "task_group_id": "e1DqKwpxQTCbTgn_rgQy-g",
+    "flores": {
+      "chrf": 59.17,
+      "bleu": 24.57,
+      "comet": 89.25999999999999
+    },
+    "artifact_folder": "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_e1DqKwpxQTCbTgn_rgQy-g/student-finetuned/",
+    "artifact_urls": [
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_e1DqKwpxQTCbTgn_rgQy-g/student-finetuned/config.opustrainer.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_e1DqKwpxQTCbTgn_rgQy-g/student-finetuned/config.opustrainer.yml.state",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_e1DqKwpxQTCbTgn_rgQy-g/student-finetuned/devset.out",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_e1DqKwpxQTCbTgn_rgQy-g/student-finetuned/final.model.npz.best-chrf.npz",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_e1DqKwpxQTCbTgn_rgQy-g/student-finetuned/final.model.npz.best-chrf.npz.decoder.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_e1DqKwpxQTCbTgn_rgQy-g/student-finetuned/model.npz.progress.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_e1DqKwpxQTCbTgn_rgQy-g/student-finetuned/model.npz.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_e1DqKwpxQTCbTgn_rgQy-g/student-finetuned/vocab.spm"
+    ]
+  },
+  "student_quantized": {
+    "date": "2024-08-21T14:01:21.304000",
+    "config": {
+      "datasets": {
+        "devtest": [
+          "mtdata_aug-mix_Neulab-tedtalks_dev-1-eng-fin",
+          "flores_aug-mix_dev",
+          "sacrebleu_aug-mix_wmt18",
+          "sacrebleu_aug-mix_wmt17",
+          "sacrebleu_aug-mix_wmt15"
+        ],
+        "mono-src": [
+          "news-crawl_news.2007",
+          "news-crawl_news.2008",
+          "news-crawl_news.2009",
+          "news-crawl_news.2010",
+          "news-crawl_news.2011",
+          "news-crawl_news.2012",
+          "news-crawl_news.2013",
+          "news-crawl_news.2014",
+          "news-crawl_news.2015",
+          "news-crawl_news.2016",
+          "news-crawl_news.2017",
+          "news-crawl_news.2018",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023"
+        ],
+        "mono-trg": [
+          "news-crawl_news.2015",
+          "news-crawl_news.2016",
+          "news-crawl_news.2017",
+          "news-crawl_news.2018",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_fi_1.txt.zst",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_fi_2.txt.zst"
+        ],
+        "test": [
+          "mtdata_Neulab-tedtalks_test-1-eng-fin",
+          "flores_devtest",
+          "flores_aug-mix_devtest",
+          "flores_aug-title_devtest",
+          "flores_aug-upper_devtest",
+          "flores_aug-typos_devtest",
+          "flores_aug-noise_devtest",
+          "flores_aug-inline-noise_devtest",
+          "sacrebleu_wmt19",
+          "sacrebleu_wmt16"
+        ],
+        "train": [
+          "opus_NLLB/v1",
+          "opus_ParaCrawl/v9",
+          "opus_OpenSubtitles/v2018",
+          "opus_HPLT/v1.1",
+          "opus_ELRC-EMEA/v1",
+          "opus_ELRC-4239-NTEU_TierA/v1",
+          "opus_CCAligned/v1",
+          "opus_DGT/v2019",
+          "opus_LinguaTools-WikiTitles/v2014",
+          "opus_TildeMODEL/v2018",
+          "opus_XLEnt/v1.2",
+          "opus_EUbookshop/v2",
+          "opus_Europarl/v8",
+          "opus_EMEA/v3",
+          "opus_ELRC-2708-EMEA/v1",
+          "opus_ELRC-5067-SciPar/v1",
+          "opus_WikiMatrix/v1",
+          "opus_ELITR-ECA/v1",
+          "opus_ECB/v1",
+          "opus_ELRC-www.turku.fi/v1",
+          "opus_ELRC-Finnish_Information/v1",
+          "opus_ELRC-www.visitestonia.com/v1",
+          "opus_KDE4/v2",
+          "opus_ELRC-presscorner_covid/v1",
+          "opus_QED/v2.0a",
+          "opus_infopankki/v1",
+          "opus_Tatoeba/v2023-04-12",
+          "opus_GNOME/v1",
+          "opus_bible-uedin/v1",
+          "opus_ELRC-724-Hallituskausi_2007_2/v1",
+          "opus_ELRA-W0220/v1",
+          "opus_ELRC-1769-valtioneuvosto.fi/v1",
+          "opus_ELRC-valtioneuvosto.fi/v1",
+          "opus_TED2020/v1",
+          "opus_wikimedia/v20230407",
+          "opus_ELRC-735-www.norden.org/v1",
+          "opus_ELRC-www.norden.org/v1",
+          "opus_ELRC-1127-www.vtv.fi/v1",
+          "opus_ELRC-www.vtv.fi/v1",
+          "opus_WMT-News/v2019",
+          "opus_ELRC-1771-vnk.fi/v1",
+          "opus_ELRC-vnk.fi/v1",
+          "opus_ELRC-725-Hallituskausi_2011_2/v1",
+          "opus_PHP/v1",
+          "opus_NeuLab-TedTalks/v1",
+          "opus_ELRC-3559-EUR_LEX_covid/v1",
+          "opus_ELRC-EUR_LEX/v1",
+          "opus_ELRC-2036-www.vero.fi/v1",
+          "opus_ELRC-www.vero.fi/v1",
+          "opus_JRC-Acquis/v3.0",
+          "opus_ELRC-2032-www.turku.fi/v1",
+          "opus_ELRC-2017-EUIPO_2017/v1",
+          "opus_ELRC-EUIPO_2017/v1",
+          "opus_ELRC-EUROPARL_covid/v1",
+          "opus_ELRC-1128-www.visitestonia.com/v1",
+          "opus_ELRC-2869-EU_publications_medi/v1",
+          "opus_ELRC-EU_publications/v1",
+          "opus_ELRC-antibiotic/v1",
+          "opus_EUconst/v1",
+          "opus_ELRC-716-Finnish_Information_/v1",
+          "opus_ELRA-W0217/v1",
+          "opus_ELRC-3600-presscorner_covid/v1",
+          "opus_Books/v1",
+          "opus_ELRC_3382/v1",
+          "opus_ECDC/v2016-03-16",
+          "opus_ELRC-3458-EC_EUROPA_covid/v1",
+          "opus_ELRC-EC_EUROPA/v1",
+          "opus_ELRC-Swedish_Labour/v1",
+          "opus_ELRC-4995-Finnish_Financial_MT/v1",
+          "opus_ELRC-3196-antibiotic/v1",
+          "opus_ELRC-416-Swedish_Social_Secur/v1",
+          "opus_ELRC-416-Swedish_Social_Secur/v1",
+          "opus_ELRC-3287-EUROPARL_covid/v1",
+          "opus_ELRC-2739-vaccination/v1",
+          "opus_ELRC-vaccination/v1",
+          "opus_ELRC_2923/v1",
+          "opus_ELRC-3045-wikipedia_health/v1",
+          "opus_ELRC-wikipedia_health/v1",
+          "opus_ELRC_2922/v1",
+          "mtdata_ELRC-swedish_social_security-1-eng-fin",
+          "mtdata_ELRC-finnish_information_bank-1-eng-fin",
+          "mtdata_ELRC-eu_publications_medical_v2-1-eng-fin",
+          "mtdata_ELRC-nteu_tierb-1-eng-fin",
+          "mtdata_EU-eac_forms-1-eng-fin",
+          "mtdata_EU-eac_reference-1-eng-fin",
+          "mtdata_EU-dcep-1-eng-fin",
+          "mtdata_Statmt-wiki_titles-1-fin-eng",
+          "mtdata_Statmt-newsdev_fien-2015-fin-eng",
+          "mtdata_Statmt-newsdev_enfi-2015-eng-fin",
+          "mtdata_Tilde-eesc-2017-eng-fin",
+          "mtdata_Tilde-ema-2016-eng-fin",
+          "mtdata_Tilde-airbaltic-1-eng-fin",
+          "mtdata_Tilde-rapid-2016-eng-fin"
+        ]
+      },
+      "experiment": {
+        "best-model": "chrf",
+        "bicleaner": {
+          "dataset-thresholds": {},
+          "default-threshold": 0.5
+        },
+        "mono-max-sentences-src": 500000000,
+        "mono-max-sentences-trg": 200000000,
+        "name": "spring-2024",
+        "opuscleaner-mode": "defaults",
+        "pretrained-models": {
+          "train-backwards": {
+            "mode": "use",
+            "type": "default",
+            "urls": [
+              "https://storage.googleapis.com/releng-translations-dev/models/fi-en/opusprod/student"
+            ]
+          }
+        },
+        "spm-sample-size": 10000000,
+        "spm-vocab-size": 32000,
+        "src": "en",
+        "teacher-ensemble": 2,
+        "teacher-mode": "two-stage",
+        "trg": "fi",
+        "use-opuscleaner": "true"
+      },
+      "marian-args": {
+        "decoding-backward": {
+          "beam-size": "12",
+          "mini-batch-words": "2000"
+        },
+        "decoding-teacher": {
+          "mini-batch-words": "4000",
+          "precision": "float16"
+        },
+        "training-backward": {
+          "early-stopping": "5"
+        },
+        "training-student": {
+          "early-stopping": "20"
+        },
+        "training-student-finetuned": {
+          "early-stopping": "20"
+        },
+        "training-teacher": {
+          "early-stopping": "20"
+        }
+      },
+      "target-stage": "all",
+      "taskcluster": {
+        "split-chunks": 20,
+        "worker-classes": {
+          "alignments-backtranslated": "gcp-standard",
+          "alignments-original": "gcp-standard",
+          "alignments-student": "gcp-standard",
+          "default": "gcp-spot",
+          "shortlist": "gcp-standard"
+        }
+      },
+      "wandb-publication": true
+    },
+    "task_group_id": "e1DqKwpxQTCbTgn_rgQy-g",
+    "flores": {
+      "chrf": 58.85,
+      "bleu": 23.9,
+      "comet": 88.75999999999999
+    },
+    "artifact_folder": "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_e1DqKwpxQTCbTgn_rgQy-g/quantized/",
+    "artifact_urls": [
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_e1DqKwpxQTCbTgn_rgQy-g/quantized/model.alphas.npz",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_e1DqKwpxQTCbTgn_rgQy-g/quantized/model.intgemm.alphas.bin",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_e1DqKwpxQTCbTgn_rgQy-g/quantized/output.fi",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_e1DqKwpxQTCbTgn_rgQy-g/quantized/quantmults",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_e1DqKwpxQTCbTgn_rgQy-g/quantized/vocab.spm"
+    ]
+  },
+  "student_exported": {
+    "date": "2024-08-21T14:03:00.914000",
+    "config": {
+      "datasets": {
+        "devtest": [
+          "mtdata_aug-mix_Neulab-tedtalks_dev-1-eng-fin",
+          "flores_aug-mix_dev",
+          "sacrebleu_aug-mix_wmt18",
+          "sacrebleu_aug-mix_wmt17",
+          "sacrebleu_aug-mix_wmt15"
+        ],
+        "mono-src": [
+          "news-crawl_news.2007",
+          "news-crawl_news.2008",
+          "news-crawl_news.2009",
+          "news-crawl_news.2010",
+          "news-crawl_news.2011",
+          "news-crawl_news.2012",
+          "news-crawl_news.2013",
+          "news-crawl_news.2014",
+          "news-crawl_news.2015",
+          "news-crawl_news.2016",
+          "news-crawl_news.2017",
+          "news-crawl_news.2018",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023"
+        ],
+        "mono-trg": [
+          "news-crawl_news.2015",
+          "news-crawl_news.2016",
+          "news-crawl_news.2017",
+          "news-crawl_news.2018",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_fi_1.txt.zst",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_fi_2.txt.zst"
+        ],
+        "test": [
+          "mtdata_Neulab-tedtalks_test-1-eng-fin",
+          "flores_devtest",
+          "flores_aug-mix_devtest",
+          "flores_aug-title_devtest",
+          "flores_aug-upper_devtest",
+          "flores_aug-typos_devtest",
+          "flores_aug-noise_devtest",
+          "flores_aug-inline-noise_devtest",
+          "sacrebleu_wmt19",
+          "sacrebleu_wmt16"
+        ],
+        "train": [
+          "opus_NLLB/v1",
+          "opus_ParaCrawl/v9",
+          "opus_OpenSubtitles/v2018",
+          "opus_HPLT/v1.1",
+          "opus_ELRC-EMEA/v1",
+          "opus_ELRC-4239-NTEU_TierA/v1",
+          "opus_CCAligned/v1",
+          "opus_DGT/v2019",
+          "opus_LinguaTools-WikiTitles/v2014",
+          "opus_TildeMODEL/v2018",
+          "opus_XLEnt/v1.2",
+          "opus_EUbookshop/v2",
+          "opus_Europarl/v8",
+          "opus_EMEA/v3",
+          "opus_ELRC-2708-EMEA/v1",
+          "opus_ELRC-5067-SciPar/v1",
+          "opus_WikiMatrix/v1",
+          "opus_ELITR-ECA/v1",
+          "opus_ECB/v1",
+          "opus_ELRC-www.turku.fi/v1",
+          "opus_ELRC-Finnish_Information/v1",
+          "opus_ELRC-www.visitestonia.com/v1",
+          "opus_KDE4/v2",
+          "opus_ELRC-presscorner_covid/v1",
+          "opus_QED/v2.0a",
+          "opus_infopankki/v1",
+          "opus_Tatoeba/v2023-04-12",
+          "opus_GNOME/v1",
+          "opus_bible-uedin/v1",
+          "opus_ELRC-724-Hallituskausi_2007_2/v1",
+          "opus_ELRA-W0220/v1",
+          "opus_ELRC-1769-valtioneuvosto.fi/v1",
+          "opus_ELRC-valtioneuvosto.fi/v1",
+          "opus_TED2020/v1",
+          "opus_wikimedia/v20230407",
+          "opus_ELRC-735-www.norden.org/v1",
+          "opus_ELRC-www.norden.org/v1",
+          "opus_ELRC-1127-www.vtv.fi/v1",
+          "opus_ELRC-www.vtv.fi/v1",
+          "opus_WMT-News/v2019",
+          "opus_ELRC-1771-vnk.fi/v1",
+          "opus_ELRC-vnk.fi/v1",
+          "opus_ELRC-725-Hallituskausi_2011_2/v1",
+          "opus_PHP/v1",
+          "opus_NeuLab-TedTalks/v1",
+          "opus_ELRC-3559-EUR_LEX_covid/v1",
+          "opus_ELRC-EUR_LEX/v1",
+          "opus_ELRC-2036-www.vero.fi/v1",
+          "opus_ELRC-www.vero.fi/v1",
+          "opus_JRC-Acquis/v3.0",
+          "opus_ELRC-2032-www.turku.fi/v1",
+          "opus_ELRC-2017-EUIPO_2017/v1",
+          "opus_ELRC-EUIPO_2017/v1",
+          "opus_ELRC-EUROPARL_covid/v1",
+          "opus_ELRC-1128-www.visitestonia.com/v1",
+          "opus_ELRC-2869-EU_publications_medi/v1",
+          "opus_ELRC-EU_publications/v1",
+          "opus_ELRC-antibiotic/v1",
+          "opus_EUconst/v1",
+          "opus_ELRC-716-Finnish_Information_/v1",
+          "opus_ELRA-W0217/v1",
+          "opus_ELRC-3600-presscorner_covid/v1",
+          "opus_Books/v1",
+          "opus_ELRC_3382/v1",
+          "opus_ECDC/v2016-03-16",
+          "opus_ELRC-3458-EC_EUROPA_covid/v1",
+          "opus_ELRC-EC_EUROPA/v1",
+          "opus_ELRC-Swedish_Labour/v1",
+          "opus_ELRC-4995-Finnish_Financial_MT/v1",
+          "opus_ELRC-3196-antibiotic/v1",
+          "opus_ELRC-416-Swedish_Social_Secur/v1",
+          "opus_ELRC-416-Swedish_Social_Secur/v1",
+          "opus_ELRC-3287-EUROPARL_covid/v1",
+          "opus_ELRC-2739-vaccination/v1",
+          "opus_ELRC-vaccination/v1",
+          "opus_ELRC_2923/v1",
+          "opus_ELRC-3045-wikipedia_health/v1",
+          "opus_ELRC-wikipedia_health/v1",
+          "opus_ELRC_2922/v1",
+          "mtdata_ELRC-swedish_social_security-1-eng-fin",
+          "mtdata_ELRC-finnish_information_bank-1-eng-fin",
+          "mtdata_ELRC-eu_publications_medical_v2-1-eng-fin",
+          "mtdata_ELRC-nteu_tierb-1-eng-fin",
+          "mtdata_EU-eac_forms-1-eng-fin",
+          "mtdata_EU-eac_reference-1-eng-fin",
+          "mtdata_EU-dcep-1-eng-fin",
+          "mtdata_Statmt-wiki_titles-1-fin-eng",
+          "mtdata_Statmt-newsdev_fien-2015-fin-eng",
+          "mtdata_Statmt-newsdev_enfi-2015-eng-fin",
+          "mtdata_Tilde-eesc-2017-eng-fin",
+          "mtdata_Tilde-ema-2016-eng-fin",
+          "mtdata_Tilde-airbaltic-1-eng-fin",
+          "mtdata_Tilde-rapid-2016-eng-fin"
+        ]
+      },
+      "experiment": {
+        "best-model": "chrf",
+        "bicleaner": {
+          "dataset-thresholds": {},
+          "default-threshold": 0.5
+        },
+        "mono-max-sentences-src": 500000000,
+        "mono-max-sentences-trg": 200000000,
+        "name": "spring-2024",
+        "opuscleaner-mode": "defaults",
+        "pretrained-models": {
+          "train-backwards": {
+            "mode": "use",
+            "type": "default",
+            "urls": [
+              "https://storage.googleapis.com/releng-translations-dev/models/fi-en/opusprod/student"
+            ]
+          }
+        },
+        "spm-sample-size": 10000000,
+        "spm-vocab-size": 32000,
+        "src": "en",
+        "teacher-ensemble": 2,
+        "teacher-mode": "two-stage",
+        "trg": "fi",
+        "use-opuscleaner": "true"
+      },
+      "marian-args": {
+        "decoding-backward": {
+          "beam-size": "12",
+          "mini-batch-words": "2000"
+        },
+        "decoding-teacher": {
+          "mini-batch-words": "4000",
+          "precision": "float16"
+        },
+        "training-backward": {
+          "early-stopping": "5"
+        },
+        "training-student": {
+          "early-stopping": "20"
+        },
+        "training-student-finetuned": {
+          "early-stopping": "20"
+        },
+        "training-teacher": {
+          "early-stopping": "20"
+        }
+      },
+      "target-stage": "all",
+      "taskcluster": {
+        "split-chunks": 20,
+        "worker-classes": {
+          "alignments-backtranslated": "gcp-standard",
+          "alignments-original": "gcp-standard",
+          "alignments-student": "gcp-standard",
+          "default": "gcp-spot",
+          "shortlist": "gcp-standard"
+        }
+      },
+      "wandb-publication": true
+    },
+    "task_group_id": "e1DqKwpxQTCbTgn_rgQy-g",
+    "flores": {
+      "chrf": 58.85,
+      "bleu": 23.9,
+      "comet": 88.75999999999999
+    },
+    "artifact_folder": "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_e1DqKwpxQTCbTgn_rgQy-g/exported/",
+    "artifact_urls": [
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_e1DqKwpxQTCbTgn_rgQy-g/exported/lex.50.50.enfi.s2t.bin.gz",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_e1DqKwpxQTCbTgn_rgQy-g/exported/model.enfi.intgemm.alphas.bin.gz",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-fi/spring-2024_e1DqKwpxQTCbTgn_rgQy-g/exported/vocab.enfi.spm.gz"
+    ]
+  }
+}
