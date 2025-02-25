@@ -1,0 +1,841 @@
+{
+  "name": "en_cs_2024",
+  "langpair": "en-cs",
+  "source_lang": "en",
+  "target_lang": "cs",
+  "task_group_ids": [
+    "DAWUQ580SXeggMPwzd0BHg"
+  ],
+  "date_started": "2024-03-20T21:00:06.141000",
+  "comet_flores_comparison": {
+    "microsoft": 0.9154,
+    "bergamot": 0.8736,
+    "nllb": 0.8644,
+    "opusmt": 0.8602,
+    "argos": 0.7199,
+    "google": 0.9158
+  },
+  "bleu_flores_comparison": {
+    "argos": 19.9,
+    "bergamot": 31.3,
+    "opusmt": 28.9,
+    "microsoft": 33.5,
+    "google": 34.1,
+    "nllb": 25.2
+  },
+  "parallel_corpus_aligned": null,
+  "backtranslations_corpus_aligned": null,
+  "distillation_corpus_aligned": null,
+  "parallel_corpus": {
+    "source_url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/RlCQFXKBTHm1P_PPNwDXmQ/artifacts/public/build/corpus.en.zst",
+    "source_bytes": 2208064560,
+    "target_url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/RlCQFXKBTHm1P_PPNwDXmQ/artifacts/public/build/corpus.cs.zst",
+    "target_bytes": 2441329366
+  },
+  "backtranslations_corpus": {
+    "source_url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/LL3BzpO9SDWQUL4ZoaDSQg/artifacts/public/build/mono.en.zst",
+    "source_bytes": 830741943,
+    "target_url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/JHLwVPETR3uHo5eAUcMTUw/artifacts/public/build/mono.cs.zst",
+    "target_bytes": 5601919763
+  },
+  "distillation_corpus": {
+    "source_url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/B0Z3BhmQQKyo8A4bw1TGXw/artifacts/public/build/corpus.en.zst",
+    "source_bytes": 7162530016,
+    "target_url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/B0Z3BhmQQKyo8A4bw1TGXw/artifacts/public/build/corpus.cs.zst",
+    "target_bytes": 7486912742
+  },
+  "backwards": {
+    "date": "2024-03-22T05:15:55.982000",
+    "config": {
+      "datasets": {
+        "devtest": [
+          "flores_devtest"
+        ],
+        "mono-src": [
+          "news-crawl_news.2023",
+          "news-crawl_news.2022",
+          "news-crawl_news.2021",
+          "news-crawl_news.2020",
+          "news-crawl_news.2019",
+          "news-crawl_news.2018",
+          "news-crawl_news.2017",
+          "news-crawl_news.2016",
+          "news-crawl_news.2015",
+          "news-crawl_news.2014",
+          "news-crawl_news.2013",
+          "news-crawl_news.2012",
+          "news-crawl_news.2011",
+          "news-crawl_news.2010",
+          "news-crawl_news.2009",
+          "news-crawl_news.2008",
+          "news-crawl_news.2007"
+        ],
+        "mono-trg": [
+          "news-crawl_news.2023",
+          "news-crawl_news.2022",
+          "news-crawl_news.2021",
+          "news-crawl_news.2020",
+          "news-crawl_news.2019",
+          "news-crawl_news.2018",
+          "news-crawl_news.2017",
+          "news-crawl_news.2016",
+          "news-crawl_news.2015",
+          "news-crawl_news.2014",
+          "news-crawl_news.2013",
+          "news-crawl_news.2012",
+          "news-crawl_news.2011",
+          "news-crawl_news.2010",
+          "news-crawl_news.2009",
+          "news-crawl_news.2008",
+          "news-crawl_news.2007"
+        ],
+        "test": [
+          "flores_dev"
+        ],
+        "train": [
+          "opus_NLLB/v1",
+          "opus_OpenSubtitles/v2018"
+        ]
+      },
+      "experiment": {
+        "backward-model": "NOT-YET-SUPPORTED",
+        "best-model": "chrf",
+        "bicleaner": {
+          "dataset-thresholds": {
+            "opus_NLLB/v1": 0,
+            "opus_OpenSubtitles/v2018": 0.8
+          },
+          "default-threshold": 0.5
+        },
+        "mono-max-sentences-src": 100000000,
+        "mono-max-sentences-trg": 20000000,
+        "name": "en_cs_2024",
+        "split-length": 2000000,
+        "spm-sample-size": 10000000,
+        "src": "en",
+        "teacher-ensemble": 2,
+        "trg": "cs",
+        "use-opuscleaner": "false",
+        "vocab": "NOT-YET-SUPPORTED"
+      },
+      "marian-args": {
+        "decoding-backward": {
+          "beam-size": "12",
+          "mini-batch-words": "2000"
+        },
+        "decoding-teacher": {
+          "mini-batch-words": "4000",
+          "precision": "float16"
+        },
+        "training-backward": {
+          "early-stopping": "5"
+        },
+        "training-student": {
+          "early-stopping": "20"
+        },
+        "training-student-finetuned": {
+          "early-stopping": "20"
+        },
+        "training-teacher": {
+          "early-stopping": "30"
+        }
+      },
+      "target-stage": "all",
+      "taskcluster": {
+        "split-chunks": 10
+      }
+    },
+    "task_group_id": "DAWUQ580SXeggMPwzd0BHg",
+    "flores": null,
+    "artifact_folder": "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/backward/",
+    "artifact_urls": [
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/backward/config.opustrainer.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/backward/config.opustrainer.yml.state",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/backward/devset.out",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/backward/final.model.npz.best-chrf.npz",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/backward/final.model.npz.best-chrf.npz.decoder.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/backward/model.npz.progress.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/backward/model.npz.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/backward/vocab.spm"
+    ]
+  },
+  "teacher_1": {
+    "date": "2024-03-27T03:27:10.689000",
+    "config": {
+      "datasets": {
+        "devtest": [
+          "flores_devtest"
+        ],
+        "mono-src": [
+          "news-crawl_news.2023",
+          "news-crawl_news.2022",
+          "news-crawl_news.2021",
+          "news-crawl_news.2020",
+          "news-crawl_news.2019",
+          "news-crawl_news.2018",
+          "news-crawl_news.2017",
+          "news-crawl_news.2016",
+          "news-crawl_news.2015",
+          "news-crawl_news.2014",
+          "news-crawl_news.2013",
+          "news-crawl_news.2012",
+          "news-crawl_news.2011",
+          "news-crawl_news.2010",
+          "news-crawl_news.2009",
+          "news-crawl_news.2008",
+          "news-crawl_news.2007"
+        ],
+        "mono-trg": [
+          "news-crawl_news.2023",
+          "news-crawl_news.2022",
+          "news-crawl_news.2021",
+          "news-crawl_news.2020",
+          "news-crawl_news.2019",
+          "news-crawl_news.2018",
+          "news-crawl_news.2017",
+          "news-crawl_news.2016",
+          "news-crawl_news.2015",
+          "news-crawl_news.2014",
+          "news-crawl_news.2013",
+          "news-crawl_news.2012",
+          "news-crawl_news.2011",
+          "news-crawl_news.2010",
+          "news-crawl_news.2009",
+          "news-crawl_news.2008",
+          "news-crawl_news.2007"
+        ],
+        "test": [
+          "flores_dev"
+        ],
+        "train": [
+          "opus_NLLB/v1",
+          "opus_OpenSubtitles/v2018"
+        ]
+      },
+      "experiment": {
+        "backward-model": "NOT-YET-SUPPORTED",
+        "best-model": "chrf",
+        "bicleaner": {
+          "dataset-thresholds": {
+            "opus_NLLB/v1": 0,
+            "opus_OpenSubtitles/v2018": 0.8
+          },
+          "default-threshold": 0.5
+        },
+        "mono-max-sentences-src": 100000000,
+        "mono-max-sentences-trg": 20000000,
+        "name": "en_cs_2024",
+        "split-length": 2000000,
+        "spm-sample-size": 10000000,
+        "src": "en",
+        "teacher-ensemble": 2,
+        "trg": "cs",
+        "use-opuscleaner": "false",
+        "vocab": "NOT-YET-SUPPORTED"
+      },
+      "marian-args": {
+        "decoding-backward": {
+          "beam-size": "12",
+          "mini-batch-words": "2000"
+        },
+        "decoding-teacher": {
+          "mini-batch-words": "4000",
+          "precision": "float16"
+        },
+        "training-backward": {
+          "early-stopping": "5"
+        },
+        "training-student": {
+          "early-stopping": "20"
+        },
+        "training-student-finetuned": {
+          "early-stopping": "20"
+        },
+        "training-teacher": {
+          "early-stopping": "30"
+        }
+      },
+      "target-stage": "all",
+      "taskcluster": {
+        "split-chunks": 10
+      }
+    },
+    "task_group_id": "DAWUQ580SXeggMPwzd0BHg",
+    "flores": null,
+    "artifact_folder": "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/teacher0/",
+    "artifact_urls": [
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/teacher0/config.opustrainer.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/teacher0/config.opustrainer.yml.state",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/teacher0/devset.out",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/teacher0/final.model.npz.best-chrf.npz",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/teacher0/final.model.npz.best-chrf.npz.decoder.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/teacher0/model.npz.progress.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/teacher0/model.npz.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/teacher0/vocab.spm"
+    ]
+  },
+  "teacher_2": {
+    "date": "2024-03-25T09:38:38.666000",
+    "config": {
+      "datasets": {
+        "devtest": [
+          "flores_devtest"
+        ],
+        "mono-src": [
+          "news-crawl_news.2023",
+          "news-crawl_news.2022",
+          "news-crawl_news.2021",
+          "news-crawl_news.2020",
+          "news-crawl_news.2019",
+          "news-crawl_news.2018",
+          "news-crawl_news.2017",
+          "news-crawl_news.2016",
+          "news-crawl_news.2015",
+          "news-crawl_news.2014",
+          "news-crawl_news.2013",
+          "news-crawl_news.2012",
+          "news-crawl_news.2011",
+          "news-crawl_news.2010",
+          "news-crawl_news.2009",
+          "news-crawl_news.2008",
+          "news-crawl_news.2007"
+        ],
+        "mono-trg": [
+          "news-crawl_news.2023",
+          "news-crawl_news.2022",
+          "news-crawl_news.2021",
+          "news-crawl_news.2020",
+          "news-crawl_news.2019",
+          "news-crawl_news.2018",
+          "news-crawl_news.2017",
+          "news-crawl_news.2016",
+          "news-crawl_news.2015",
+          "news-crawl_news.2014",
+          "news-crawl_news.2013",
+          "news-crawl_news.2012",
+          "news-crawl_news.2011",
+          "news-crawl_news.2010",
+          "news-crawl_news.2009",
+          "news-crawl_news.2008",
+          "news-crawl_news.2007"
+        ],
+        "test": [
+          "flores_dev"
+        ],
+        "train": [
+          "opus_NLLB/v1",
+          "opus_OpenSubtitles/v2018"
+        ]
+      },
+      "experiment": {
+        "backward-model": "NOT-YET-SUPPORTED",
+        "best-model": "chrf",
+        "bicleaner": {
+          "dataset-thresholds": {
+            "opus_NLLB/v1": 0,
+            "opus_OpenSubtitles/v2018": 0.8
+          },
+          "default-threshold": 0.5
+        },
+        "mono-max-sentences-src": 100000000,
+        "mono-max-sentences-trg": 20000000,
+        "name": "en_cs_2024",
+        "split-length": 2000000,
+        "spm-sample-size": 10000000,
+        "src": "en",
+        "teacher-ensemble": 2,
+        "trg": "cs",
+        "use-opuscleaner": "false",
+        "vocab": "NOT-YET-SUPPORTED"
+      },
+      "marian-args": {
+        "decoding-backward": {
+          "beam-size": "12",
+          "mini-batch-words": "2000"
+        },
+        "decoding-teacher": {
+          "mini-batch-words": "4000",
+          "precision": "float16"
+        },
+        "training-backward": {
+          "early-stopping": "5"
+        },
+        "training-student": {
+          "early-stopping": "20"
+        },
+        "training-student-finetuned": {
+          "early-stopping": "20"
+        },
+        "training-teacher": {
+          "early-stopping": "30"
+        }
+      },
+      "target-stage": "all",
+      "taskcluster": {
+        "split-chunks": 10
+      }
+    },
+    "task_group_id": "DAWUQ580SXeggMPwzd0BHg",
+    "flores": null,
+    "artifact_folder": "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/teacher1/",
+    "artifact_urls": [
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/teacher1/config.opustrainer.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/teacher1/config.opustrainer.yml.state",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/teacher1/devset.out",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/teacher1/final.model.npz.best-chrf.npz",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/teacher1/final.model.npz.best-chrf.npz.decoder.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/teacher1/model.npz.progress.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/teacher1/model.npz.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/teacher1/vocab.spm"
+    ]
+  },
+  "teacher_ensemble_flores": null,
+  "student": {
+    "date": "2024-04-03T03:43:18.458000",
+    "config": {
+      "datasets": {
+        "devtest": [
+          "flores_devtest"
+        ],
+        "mono-src": [
+          "news-crawl_news.2023",
+          "news-crawl_news.2022",
+          "news-crawl_news.2021",
+          "news-crawl_news.2020",
+          "news-crawl_news.2019",
+          "news-crawl_news.2018",
+          "news-crawl_news.2017",
+          "news-crawl_news.2016",
+          "news-crawl_news.2015",
+          "news-crawl_news.2014",
+          "news-crawl_news.2013",
+          "news-crawl_news.2012",
+          "news-crawl_news.2011",
+          "news-crawl_news.2010",
+          "news-crawl_news.2009",
+          "news-crawl_news.2008",
+          "news-crawl_news.2007"
+        ],
+        "mono-trg": [
+          "news-crawl_news.2023",
+          "news-crawl_news.2022",
+          "news-crawl_news.2021",
+          "news-crawl_news.2020",
+          "news-crawl_news.2019",
+          "news-crawl_news.2018",
+          "news-crawl_news.2017",
+          "news-crawl_news.2016",
+          "news-crawl_news.2015",
+          "news-crawl_news.2014",
+          "news-crawl_news.2013",
+          "news-crawl_news.2012",
+          "news-crawl_news.2011",
+          "news-crawl_news.2010",
+          "news-crawl_news.2009",
+          "news-crawl_news.2008",
+          "news-crawl_news.2007"
+        ],
+        "test": [
+          "flores_dev"
+        ],
+        "train": [
+          "opus_NLLB/v1",
+          "opus_OpenSubtitles/v2018"
+        ]
+      },
+      "experiment": {
+        "backward-model": "NOT-YET-SUPPORTED",
+        "best-model": "chrf",
+        "bicleaner": {
+          "dataset-thresholds": {
+            "opus_NLLB/v1": 0,
+            "opus_OpenSubtitles/v2018": 0.8
+          },
+          "default-threshold": 0.5
+        },
+        "mono-max-sentences-src": 100000000,
+        "mono-max-sentences-trg": 20000000,
+        "name": "en_cs_2024",
+        "split-length": 2000000,
+        "spm-sample-size": 10000000,
+        "src": "en",
+        "teacher-ensemble": 2,
+        "trg": "cs",
+        "use-opuscleaner": "false",
+        "vocab": "NOT-YET-SUPPORTED"
+      },
+      "marian-args": {
+        "decoding-backward": {
+          "beam-size": "12",
+          "mini-batch-words": "2000"
+        },
+        "decoding-teacher": {
+          "mini-batch-words": "4000",
+          "precision": "float16"
+        },
+        "training-backward": {
+          "early-stopping": "5"
+        },
+        "training-student": {
+          "early-stopping": "20"
+        },
+        "training-student-finetuned": {
+          "early-stopping": "20"
+        },
+        "training-teacher": {
+          "early-stopping": "30"
+        }
+      },
+      "target-stage": "all",
+      "taskcluster": {
+        "split-chunks": 10
+      }
+    },
+    "task_group_id": "DAWUQ580SXeggMPwzd0BHg",
+    "flores": null,
+    "artifact_folder": "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/student/",
+    "artifact_urls": [
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/student/devset.out",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/student/final.model.npz.best-chrf.npz",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/student/final.model.npz.best-chrf.npz.decoder.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/student/model.npz.progress.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/student/model.npz.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/student/vocab.spm"
+    ]
+  },
+  "student_finetuned": {
+    "date": "2024-04-03T09:23:56.283000",
+    "config": {
+      "datasets": {
+        "devtest": [
+          "flores_devtest"
+        ],
+        "mono-src": [
+          "news-crawl_news.2023",
+          "news-crawl_news.2022",
+          "news-crawl_news.2021",
+          "news-crawl_news.2020",
+          "news-crawl_news.2019",
+          "news-crawl_news.2018",
+          "news-crawl_news.2017",
+          "news-crawl_news.2016",
+          "news-crawl_news.2015",
+          "news-crawl_news.2014",
+          "news-crawl_news.2013",
+          "news-crawl_news.2012",
+          "news-crawl_news.2011",
+          "news-crawl_news.2010",
+          "news-crawl_news.2009",
+          "news-crawl_news.2008",
+          "news-crawl_news.2007"
+        ],
+        "mono-trg": [
+          "news-crawl_news.2023",
+          "news-crawl_news.2022",
+          "news-crawl_news.2021",
+          "news-crawl_news.2020",
+          "news-crawl_news.2019",
+          "news-crawl_news.2018",
+          "news-crawl_news.2017",
+          "news-crawl_news.2016",
+          "news-crawl_news.2015",
+          "news-crawl_news.2014",
+          "news-crawl_news.2013",
+          "news-crawl_news.2012",
+          "news-crawl_news.2011",
+          "news-crawl_news.2010",
+          "news-crawl_news.2009",
+          "news-crawl_news.2008",
+          "news-crawl_news.2007"
+        ],
+        "test": [
+          "flores_dev"
+        ],
+        "train": [
+          "opus_NLLB/v1",
+          "opus_OpenSubtitles/v2018"
+        ]
+      },
+      "experiment": {
+        "backward-model": "NOT-YET-SUPPORTED",
+        "best-model": "chrf",
+        "bicleaner": {
+          "dataset-thresholds": {
+            "opus_NLLB/v1": 0,
+            "opus_OpenSubtitles/v2018": 0.8
+          },
+          "default-threshold": 0.5
+        },
+        "mono-max-sentences-src": 100000000,
+        "mono-max-sentences-trg": 20000000,
+        "name": "en_cs_2024",
+        "split-length": 2000000,
+        "spm-sample-size": 10000000,
+        "src": "en",
+        "teacher-ensemble": 2,
+        "trg": "cs",
+        "use-opuscleaner": "false",
+        "vocab": "NOT-YET-SUPPORTED"
+      },
+      "marian-args": {
+        "decoding-backward": {
+          "beam-size": "12",
+          "mini-batch-words": "2000"
+        },
+        "decoding-teacher": {
+          "mini-batch-words": "4000",
+          "precision": "float16"
+        },
+        "training-backward": {
+          "early-stopping": "5"
+        },
+        "training-student": {
+          "early-stopping": "20"
+        },
+        "training-student-finetuned": {
+          "early-stopping": "20"
+        },
+        "training-teacher": {
+          "early-stopping": "30"
+        }
+      },
+      "target-stage": "all",
+      "taskcluster": {
+        "split-chunks": 10
+      }
+    },
+    "task_group_id": "DAWUQ580SXeggMPwzd0BHg",
+    "flores": null,
+    "artifact_folder": "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/student-finetuned/",
+    "artifact_urls": [
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/student-finetuned/devset.out",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/student-finetuned/final.model.npz.best-chrf.npz",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/student-finetuned/final.model.npz.best-chrf.npz.decoder.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/student-finetuned/model.npz.progress.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/student-finetuned/model.npz.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/student-finetuned/vocab.spm"
+    ]
+  },
+  "student_quantized": {
+    "date": "2024-04-03T09:26:59.592000",
+    "config": {
+      "datasets": {
+        "devtest": [
+          "flores_devtest"
+        ],
+        "mono-src": [
+          "news-crawl_news.2023",
+          "news-crawl_news.2022",
+          "news-crawl_news.2021",
+          "news-crawl_news.2020",
+          "news-crawl_news.2019",
+          "news-crawl_news.2018",
+          "news-crawl_news.2017",
+          "news-crawl_news.2016",
+          "news-crawl_news.2015",
+          "news-crawl_news.2014",
+          "news-crawl_news.2013",
+          "news-crawl_news.2012",
+          "news-crawl_news.2011",
+          "news-crawl_news.2010",
+          "news-crawl_news.2009",
+          "news-crawl_news.2008",
+          "news-crawl_news.2007"
+        ],
+        "mono-trg": [
+          "news-crawl_news.2023",
+          "news-crawl_news.2022",
+          "news-crawl_news.2021",
+          "news-crawl_news.2020",
+          "news-crawl_news.2019",
+          "news-crawl_news.2018",
+          "news-crawl_news.2017",
+          "news-crawl_news.2016",
+          "news-crawl_news.2015",
+          "news-crawl_news.2014",
+          "news-crawl_news.2013",
+          "news-crawl_news.2012",
+          "news-crawl_news.2011",
+          "news-crawl_news.2010",
+          "news-crawl_news.2009",
+          "news-crawl_news.2008",
+          "news-crawl_news.2007"
+        ],
+        "test": [
+          "flores_dev"
+        ],
+        "train": [
+          "opus_NLLB/v1",
+          "opus_OpenSubtitles/v2018"
+        ]
+      },
+      "experiment": {
+        "backward-model": "NOT-YET-SUPPORTED",
+        "best-model": "chrf",
+        "bicleaner": {
+          "dataset-thresholds": {
+            "opus_NLLB/v1": 0,
+            "opus_OpenSubtitles/v2018": 0.8
+          },
+          "default-threshold": 0.5
+        },
+        "mono-max-sentences-src": 100000000,
+        "mono-max-sentences-trg": 20000000,
+        "name": "en_cs_2024",
+        "split-length": 2000000,
+        "spm-sample-size": 10000000,
+        "src": "en",
+        "teacher-ensemble": 2,
+        "trg": "cs",
+        "use-opuscleaner": "false",
+        "vocab": "NOT-YET-SUPPORTED"
+      },
+      "marian-args": {
+        "decoding-backward": {
+          "beam-size": "12",
+          "mini-batch-words": "2000"
+        },
+        "decoding-teacher": {
+          "mini-batch-words": "4000",
+          "precision": "float16"
+        },
+        "training-backward": {
+          "early-stopping": "5"
+        },
+        "training-student": {
+          "early-stopping": "20"
+        },
+        "training-student-finetuned": {
+          "early-stopping": "20"
+        },
+        "training-teacher": {
+          "early-stopping": "30"
+        }
+      },
+      "target-stage": "all",
+      "taskcluster": {
+        "split-chunks": 10
+      }
+    },
+    "task_group_id": "DAWUQ580SXeggMPwzd0BHg",
+    "flores": null,
+    "artifact_folder": "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/quantized/",
+    "artifact_urls": [
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/quantized/model.alphas.npz",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/quantized/model.intgemm.alphas.bin",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/quantized/output.cs",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/quantized/quantmults",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/quantized/vocab.spm"
+    ]
+  },
+  "student_exported": {
+    "date": "2024-04-03T09:27:51.687000",
+    "config": {
+      "datasets": {
+        "devtest": [
+          "flores_devtest"
+        ],
+        "mono-src": [
+          "news-crawl_news.2023",
+          "news-crawl_news.2022",
+          "news-crawl_news.2021",
+          "news-crawl_news.2020",
+          "news-crawl_news.2019",
+          "news-crawl_news.2018",
+          "news-crawl_news.2017",
+          "news-crawl_news.2016",
+          "news-crawl_news.2015",
+          "news-crawl_news.2014",
+          "news-crawl_news.2013",
+          "news-crawl_news.2012",
+          "news-crawl_news.2011",
+          "news-crawl_news.2010",
+          "news-crawl_news.2009",
+          "news-crawl_news.2008",
+          "news-crawl_news.2007"
+        ],
+        "mono-trg": [
+          "news-crawl_news.2023",
+          "news-crawl_news.2022",
+          "news-crawl_news.2021",
+          "news-crawl_news.2020",
+          "news-crawl_news.2019",
+          "news-crawl_news.2018",
+          "news-crawl_news.2017",
+          "news-crawl_news.2016",
+          "news-crawl_news.2015",
+          "news-crawl_news.2014",
+          "news-crawl_news.2013",
+          "news-crawl_news.2012",
+          "news-crawl_news.2011",
+          "news-crawl_news.2010",
+          "news-crawl_news.2009",
+          "news-crawl_news.2008",
+          "news-crawl_news.2007"
+        ],
+        "test": [
+          "flores_dev"
+        ],
+        "train": [
+          "opus_NLLB/v1",
+          "opus_OpenSubtitles/v2018"
+        ]
+      },
+      "experiment": {
+        "backward-model": "NOT-YET-SUPPORTED",
+        "best-model": "chrf",
+        "bicleaner": {
+          "dataset-thresholds": {
+            "opus_NLLB/v1": 0,
+            "opus_OpenSubtitles/v2018": 0.8
+          },
+          "default-threshold": 0.5
+        },
+        "mono-max-sentences-src": 100000000,
+        "mono-max-sentences-trg": 20000000,
+        "name": "en_cs_2024",
+        "split-length": 2000000,
+        "spm-sample-size": 10000000,
+        "src": "en",
+        "teacher-ensemble": 2,
+        "trg": "cs",
+        "use-opuscleaner": "false",
+        "vocab": "NOT-YET-SUPPORTED"
+      },
+      "marian-args": {
+        "decoding-backward": {
+          "beam-size": "12",
+          "mini-batch-words": "2000"
+        },
+        "decoding-teacher": {
+          "mini-batch-words": "4000",
+          "precision": "float16"
+        },
+        "training-backward": {
+          "early-stopping": "5"
+        },
+        "training-student": {
+          "early-stopping": "20"
+        },
+        "training-student-finetuned": {
+          "early-stopping": "20"
+        },
+        "training-teacher": {
+          "early-stopping": "30"
+        }
+      },
+      "target-stage": "all",
+      "taskcluster": {
+        "split-chunks": 10
+      }
+    },
+    "task_group_id": "DAWUQ580SXeggMPwzd0BHg",
+    "flores": null,
+    "artifact_folder": "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/exported/",
+    "artifact_urls": [
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/exported/lex.50.50.encs.s2t.bin.gz",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/exported/model.encs.intgemm.alphas.bin.gz",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-cs/en_cs_2024_DAWUQ580SXeggMPwzd0BHg/exported/vocab.encs.spm.gz"
+    ]
+  }
+}

@@ -1,0 +1,1625 @@
+{
+  "name": "spring-2024",
+  "langpair": "en-el",
+  "source_lang": "en",
+  "target_lang": "el",
+  "task_group_ids": [
+    "O7cfmFR_SuaZNg8d8b0EWQ",
+    "Fv23lalyTfSfbmGx0YxypA",
+    "Y3ThG3XkTxG4ROUQK2LpVg"
+  ],
+  "date_started": "2024-09-03T23:18:15.661000",
+  "comet_flores_comparison": {
+    "bergamot": 0.8767,
+    "microsoft": 0.8981,
+    "google": 0.8964,
+    "argos": 0.8736,
+    "opusmt": 0.8651,
+    "nllb": 0.871
+  },
+  "bleu_flores_comparison": {
+    "opusmt": 24.9,
+    "microsoft": 29.9,
+    "argos": 26.1,
+    "google": 29.5,
+    "nllb": 23.4,
+    "bergamot": 26.9
+  },
+  "parallel_corpus_aligned": null,
+  "backtranslations_corpus_aligned": null,
+  "distillation_corpus_aligned": null,
+  "parallel_corpus": {
+    "source_url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/PHyI4uDORgCiFclJv03w1g/artifacts/public/build/corpus.en.zst",
+    "source_bytes": 2831398259,
+    "target_url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/PHyI4uDORgCiFclJv03w1g/artifacts/public/build/corpus.el.zst",
+    "target_bytes": 4253196219
+  },
+  "backtranslations_corpus": {
+    "source_url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/L9FxwF_2Q5GwtAzm2RwVtg/artifacts/public/build/mono.en.zst",
+    "source_bytes": 6371324924,
+    "target_url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/bQBoSOFnSEWxkBGLP__l4A/artifacts/public/build/mono.el.zst",
+    "target_bytes": 30845073570
+  },
+  "distillation_corpus": {
+    "source_url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/OgbUyQypS6ScTSgxvzfxRQ/artifacts/public/build/corpus.en.zst",
+    "source_bytes": 22643461730,
+    "target_url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/OgbUyQypS6ScTSgxvzfxRQ/artifacts/public/build/corpus.el.zst",
+    "target_bytes": 33592088803
+  },
+  "backwards": {
+    "date": "2024-09-03T23:23:26.691000",
+    "config": {
+      "datasets": {
+        "devtest": [
+          "mtdata_aug-mix_Neulab-tedtalks_dev-1-eng-ell",
+          "flores_aug-mix_dev",
+          "sacrebleu_aug-mix_mtedx/valid"
+        ],
+        "mono-src": [
+          "news-crawl_news.2007",
+          "news-crawl_news.2008",
+          "news-crawl_news.2009",
+          "news-crawl_news.2010",
+          "news-crawl_news.2011",
+          "news-crawl_news.2012",
+          "news-crawl_news.2013",
+          "news-crawl_news.2014",
+          "news-crawl_news.2015",
+          "news-crawl_news.2016",
+          "news-crawl_news.2017",
+          "news-crawl_news.2018",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023"
+        ],
+        "mono-trg": [
+          "news-crawl_news.2015",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_el_1.txt.zst",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_el_2.txt.zst",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_el_3.txt.zst",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_el_4.txt.zst",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_el_5.txt.zst"
+        ],
+        "test": [
+          "mtdata_Neulab-tedtalks_test-1-eng-ell",
+          "flores_devtest",
+          "flores_aug-mix_devtest",
+          "flores_aug-title_devtest",
+          "flores_aug-upper_devtest",
+          "flores_aug-typos_devtest",
+          "flores_aug-noise_devtest",
+          "flores_aug-inline-noise_devtest",
+          "sacrebleu_mtedx/test"
+        ],
+        "train": [
+          "opus_NLLB/v1",
+          "opus_OpenSubtitles/v2018",
+          "opus_ParaCrawl/v9",
+          "opus_ELRC-EMEA/v1",
+          "opus_CCAligned/v1",
+          "opus_DGT/v2019",
+          "opus_EUbookshop/v2",
+          "opus_MaCoCu/v2",
+          "opus_XLEnt/v1.2",
+          "opus_LinguaTools-WikiTitles/v2014",
+          "opus_Europarl/v8",
+          "opus_EMEA/v3",
+          "opus_ELRC-2711-EMEA/v1",
+          "opus_ELRC_2682/v1",
+          "opus_ELRC-5067-SciPar/v1",
+          "opus_WikiMatrix/v1",
+          "opus_wikimedia/v20230407",
+          "opus_QED/v2.0a",
+          "opus_ELITR-ECA/v1",
+          "opus_TED2020/v1",
+          "opus_SETIMES/v2",
+          "opus_NeuLab-TedTalks/v1",
+          "opus_ELRC-presscorner_covid/v1",
+          "opus_KDE4/v2",
+          "opus_GlobalVoices/v2018q4",
+          "opus_ELRC-Press_Releases/v1",
+          "opus_Wikipedia/v1.0",
+          "opus_ECB/v1",
+          "opus_bible-uedin/v1",
+          "opus_ELRA-W0202/v1",
+          "opus_Tatoeba/v2023-04-12",
+          "opus_ELRC-3562-EUR_LEX_covid/v1",
+          "opus_ELRC-EUR_LEX/v1",
+          "opus_ELRC-842-Quarterly_Reports_Pa/v1",
+          "opus_ELRA-W0243/v1",
+          "opus_ELRC-1175-EUIPO_2017/v1",
+          "opus_ELRC-EUIPO_2017/v1",
+          "opus_ELRC-EUROPARL_covid/v1",
+          "opus_JRC-Acquis/v3.0",
+          "opus_GNOME/v1",
+          "opus_ELRC-843-collection_reports_G/v1",
+          "opus_ELRA-W0244/v1",
+          "opus_ELRC-antibiotic/v1",
+          "opus_ELRC-2872-EU_publications_medi/v1",
+          "opus_ELRC-EU_publications/v1",
+          "opus_ELRC-649-Greek_administration/v1",
+          "opus_ELRA-W0203/v1",
+          "opus_EUconst/v1",
+          "opus_ELRC-3603-presscorner_covid/v1",
+          "opus_ELRC-936-Prime_Minister_Helle/v1",
+          "opus_ELRA-W0272/v1",
+          "opus_TildeMODEL/v2018",
+          "opus_ELRC-1787-Press_Releases_PIO/v1",
+          "opus_ELRC-PIO_Publication/v1",
+          "opus_ELRC-1984-Hellenic_Gaming_Comm/v1",
+          "opus_ELRC_3382/v1",
+          "opus_ELRC-932-Hellenic_Foreign_Aff/v1",
+          "opus_ELRA-W0271/v1",
+          "opus_ELRC-1067-PIO_Publication_Wind/v1",
+          "opus_ECDC/v2016-03-16",
+          "opus_ELRC-3461-EC_EUROPA_covid/v1",
+          "opus_ELRC-EC_EUROPA/v1",
+          "opus_ELRC-1981-EQF_Referencing_Repo/v1",
+          "opus_ELRC-652-Greek_law/v1",
+          "opus_ELRA-W0205/v1",
+          "opus_ELRC-3058-wikipedia_health/v1",
+          "opus_ELRC-wikipedia_health/v1",
+          "opus_ELRC-1020-collection_about_Cyp/v1",
+          "opus_ELRC_2922/v1",
+          "opus_ELRC-1070-Press_Information_Cy/v1",
+          "opus_ELRC-1970-governmental_about_M/v1",
+          "opus_ELRC-1065-PIO_Publication_Cypr/v1",
+          "opus_Books/v1",
+          "opus_ELRC-419-Greek_legislation_An/v1",
+          "mtdata_ELRC-swedish_social_security-1-ell-eng",
+          "mtdata_ELRC-greek_legislation_anticorruption_plan-1-ell-eng",
+          "mtdata_ELRC-quarterly_reports_parliamentary_budget-1-ell-eng",
+          "mtdata_ELRC-collection_reports_greek_power_corporation-1-ell-eng",
+          "mtdata_ELRC-hellenic_foreign_affairs_announcements-1-ell-eng",
+          "mtdata_ELRC-prime_minister_hellenic-1-ell-eng",
+          "mtdata_ELRC-collection_about_cyprus_problem-1-ell-eng",
+          "mtdata_ELRC-pio_publication_window_cyprus-1-ell-eng",
+          "mtdata_ELRC-press_information_cyprus-1-ell-eng",
+          "mtdata_ELRC-eqf_referencing_report-1-ell-eng",
+          "mtdata_ELRC-hellenic_gaming_commission-1-ell-eng",
+          "mtdata_ELRC-eu_publications_medical_v2-1-ell-eng",
+          "mtdata_EU-eac_forms-1-ell-eng",
+          "mtdata_EU-eac_reference-1-ell-eng",
+          "mtdata_EU-dcep-1-ell-eng",
+          "mtdata_Tilde-eesc-2017-ell-eng",
+          "mtdata_Tilde-ema-2016-ell-eng",
+          "mtdata_Tilde-rapid-2016-ell-eng"
+        ]
+      },
+      "experiment": {
+        "best-model": "chrf",
+        "bicleaner": {
+          "dataset-thresholds": {},
+          "default-threshold": 0.5
+        },
+        "mono-max-sentences-src": 500000000,
+        "mono-max-sentences-trg": 200000000,
+        "name": "spring-2024",
+        "opuscleaner-mode": "defaults",
+        "pretrained-models": {
+          "train-backwards": {
+            "mode": "use",
+            "type": "default",
+            "urls": [
+              "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/OgijZQx8QLymdC5mWk8wSQ/artifacts/public/build"
+            ]
+          }
+        },
+        "spm-sample-size": 10000000,
+        "spm-vocab-size": 32000,
+        "src": "en",
+        "teacher-ensemble": 2,
+        "teacher-mode": "two-stage",
+        "trg": "el",
+        "use-opuscleaner": "true"
+      },
+      "marian-args": {
+        "decoding-backward": {
+          "beam-size": "12",
+          "mini-batch-words": "2000"
+        },
+        "decoding-teacher": {
+          "mini-batch-words": "4000",
+          "precision": "float16"
+        },
+        "training-backward": {
+          "early-stopping": "5"
+        },
+        "training-student": {
+          "early-stopping": "20"
+        },
+        "training-student-finetuned": {
+          "early-stopping": "20"
+        },
+        "training-teacher": {
+          "early-stopping": "20"
+        }
+      },
+      "target-stage": "all",
+      "taskcluster": {
+        "split-chunks": 20,
+        "worker-classes": {
+          "alignments-backtranslated": "gcp-standard",
+          "alignments-original": "gcp-standard",
+          "alignments-student": "gcp-standard",
+          "default": "gcp-spot",
+          "shortlist": "gcp-standard"
+        }
+      },
+      "wandb-publication": true
+    },
+    "task_group_id": "O7cfmFR_SuaZNg8d8b0EWQ",
+    "flores": null,
+    "artifact_folder": "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_O7cfmFR_SuaZNg8d8b0EWQ/backward/",
+    "artifact_urls": [
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_O7cfmFR_SuaZNg8d8b0EWQ/backward/devset.out",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_O7cfmFR_SuaZNg8d8b0EWQ/backward/final.model.npz.best-chrf.npz",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_O7cfmFR_SuaZNg8d8b0EWQ/backward/final.model.npz.best-chrf.npz.decoder.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_O7cfmFR_SuaZNg8d8b0EWQ/backward/model.npz.progress.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_O7cfmFR_SuaZNg8d8b0EWQ/backward/model.npz.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_O7cfmFR_SuaZNg8d8b0EWQ/backward/vocab.spm"
+    ]
+  },
+  "teacher_1": {
+    "date": "2024-09-12T10:49:53.624000",
+    "config": {
+      "datasets": {
+        "devtest": [
+          "mtdata_aug-mix_Neulab-tedtalks_dev-1-eng-ell",
+          "flores_aug-mix_dev",
+          "sacrebleu_mtedx/valid"
+        ],
+        "mono-src": [
+          "news-crawl_news.2007",
+          "news-crawl_news.2008",
+          "news-crawl_news.2009",
+          "news-crawl_news.2010",
+          "news-crawl_news.2011",
+          "news-crawl_news.2012",
+          "news-crawl_news.2013",
+          "news-crawl_news.2014",
+          "news-crawl_news.2015",
+          "news-crawl_news.2016",
+          "news-crawl_news.2017",
+          "news-crawl_news.2018",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023"
+        ],
+        "mono-trg": [
+          "news-crawl_news.2015",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_el_1.txt.zst",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_el_2.txt.zst",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_el_3.txt.zst",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_el_4.txt.zst",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_el_5.txt.zst"
+        ],
+        "test": [
+          "mtdata_Neulab-tedtalks_test-1-eng-ell",
+          "flores_devtest",
+          "flores_aug-mix_devtest",
+          "flores_aug-title_devtest",
+          "flores_aug-upper_devtest",
+          "flores_aug-typos_devtest",
+          "flores_aug-noise_devtest",
+          "flores_aug-inline-noise_devtest",
+          "sacrebleu_mtedx/test"
+        ],
+        "train": [
+          "opus_NLLB/v1",
+          "opus_OpenSubtitles/v2018",
+          "opus_ParaCrawl/v9",
+          "opus_ELRC-EMEA/v1",
+          "opus_CCAligned/v1",
+          "opus_DGT/v2019",
+          "opus_EUbookshop/v2",
+          "opus_MaCoCu/v2",
+          "opus_XLEnt/v1.2",
+          "opus_LinguaTools-WikiTitles/v2014",
+          "opus_Europarl/v8",
+          "opus_EMEA/v3",
+          "opus_ELRC-2711-EMEA/v1",
+          "opus_ELRC_2682/v1",
+          "opus_ELRC-5067-SciPar/v1",
+          "opus_WikiMatrix/v1",
+          "opus_wikimedia/v20230407",
+          "opus_QED/v2.0a",
+          "opus_ELITR-ECA/v1",
+          "opus_TED2020/v1",
+          "opus_SETIMES/v2",
+          "opus_NeuLab-TedTalks/v1",
+          "opus_ELRC-presscorner_covid/v1",
+          "opus_KDE4/v2",
+          "opus_GlobalVoices/v2018q4",
+          "opus_ELRC-Press_Releases/v1",
+          "opus_Wikipedia/v1.0",
+          "opus_ECB/v1",
+          "opus_bible-uedin/v1",
+          "opus_ELRA-W0202/v1",
+          "opus_Tatoeba/v2023-04-12",
+          "opus_ELRC-3562-EUR_LEX_covid/v1",
+          "opus_ELRC-EUR_LEX/v1",
+          "opus_ELRC-842-Quarterly_Reports_Pa/v1",
+          "opus_ELRA-W0243/v1",
+          "opus_ELRC-1175-EUIPO_2017/v1",
+          "opus_ELRC-EUIPO_2017/v1",
+          "opus_ELRC-EUROPARL_covid/v1",
+          "opus_JRC-Acquis/v3.0",
+          "opus_GNOME/v1",
+          "opus_ELRC-843-collection_reports_G/v1",
+          "opus_ELRA-W0244/v1",
+          "opus_ELRC-antibiotic/v1",
+          "opus_ELRC-2872-EU_publications_medi/v1",
+          "opus_ELRC-EU_publications/v1",
+          "opus_ELRC-649-Greek_administration/v1",
+          "opus_ELRA-W0203/v1",
+          "opus_EUconst/v1",
+          "opus_ELRC-3603-presscorner_covid/v1",
+          "opus_ELRC-936-Prime_Minister_Helle/v1",
+          "opus_ELRA-W0272/v1",
+          "opus_TildeMODEL/v2018",
+          "opus_ELRC-1787-Press_Releases_PIO/v1",
+          "opus_ELRC-PIO_Publication/v1",
+          "opus_ELRC-1984-Hellenic_Gaming_Comm/v1",
+          "opus_ELRC_3382/v1",
+          "opus_ELRC-932-Hellenic_Foreign_Aff/v1",
+          "opus_ELRA-W0271/v1",
+          "opus_ELRC-1067-PIO_Publication_Wind/v1",
+          "opus_ECDC/v2016-03-16",
+          "opus_ELRC-3461-EC_EUROPA_covid/v1",
+          "opus_ELRC-EC_EUROPA/v1",
+          "opus_ELRC-1981-EQF_Referencing_Repo/v1",
+          "opus_ELRC-652-Greek_law/v1",
+          "opus_ELRA-W0205/v1",
+          "opus_ELRC-3058-wikipedia_health/v1",
+          "opus_ELRC-wikipedia_health/v1",
+          "opus_ELRC-1020-collection_about_Cyp/v1",
+          "opus_ELRC_2922/v1",
+          "opus_ELRC-1070-Press_Information_Cy/v1",
+          "opus_ELRC-1970-governmental_about_M/v1",
+          "opus_ELRC-1065-PIO_Publication_Cypr/v1",
+          "opus_Books/v1",
+          "opus_ELRC-419-Greek_legislation_An/v1",
+          "mtdata_ELRC-swedish_social_security-1-ell-eng",
+          "mtdata_ELRC-greek_legislation_anticorruption_plan-1-ell-eng",
+          "mtdata_ELRC-quarterly_reports_parliamentary_budget-1-ell-eng",
+          "mtdata_ELRC-collection_reports_greek_power_corporation-1-ell-eng",
+          "mtdata_ELRC-hellenic_foreign_affairs_announcements-1-ell-eng",
+          "mtdata_ELRC-prime_minister_hellenic-1-ell-eng",
+          "mtdata_ELRC-collection_about_cyprus_problem-1-ell-eng",
+          "mtdata_ELRC-pio_publication_window_cyprus-1-ell-eng",
+          "mtdata_ELRC-press_information_cyprus-1-ell-eng",
+          "mtdata_ELRC-eqf_referencing_report-1-ell-eng",
+          "mtdata_ELRC-hellenic_gaming_commission-1-ell-eng",
+          "mtdata_ELRC-eu_publications_medical_v2-1-ell-eng",
+          "mtdata_EU-eac_forms-1-ell-eng",
+          "mtdata_EU-eac_reference-1-ell-eng",
+          "mtdata_EU-dcep-1-ell-eng",
+          "mtdata_Tilde-eesc-2017-ell-eng",
+          "mtdata_Tilde-ema-2016-ell-eng",
+          "mtdata_Tilde-rapid-2016-ell-eng"
+        ]
+      },
+      "experiment": {
+        "best-model": "chrf",
+        "bicleaner": {
+          "dataset-thresholds": {},
+          "default-threshold": 0.5
+        },
+        "mono-max-sentences-src": 500000000,
+        "mono-max-sentences-trg": 200000000,
+        "name": "spring-2024",
+        "opuscleaner-mode": "defaults",
+        "pretrained-models": {
+          "train-backwards": {
+            "mode": "use",
+            "type": "default",
+            "urls": [
+              "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/OgijZQx8QLymdC5mWk8wSQ/artifacts/public/build"
+            ]
+          }
+        },
+        "spm-sample-size": 10000000,
+        "spm-vocab-size": 32000,
+        "src": "en",
+        "teacher-ensemble": 2,
+        "teacher-mode": "two-stage",
+        "trg": "el",
+        "use-opuscleaner": "true"
+      },
+      "marian-args": {
+        "decoding-backward": {
+          "beam-size": "12",
+          "mini-batch-words": "2000"
+        },
+        "decoding-teacher": {
+          "mini-batch-words": "4000",
+          "precision": "float16"
+        },
+        "training-backward": {
+          "early-stopping": "5"
+        },
+        "training-student": {
+          "early-stopping": "20"
+        },
+        "training-student-finetuned": {
+          "early-stopping": "20"
+        },
+        "training-teacher": {
+          "early-stopping": "20"
+        }
+      },
+      "target-stage": "all",
+      "taskcluster": {
+        "split-chunks": 20,
+        "worker-classes": {
+          "alignments-backtranslated": "gcp-standard",
+          "alignments-original": "gcp-standard",
+          "alignments-student": "gcp-standard",
+          "default": "gcp-spot",
+          "shortlist": "gcp-standard"
+        }
+      },
+      "wandb-publication": true
+    },
+    "task_group_id": "Fv23lalyTfSfbmGx0YxypA",
+    "flores": {
+      "chrf": 55.36,
+      "bleu": 29.0,
+      "comet": 89.31
+    },
+    "artifact_folder": "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Fv23lalyTfSfbmGx0YxypA/teacher0/",
+    "artifact_urls": [
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Fv23lalyTfSfbmGx0YxypA/teacher0/config.opustrainer.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Fv23lalyTfSfbmGx0YxypA/teacher0/config.opustrainer.yml.state",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Fv23lalyTfSfbmGx0YxypA/teacher0/devset.out",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Fv23lalyTfSfbmGx0YxypA/teacher0/final.model.npz.best-chrf.npz",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Fv23lalyTfSfbmGx0YxypA/teacher0/final.model.npz.best-chrf.npz.decoder.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Fv23lalyTfSfbmGx0YxypA/teacher0/model.npz.progress.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Fv23lalyTfSfbmGx0YxypA/teacher0/model.npz.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Fv23lalyTfSfbmGx0YxypA/teacher0/vocab.spm"
+    ]
+  },
+  "teacher_2": {
+    "date": "2024-09-12T12:38:33.261000",
+    "config": {
+      "datasets": {
+        "devtest": [
+          "mtdata_aug-mix_Neulab-tedtalks_dev-1-eng-ell",
+          "flores_aug-mix_dev",
+          "sacrebleu_mtedx/valid"
+        ],
+        "mono-src": [
+          "news-crawl_news.2007",
+          "news-crawl_news.2008",
+          "news-crawl_news.2009",
+          "news-crawl_news.2010",
+          "news-crawl_news.2011",
+          "news-crawl_news.2012",
+          "news-crawl_news.2013",
+          "news-crawl_news.2014",
+          "news-crawl_news.2015",
+          "news-crawl_news.2016",
+          "news-crawl_news.2017",
+          "news-crawl_news.2018",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023"
+        ],
+        "mono-trg": [
+          "news-crawl_news.2015",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_el_1.txt.zst",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_el_2.txt.zst",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_el_3.txt.zst",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_el_4.txt.zst",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_el_5.txt.zst"
+        ],
+        "test": [
+          "mtdata_Neulab-tedtalks_test-1-eng-ell",
+          "flores_devtest",
+          "flores_aug-mix_devtest",
+          "flores_aug-title_devtest",
+          "flores_aug-upper_devtest",
+          "flores_aug-typos_devtest",
+          "flores_aug-noise_devtest",
+          "flores_aug-inline-noise_devtest",
+          "sacrebleu_mtedx/test"
+        ],
+        "train": [
+          "opus_NLLB/v1",
+          "opus_OpenSubtitles/v2018",
+          "opus_ParaCrawl/v9",
+          "opus_ELRC-EMEA/v1",
+          "opus_CCAligned/v1",
+          "opus_DGT/v2019",
+          "opus_EUbookshop/v2",
+          "opus_MaCoCu/v2",
+          "opus_XLEnt/v1.2",
+          "opus_LinguaTools-WikiTitles/v2014",
+          "opus_Europarl/v8",
+          "opus_EMEA/v3",
+          "opus_ELRC-2711-EMEA/v1",
+          "opus_ELRC_2682/v1",
+          "opus_ELRC-5067-SciPar/v1",
+          "opus_WikiMatrix/v1",
+          "opus_wikimedia/v20230407",
+          "opus_QED/v2.0a",
+          "opus_ELITR-ECA/v1",
+          "opus_TED2020/v1",
+          "opus_SETIMES/v2",
+          "opus_NeuLab-TedTalks/v1",
+          "opus_ELRC-presscorner_covid/v1",
+          "opus_KDE4/v2",
+          "opus_GlobalVoices/v2018q4",
+          "opus_ELRC-Press_Releases/v1",
+          "opus_Wikipedia/v1.0",
+          "opus_ECB/v1",
+          "opus_bible-uedin/v1",
+          "opus_ELRA-W0202/v1",
+          "opus_Tatoeba/v2023-04-12",
+          "opus_ELRC-3562-EUR_LEX_covid/v1",
+          "opus_ELRC-EUR_LEX/v1",
+          "opus_ELRC-842-Quarterly_Reports_Pa/v1",
+          "opus_ELRA-W0243/v1",
+          "opus_ELRC-1175-EUIPO_2017/v1",
+          "opus_ELRC-EUIPO_2017/v1",
+          "opus_ELRC-EUROPARL_covid/v1",
+          "opus_JRC-Acquis/v3.0",
+          "opus_GNOME/v1",
+          "opus_ELRC-843-collection_reports_G/v1",
+          "opus_ELRA-W0244/v1",
+          "opus_ELRC-antibiotic/v1",
+          "opus_ELRC-2872-EU_publications_medi/v1",
+          "opus_ELRC-EU_publications/v1",
+          "opus_ELRC-649-Greek_administration/v1",
+          "opus_ELRA-W0203/v1",
+          "opus_EUconst/v1",
+          "opus_ELRC-3603-presscorner_covid/v1",
+          "opus_ELRC-936-Prime_Minister_Helle/v1",
+          "opus_ELRA-W0272/v1",
+          "opus_TildeMODEL/v2018",
+          "opus_ELRC-1787-Press_Releases_PIO/v1",
+          "opus_ELRC-PIO_Publication/v1",
+          "opus_ELRC-1984-Hellenic_Gaming_Comm/v1",
+          "opus_ELRC_3382/v1",
+          "opus_ELRC-932-Hellenic_Foreign_Aff/v1",
+          "opus_ELRA-W0271/v1",
+          "opus_ELRC-1067-PIO_Publication_Wind/v1",
+          "opus_ECDC/v2016-03-16",
+          "opus_ELRC-3461-EC_EUROPA_covid/v1",
+          "opus_ELRC-EC_EUROPA/v1",
+          "opus_ELRC-1981-EQF_Referencing_Repo/v1",
+          "opus_ELRC-652-Greek_law/v1",
+          "opus_ELRA-W0205/v1",
+          "opus_ELRC-3058-wikipedia_health/v1",
+          "opus_ELRC-wikipedia_health/v1",
+          "opus_ELRC-1020-collection_about_Cyp/v1",
+          "opus_ELRC_2922/v1",
+          "opus_ELRC-1070-Press_Information_Cy/v1",
+          "opus_ELRC-1970-governmental_about_M/v1",
+          "opus_ELRC-1065-PIO_Publication_Cypr/v1",
+          "opus_Books/v1",
+          "opus_ELRC-419-Greek_legislation_An/v1",
+          "mtdata_ELRC-swedish_social_security-1-ell-eng",
+          "mtdata_ELRC-greek_legislation_anticorruption_plan-1-ell-eng",
+          "mtdata_ELRC-quarterly_reports_parliamentary_budget-1-ell-eng",
+          "mtdata_ELRC-collection_reports_greek_power_corporation-1-ell-eng",
+          "mtdata_ELRC-hellenic_foreign_affairs_announcements-1-ell-eng",
+          "mtdata_ELRC-prime_minister_hellenic-1-ell-eng",
+          "mtdata_ELRC-collection_about_cyprus_problem-1-ell-eng",
+          "mtdata_ELRC-pio_publication_window_cyprus-1-ell-eng",
+          "mtdata_ELRC-press_information_cyprus-1-ell-eng",
+          "mtdata_ELRC-eqf_referencing_report-1-ell-eng",
+          "mtdata_ELRC-hellenic_gaming_commission-1-ell-eng",
+          "mtdata_ELRC-eu_publications_medical_v2-1-ell-eng",
+          "mtdata_EU-eac_forms-1-ell-eng",
+          "mtdata_EU-eac_reference-1-ell-eng",
+          "mtdata_EU-dcep-1-ell-eng",
+          "mtdata_Tilde-eesc-2017-ell-eng",
+          "mtdata_Tilde-ema-2016-ell-eng",
+          "mtdata_Tilde-rapid-2016-ell-eng"
+        ]
+      },
+      "experiment": {
+        "best-model": "chrf",
+        "bicleaner": {
+          "dataset-thresholds": {},
+          "default-threshold": 0.5
+        },
+        "mono-max-sentences-src": 500000000,
+        "mono-max-sentences-trg": 200000000,
+        "name": "spring-2024",
+        "opuscleaner-mode": "defaults",
+        "pretrained-models": {
+          "train-backwards": {
+            "mode": "use",
+            "type": "default",
+            "urls": [
+              "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/OgijZQx8QLymdC5mWk8wSQ/artifacts/public/build"
+            ]
+          }
+        },
+        "spm-sample-size": 10000000,
+        "spm-vocab-size": 32000,
+        "src": "en",
+        "teacher-ensemble": 2,
+        "teacher-mode": "two-stage",
+        "trg": "el",
+        "use-opuscleaner": "true"
+      },
+      "marian-args": {
+        "decoding-backward": {
+          "beam-size": "12",
+          "mini-batch-words": "2000"
+        },
+        "decoding-teacher": {
+          "mini-batch-words": "4000",
+          "precision": "float16"
+        },
+        "training-backward": {
+          "early-stopping": "5"
+        },
+        "training-student": {
+          "early-stopping": "20"
+        },
+        "training-student-finetuned": {
+          "early-stopping": "20"
+        },
+        "training-teacher": {
+          "early-stopping": "20"
+        }
+      },
+      "target-stage": "all",
+      "taskcluster": {
+        "split-chunks": 20,
+        "worker-classes": {
+          "alignments-backtranslated": "gcp-standard",
+          "alignments-original": "gcp-standard",
+          "alignments-student": "gcp-standard",
+          "default": "gcp-spot",
+          "shortlist": "gcp-standard"
+        }
+      },
+      "wandb-publication": true
+    },
+    "task_group_id": "Fv23lalyTfSfbmGx0YxypA",
+    "flores": {
+      "chrf": 55.55,
+      "bleu": 29.3,
+      "comet": 89.28
+    },
+    "artifact_folder": "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Fv23lalyTfSfbmGx0YxypA/teacher1/",
+    "artifact_urls": [
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Fv23lalyTfSfbmGx0YxypA/teacher1/config.opustrainer.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Fv23lalyTfSfbmGx0YxypA/teacher1/config.opustrainer.yml.state",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Fv23lalyTfSfbmGx0YxypA/teacher1/devset.out",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Fv23lalyTfSfbmGx0YxypA/teacher1/final.model.npz.best-chrf.npz",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Fv23lalyTfSfbmGx0YxypA/teacher1/final.model.npz.best-chrf.npz.decoder.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Fv23lalyTfSfbmGx0YxypA/teacher1/model.npz.progress.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Fv23lalyTfSfbmGx0YxypA/teacher1/model.npz.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Fv23lalyTfSfbmGx0YxypA/teacher1/vocab.spm"
+    ]
+  },
+  "teacher_ensemble_flores": null,
+  "student": {
+    "date": "2024-10-07T07:19:21.184000",
+    "config": {
+      "datasets": {
+        "devtest": [
+          "mtdata_aug-mix_Neulab-tedtalks_dev-1-eng-ell",
+          "flores_aug-mix_dev",
+          "sacrebleu_mtedx/valid"
+        ],
+        "mono-src": [
+          "news-crawl_news.2007",
+          "news-crawl_news.2008",
+          "news-crawl_news.2009",
+          "news-crawl_news.2010",
+          "news-crawl_news.2011",
+          "news-crawl_news.2012",
+          "news-crawl_news.2013",
+          "news-crawl_news.2014",
+          "news-crawl_news.2015",
+          "news-crawl_news.2016",
+          "news-crawl_news.2017",
+          "news-crawl_news.2018",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023"
+        ],
+        "mono-trg": [
+          "news-crawl_news.2015",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_el_1.txt.zst",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_el_2.txt.zst",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_el_3.txt.zst",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_el_4.txt.zst",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_el_5.txt.zst"
+        ],
+        "test": [
+          "mtdata_Neulab-tedtalks_test-1-eng-ell",
+          "flores_devtest",
+          "flores_aug-mix_devtest",
+          "flores_aug-title_devtest",
+          "flores_aug-upper_devtest",
+          "flores_aug-typos_devtest",
+          "flores_aug-noise_devtest",
+          "flores_aug-inline-noise_devtest",
+          "sacrebleu_mtedx/test"
+        ],
+        "train": [
+          "opus_NLLB/v1",
+          "opus_OpenSubtitles/v2018",
+          "opus_ParaCrawl/v9",
+          "opus_ELRC-EMEA/v1",
+          "opus_CCAligned/v1",
+          "opus_DGT/v2019",
+          "opus_EUbookshop/v2",
+          "opus_MaCoCu/v2",
+          "opus_XLEnt/v1.2",
+          "opus_LinguaTools-WikiTitles/v2014",
+          "opus_Europarl/v8",
+          "opus_EMEA/v3",
+          "opus_ELRC-2711-EMEA/v1",
+          "opus_ELRC_2682/v1",
+          "opus_ELRC-5067-SciPar/v1",
+          "opus_WikiMatrix/v1",
+          "opus_wikimedia/v20230407",
+          "opus_QED/v2.0a",
+          "opus_ELITR-ECA/v1",
+          "opus_TED2020/v1",
+          "opus_SETIMES/v2",
+          "opus_NeuLab-TedTalks/v1",
+          "opus_ELRC-presscorner_covid/v1",
+          "opus_KDE4/v2",
+          "opus_GlobalVoices/v2018q4",
+          "opus_ELRC-Press_Releases/v1",
+          "opus_Wikipedia/v1.0",
+          "opus_ECB/v1",
+          "opus_bible-uedin/v1",
+          "opus_ELRA-W0202/v1",
+          "opus_Tatoeba/v2023-04-12",
+          "opus_ELRC-3562-EUR_LEX_covid/v1",
+          "opus_ELRC-EUR_LEX/v1",
+          "opus_ELRC-842-Quarterly_Reports_Pa/v1",
+          "opus_ELRA-W0243/v1",
+          "opus_ELRC-1175-EUIPO_2017/v1",
+          "opus_ELRC-EUIPO_2017/v1",
+          "opus_ELRC-EUROPARL_covid/v1",
+          "opus_JRC-Acquis/v3.0",
+          "opus_GNOME/v1",
+          "opus_ELRC-843-collection_reports_G/v1",
+          "opus_ELRA-W0244/v1",
+          "opus_ELRC-antibiotic/v1",
+          "opus_ELRC-2872-EU_publications_medi/v1",
+          "opus_ELRC-EU_publications/v1",
+          "opus_ELRC-649-Greek_administration/v1",
+          "opus_ELRA-W0203/v1",
+          "opus_EUconst/v1",
+          "opus_ELRC-3603-presscorner_covid/v1",
+          "opus_ELRC-936-Prime_Minister_Helle/v1",
+          "opus_ELRA-W0272/v1",
+          "opus_TildeMODEL/v2018",
+          "opus_ELRC-1787-Press_Releases_PIO/v1",
+          "opus_ELRC-PIO_Publication/v1",
+          "opus_ELRC-1984-Hellenic_Gaming_Comm/v1",
+          "opus_ELRC_3382/v1",
+          "opus_ELRC-932-Hellenic_Foreign_Aff/v1",
+          "opus_ELRA-W0271/v1",
+          "opus_ELRC-1067-PIO_Publication_Wind/v1",
+          "opus_ECDC/v2016-03-16",
+          "opus_ELRC-3461-EC_EUROPA_covid/v1",
+          "opus_ELRC-EC_EUROPA/v1",
+          "opus_ELRC-1981-EQF_Referencing_Repo/v1",
+          "opus_ELRC-652-Greek_law/v1",
+          "opus_ELRA-W0205/v1",
+          "opus_ELRC-3058-wikipedia_health/v1",
+          "opus_ELRC-wikipedia_health/v1",
+          "opus_ELRC-1020-collection_about_Cyp/v1",
+          "opus_ELRC_2922/v1",
+          "opus_ELRC-1070-Press_Information_Cy/v1",
+          "opus_ELRC-1970-governmental_about_M/v1",
+          "opus_ELRC-1065-PIO_Publication_Cypr/v1",
+          "opus_Books/v1",
+          "opus_ELRC-419-Greek_legislation_An/v1",
+          "mtdata_ELRC-swedish_social_security-1-ell-eng",
+          "mtdata_ELRC-greek_legislation_anticorruption_plan-1-ell-eng",
+          "mtdata_ELRC-quarterly_reports_parliamentary_budget-1-ell-eng",
+          "mtdata_ELRC-collection_reports_greek_power_corporation-1-ell-eng",
+          "mtdata_ELRC-hellenic_foreign_affairs_announcements-1-ell-eng",
+          "mtdata_ELRC-prime_minister_hellenic-1-ell-eng",
+          "mtdata_ELRC-collection_about_cyprus_problem-1-ell-eng",
+          "mtdata_ELRC-pio_publication_window_cyprus-1-ell-eng",
+          "mtdata_ELRC-press_information_cyprus-1-ell-eng",
+          "mtdata_ELRC-eqf_referencing_report-1-ell-eng",
+          "mtdata_ELRC-hellenic_gaming_commission-1-ell-eng",
+          "mtdata_ELRC-eu_publications_medical_v2-1-ell-eng",
+          "mtdata_EU-eac_forms-1-ell-eng",
+          "mtdata_EU-eac_reference-1-ell-eng",
+          "mtdata_EU-dcep-1-ell-eng",
+          "mtdata_Tilde-eesc-2017-ell-eng",
+          "mtdata_Tilde-ema-2016-ell-eng",
+          "mtdata_Tilde-rapid-2016-ell-eng"
+        ]
+      },
+      "experiment": {
+        "best-model": "chrf",
+        "bicleaner": {
+          "dataset-thresholds": {},
+          "default-threshold": 0.5
+        },
+        "mono-max-sentences-src": 500000000,
+        "mono-max-sentences-trg": 200000000,
+        "name": "spring-2024",
+        "opuscleaner-mode": "defaults",
+        "pretrained-models": {
+          "train-backwards": {
+            "mode": "use",
+            "type": "default",
+            "urls": [
+              "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/OgijZQx8QLymdC5mWk8wSQ/artifacts/public/build"
+            ]
+          }
+        },
+        "spm-sample-size": 10000000,
+        "spm-vocab-size": 32000,
+        "src": "en",
+        "teacher-ensemble": 2,
+        "teacher-mode": "two-stage",
+        "trg": "el",
+        "use-opuscleaner": "true"
+      },
+      "marian-args": {
+        "decoding-backward": {
+          "beam-size": "12",
+          "mini-batch-words": "2000"
+        },
+        "decoding-teacher": {
+          "mini-batch-words": "4000",
+          "precision": "float16"
+        },
+        "training-backward": {
+          "early-stopping": "5"
+        },
+        "training-student": {
+          "early-stopping": "20"
+        },
+        "training-student-finetuned": {
+          "early-stopping": "20"
+        },
+        "training-teacher": {
+          "early-stopping": "20"
+        }
+      },
+      "target-stage": "all",
+      "taskcluster": {
+        "split-chunks": 20,
+        "worker-classes": {
+          "alignments-backtranslated": "gcp-standard",
+          "alignments-original": "gcp-standard",
+          "alignments-student": "gcp-standard",
+          "default": "gcp-spot",
+          "shortlist": "gcp-standard"
+        }
+      },
+      "wandb-publication": true
+    },
+    "task_group_id": "Y3ThG3XkTxG4ROUQK2LpVg",
+    "flores": {
+      "chrf": 54.19,
+      "bleu": 27.27,
+      "comet": 87.52
+    },
+    "artifact_folder": "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Y3ThG3XkTxG4ROUQK2LpVg/student/",
+    "artifact_urls": [
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Y3ThG3XkTxG4ROUQK2LpVg/student/config.opustrainer.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Y3ThG3XkTxG4ROUQK2LpVg/student/config.opustrainer.yml.state",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Y3ThG3XkTxG4ROUQK2LpVg/student/devset.out",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Y3ThG3XkTxG4ROUQK2LpVg/student/final.model.npz.best-chrf.npz",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Y3ThG3XkTxG4ROUQK2LpVg/student/final.model.npz.best-chrf.npz.decoder.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Y3ThG3XkTxG4ROUQK2LpVg/student/model.npz.progress.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Y3ThG3XkTxG4ROUQK2LpVg/student/model.npz.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Y3ThG3XkTxG4ROUQK2LpVg/student/vocab.spm"
+    ]
+  },
+  "student_finetuned": {
+    "date": "2024-10-07T15:00:53.112000",
+    "config": {
+      "datasets": {
+        "devtest": [
+          "mtdata_aug-mix_Neulab-tedtalks_dev-1-eng-ell",
+          "flores_aug-mix_dev",
+          "sacrebleu_mtedx/valid"
+        ],
+        "mono-src": [
+          "news-crawl_news.2007",
+          "news-crawl_news.2008",
+          "news-crawl_news.2009",
+          "news-crawl_news.2010",
+          "news-crawl_news.2011",
+          "news-crawl_news.2012",
+          "news-crawl_news.2013",
+          "news-crawl_news.2014",
+          "news-crawl_news.2015",
+          "news-crawl_news.2016",
+          "news-crawl_news.2017",
+          "news-crawl_news.2018",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023"
+        ],
+        "mono-trg": [
+          "news-crawl_news.2015",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_el_1.txt.zst",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_el_2.txt.zst",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_el_3.txt.zst",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_el_4.txt.zst",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_el_5.txt.zst"
+        ],
+        "test": [
+          "mtdata_Neulab-tedtalks_test-1-eng-ell",
+          "flores_devtest",
+          "flores_aug-mix_devtest",
+          "flores_aug-title_devtest",
+          "flores_aug-upper_devtest",
+          "flores_aug-typos_devtest",
+          "flores_aug-noise_devtest",
+          "flores_aug-inline-noise_devtest",
+          "sacrebleu_mtedx/test"
+        ],
+        "train": [
+          "opus_NLLB/v1",
+          "opus_OpenSubtitles/v2018",
+          "opus_ParaCrawl/v9",
+          "opus_ELRC-EMEA/v1",
+          "opus_CCAligned/v1",
+          "opus_DGT/v2019",
+          "opus_EUbookshop/v2",
+          "opus_MaCoCu/v2",
+          "opus_XLEnt/v1.2",
+          "opus_LinguaTools-WikiTitles/v2014",
+          "opus_Europarl/v8",
+          "opus_EMEA/v3",
+          "opus_ELRC-2711-EMEA/v1",
+          "opus_ELRC_2682/v1",
+          "opus_ELRC-5067-SciPar/v1",
+          "opus_WikiMatrix/v1",
+          "opus_wikimedia/v20230407",
+          "opus_QED/v2.0a",
+          "opus_ELITR-ECA/v1",
+          "opus_TED2020/v1",
+          "opus_SETIMES/v2",
+          "opus_NeuLab-TedTalks/v1",
+          "opus_ELRC-presscorner_covid/v1",
+          "opus_KDE4/v2",
+          "opus_GlobalVoices/v2018q4",
+          "opus_ELRC-Press_Releases/v1",
+          "opus_Wikipedia/v1.0",
+          "opus_ECB/v1",
+          "opus_bible-uedin/v1",
+          "opus_ELRA-W0202/v1",
+          "opus_Tatoeba/v2023-04-12",
+          "opus_ELRC-3562-EUR_LEX_covid/v1",
+          "opus_ELRC-EUR_LEX/v1",
+          "opus_ELRC-842-Quarterly_Reports_Pa/v1",
+          "opus_ELRA-W0243/v1",
+          "opus_ELRC-1175-EUIPO_2017/v1",
+          "opus_ELRC-EUIPO_2017/v1",
+          "opus_ELRC-EUROPARL_covid/v1",
+          "opus_JRC-Acquis/v3.0",
+          "opus_GNOME/v1",
+          "opus_ELRC-843-collection_reports_G/v1",
+          "opus_ELRA-W0244/v1",
+          "opus_ELRC-antibiotic/v1",
+          "opus_ELRC-2872-EU_publications_medi/v1",
+          "opus_ELRC-EU_publications/v1",
+          "opus_ELRC-649-Greek_administration/v1",
+          "opus_ELRA-W0203/v1",
+          "opus_EUconst/v1",
+          "opus_ELRC-3603-presscorner_covid/v1",
+          "opus_ELRC-936-Prime_Minister_Helle/v1",
+          "opus_ELRA-W0272/v1",
+          "opus_TildeMODEL/v2018",
+          "opus_ELRC-1787-Press_Releases_PIO/v1",
+          "opus_ELRC-PIO_Publication/v1",
+          "opus_ELRC-1984-Hellenic_Gaming_Comm/v1",
+          "opus_ELRC_3382/v1",
+          "opus_ELRC-932-Hellenic_Foreign_Aff/v1",
+          "opus_ELRA-W0271/v1",
+          "opus_ELRC-1067-PIO_Publication_Wind/v1",
+          "opus_ECDC/v2016-03-16",
+          "opus_ELRC-3461-EC_EUROPA_covid/v1",
+          "opus_ELRC-EC_EUROPA/v1",
+          "opus_ELRC-1981-EQF_Referencing_Repo/v1",
+          "opus_ELRC-652-Greek_law/v1",
+          "opus_ELRA-W0205/v1",
+          "opus_ELRC-3058-wikipedia_health/v1",
+          "opus_ELRC-wikipedia_health/v1",
+          "opus_ELRC-1020-collection_about_Cyp/v1",
+          "opus_ELRC_2922/v1",
+          "opus_ELRC-1070-Press_Information_Cy/v1",
+          "opus_ELRC-1970-governmental_about_M/v1",
+          "opus_ELRC-1065-PIO_Publication_Cypr/v1",
+          "opus_Books/v1",
+          "opus_ELRC-419-Greek_legislation_An/v1",
+          "mtdata_ELRC-swedish_social_security-1-ell-eng",
+          "mtdata_ELRC-greek_legislation_anticorruption_plan-1-ell-eng",
+          "mtdata_ELRC-quarterly_reports_parliamentary_budget-1-ell-eng",
+          "mtdata_ELRC-collection_reports_greek_power_corporation-1-ell-eng",
+          "mtdata_ELRC-hellenic_foreign_affairs_announcements-1-ell-eng",
+          "mtdata_ELRC-prime_minister_hellenic-1-ell-eng",
+          "mtdata_ELRC-collection_about_cyprus_problem-1-ell-eng",
+          "mtdata_ELRC-pio_publication_window_cyprus-1-ell-eng",
+          "mtdata_ELRC-press_information_cyprus-1-ell-eng",
+          "mtdata_ELRC-eqf_referencing_report-1-ell-eng",
+          "mtdata_ELRC-hellenic_gaming_commission-1-ell-eng",
+          "mtdata_ELRC-eu_publications_medical_v2-1-ell-eng",
+          "mtdata_EU-eac_forms-1-ell-eng",
+          "mtdata_EU-eac_reference-1-ell-eng",
+          "mtdata_EU-dcep-1-ell-eng",
+          "mtdata_Tilde-eesc-2017-ell-eng",
+          "mtdata_Tilde-ema-2016-ell-eng",
+          "mtdata_Tilde-rapid-2016-ell-eng"
+        ]
+      },
+      "experiment": {
+        "best-model": "chrf",
+        "bicleaner": {
+          "dataset-thresholds": {},
+          "default-threshold": 0.5
+        },
+        "mono-max-sentences-src": 500000000,
+        "mono-max-sentences-trg": 200000000,
+        "name": "spring-2024",
+        "opuscleaner-mode": "defaults",
+        "pretrained-models": {
+          "train-backwards": {
+            "mode": "use",
+            "type": "default",
+            "urls": [
+              "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/OgijZQx8QLymdC5mWk8wSQ/artifacts/public/build"
+            ]
+          }
+        },
+        "spm-sample-size": 10000000,
+        "spm-vocab-size": 32000,
+        "src": "en",
+        "teacher-ensemble": 2,
+        "teacher-mode": "two-stage",
+        "trg": "el",
+        "use-opuscleaner": "true"
+      },
+      "marian-args": {
+        "decoding-backward": {
+          "beam-size": "12",
+          "mini-batch-words": "2000"
+        },
+        "decoding-teacher": {
+          "mini-batch-words": "4000",
+          "precision": "float16"
+        },
+        "training-backward": {
+          "early-stopping": "5"
+        },
+        "training-student": {
+          "early-stopping": "20"
+        },
+        "training-student-finetuned": {
+          "early-stopping": "20"
+        },
+        "training-teacher": {
+          "early-stopping": "20"
+        }
+      },
+      "target-stage": "all",
+      "taskcluster": {
+        "split-chunks": 20,
+        "worker-classes": {
+          "alignments-backtranslated": "gcp-standard",
+          "alignments-original": "gcp-standard",
+          "alignments-student": "gcp-standard",
+          "default": "gcp-spot",
+          "shortlist": "gcp-standard"
+        }
+      },
+      "wandb-publication": true
+    },
+    "task_group_id": "Y3ThG3XkTxG4ROUQK2LpVg",
+    "flores": {
+      "chrf": 54.1,
+      "bleu": 27.32,
+      "comet": 87.58
+    },
+    "artifact_folder": "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Y3ThG3XkTxG4ROUQK2LpVg/student-finetuned/",
+    "artifact_urls": [
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Y3ThG3XkTxG4ROUQK2LpVg/student-finetuned/config.opustrainer.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Y3ThG3XkTxG4ROUQK2LpVg/student-finetuned/config.opustrainer.yml.state",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Y3ThG3XkTxG4ROUQK2LpVg/student-finetuned/devset.out",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Y3ThG3XkTxG4ROUQK2LpVg/student-finetuned/final.model.npz.best-chrf.npz",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Y3ThG3XkTxG4ROUQK2LpVg/student-finetuned/final.model.npz.best-chrf.npz.decoder.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Y3ThG3XkTxG4ROUQK2LpVg/student-finetuned/model.npz.progress.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Y3ThG3XkTxG4ROUQK2LpVg/student-finetuned/model.npz.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Y3ThG3XkTxG4ROUQK2LpVg/student-finetuned/vocab.spm"
+    ]
+  },
+  "student_quantized": {
+    "date": "2024-10-07T15:04:28.351000",
+    "config": {
+      "datasets": {
+        "devtest": [
+          "mtdata_aug-mix_Neulab-tedtalks_dev-1-eng-ell",
+          "flores_aug-mix_dev",
+          "sacrebleu_mtedx/valid"
+        ],
+        "mono-src": [
+          "news-crawl_news.2007",
+          "news-crawl_news.2008",
+          "news-crawl_news.2009",
+          "news-crawl_news.2010",
+          "news-crawl_news.2011",
+          "news-crawl_news.2012",
+          "news-crawl_news.2013",
+          "news-crawl_news.2014",
+          "news-crawl_news.2015",
+          "news-crawl_news.2016",
+          "news-crawl_news.2017",
+          "news-crawl_news.2018",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023"
+        ],
+        "mono-trg": [
+          "news-crawl_news.2015",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_el_1.txt.zst",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_el_2.txt.zst",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_el_3.txt.zst",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_el_4.txt.zst",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_el_5.txt.zst"
+        ],
+        "test": [
+          "mtdata_Neulab-tedtalks_test-1-eng-ell",
+          "flores_devtest",
+          "flores_aug-mix_devtest",
+          "flores_aug-title_devtest",
+          "flores_aug-upper_devtest",
+          "flores_aug-typos_devtest",
+          "flores_aug-noise_devtest",
+          "flores_aug-inline-noise_devtest",
+          "sacrebleu_mtedx/test"
+        ],
+        "train": [
+          "opus_NLLB/v1",
+          "opus_OpenSubtitles/v2018",
+          "opus_ParaCrawl/v9",
+          "opus_ELRC-EMEA/v1",
+          "opus_CCAligned/v1",
+          "opus_DGT/v2019",
+          "opus_EUbookshop/v2",
+          "opus_MaCoCu/v2",
+          "opus_XLEnt/v1.2",
+          "opus_LinguaTools-WikiTitles/v2014",
+          "opus_Europarl/v8",
+          "opus_EMEA/v3",
+          "opus_ELRC-2711-EMEA/v1",
+          "opus_ELRC_2682/v1",
+          "opus_ELRC-5067-SciPar/v1",
+          "opus_WikiMatrix/v1",
+          "opus_wikimedia/v20230407",
+          "opus_QED/v2.0a",
+          "opus_ELITR-ECA/v1",
+          "opus_TED2020/v1",
+          "opus_SETIMES/v2",
+          "opus_NeuLab-TedTalks/v1",
+          "opus_ELRC-presscorner_covid/v1",
+          "opus_KDE4/v2",
+          "opus_GlobalVoices/v2018q4",
+          "opus_ELRC-Press_Releases/v1",
+          "opus_Wikipedia/v1.0",
+          "opus_ECB/v1",
+          "opus_bible-uedin/v1",
+          "opus_ELRA-W0202/v1",
+          "opus_Tatoeba/v2023-04-12",
+          "opus_ELRC-3562-EUR_LEX_covid/v1",
+          "opus_ELRC-EUR_LEX/v1",
+          "opus_ELRC-842-Quarterly_Reports_Pa/v1",
+          "opus_ELRA-W0243/v1",
+          "opus_ELRC-1175-EUIPO_2017/v1",
+          "opus_ELRC-EUIPO_2017/v1",
+          "opus_ELRC-EUROPARL_covid/v1",
+          "opus_JRC-Acquis/v3.0",
+          "opus_GNOME/v1",
+          "opus_ELRC-843-collection_reports_G/v1",
+          "opus_ELRA-W0244/v1",
+          "opus_ELRC-antibiotic/v1",
+          "opus_ELRC-2872-EU_publications_medi/v1",
+          "opus_ELRC-EU_publications/v1",
+          "opus_ELRC-649-Greek_administration/v1",
+          "opus_ELRA-W0203/v1",
+          "opus_EUconst/v1",
+          "opus_ELRC-3603-presscorner_covid/v1",
+          "opus_ELRC-936-Prime_Minister_Helle/v1",
+          "opus_ELRA-W0272/v1",
+          "opus_TildeMODEL/v2018",
+          "opus_ELRC-1787-Press_Releases_PIO/v1",
+          "opus_ELRC-PIO_Publication/v1",
+          "opus_ELRC-1984-Hellenic_Gaming_Comm/v1",
+          "opus_ELRC_3382/v1",
+          "opus_ELRC-932-Hellenic_Foreign_Aff/v1",
+          "opus_ELRA-W0271/v1",
+          "opus_ELRC-1067-PIO_Publication_Wind/v1",
+          "opus_ECDC/v2016-03-16",
+          "opus_ELRC-3461-EC_EUROPA_covid/v1",
+          "opus_ELRC-EC_EUROPA/v1",
+          "opus_ELRC-1981-EQF_Referencing_Repo/v1",
+          "opus_ELRC-652-Greek_law/v1",
+          "opus_ELRA-W0205/v1",
+          "opus_ELRC-3058-wikipedia_health/v1",
+          "opus_ELRC-wikipedia_health/v1",
+          "opus_ELRC-1020-collection_about_Cyp/v1",
+          "opus_ELRC_2922/v1",
+          "opus_ELRC-1070-Press_Information_Cy/v1",
+          "opus_ELRC-1970-governmental_about_M/v1",
+          "opus_ELRC-1065-PIO_Publication_Cypr/v1",
+          "opus_Books/v1",
+          "opus_ELRC-419-Greek_legislation_An/v1",
+          "mtdata_ELRC-swedish_social_security-1-ell-eng",
+          "mtdata_ELRC-greek_legislation_anticorruption_plan-1-ell-eng",
+          "mtdata_ELRC-quarterly_reports_parliamentary_budget-1-ell-eng",
+          "mtdata_ELRC-collection_reports_greek_power_corporation-1-ell-eng",
+          "mtdata_ELRC-hellenic_foreign_affairs_announcements-1-ell-eng",
+          "mtdata_ELRC-prime_minister_hellenic-1-ell-eng",
+          "mtdata_ELRC-collection_about_cyprus_problem-1-ell-eng",
+          "mtdata_ELRC-pio_publication_window_cyprus-1-ell-eng",
+          "mtdata_ELRC-press_information_cyprus-1-ell-eng",
+          "mtdata_ELRC-eqf_referencing_report-1-ell-eng",
+          "mtdata_ELRC-hellenic_gaming_commission-1-ell-eng",
+          "mtdata_ELRC-eu_publications_medical_v2-1-ell-eng",
+          "mtdata_EU-eac_forms-1-ell-eng",
+          "mtdata_EU-eac_reference-1-ell-eng",
+          "mtdata_EU-dcep-1-ell-eng",
+          "mtdata_Tilde-eesc-2017-ell-eng",
+          "mtdata_Tilde-ema-2016-ell-eng",
+          "mtdata_Tilde-rapid-2016-ell-eng"
+        ]
+      },
+      "experiment": {
+        "best-model": "chrf",
+        "bicleaner": {
+          "dataset-thresholds": {},
+          "default-threshold": 0.5
+        },
+        "mono-max-sentences-src": 500000000,
+        "mono-max-sentences-trg": 200000000,
+        "name": "spring-2024",
+        "opuscleaner-mode": "defaults",
+        "pretrained-models": {
+          "train-backwards": {
+            "mode": "use",
+            "type": "default",
+            "urls": [
+              "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/OgijZQx8QLymdC5mWk8wSQ/artifacts/public/build"
+            ]
+          }
+        },
+        "spm-sample-size": 10000000,
+        "spm-vocab-size": 32000,
+        "src": "en",
+        "teacher-ensemble": 2,
+        "teacher-mode": "two-stage",
+        "trg": "el",
+        "use-opuscleaner": "true"
+      },
+      "marian-args": {
+        "decoding-backward": {
+          "beam-size": "12",
+          "mini-batch-words": "2000"
+        },
+        "decoding-teacher": {
+          "mini-batch-words": "4000",
+          "precision": "float16"
+        },
+        "training-backward": {
+          "early-stopping": "5"
+        },
+        "training-student": {
+          "early-stopping": "20"
+        },
+        "training-student-finetuned": {
+          "early-stopping": "20"
+        },
+        "training-teacher": {
+          "early-stopping": "20"
+        }
+      },
+      "target-stage": "all",
+      "taskcluster": {
+        "split-chunks": 20,
+        "worker-classes": {
+          "alignments-backtranslated": "gcp-standard",
+          "alignments-original": "gcp-standard",
+          "alignments-student": "gcp-standard",
+          "default": "gcp-spot",
+          "shortlist": "gcp-standard"
+        }
+      },
+      "wandb-publication": true
+    },
+    "task_group_id": "Y3ThG3XkTxG4ROUQK2LpVg",
+    "flores": {
+      "chrf": 53.7,
+      "bleu": 27.0,
+      "comet": 87.33999999999999
+    },
+    "artifact_folder": "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Y3ThG3XkTxG4ROUQK2LpVg/quantized/",
+    "artifact_urls": [
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Y3ThG3XkTxG4ROUQK2LpVg/quantized/model.alphas.npz",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Y3ThG3XkTxG4ROUQK2LpVg/quantized/model.intgemm.alphas.bin",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Y3ThG3XkTxG4ROUQK2LpVg/quantized/output.el",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Y3ThG3XkTxG4ROUQK2LpVg/quantized/quantmults",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Y3ThG3XkTxG4ROUQK2LpVg/quantized/vocab.spm"
+    ]
+  },
+  "student_exported": {
+    "date": "2024-10-07T15:06:25.616000",
+    "config": {
+      "datasets": {
+        "devtest": [
+          "mtdata_aug-mix_Neulab-tedtalks_dev-1-eng-ell",
+          "flores_aug-mix_dev",
+          "sacrebleu_mtedx/valid"
+        ],
+        "mono-src": [
+          "news-crawl_news.2007",
+          "news-crawl_news.2008",
+          "news-crawl_news.2009",
+          "news-crawl_news.2010",
+          "news-crawl_news.2011",
+          "news-crawl_news.2012",
+          "news-crawl_news.2013",
+          "news-crawl_news.2014",
+          "news-crawl_news.2015",
+          "news-crawl_news.2016",
+          "news-crawl_news.2017",
+          "news-crawl_news.2018",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023"
+        ],
+        "mono-trg": [
+          "news-crawl_news.2015",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_el_1.txt.zst",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_el_2.txt.zst",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_el_3.txt.zst",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_el_4.txt.zst",
+          "url_https://storage.googleapis.com/releng-translations-dev/data/mono-hplt/09/hplt_filtered_el_5.txt.zst"
+        ],
+        "test": [
+          "mtdata_Neulab-tedtalks_test-1-eng-ell",
+          "flores_devtest",
+          "flores_aug-mix_devtest",
+          "flores_aug-title_devtest",
+          "flores_aug-upper_devtest",
+          "flores_aug-typos_devtest",
+          "flores_aug-noise_devtest",
+          "flores_aug-inline-noise_devtest",
+          "sacrebleu_mtedx/test"
+        ],
+        "train": [
+          "opus_NLLB/v1",
+          "opus_OpenSubtitles/v2018",
+          "opus_ParaCrawl/v9",
+          "opus_ELRC-EMEA/v1",
+          "opus_CCAligned/v1",
+          "opus_DGT/v2019",
+          "opus_EUbookshop/v2",
+          "opus_MaCoCu/v2",
+          "opus_XLEnt/v1.2",
+          "opus_LinguaTools-WikiTitles/v2014",
+          "opus_Europarl/v8",
+          "opus_EMEA/v3",
+          "opus_ELRC-2711-EMEA/v1",
+          "opus_ELRC_2682/v1",
+          "opus_ELRC-5067-SciPar/v1",
+          "opus_WikiMatrix/v1",
+          "opus_wikimedia/v20230407",
+          "opus_QED/v2.0a",
+          "opus_ELITR-ECA/v1",
+          "opus_TED2020/v1",
+          "opus_SETIMES/v2",
+          "opus_NeuLab-TedTalks/v1",
+          "opus_ELRC-presscorner_covid/v1",
+          "opus_KDE4/v2",
+          "opus_GlobalVoices/v2018q4",
+          "opus_ELRC-Press_Releases/v1",
+          "opus_Wikipedia/v1.0",
+          "opus_ECB/v1",
+          "opus_bible-uedin/v1",
+          "opus_ELRA-W0202/v1",
+          "opus_Tatoeba/v2023-04-12",
+          "opus_ELRC-3562-EUR_LEX_covid/v1",
+          "opus_ELRC-EUR_LEX/v1",
+          "opus_ELRC-842-Quarterly_Reports_Pa/v1",
+          "opus_ELRA-W0243/v1",
+          "opus_ELRC-1175-EUIPO_2017/v1",
+          "opus_ELRC-EUIPO_2017/v1",
+          "opus_ELRC-EUROPARL_covid/v1",
+          "opus_JRC-Acquis/v3.0",
+          "opus_GNOME/v1",
+          "opus_ELRC-843-collection_reports_G/v1",
+          "opus_ELRA-W0244/v1",
+          "opus_ELRC-antibiotic/v1",
+          "opus_ELRC-2872-EU_publications_medi/v1",
+          "opus_ELRC-EU_publications/v1",
+          "opus_ELRC-649-Greek_administration/v1",
+          "opus_ELRA-W0203/v1",
+          "opus_EUconst/v1",
+          "opus_ELRC-3603-presscorner_covid/v1",
+          "opus_ELRC-936-Prime_Minister_Helle/v1",
+          "opus_ELRA-W0272/v1",
+          "opus_TildeMODEL/v2018",
+          "opus_ELRC-1787-Press_Releases_PIO/v1",
+          "opus_ELRC-PIO_Publication/v1",
+          "opus_ELRC-1984-Hellenic_Gaming_Comm/v1",
+          "opus_ELRC_3382/v1",
+          "opus_ELRC-932-Hellenic_Foreign_Aff/v1",
+          "opus_ELRA-W0271/v1",
+          "opus_ELRC-1067-PIO_Publication_Wind/v1",
+          "opus_ECDC/v2016-03-16",
+          "opus_ELRC-3461-EC_EUROPA_covid/v1",
+          "opus_ELRC-EC_EUROPA/v1",
+          "opus_ELRC-1981-EQF_Referencing_Repo/v1",
+          "opus_ELRC-652-Greek_law/v1",
+          "opus_ELRA-W0205/v1",
+          "opus_ELRC-3058-wikipedia_health/v1",
+          "opus_ELRC-wikipedia_health/v1",
+          "opus_ELRC-1020-collection_about_Cyp/v1",
+          "opus_ELRC_2922/v1",
+          "opus_ELRC-1070-Press_Information_Cy/v1",
+          "opus_ELRC-1970-governmental_about_M/v1",
+          "opus_ELRC-1065-PIO_Publication_Cypr/v1",
+          "opus_Books/v1",
+          "opus_ELRC-419-Greek_legislation_An/v1",
+          "mtdata_ELRC-swedish_social_security-1-ell-eng",
+          "mtdata_ELRC-greek_legislation_anticorruption_plan-1-ell-eng",
+          "mtdata_ELRC-quarterly_reports_parliamentary_budget-1-ell-eng",
+          "mtdata_ELRC-collection_reports_greek_power_corporation-1-ell-eng",
+          "mtdata_ELRC-hellenic_foreign_affairs_announcements-1-ell-eng",
+          "mtdata_ELRC-prime_minister_hellenic-1-ell-eng",
+          "mtdata_ELRC-collection_about_cyprus_problem-1-ell-eng",
+          "mtdata_ELRC-pio_publication_window_cyprus-1-ell-eng",
+          "mtdata_ELRC-press_information_cyprus-1-ell-eng",
+          "mtdata_ELRC-eqf_referencing_report-1-ell-eng",
+          "mtdata_ELRC-hellenic_gaming_commission-1-ell-eng",
+          "mtdata_ELRC-eu_publications_medical_v2-1-ell-eng",
+          "mtdata_EU-eac_forms-1-ell-eng",
+          "mtdata_EU-eac_reference-1-ell-eng",
+          "mtdata_EU-dcep-1-ell-eng",
+          "mtdata_Tilde-eesc-2017-ell-eng",
+          "mtdata_Tilde-ema-2016-ell-eng",
+          "mtdata_Tilde-rapid-2016-ell-eng"
+        ]
+      },
+      "experiment": {
+        "best-model": "chrf",
+        "bicleaner": {
+          "dataset-thresholds": {},
+          "default-threshold": 0.5
+        },
+        "mono-max-sentences-src": 500000000,
+        "mono-max-sentences-trg": 200000000,
+        "name": "spring-2024",
+        "opuscleaner-mode": "defaults",
+        "pretrained-models": {
+          "train-backwards": {
+            "mode": "use",
+            "type": "default",
+            "urls": [
+              "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/OgijZQx8QLymdC5mWk8wSQ/artifacts/public/build"
+            ]
+          }
+        },
+        "spm-sample-size": 10000000,
+        "spm-vocab-size": 32000,
+        "src": "en",
+        "teacher-ensemble": 2,
+        "teacher-mode": "two-stage",
+        "trg": "el",
+        "use-opuscleaner": "true"
+      },
+      "marian-args": {
+        "decoding-backward": {
+          "beam-size": "12",
+          "mini-batch-words": "2000"
+        },
+        "decoding-teacher": {
+          "mini-batch-words": "4000",
+          "precision": "float16"
+        },
+        "training-backward": {
+          "early-stopping": "5"
+        },
+        "training-student": {
+          "early-stopping": "20"
+        },
+        "training-student-finetuned": {
+          "early-stopping": "20"
+        },
+        "training-teacher": {
+          "early-stopping": "20"
+        }
+      },
+      "target-stage": "all",
+      "taskcluster": {
+        "split-chunks": 20,
+        "worker-classes": {
+          "alignments-backtranslated": "gcp-standard",
+          "alignments-original": "gcp-standard",
+          "alignments-student": "gcp-standard",
+          "default": "gcp-spot",
+          "shortlist": "gcp-standard"
+        }
+      },
+      "wandb-publication": true
+    },
+    "task_group_id": "Y3ThG3XkTxG4ROUQK2LpVg",
+    "flores": {
+      "chrf": 53.7,
+      "bleu": 27.0,
+      "comet": 87.33999999999999
+    },
+    "artifact_folder": "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Y3ThG3XkTxG4ROUQK2LpVg/exported/",
+    "artifact_urls": [
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Y3ThG3XkTxG4ROUQK2LpVg/exported/lex.50.50.enel.s2t.bin.gz",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Y3ThG3XkTxG4ROUQK2LpVg/exported/model.enel.intgemm.alphas.bin.gz",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-el/spring-2024_Y3ThG3XkTxG4ROUQK2LpVg/exported/vocab.enel.spm.gz"
+    ]
+  }
+}

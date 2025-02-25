@@ -1,0 +1,1151 @@
+{
+  "name": "spring-2024",
+  "langpair": "en-uk",
+  "source_lang": "en",
+  "target_lang": "uk",
+  "task_group_ids": [
+    "QrzpREbOQLGdx5cRdQL9LA",
+    "a5F1swqWQhKp88A4aiJ3wg",
+    "LYBo_BrUR8mkopI3Js2czQ",
+    "aKUqlLsyR3O3Kaa5TU-LMg",
+    "evuAvqqWQ3WBUQ94Yi31uw",
+    "XYxcaJseSWKtISeK_HKwPQ",
+    "J4QWVDPJQdOGbUB0xfzj1Q"
+  ],
+  "date_started": "2024-05-24T16:55:27.620000",
+  "comet_flores_comparison": {
+    "nllb": 0.8431,
+    "microsoft": 0.8981,
+    "opusmt": 0.8121,
+    "google": 0.9059,
+    "bergamot": 0.8591,
+    "argos": 0.6999
+  },
+  "bleu_flores_comparison": {
+    "bergamot": 28.0,
+    "argos": 16.4,
+    "google": 32.8,
+    "nllb": 22.9,
+    "microsoft": 32.2,
+    "opusmt": 19.7
+  },
+  "parallel_corpus_aligned": null,
+  "backtranslations_corpus_aligned": null,
+  "distillation_corpus_aligned": null,
+  "parallel_corpus": {
+    "source_url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/JlBHKAO6SdW6inpWLAf_yQ/artifacts/public/build/corpus.en.zst",
+    "source_bytes": 1310247800,
+    "target_url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/JlBHKAO6SdW6inpWLAf_yQ/artifacts/public/build/corpus.uk.zst",
+    "target_bytes": 1836291607
+  },
+  "backtranslations_corpus": {
+    "source_url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/J6OS4f5oSHOGPAe8i4030Q/artifacts/public/build/mono.en.zst",
+    "source_bytes": 145221021,
+    "target_url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/IWs6uOloSEiA-W-Nu-TkfA/artifacts/public/build/mono.uk.zst",
+    "target_bytes": 28178206102
+  },
+  "distillation_corpus": {
+    "source_url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/Kb9zHVA-SlW4fAdAC1DESw/artifacts/public/build/corpus.en.zst",
+    "source_bytes": 21144452580,
+    "target_url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/Kb9zHVA-SlW4fAdAC1DESw/artifacts/public/build/corpus.uk.zst",
+    "target_bytes": 28656919299
+  },
+  "backwards": {
+    "date": "2024-05-28T11:36:43.564000",
+    "config": {
+      "datasets": {
+        "devtest": [
+          "flores_aug-mix_dev",
+          "mtdata_aug-mix_Neulab-tedtalks_dev-1-eng-ukr"
+        ],
+        "mono-src": [
+          "news-crawl_news.2007",
+          "news-crawl_news.2008",
+          "news-crawl_news.2009",
+          "news-crawl_news.2010",
+          "news-crawl_news.2011",
+          "news-crawl_news.2012",
+          "news-crawl_news.2013",
+          "news-crawl_news.2014",
+          "news-crawl_news.2015",
+          "news-crawl_news.2016",
+          "news-crawl_news.2017",
+          "news-crawl_news.2018",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023"
+        ],
+        "mono-trg": [
+          "news-crawl_news.2008",
+          "news-crawl_news.2009",
+          "news-crawl_news.2010",
+          "news-crawl_news.2011",
+          "news-crawl_news.2012",
+          "news-crawl_news.2013",
+          "news-crawl_news.2014",
+          "news-crawl_news.2015",
+          "news-crawl_news.2016",
+          "news-crawl_news.2018",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023"
+        ],
+        "test": [
+          "flores_devtest",
+          "flores_aug-mix_devtest",
+          "flores_aug-title_devtest",
+          "flores_aug-upper_devtest",
+          "flores_aug-typos_devtest",
+          "flores_aug-noise_devtest",
+          "flores_aug-inline-noise_devtest",
+          "mtdata_Neulab-tedtalks_test-1-eng-ukr"
+        ],
+        "train": [
+          "opus_NLLB/v1",
+          "opus_ParaCrawl/v9",
+          "opus_CCAligned/v1",
+          "opus_MaCoCu/v2",
+          "opus_XLEnt/v1.2",
+          "opus_SUMMA/v1",
+          "opus_OpenSubtitles/v2018",
+          "opus_wikimedia/v20230407",
+          "opus_WikiMatrix/v1",
+          "opus_ELRC-5214-A_Lexicon_Named/v1",
+          "opus_ELRC-5183-SciPar_Ukraine/v1",
+          "opus_KDE4/v2",
+          "opus_QED/v2.0a",
+          "opus_TED2020/v1",
+          "opus_Tatoeba/v2023-04-12",
+          "opus_ELRC-5179-acts_Ukrainian/v1",
+          "opus_ELRC-5180-Official_Parliament_/v1",
+          "opus_NeuLab-TedTalks/v1",
+          "opus_ELRC-5181-Official_Parliament_/v1",
+          "opus_ELRC-5174-French_Polish_Ukrain/v1",
+          "opus_bible-uedin/v1",
+          "opus_ELRC-5182-Official_Parliament_/v1",
+          "opus_ELRC-3043-wikipedia_health/v1",
+          "opus_ELRC-wikipedia_health/v1",
+          "opus_ELRC_2922/v1",
+          "opus_EUbookshop/v2",
+          "opus_TildeMODEL/v2018",
+          "opus_ELRC-5217-Ukrainian_Legal_MT/v1",
+          "opus_tldr-pages/v2023-08-29",
+          "mtdata_Tilde-worldbank-1-eng-ukr"
+        ]
+      },
+      "experiment": {
+        "best-model": "chrf",
+        "bicleaner": {
+          "dataset-thresholds": {},
+          "default-threshold": 0.5
+        },
+        "mono-max-sentences-src": 500000000,
+        "mono-max-sentences-trg": 200000000,
+        "name": "spring-2024",
+        "opuscleaner-mode": "defaults",
+        "pretrained-models": {},
+        "spm-sample-size": 10000000,
+        "spm-vocab-size": 32000,
+        "src": "en",
+        "teacher-ensemble": 2,
+        "teacher-mode": "two-stage",
+        "trg": "uk",
+        "use-opuscleaner": "true"
+      },
+      "marian-args": {
+        "decoding-backward": {
+          "beam-size": "12",
+          "mini-batch-words": "2000"
+        },
+        "decoding-teacher": {
+          "mini-batch-words": "4000",
+          "precision": "float16"
+        },
+        "training-backward": {
+          "early-stopping": "5"
+        },
+        "training-student": {
+          "early-stopping": "20"
+        },
+        "training-student-finetuned": {
+          "early-stopping": "20"
+        },
+        "training-teacher": {
+          "early-stopping": "20"
+        }
+      },
+      "target-stage": "all",
+      "taskcluster": {
+        "split-chunks": 20,
+        "worker-classes": {
+          "default": "gcp-spot"
+        }
+      },
+      "wandb-publication": true
+    },
+    "task_group_id": "aKUqlLsyR3O3Kaa5TU-LMg",
+    "flores": null,
+    "artifact_folder": "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_aKUqlLsyR3O3Kaa5TU-LMg/backward/",
+    "artifact_urls": [
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_aKUqlLsyR3O3Kaa5TU-LMg/backward/config.opustrainer.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_aKUqlLsyR3O3Kaa5TU-LMg/backward/config.opustrainer.yml.state",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_aKUqlLsyR3O3Kaa5TU-LMg/backward/devset.out",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_aKUqlLsyR3O3Kaa5TU-LMg/backward/final.model.npz.best-chrf.npz",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_aKUqlLsyR3O3Kaa5TU-LMg/backward/final.model.npz.best-chrf.npz.decoder.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_aKUqlLsyR3O3Kaa5TU-LMg/backward/model.npz.progress.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_aKUqlLsyR3O3Kaa5TU-LMg/backward/model.npz.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_aKUqlLsyR3O3Kaa5TU-LMg/backward/vocab.spm"
+    ]
+  },
+  "teacher_1": {
+    "date": "2024-06-01T05:05:35.339000",
+    "config": {
+      "datasets": {
+        "devtest": [
+          "flores_aug-mix_dev",
+          "mtdata_aug-mix_Neulab-tedtalks_dev-1-eng-ukr"
+        ],
+        "mono-src": [
+          "news-crawl_news.2007",
+          "news-crawl_news.2008",
+          "news-crawl_news.2009",
+          "news-crawl_news.2010",
+          "news-crawl_news.2011",
+          "news-crawl_news.2012",
+          "news-crawl_news.2013",
+          "news-crawl_news.2014",
+          "news-crawl_news.2015",
+          "news-crawl_news.2016",
+          "news-crawl_news.2017",
+          "news-crawl_news.2018",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023"
+        ],
+        "mono-trg": [
+          "news-crawl_news.2008",
+          "news-crawl_news.2009",
+          "news-crawl_news.2010",
+          "news-crawl_news.2011",
+          "news-crawl_news.2012",
+          "news-crawl_news.2013",
+          "news-crawl_news.2014",
+          "news-crawl_news.2015",
+          "news-crawl_news.2016",
+          "news-crawl_news.2018",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023"
+        ],
+        "test": [
+          "flores_devtest",
+          "flores_aug-mix_devtest",
+          "flores_aug-title_devtest",
+          "flores_aug-upper_devtest",
+          "flores_aug-typos_devtest",
+          "flores_aug-noise_devtest",
+          "flores_aug-inline-noise_devtest",
+          "mtdata_Neulab-tedtalks_test-1-eng-ukr"
+        ],
+        "train": [
+          "opus_NLLB/v1",
+          "opus_ParaCrawl/v9",
+          "opus_CCAligned/v1",
+          "opus_MaCoCu/v2",
+          "opus_XLEnt/v1.2",
+          "opus_SUMMA/v1",
+          "opus_OpenSubtitles/v2018",
+          "opus_wikimedia/v20230407",
+          "opus_WikiMatrix/v1",
+          "opus_ELRC-5214-A_Lexicon_Named/v1",
+          "opus_ELRC-5183-SciPar_Ukraine/v1",
+          "opus_KDE4/v2",
+          "opus_QED/v2.0a",
+          "opus_TED2020/v1",
+          "opus_Tatoeba/v2023-04-12",
+          "opus_ELRC-5179-acts_Ukrainian/v1",
+          "opus_ELRC-5180-Official_Parliament_/v1",
+          "opus_NeuLab-TedTalks/v1",
+          "opus_ELRC-5181-Official_Parliament_/v1",
+          "opus_ELRC-5174-French_Polish_Ukrain/v1",
+          "opus_bible-uedin/v1",
+          "opus_ELRC-5182-Official_Parliament_/v1",
+          "opus_ELRC-3043-wikipedia_health/v1",
+          "opus_ELRC-wikipedia_health/v1",
+          "opus_ELRC_2922/v1",
+          "opus_EUbookshop/v2",
+          "opus_TildeMODEL/v2018",
+          "opus_ELRC-5217-Ukrainian_Legal_MT/v1",
+          "opus_tldr-pages/v2023-08-29",
+          "mtdata_Tilde-worldbank-1-eng-ukr"
+        ]
+      },
+      "experiment": {
+        "best-model": "chrf",
+        "bicleaner": {
+          "dataset-thresholds": {},
+          "default-threshold": 0.5
+        },
+        "mono-max-sentences-src": 500000000,
+        "mono-max-sentences-trg": 200000000,
+        "name": "spring-2024",
+        "opuscleaner-mode": "defaults",
+        "pretrained-models": {},
+        "spm-sample-size": 10000000,
+        "spm-vocab-size": 32000,
+        "src": "en",
+        "teacher-ensemble": 2,
+        "teacher-mode": "two-stage",
+        "trg": "uk",
+        "use-opuscleaner": "true"
+      },
+      "marian-args": {
+        "decoding-backward": {
+          "beam-size": "12",
+          "mini-batch-words": "2000"
+        },
+        "decoding-teacher": {
+          "mini-batch-words": "4000",
+          "precision": "float16"
+        },
+        "training-backward": {
+          "early-stopping": "5"
+        },
+        "training-student": {
+          "early-stopping": "20"
+        },
+        "training-student-finetuned": {
+          "early-stopping": "20"
+        },
+        "training-teacher": {
+          "early-stopping": "20"
+        }
+      },
+      "target-stage": "all",
+      "taskcluster": {
+        "split-chunks": 20,
+        "worker-classes": {
+          "default": "gcp-spot"
+        }
+      },
+      "wandb-publication": true
+    },
+    "task_group_id": "aKUqlLsyR3O3Kaa5TU-LMg",
+    "flores": {
+      "chrf": 60.11,
+      "bleu": 32.06,
+      "comet": 89.28
+    },
+    "artifact_folder": "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_aKUqlLsyR3O3Kaa5TU-LMg/teacher0/",
+    "artifact_urls": [
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_aKUqlLsyR3O3Kaa5TU-LMg/teacher0/config.opustrainer.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_aKUqlLsyR3O3Kaa5TU-LMg/teacher0/config.opustrainer.yml.state",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_aKUqlLsyR3O3Kaa5TU-LMg/teacher0/devset.out",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_aKUqlLsyR3O3Kaa5TU-LMg/teacher0/final.model.npz.best-chrf.npz",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_aKUqlLsyR3O3Kaa5TU-LMg/teacher0/final.model.npz.best-chrf.npz.decoder.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_aKUqlLsyR3O3Kaa5TU-LMg/teacher0/model.npz.progress.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_aKUqlLsyR3O3Kaa5TU-LMg/teacher0/model.npz.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_aKUqlLsyR3O3Kaa5TU-LMg/teacher0/vocab.spm"
+    ]
+  },
+  "teacher_2": {
+    "date": "2024-05-31T07:22:18.901000",
+    "config": {
+      "datasets": {
+        "devtest": [
+          "flores_aug-mix_dev",
+          "mtdata_aug-mix_Neulab-tedtalks_dev-1-eng-ukr"
+        ],
+        "mono-src": [
+          "news-crawl_news.2007",
+          "news-crawl_news.2008",
+          "news-crawl_news.2009",
+          "news-crawl_news.2010",
+          "news-crawl_news.2011",
+          "news-crawl_news.2012",
+          "news-crawl_news.2013",
+          "news-crawl_news.2014",
+          "news-crawl_news.2015",
+          "news-crawl_news.2016",
+          "news-crawl_news.2017",
+          "news-crawl_news.2018",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023"
+        ],
+        "mono-trg": [
+          "news-crawl_news.2008",
+          "news-crawl_news.2009",
+          "news-crawl_news.2010",
+          "news-crawl_news.2011",
+          "news-crawl_news.2012",
+          "news-crawl_news.2013",
+          "news-crawl_news.2014",
+          "news-crawl_news.2015",
+          "news-crawl_news.2016",
+          "news-crawl_news.2018",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023"
+        ],
+        "test": [
+          "flores_devtest",
+          "flores_aug-mix_devtest",
+          "flores_aug-title_devtest",
+          "flores_aug-upper_devtest",
+          "flores_aug-typos_devtest",
+          "flores_aug-noise_devtest",
+          "flores_aug-inline-noise_devtest",
+          "mtdata_Neulab-tedtalks_test-1-eng-ukr"
+        ],
+        "train": [
+          "opus_NLLB/v1",
+          "opus_ParaCrawl/v9",
+          "opus_CCAligned/v1",
+          "opus_MaCoCu/v2",
+          "opus_XLEnt/v1.2",
+          "opus_SUMMA/v1",
+          "opus_OpenSubtitles/v2018",
+          "opus_wikimedia/v20230407",
+          "opus_WikiMatrix/v1",
+          "opus_ELRC-5214-A_Lexicon_Named/v1",
+          "opus_ELRC-5183-SciPar_Ukraine/v1",
+          "opus_KDE4/v2",
+          "opus_QED/v2.0a",
+          "opus_TED2020/v1",
+          "opus_Tatoeba/v2023-04-12",
+          "opus_ELRC-5179-acts_Ukrainian/v1",
+          "opus_ELRC-5180-Official_Parliament_/v1",
+          "opus_NeuLab-TedTalks/v1",
+          "opus_ELRC-5181-Official_Parliament_/v1",
+          "opus_ELRC-5174-French_Polish_Ukrain/v1",
+          "opus_bible-uedin/v1",
+          "opus_ELRC-5182-Official_Parliament_/v1",
+          "opus_ELRC-3043-wikipedia_health/v1",
+          "opus_ELRC-wikipedia_health/v1",
+          "opus_ELRC_2922/v1",
+          "opus_EUbookshop/v2",
+          "opus_TildeMODEL/v2018",
+          "opus_ELRC-5217-Ukrainian_Legal_MT/v1",
+          "opus_tldr-pages/v2023-08-29",
+          "mtdata_Tilde-worldbank-1-eng-ukr"
+        ]
+      },
+      "experiment": {
+        "best-model": "chrf",
+        "bicleaner": {
+          "dataset-thresholds": {},
+          "default-threshold": 0.5
+        },
+        "mono-max-sentences-src": 500000000,
+        "mono-max-sentences-trg": 200000000,
+        "name": "spring-2024",
+        "opuscleaner-mode": "defaults",
+        "pretrained-models": {},
+        "spm-sample-size": 10000000,
+        "spm-vocab-size": 32000,
+        "src": "en",
+        "teacher-ensemble": 2,
+        "teacher-mode": "two-stage",
+        "trg": "uk",
+        "use-opuscleaner": "true"
+      },
+      "marian-args": {
+        "decoding-backward": {
+          "beam-size": "12",
+          "mini-batch-words": "2000"
+        },
+        "decoding-teacher": {
+          "mini-batch-words": "4000",
+          "precision": "float16"
+        },
+        "training-backward": {
+          "early-stopping": "5"
+        },
+        "training-student": {
+          "early-stopping": "20"
+        },
+        "training-student-finetuned": {
+          "early-stopping": "20"
+        },
+        "training-teacher": {
+          "early-stopping": "20"
+        }
+      },
+      "target-stage": "all",
+      "taskcluster": {
+        "split-chunks": 20,
+        "worker-classes": {
+          "default": "gcp-spot"
+        }
+      },
+      "wandb-publication": true
+    },
+    "task_group_id": "aKUqlLsyR3O3Kaa5TU-LMg",
+    "flores": {
+      "chrf": 60.13,
+      "bleu": 31.88,
+      "comet": 89.24
+    },
+    "artifact_folder": "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_aKUqlLsyR3O3Kaa5TU-LMg/teacher1/",
+    "artifact_urls": [
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_aKUqlLsyR3O3Kaa5TU-LMg/teacher1/config.opustrainer.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_aKUqlLsyR3O3Kaa5TU-LMg/teacher1/config.opustrainer.yml.state",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_aKUqlLsyR3O3Kaa5TU-LMg/teacher1/devset.out",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_aKUqlLsyR3O3Kaa5TU-LMg/teacher1/final.model.npz.best-chrf.npz",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_aKUqlLsyR3O3Kaa5TU-LMg/teacher1/final.model.npz.best-chrf.npz.decoder.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_aKUqlLsyR3O3Kaa5TU-LMg/teacher1/model.npz.progress.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_aKUqlLsyR3O3Kaa5TU-LMg/teacher1/model.npz.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_aKUqlLsyR3O3Kaa5TU-LMg/teacher1/vocab.spm"
+    ]
+  },
+  "teacher_ensemble_flores": null,
+  "student": {
+    "date": "2024-08-17T05:09:25.440000",
+    "config": {
+      "datasets": {
+        "devtest": [
+          "flores_aug-mix_dev",
+          "mtdata_aug-mix_Neulab-tedtalks_dev-1-eng-ukr"
+        ],
+        "mono-src": [
+          "news-crawl_news.2007",
+          "news-crawl_news.2008",
+          "news-crawl_news.2009",
+          "news-crawl_news.2010",
+          "news-crawl_news.2011",
+          "news-crawl_news.2012",
+          "news-crawl_news.2013",
+          "news-crawl_news.2014",
+          "news-crawl_news.2015",
+          "news-crawl_news.2016",
+          "news-crawl_news.2017",
+          "news-crawl_news.2018",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023"
+        ],
+        "mono-trg": [
+          "news-crawl_news.2008",
+          "news-crawl_news.2009",
+          "news-crawl_news.2010",
+          "news-crawl_news.2011",
+          "news-crawl_news.2012",
+          "news-crawl_news.2013",
+          "news-crawl_news.2014",
+          "news-crawl_news.2015",
+          "news-crawl_news.2016",
+          "news-crawl_news.2018",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023"
+        ],
+        "test": [
+          "flores_devtest",
+          "flores_aug-mix_devtest",
+          "flores_aug-title_devtest",
+          "flores_aug-upper_devtest",
+          "flores_aug-typos_devtest",
+          "flores_aug-noise_devtest",
+          "flores_aug-inline-noise_devtest",
+          "mtdata_Neulab-tedtalks_test-1-eng-ukr"
+        ],
+        "train": [
+          "opus_NLLB/v1",
+          "opus_ParaCrawl/v9",
+          "opus_CCAligned/v1",
+          "opus_MaCoCu/v2",
+          "opus_XLEnt/v1.2",
+          "opus_SUMMA/v1",
+          "opus_OpenSubtitles/v2018",
+          "opus_wikimedia/v20230407",
+          "opus_WikiMatrix/v1",
+          "opus_ELRC-5214-A_Lexicon_Named/v1",
+          "opus_ELRC-5183-SciPar_Ukraine/v1",
+          "opus_KDE4/v2",
+          "opus_QED/v2.0a",
+          "opus_TED2020/v1",
+          "opus_Tatoeba/v2023-04-12",
+          "opus_ELRC-5179-acts_Ukrainian/v1",
+          "opus_ELRC-5180-Official_Parliament_/v1",
+          "opus_NeuLab-TedTalks/v1",
+          "opus_ELRC-5181-Official_Parliament_/v1",
+          "opus_ELRC-5174-French_Polish_Ukrain/v1",
+          "opus_bible-uedin/v1",
+          "opus_ELRC-5182-Official_Parliament_/v1",
+          "opus_ELRC-3043-wikipedia_health/v1",
+          "opus_ELRC-wikipedia_health/v1",
+          "opus_ELRC_2922/v1",
+          "opus_EUbookshop/v2",
+          "opus_TildeMODEL/v2018",
+          "opus_ELRC-5217-Ukrainian_Legal_MT/v1",
+          "opus_tldr-pages/v2023-08-29",
+          "mtdata_Tilde-worldbank-1-eng-ukr"
+        ]
+      },
+      "experiment": {
+        "best-model": "chrf",
+        "bicleaner": {
+          "dataset-thresholds": {},
+          "default-threshold": 0.5
+        },
+        "mono-max-sentences-src": 500000000,
+        "mono-max-sentences-trg": 200000000,
+        "name": "spring-2024",
+        "opuscleaner-mode": "defaults",
+        "pretrained-models": {},
+        "spm-sample-size": 10000000,
+        "spm-vocab-size": 32000,
+        "src": "en",
+        "teacher-ensemble": 2,
+        "teacher-mode": "two-stage",
+        "trg": "uk",
+        "use-opuscleaner": "true"
+      },
+      "marian-args": {
+        "decoding-backward": {
+          "beam-size": "12",
+          "mini-batch-words": "2000"
+        },
+        "decoding-teacher": {
+          "mini-batch-words": "4000",
+          "precision": "float16"
+        },
+        "training-backward": {
+          "early-stopping": "5"
+        },
+        "training-student": {
+          "early-stopping": "20",
+          "mini-batch": "2000"
+        },
+        "training-student-finetuned": {
+          "early-stopping": "20"
+        },
+        "training-teacher": {
+          "early-stopping": "20"
+        }
+      },
+      "target-stage": "all",
+      "taskcluster": {
+        "split-chunks": 20,
+        "worker-classes": {
+          "alignments-backtranslated": "gcp-standard",
+          "alignments-original": "gcp-standard",
+          "alignments-priors2": "gcp-standard",
+          "alignments-student": "gcp-standard",
+          "default": "gcp-spot",
+          "shortlist": "gcp-standard"
+        }
+      },
+      "wandb-publication": true
+    },
+    "task_group_id": "J4QWVDPJQdOGbUB0xfzj1Q",
+    "flores": {
+      "chrf": 58.52,
+      "bleu": 29.47,
+      "comet": 86.44
+    },
+    "artifact_folder": "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_J4QWVDPJQdOGbUB0xfzj1Q/student/",
+    "artifact_urls": [
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_J4QWVDPJQdOGbUB0xfzj1Q/student/config.opustrainer.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_J4QWVDPJQdOGbUB0xfzj1Q/student/config.opustrainer.yml.state",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_J4QWVDPJQdOGbUB0xfzj1Q/student/devset.out",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_J4QWVDPJQdOGbUB0xfzj1Q/student/final.model.npz.best-chrf.npz",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_J4QWVDPJQdOGbUB0xfzj1Q/student/final.model.npz.best-chrf.npz.decoder.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_J4QWVDPJQdOGbUB0xfzj1Q/student/model.npz.progress.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_J4QWVDPJQdOGbUB0xfzj1Q/student/model.npz.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_J4QWVDPJQdOGbUB0xfzj1Q/student/vocab.spm"
+    ]
+  },
+  "student_finetuned": {
+    "date": "2024-08-17T12:05:20.211000",
+    "config": {
+      "datasets": {
+        "devtest": [
+          "flores_aug-mix_dev",
+          "mtdata_aug-mix_Neulab-tedtalks_dev-1-eng-ukr"
+        ],
+        "mono-src": [
+          "news-crawl_news.2007",
+          "news-crawl_news.2008",
+          "news-crawl_news.2009",
+          "news-crawl_news.2010",
+          "news-crawl_news.2011",
+          "news-crawl_news.2012",
+          "news-crawl_news.2013",
+          "news-crawl_news.2014",
+          "news-crawl_news.2015",
+          "news-crawl_news.2016",
+          "news-crawl_news.2017",
+          "news-crawl_news.2018",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023"
+        ],
+        "mono-trg": [
+          "news-crawl_news.2008",
+          "news-crawl_news.2009",
+          "news-crawl_news.2010",
+          "news-crawl_news.2011",
+          "news-crawl_news.2012",
+          "news-crawl_news.2013",
+          "news-crawl_news.2014",
+          "news-crawl_news.2015",
+          "news-crawl_news.2016",
+          "news-crawl_news.2018",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023"
+        ],
+        "test": [
+          "flores_devtest",
+          "flores_aug-mix_devtest",
+          "flores_aug-title_devtest",
+          "flores_aug-upper_devtest",
+          "flores_aug-typos_devtest",
+          "flores_aug-noise_devtest",
+          "flores_aug-inline-noise_devtest",
+          "mtdata_Neulab-tedtalks_test-1-eng-ukr"
+        ],
+        "train": [
+          "opus_NLLB/v1",
+          "opus_ParaCrawl/v9",
+          "opus_CCAligned/v1",
+          "opus_MaCoCu/v2",
+          "opus_XLEnt/v1.2",
+          "opus_SUMMA/v1",
+          "opus_OpenSubtitles/v2018",
+          "opus_wikimedia/v20230407",
+          "opus_WikiMatrix/v1",
+          "opus_ELRC-5214-A_Lexicon_Named/v1",
+          "opus_ELRC-5183-SciPar_Ukraine/v1",
+          "opus_KDE4/v2",
+          "opus_QED/v2.0a",
+          "opus_TED2020/v1",
+          "opus_Tatoeba/v2023-04-12",
+          "opus_ELRC-5179-acts_Ukrainian/v1",
+          "opus_ELRC-5180-Official_Parliament_/v1",
+          "opus_NeuLab-TedTalks/v1",
+          "opus_ELRC-5181-Official_Parliament_/v1",
+          "opus_ELRC-5174-French_Polish_Ukrain/v1",
+          "opus_bible-uedin/v1",
+          "opus_ELRC-5182-Official_Parliament_/v1",
+          "opus_ELRC-3043-wikipedia_health/v1",
+          "opus_ELRC-wikipedia_health/v1",
+          "opus_ELRC_2922/v1",
+          "opus_EUbookshop/v2",
+          "opus_TildeMODEL/v2018",
+          "opus_ELRC-5217-Ukrainian_Legal_MT/v1",
+          "opus_tldr-pages/v2023-08-29",
+          "mtdata_Tilde-worldbank-1-eng-ukr"
+        ]
+      },
+      "experiment": {
+        "best-model": "chrf",
+        "bicleaner": {
+          "dataset-thresholds": {},
+          "default-threshold": 0.5
+        },
+        "mono-max-sentences-src": 500000000,
+        "mono-max-sentences-trg": 200000000,
+        "name": "spring-2024",
+        "opuscleaner-mode": "defaults",
+        "pretrained-models": {},
+        "spm-sample-size": 10000000,
+        "spm-vocab-size": 32000,
+        "src": "en",
+        "teacher-ensemble": 2,
+        "teacher-mode": "two-stage",
+        "trg": "uk",
+        "use-opuscleaner": "true"
+      },
+      "marian-args": {
+        "decoding-backward": {
+          "beam-size": "12",
+          "mini-batch-words": "2000"
+        },
+        "decoding-teacher": {
+          "mini-batch-words": "4000",
+          "precision": "float16"
+        },
+        "training-backward": {
+          "early-stopping": "5"
+        },
+        "training-student": {
+          "early-stopping": "20",
+          "mini-batch": "2000"
+        },
+        "training-student-finetuned": {
+          "early-stopping": "20"
+        },
+        "training-teacher": {
+          "early-stopping": "20"
+        }
+      },
+      "target-stage": "all",
+      "taskcluster": {
+        "split-chunks": 20,
+        "worker-classes": {
+          "alignments-backtranslated": "gcp-standard",
+          "alignments-original": "gcp-standard",
+          "alignments-priors2": "gcp-standard",
+          "alignments-student": "gcp-standard",
+          "default": "gcp-spot",
+          "shortlist": "gcp-standard"
+        }
+      },
+      "wandb-publication": true
+    },
+    "task_group_id": "J4QWVDPJQdOGbUB0xfzj1Q",
+    "flores": {
+      "chrf": 58.54,
+      "bleu": 29.53,
+      "comet": 86.56
+    },
+    "artifact_folder": "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_J4QWVDPJQdOGbUB0xfzj1Q/student-finetuned/",
+    "artifact_urls": [
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_J4QWVDPJQdOGbUB0xfzj1Q/student-finetuned/config.opustrainer.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_J4QWVDPJQdOGbUB0xfzj1Q/student-finetuned/config.opustrainer.yml.state",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_J4QWVDPJQdOGbUB0xfzj1Q/student-finetuned/devset.out",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_J4QWVDPJQdOGbUB0xfzj1Q/student-finetuned/final.model.npz.best-chrf.npz",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_J4QWVDPJQdOGbUB0xfzj1Q/student-finetuned/final.model.npz.best-chrf.npz.decoder.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_J4QWVDPJQdOGbUB0xfzj1Q/student-finetuned/model.npz.progress.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_J4QWVDPJQdOGbUB0xfzj1Q/student-finetuned/model.npz.yml",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_J4QWVDPJQdOGbUB0xfzj1Q/student-finetuned/vocab.spm"
+    ]
+  },
+  "student_quantized": {
+    "date": "2024-08-17T12:10:08.059000",
+    "config": {
+      "datasets": {
+        "devtest": [
+          "flores_aug-mix_dev",
+          "mtdata_aug-mix_Neulab-tedtalks_dev-1-eng-ukr"
+        ],
+        "mono-src": [
+          "news-crawl_news.2007",
+          "news-crawl_news.2008",
+          "news-crawl_news.2009",
+          "news-crawl_news.2010",
+          "news-crawl_news.2011",
+          "news-crawl_news.2012",
+          "news-crawl_news.2013",
+          "news-crawl_news.2014",
+          "news-crawl_news.2015",
+          "news-crawl_news.2016",
+          "news-crawl_news.2017",
+          "news-crawl_news.2018",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023"
+        ],
+        "mono-trg": [
+          "news-crawl_news.2008",
+          "news-crawl_news.2009",
+          "news-crawl_news.2010",
+          "news-crawl_news.2011",
+          "news-crawl_news.2012",
+          "news-crawl_news.2013",
+          "news-crawl_news.2014",
+          "news-crawl_news.2015",
+          "news-crawl_news.2016",
+          "news-crawl_news.2018",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023"
+        ],
+        "test": [
+          "flores_devtest",
+          "flores_aug-mix_devtest",
+          "flores_aug-title_devtest",
+          "flores_aug-upper_devtest",
+          "flores_aug-typos_devtest",
+          "flores_aug-noise_devtest",
+          "flores_aug-inline-noise_devtest",
+          "mtdata_Neulab-tedtalks_test-1-eng-ukr"
+        ],
+        "train": [
+          "opus_NLLB/v1",
+          "opus_ParaCrawl/v9",
+          "opus_CCAligned/v1",
+          "opus_MaCoCu/v2",
+          "opus_XLEnt/v1.2",
+          "opus_SUMMA/v1",
+          "opus_OpenSubtitles/v2018",
+          "opus_wikimedia/v20230407",
+          "opus_WikiMatrix/v1",
+          "opus_ELRC-5214-A_Lexicon_Named/v1",
+          "opus_ELRC-5183-SciPar_Ukraine/v1",
+          "opus_KDE4/v2",
+          "opus_QED/v2.0a",
+          "opus_TED2020/v1",
+          "opus_Tatoeba/v2023-04-12",
+          "opus_ELRC-5179-acts_Ukrainian/v1",
+          "opus_ELRC-5180-Official_Parliament_/v1",
+          "opus_NeuLab-TedTalks/v1",
+          "opus_ELRC-5181-Official_Parliament_/v1",
+          "opus_ELRC-5174-French_Polish_Ukrain/v1",
+          "opus_bible-uedin/v1",
+          "opus_ELRC-5182-Official_Parliament_/v1",
+          "opus_ELRC-3043-wikipedia_health/v1",
+          "opus_ELRC-wikipedia_health/v1",
+          "opus_ELRC_2922/v1",
+          "opus_EUbookshop/v2",
+          "opus_TildeMODEL/v2018",
+          "opus_ELRC-5217-Ukrainian_Legal_MT/v1",
+          "opus_tldr-pages/v2023-08-29",
+          "mtdata_Tilde-worldbank-1-eng-ukr"
+        ]
+      },
+      "experiment": {
+        "best-model": "chrf",
+        "bicleaner": {
+          "dataset-thresholds": {},
+          "default-threshold": 0.5
+        },
+        "mono-max-sentences-src": 500000000,
+        "mono-max-sentences-trg": 200000000,
+        "name": "spring-2024",
+        "opuscleaner-mode": "defaults",
+        "pretrained-models": {},
+        "spm-sample-size": 10000000,
+        "spm-vocab-size": 32000,
+        "src": "en",
+        "teacher-ensemble": 2,
+        "teacher-mode": "two-stage",
+        "trg": "uk",
+        "use-opuscleaner": "true"
+      },
+      "marian-args": {
+        "decoding-backward": {
+          "beam-size": "12",
+          "mini-batch-words": "2000"
+        },
+        "decoding-teacher": {
+          "mini-batch-words": "4000",
+          "precision": "float16"
+        },
+        "training-backward": {
+          "early-stopping": "5"
+        },
+        "training-student": {
+          "early-stopping": "20",
+          "mini-batch": "2000"
+        },
+        "training-student-finetuned": {
+          "early-stopping": "20"
+        },
+        "training-teacher": {
+          "early-stopping": "20"
+        }
+      },
+      "target-stage": "all",
+      "taskcluster": {
+        "split-chunks": 20,
+        "worker-classes": {
+          "alignments-backtranslated": "gcp-standard",
+          "alignments-original": "gcp-standard",
+          "alignments-priors2": "gcp-standard",
+          "alignments-student": "gcp-standard",
+          "default": "gcp-spot",
+          "shortlist": "gcp-standard"
+        }
+      },
+      "wandb-publication": true
+    },
+    "task_group_id": "J4QWVDPJQdOGbUB0xfzj1Q",
+    "flores": {
+      "chrf": 58.39,
+      "bleu": 29.46,
+      "comet": 86.31
+    },
+    "artifact_folder": "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_J4QWVDPJQdOGbUB0xfzj1Q/quantized/",
+    "artifact_urls": [
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_J4QWVDPJQdOGbUB0xfzj1Q/quantized/model.alphas.npz",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_J4QWVDPJQdOGbUB0xfzj1Q/quantized/model.intgemm.alphas.bin",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_J4QWVDPJQdOGbUB0xfzj1Q/quantized/output.uk",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_J4QWVDPJQdOGbUB0xfzj1Q/quantized/quantmults",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_J4QWVDPJQdOGbUB0xfzj1Q/quantized/vocab.spm"
+    ]
+  },
+  "student_exported": {
+    "date": "2024-08-17T12:10:59.715000",
+    "config": {
+      "datasets": {
+        "devtest": [
+          "flores_aug-mix_dev",
+          "mtdata_aug-mix_Neulab-tedtalks_dev-1-eng-ukr"
+        ],
+        "mono-src": [
+          "news-crawl_news.2007",
+          "news-crawl_news.2008",
+          "news-crawl_news.2009",
+          "news-crawl_news.2010",
+          "news-crawl_news.2011",
+          "news-crawl_news.2012",
+          "news-crawl_news.2013",
+          "news-crawl_news.2014",
+          "news-crawl_news.2015",
+          "news-crawl_news.2016",
+          "news-crawl_news.2017",
+          "news-crawl_news.2018",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023"
+        ],
+        "mono-trg": [
+          "news-crawl_news.2008",
+          "news-crawl_news.2009",
+          "news-crawl_news.2010",
+          "news-crawl_news.2011",
+          "news-crawl_news.2012",
+          "news-crawl_news.2013",
+          "news-crawl_news.2014",
+          "news-crawl_news.2015",
+          "news-crawl_news.2016",
+          "news-crawl_news.2018",
+          "news-crawl_news.2019",
+          "news-crawl_news.2020",
+          "news-crawl_news.2021",
+          "news-crawl_news.2022",
+          "news-crawl_news.2023"
+        ],
+        "test": [
+          "flores_devtest",
+          "flores_aug-mix_devtest",
+          "flores_aug-title_devtest",
+          "flores_aug-upper_devtest",
+          "flores_aug-typos_devtest",
+          "flores_aug-noise_devtest",
+          "flores_aug-inline-noise_devtest",
+          "mtdata_Neulab-tedtalks_test-1-eng-ukr"
+        ],
+        "train": [
+          "opus_NLLB/v1",
+          "opus_ParaCrawl/v9",
+          "opus_CCAligned/v1",
+          "opus_MaCoCu/v2",
+          "opus_XLEnt/v1.2",
+          "opus_SUMMA/v1",
+          "opus_OpenSubtitles/v2018",
+          "opus_wikimedia/v20230407",
+          "opus_WikiMatrix/v1",
+          "opus_ELRC-5214-A_Lexicon_Named/v1",
+          "opus_ELRC-5183-SciPar_Ukraine/v1",
+          "opus_KDE4/v2",
+          "opus_QED/v2.0a",
+          "opus_TED2020/v1",
+          "opus_Tatoeba/v2023-04-12",
+          "opus_ELRC-5179-acts_Ukrainian/v1",
+          "opus_ELRC-5180-Official_Parliament_/v1",
+          "opus_NeuLab-TedTalks/v1",
+          "opus_ELRC-5181-Official_Parliament_/v1",
+          "opus_ELRC-5174-French_Polish_Ukrain/v1",
+          "opus_bible-uedin/v1",
+          "opus_ELRC-5182-Official_Parliament_/v1",
+          "opus_ELRC-3043-wikipedia_health/v1",
+          "opus_ELRC-wikipedia_health/v1",
+          "opus_ELRC_2922/v1",
+          "opus_EUbookshop/v2",
+          "opus_TildeMODEL/v2018",
+          "opus_ELRC-5217-Ukrainian_Legal_MT/v1",
+          "opus_tldr-pages/v2023-08-29",
+          "mtdata_Tilde-worldbank-1-eng-ukr"
+        ]
+      },
+      "experiment": {
+        "best-model": "chrf",
+        "bicleaner": {
+          "dataset-thresholds": {},
+          "default-threshold": 0.5
+        },
+        "mono-max-sentences-src": 500000000,
+        "mono-max-sentences-trg": 200000000,
+        "name": "spring-2024",
+        "opuscleaner-mode": "defaults",
+        "pretrained-models": {},
+        "spm-sample-size": 10000000,
+        "spm-vocab-size": 32000,
+        "src": "en",
+        "teacher-ensemble": 2,
+        "teacher-mode": "two-stage",
+        "trg": "uk",
+        "use-opuscleaner": "true"
+      },
+      "marian-args": {
+        "decoding-backward": {
+          "beam-size": "12",
+          "mini-batch-words": "2000"
+        },
+        "decoding-teacher": {
+          "mini-batch-words": "4000",
+          "precision": "float16"
+        },
+        "training-backward": {
+          "early-stopping": "5"
+        },
+        "training-student": {
+          "early-stopping": "20",
+          "mini-batch": "2000"
+        },
+        "training-student-finetuned": {
+          "early-stopping": "20"
+        },
+        "training-teacher": {
+          "early-stopping": "20"
+        }
+      },
+      "target-stage": "all",
+      "taskcluster": {
+        "split-chunks": 20,
+        "worker-classes": {
+          "alignments-backtranslated": "gcp-standard",
+          "alignments-original": "gcp-standard",
+          "alignments-priors2": "gcp-standard",
+          "alignments-student": "gcp-standard",
+          "default": "gcp-spot",
+          "shortlist": "gcp-standard"
+        }
+      },
+      "wandb-publication": true
+    },
+    "task_group_id": "J4QWVDPJQdOGbUB0xfzj1Q",
+    "flores": {
+      "chrf": 58.39,
+      "bleu": 29.46,
+      "comet": 86.31
+    },
+    "artifact_folder": "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_J4QWVDPJQdOGbUB0xfzj1Q/exported/",
+    "artifact_urls": [
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_J4QWVDPJQdOGbUB0xfzj1Q/exported/lex.50.50.enuk.s2t.bin.gz",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_J4QWVDPJQdOGbUB0xfzj1Q/exported/model.enuk.intgemm.alphas.bin.gz",
+      "https://storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/models/en-uk/spring-2024_J4QWVDPJQdOGbUB0xfzj1Q/exported/vocab.enuk.spm.gz"
+    ]
+  }
+}

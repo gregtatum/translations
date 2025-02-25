@@ -1,0 +1,41 @@
+{
+  "name": "fix_opt_delay",
+  "langpair": "lt-en",
+  "source_lang": "lt",
+  "target_lang": "en",
+  "task_group_ids": [
+    "SRJSAeb1S0iDfvTapr-bvA",
+    "duPWN5eVQ3uFV7GKdyTVnQ"
+  ],
+  "date_started": null,
+  "comet_flores_comparison": {
+    "nllb": 0.6658,
+    "bergamot": 0.8393,
+    "google": 0.8715,
+    "microsoft": 0.8583,
+    "opusmt": 0,
+    "argos": 0
+  },
+  "bleu_flores_comparison": {
+    "microsoft": 31.2,
+    "bergamot": 29.4,
+    "google": 37.9,
+    "nllb": 16.7,
+    "opusmt": 0,
+    "argos": 0
+  },
+  "parallel_corpus_aligned": null,
+  "backtranslations_corpus_aligned": null,
+  "distillation_corpus_aligned": null,
+  "parallel_corpus": null,
+  "backtranslations_corpus": null,
+  "distillation_corpus": null,
+  "backwards": null,
+  "teacher_1": null,
+  "teacher_2": null,
+  "teacher_ensemble_flores": null,
+  "student": null,
+  "student_finetuned": null,
+  "student_quantized": null,
+  "student_exported": null
+}
