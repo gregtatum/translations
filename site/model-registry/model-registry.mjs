@@ -19,6 +19,9 @@ import {
  * } from '../@types/training-run.d.ts'
  */
 
+const BUCKET_NAME = "moz-fx-translations-data--303e-prod-translations-data";
+const STORAGE_URL = `https://storage.googleapis.com/${BUCKET_NAME}`;
+
 /**
  * The elements for the page get selected here in a type-friendly manner. If the elements
  * aren't found, then there is a runtime error.
@@ -714,10 +717,12 @@ async function fetchJSON(url) {
  * @returns {Promise<TrainingRun[]>}
  */
 async function loadTrainingRuns() {
-  const trainingRunListing = await fetchJSON("training-runs-listing.json");
+  const trainingRunListing = await fetchJSON(
+    `${STORAGE_URL}/models/listing.json`
+  );
   const promises = trainingRunListing.map(async (filename) => {
     /** @type {TrainingRun} */
-    const trainingRun = await fetchJSON(`training-runs/${filename}`);
+    const trainingRun = await fetchJSON(`${STORAGE_URL}/${filename}`);
     try {
       const row = new TrainingRunRow(trainingRun);
       row.build();

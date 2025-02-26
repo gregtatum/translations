@@ -30,7 +30,7 @@ Usage:
    python utils/model_registry.py -- --clear_cache
 
  - Completely rebuild everything
-   python script.py -- --clear_cache --ovewrite_training_runs
+   python script.py -- --clear_cache --overwrite_runs
 """
 
 import argparse
@@ -56,16 +56,19 @@ warnings.filterwarnings("ignore", category=UserWarning, module="google.auth._def
 PROJECT_NAME = "translations-data-prod"
 BUCKET_NAME = "moz-fx-translations-data--303e-prod-translations-data"
 ROOT_DIR = Path(__file__).parent.parent
-MODEL_REGISTRY_SITE = ROOT_DIR / "site/model-registry"
-TRAINING_RUNS_FOLDER = MODEL_REGISTRY_SITE / "training-runs"
-CACHE_FILE = ROOT_DIR / "data/model_registry.pickle"
+MODEL_REGISTRY_DIR = ROOT_DIR / "data/model-registry"
+TRAINING_RUNS_DIR = MODEL_REGISTRY_DIR / "training-runs"
+CACHE_FILE = MODEL_REGISTRY_DIR / "cache.pickle"
+
+MODEL_REGISTRY_DIR.mkdir(exist_ok=True)
 
 os.environ["TASKCLUSTER_ROOT_URL"] = "https://firefox-ci-tc.services.mozilla.com"
 
+client = storage.Client(project=PROJECT_NAME)
+bucket = client.get_bucket(BUCKET_NAME)
 
-def get_gcs_subdirectories(
-    bucket: storage.Bucket, prefix: str, cache: Optional[shelve.Shelf]
-) -> set[str]:
+
+def get_gcs_subdirectories(prefix: str, cache: Optional[shelve.Shelf]) -> set[str]:
     """
     Get the subdirectories of the a given prefix for a Google Cloud Storage bucket.
     """
@@ -377,6 +380,25 @@ class TrainingRun:
             student_exported=None,
         )
 
+    def get_json_cache_path(self) -> Path:
+        """
+        The JSON gets a local cache, which is useful for viewing and debugging the
+        generate artifacts.
+        """
+        return TRAINING_RUNS_DIR / f"{self.name}-{self.langpair}.json"
+
+    def get_json_gcs_path(self):
+        """
+        The path the JSON in the GCS bucket, used with the bucket.blob interface.
+        """
+        return f"models/{self.langpair}/{self.name}.json"
+
+    def get_json_gcs_url(self):
+        """
+        The full gs:// url path.
+        """
+        return f"gs://{BUCKET_NAME}/{self.get_json_gcs_path()}"
+
 
 class JsonEncoder(json.JSONEncoder):
     """Converts a dataclass into a JSON serializable struct"""
@@ -403,24 +425,21 @@ def get_training_runs_by_langpair(
     gs://moz-fx-translations-data--303e-prod-translations-data/models/en-cs/spring-2024_bQQme71PS4eZRDl3NM-kgA/
     gs://moz-fx-translations-data--303e-prod-translations-data/models/en-cs/spring-2024_bbjDBFoDTNGSUo2if3ET_A/
     """
-    client = storage.Client(project=PROJECT_NAME)
-    bucket = client.get_bucket(BUCKET_NAME)
 
     # e.g. ['en-fi', 'en-da', 'en-hu', 'en-sr', ...]
     langpairs = [
-        model_prefix.split("/")[1]
-        for model_prefix in get_gcs_subdirectories(bucket, "models/", cache)
+        model_prefix.split("/")[1] for model_prefix in get_gcs_subdirectories("models/", cache)
     ]
 
-    training_runs_by_langpair: dict[str, list[TrainingRun]] = {}
+    runs_by_langpair: dict[str, list[TrainingRun]] = {}
     training_runs_by_name: dict[str, TrainingRun] = {}
 
     for langpair in langpairs:
         training_runs: list[TrainingRun] = []
-        training_runs_by_langpair[langpair] = training_runs
+        runs_by_langpair[langpair] = training_runs
 
         # e.g { "models/en-lv/spring-2024_J3av8ewURni5QQqP2u3QRg/", ... }
-        for task_group_prefix in get_gcs_subdirectories(bucket, f"models/{langpair}/", cache):
+        for task_group_prefix in get_gcs_subdirectories(f"models/{langpair}/", cache):
             # e.g. "spring-2024_J3av8ewURni5QQqP2u3QRg"
             name_task_group_tuple = task_group_prefix.split("/")[2]
 
@@ -444,18 +463,18 @@ def get_training_runs_by_langpair(
                 training_runs.append(training_task_group)
                 training_runs_by_name[key] = training_task_group
 
-    return training_runs_by_langpair
+    return runs_by_langpair
 
 
-def print_training_runs_tree(training_runs_by_langpair: dict[str, list[TrainingRun]]):
+def print_training_runs_tree(runs_by_training_pair: dict[str, list[TrainingRun]]):
     """
     This is a debugging function that prints the training runs as a tree. This function
     was AI generated, but human reviewed.
     """
-    last_langpair_index = len(training_runs_by_langpair) - 1
+    last_langpair_index = len(runs_by_training_pair) - 1
 
     print("\nTraining Runs")
-    for langpair_index, (langpair, training_runs) in enumerate(training_runs_by_langpair.items()):
+    for langpair_index, (langpair, training_runs) in enumerate(runs_by_training_pair.items()):
         prefix_langpair = "└──" if langpair_index == last_langpair_index else "├──"
         print(f"{prefix_langpair} {langpair}")
 
@@ -490,19 +509,22 @@ Task = dict[str, dict]
 
 
 def iterate_training_runs(
-    training_runs_by_langpair: dict[str, list[TrainingRun]], cache: Optional[shelve.Shelf]
+    runs_by_training_pair: dict[str, list[TrainingRun]],
+    upload: bool,
+    cache: Optional[shelve.Shelf],
 ):
     """
     Reduce the complexity required for iterating over the training runs and their tasks.
     """
-    for training_runs in training_runs_by_langpair.values():
+    for training_runs in runs_by_training_pair.values():
         for training_run in training_runs:
-            yield training_run, get_tasks_in_all_runs(training_run, cache)
+            yield training_run, get_tasks_in_all_runs(training_run, upload, cache)
 
 
 def build_json_for_training_runs(
-    training_runs_by_langpair: dict[str, list[TrainingRun]],
-    ovewrite_training_runs: bool,
+    runs_by_training_pair: dict[str, list[TrainingRun]],
+    overwrite_runs: bool,
+    upload: bool,
     cache: Optional[shelve.Shelf],
 ):
     """
@@ -520,35 +542,51 @@ def build_json_for_training_runs(
     bleu_results_by_langpair: EvaluationJson = fetch_json(
         "https://raw.githubusercontent.com/mozilla/firefox-translations-models/main/evaluation/bleu-results.json"
     )
-    # chrF is not computed
+    # chrF is not computed in the evaluation at this time.
 
-    client = storage.Client(project=PROJECT_NAME)
-    bucket = client.get_bucket(BUCKET_NAME)
+    for training_run, tasks in iterate_training_runs(runs_by_training_pair, upload, cache):
+        blob = bucket.blob(training_run.get_json_gcs_path())
 
-    for training_run, tasks in iterate_training_runs(training_runs_by_langpair, cache):
-        training_run_json = (
-            TRAINING_RUNS_FOLDER / f"{training_run.name}-{training_run.langpair}.json"
-        )
-        if ovewrite_training_runs is False and training_run_json.exists():
-            print("Already processed", training_run.name, training_run.langpair)
-            continue
+        if not overwrite_runs:
+            if upload:
+                if blob.exists():
+                    print("Already uploaded", training_run.name, training_run.langpair)
+                    continue
+            else:
+                if training_run.get_json_cache_path().exists():
+                    print("Already created", training_run.name, training_run.langpair)
+                    continue
+                if blob.exists():
+                    blob.download_to_filename(training_run.get_json_cache_path())
+                    print("Downloading from GCS", training_run.name, training_run.langpair)
+                    continue
 
         print("Processing", training_run.name, training_run.langpair)
-        collect_models(tasks, training_run, bucket)
+        collect_models(tasks, training_run)
         collect_flores_comparisons(
             training_run, comet_results_by_langpair, bleu_results_by_langpair
         )
         collect_corpora(training_run, tasks)
 
-        with open(training_run_json, "w") as file:
-            json.dump(training_run, file, cls=JsonEncoder, indent=2)
+        json_text = json.dumps(training_run, cls=JsonEncoder, indent=2)
+        if upload:
+            blob.upload_from_string(json_text)
+        else:
+            with training_run.get_json_cache_path().open() as file:
+                file.write(json_text)
 
 
-def get_tasks_in_all_runs(training_run: TrainingRun, cache: Optional[shelve.Shelf]) -> list[Task]:
+def get_tasks_in_all_runs(
+    training_run: TrainingRun, upload: bool, cache: Optional[shelve.Shelf]
+) -> list[Task]:
     """
     Get a flat list of the tasks in every TaskGroup of the training run. These are
-    arbitrarily sorted. If picking a task from it use find_latest_task and
+    tasks are arbitrarily sorted. If picking a task from it use find_latest_task and
     find_earliest_task.
+
+    Note that the tasks will be pulled from GCS first, and TaskCluster second. If the
+    --upload parameter is set, the tasks will be saved to GCS storage if they are not
+    present.
     """
     queue = taskcluster.Queue(options={"rootUrl": "https://firefox-ci-tc.services.mozilla.com"})
 
@@ -557,32 +595,51 @@ def get_tasks_in_all_runs(training_run: TrainingRun, cache: Optional[shelve.Shel
         cache_key = f"list_task_group-{task_group_id}"
         tasks = None
         prefix = "Fetched"
+        # e.g.
+        # "models/en-sk/spring-2024_MRw1u6KIRgO056Isf0GKpA/tasks.json"
+        tasks_gcs_path = (
+            f"models/{training_run.langpair}/{training_run.name}_{task_group_id}/tasks.json"
+        )
+        tasks_blob = bucket.blob(tasks_gcs_path)
+
         if cache is not None:
             tasks = cache.get(cache_key, None)
             if tasks is not None:
                 prefix = "Using cached"
+                if upload and not tasks_blob.exists():
+                    print("Uploading tasks (from cache) to GCS:", tasks_gcs_path)
+                    tasks_blob.upload_from_string(json.dumps(tasks, indent=2))
 
         if tasks is None:
             tasks = []
-            try:
-                list_task_group: Any = queue.listTaskGroup(task_group_id)
-                tasks.extend(list_task_group["tasks"])
-
-                # Do a bounded lookup of more tasks. 10 should be a reasonable limit.
-                for _ in range(10):
-                    if not list_task_group.get("continuationToken", None):
-                        break
-                    list_task_group: Any = queue.listTaskGroup(
-                        task_group_id,
-                        continuationToken=list_task_group["continuationToken"],
-                    )
+            if tasks_blob.exists():
+                print(f"Downloading tasks: {tasks_gcs_path}")
+                tasks = json.loads(tasks_blob.download_as_string())
+                assert isinstance(tasks, list), "Expected the tasks to be a list"
+            else:
+                try:
+                    list_task_group: Any = queue.listTaskGroup(task_group_id)
                     tasks.extend(list_task_group["tasks"])
-            except taskcluster.exceptions.TaskclusterRestFailure as error:
-                # 404 errors indicate expired task groups.
-                if error.status_code == 404:
-                    print("Task group expired:", task_group_id)
-                else:
-                    raise error
+
+                    # Do a bounded lookup of more tasks. 10 should be a reasonable limit.
+                    for _ in range(10):
+                        if not list_task_group.get("continuationToken", None):
+                            break
+                        list_task_group: Any = queue.listTaskGroup(
+                            task_group_id,
+                            continuationToken=list_task_group["continuationToken"],
+                        )
+                        tasks.extend(list_task_group["tasks"])
+                except taskcluster.exceptions.TaskclusterRestFailure as error:
+                    # 404 errors indicate expired task groups.
+                    if error.status_code == 404:
+                        print("Task group expired:", task_group_id)
+                    else:
+                        raise error
+
+                if upload:
+                    print("Uploading tasks to GCS:", tasks_gcs_path)
+                    tasks_blob.upload_from_string(json.dumps(tasks, indent=2))
 
         if cache is not None:
             cache[cache_key] = tasks
@@ -615,7 +672,7 @@ def collect_flores_comparisons(
         training_run.bleu_flores_comparison = bleu_results["flores-dev"]
 
 
-def collect_models(tasks: list[Task], training_run: TrainingRun, bucket: storage.Bucket):
+def collect_models(tasks: list[Task], training_run: TrainingRun):
     """
     Lookup models from Google Cloud Storage.
     """
@@ -624,7 +681,6 @@ def collect_models(tasks: list[Task], training_run: TrainingRun, bucket: storage
         training_run.backwards = get_model_without_evals(
             backwards,
             training_run,
-            bucket,
             model_name="backward",
         )
 
@@ -633,7 +689,6 @@ def collect_models(tasks: list[Task], training_run: TrainingRun, bucket: storage
         training_run.teacher_1 = get_model(
             train_teacher_1,
             training_run,
-            bucket,
             tasks,
             tc_model_name="teacher",
             gcs_model_name="teacher0",
@@ -645,7 +700,6 @@ def collect_models(tasks: list[Task], training_run: TrainingRun, bucket: storage
         training_run.teacher_2 = get_model(
             train_teacher_2,
             training_run,
-            bucket,
             tasks,
             tc_model_name="teacher",
             gcs_model_name="teacher1",
@@ -657,7 +711,6 @@ def collect_models(tasks: list[Task], training_run: TrainingRun, bucket: storage
         training_run.student_finetuned = get_model(
             student_finetuned,
             training_run,
-            bucket,
             tasks,
             tc_model_name="finetuned-student",
             gcs_model_name="student-finetuned",
@@ -669,7 +722,6 @@ def collect_models(tasks: list[Task], training_run: TrainingRun, bucket: storage
         training_run.student = get_model(
             train_student_task,
             training_run,
-            bucket,
             tasks,
             tc_model_name="student",
             gcs_model_name="student",
@@ -680,7 +732,6 @@ def collect_models(tasks: list[Task], training_run: TrainingRun, bucket: storage
         training_run.student_quantized = get_model(
             student_quantize_task,
             training_run,
-            bucket,
             tasks,
             tc_model_name="quantized",
             gcs_model_name="quantized",
@@ -691,7 +742,6 @@ def collect_models(tasks: list[Task], training_run: TrainingRun, bucket: storage
         training_run.student_exported = get_model(
             student_export_task,
             training_run,
-            bucket,
             tasks,
             tc_model_name="export",
             gcs_model_name="exported",
@@ -740,7 +790,6 @@ def collect_corpora(training_run: TrainingRun, tasks: list[Task]):
 def get_model(
     task: dict,
     training_run: TrainingRun,
-    bucket: storage.Bucket,
     tasks_in_all_runs: list[dict],
     # The model name in Taskcluster tasks.
     tc_model_name: str,
@@ -764,7 +813,6 @@ def get_model(
         task_group_id,
         gcs_eval_name,
         tc_model_name,
-        bucket,
     )
     if not flores_blob:
         # The eval wasn't in the same task group as the training.
@@ -785,7 +833,6 @@ def get_model(
                 eval_task["status"]["taskGroupId"],
                 gcs_eval_name,
                 tc_model_name,
-                bucket,
             )
 
     if flores_blob:
@@ -826,7 +873,6 @@ def get_model(
 def get_model_without_evals(
     task: dict,
     training_run: TrainingRun,
-    bucket: storage.Bucket,
     model_name: str,
 ):
     """
@@ -869,7 +915,6 @@ def get_flores_eval_blob(
     task_group_id: str,
     gcs_eval_name: str,
     tc_model_name: str,
-    bucket: storage.Bucket,
 ) -> Optional[storage.Blob]:
     """
     Attempt to look up the flores eval blob from GCS.
@@ -985,16 +1030,22 @@ def task_url(task_id_or_task: Union[str, dict]) -> str:
     return f"https://firefox-ci-tc.services.mozilla.com/tasks/{task_id}"
 
 
-def save_training_run_listing() -> None:
+def save_training_run_listing(runs_by_training_pair: dict[str, list[TrainingRun]]) -> None:
     """
     Create a list of all the training run JSON files so that it can easily be used by
     a static site.
 
-    Saved to: site/model-registry/training-runs-listing.json
+    Saved to: gs://{BUCKET}/models/listing.json
     """
-    training_runs = sorted(path.name for path in TRAINING_RUNS_FOLDER.glob("*.json"))
-    with open(MODEL_REGISTRY_SITE / "training-runs-listing.json", "w", encoding="utf-8") as f:
-        json.dump(training_runs, f, indent=2)
+    listing = []
+    for training_runs in runs_by_training_pair.values():
+        for training_run in training_runs:
+            listing.append(f"models/{training_run.langpair}/{training_run.name}.json")
+
+    listing_path = "models/listing.json"
+    print(f"Uploading gs://{BUCKET_NAME}/{listing_path}")
+    listing_blob = bucket.blob(listing_path)
+    listing_blob.upload_from_string(json.dumps(listing, indent=2))
 
 
 def main():
@@ -1003,12 +1054,19 @@ def main():
         # Preserves whitespace in the help text.
         formatter_class=argparse.RawTextHelpFormatter,
     )
-    parser.add_argument("--no_cache", action="store_true", help="Do not cache the remote calls")
-    parser.add_argument("--clear_cache", action="store_true", help="Clears the cache")
     parser.add_argument(
-        "--ovewrite_training_runs",
+        "--no_cache", action="store_true", help="Do not cache the TaskCluster calls"
+    )
+    parser.add_argument("--clear_cache", action="store_true", help="Clears the TaskCluster cache")
+    parser.add_argument(
+        "--upload",
         action="store_true",
-        help="Overwrite the JSON files in site/model-registry/training-runs/*.json",
+        help="When set to true, the artifacts are uploaded to GCS. Otherwise they are stored at to data/model-registry/",
+    )
+    parser.add_argument(
+        "--overwrite_runs",
+        action="store_true",
+        help="By default only missing training runs are created. This recreates everything.",
     )
     args = parser.parse_args()
 
@@ -1027,16 +1085,18 @@ def main():
         else:
             cache.clear()
 
-    training_runs_by_langpair = get_training_runs_by_langpair(cache)
-    print_training_runs_tree(training_runs_by_langpair)
+    runs_by_training_pair = get_training_runs_by_langpair(cache)
+    print_training_runs_tree(runs_by_training_pair)
 
-    # Saves out the training runs to:
-    #   site/model-registry/training-runs/{name}-{langpair}.json
-    build_json_for_training_runs(training_runs_by_langpair, args.ovewrite_training_runs, cache)
+    # Saves out the training runs depending on the --upload argument:
+    #   - data/model-registry/training-runs/{name}-{langpair}.json
+    #   - gs://{BUCKET}/models/{langpair}/{name}.json
+    build_json_for_training_runs(runs_by_training_pair, args.overwrite_runs, args.upload, cache)
 
     # Saves a reference of all the listings:
-    #   site/model-registry/training-runs-listing.json
-    save_training_run_listing()
+    #   - gs://{BUCKET}/models/listing.json
+    if args.upload:
+        save_training_run_listing(runs_by_training_pair)
 
     if cache is not None:
         cache.close()
