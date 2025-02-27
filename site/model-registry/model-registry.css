@@ -171,7 +171,32 @@
   }
 }
 
-.flores-table {
+.details-table {
   font-family: monospace;
   margin: 1rem 0;
+
+  td {
+    vertical-align: top;
+  }
+
+  ul {
+    padding-left: 1rem;
+  }
+  li:not(:first-child) {
+    padding-top: 0.4rem;
+  }
+}
+
+.wandb-filter {
+  font-family: var(--sans-serif);
+  border: 1px solid #000;
+  padding: 0.5rem;
+  margin-top: 0.7rem;
+  border-radius: 0.3rem;
+  background: #fff;
+
+  span {
+    font-family: monospace;
+    background-color: #e0e0e0;
+  }
 }

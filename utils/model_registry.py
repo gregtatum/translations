@@ -1,7 +1,29 @@
 """
 This script processes and organizes translations training runs, including gathering
 corpora, models, and evaluation metrics from Taskcluster and Google Cloud Storage.
-It structures the data into JSON files for use in the model registry.
+It structures the data into JSON files for use in the model registry. These files
+are persisted to the GCS in the following structure:
+
+gs://moz-fx-translations-data--303e-prod-translations-data/models/en-el
+│
+├── spring-2024.json                        <- The JSONified class TrainingRun.
+├── spring-2024_Fv23lalyTfSfbmGx0YxypA
+│   ├── evaluation
+│   ├── tasks.json                          <- list[{ task: Task, status: Status }]
+│   ├── teacher0
+│   └── teacher1
+├── spring-2024_O7cfmFR_SuaZNg8d8b0EWQ
+│   ├── backward
+│   ├── evaluation
+│   ├── tasks.json                          <- list[{ task: Task, status: Status }]
+│   └── vocab
+└── spring-2024_Y3ThG3XkTxG4ROUQK2LpVg
+    ├── evaluation
+    ├── exported
+    ├── quantized
+    ├── student
+    ├── student-finetuned
+    └── tasks.json                          <- list[{ task: Task, status: Status }]
 
 Notes:
  - Google Cloud Storage authentication is required
@@ -293,6 +315,8 @@ class Model:
     date: Optional[datetime]
     config: Optional[dict]
     task_group_id: Optional[dict]
+    task_id: Optional[dict]
+    task_name: Optional[dict]
     flores: Optional[Evaluation]
     artifact_folder: Optional[str]
     artifact_urls: list[str]
@@ -303,10 +327,36 @@ class Model:
             date=None,
             config=None,
             task_group_id=None,
+            task_id=None,
+            task_name=None,
             flores=None,
             artifact_folder=None,
             artifact_urls=[],
         )
+
+    def sync_live_log(self, training_run: "TrainingRun", gcs_model_name: str):
+        """
+        If no live log was synced, do it now.
+        """
+        tasks_gcs_path = f"models/{training_run.langpair}/{training_run.name}_{self.task_group_id}/{gcs_model_name}/live.log"
+        live_log_blob = bucket.blob(tasks_gcs_path)
+
+        if live_log_blob.exists():
+            return
+
+        url = get_artifact_url(
+            self.task_id,
+            "public/logs/live.log",
+        )
+        print(f"  [log] Downloading {url}")
+        response = requests.get(url)
+        if response.ok:
+            print(f"  [log] Uploading live log to GCS {tasks_gcs_path}")
+            live_log_blob.upload_from_string(response.text)
+        else:
+            print(
+                f"  [log] The live log failed to download with status {response.status_code}: {response.text}"
+            )
 
 
 @dataclass
@@ -562,7 +612,7 @@ def build_json_for_training_runs(
                     continue
 
         print("Processing", training_run.name, training_run.langpair)
-        collect_models(tasks, training_run)
+        collect_models(tasks, training_run, upload)
         collect_flores_comparisons(
             training_run, comet_results_by_langpair, bleu_results_by_langpair
         )
@@ -672,7 +722,7 @@ def collect_flores_comparisons(
         training_run.bleu_flores_comparison = bleu_results["flores-dev"]
 
 
-def collect_models(tasks: list[Task], training_run: TrainingRun):
+def collect_models(tasks: list[Task], training_run: TrainingRun, upload: bool):
     """
     Lookup models from Google Cloud Storage.
     """
@@ -681,6 +731,7 @@ def collect_models(tasks: list[Task], training_run: TrainingRun):
         training_run.backwards = get_model_without_evals(
             backwards,
             training_run,
+            upload,
             model_name="backward",
         )
 
@@ -690,6 +741,7 @@ def collect_models(tasks: list[Task], training_run: TrainingRun):
             train_teacher_1,
             training_run,
             tasks,
+            upload,
             tc_model_name="teacher",
             gcs_model_name="teacher0",
             gcs_eval_name="teacher0",
@@ -701,6 +753,7 @@ def collect_models(tasks: list[Task], training_run: TrainingRun):
             train_teacher_2,
             training_run,
             tasks,
+            upload,
             tc_model_name="teacher",
             gcs_model_name="teacher1",
             gcs_eval_name="teacher1",
@@ -712,6 +765,7 @@ def collect_models(tasks: list[Task], training_run: TrainingRun):
             student_finetuned,
             training_run,
             tasks,
+            upload,
             tc_model_name="finetuned-student",
             gcs_model_name="student-finetuned",
             gcs_eval_name="student-finetuned",
@@ -723,6 +777,7 @@ def collect_models(tasks: list[Task], training_run: TrainingRun):
             train_student_task,
             training_run,
             tasks,
+            upload,
             tc_model_name="student",
             gcs_model_name="student",
             gcs_eval_name="student",
@@ -733,6 +788,7 @@ def collect_models(tasks: list[Task], training_run: TrainingRun):
             student_quantize_task,
             training_run,
             tasks,
+            upload,
             tc_model_name="quantized",
             gcs_model_name="quantized",
             gcs_eval_name="speed",
@@ -743,6 +799,8 @@ def collect_models(tasks: list[Task], training_run: TrainingRun):
             student_export_task,
             training_run,
             tasks,
+            # These logs aren't useful to retain, as there is no training happening here.
+            upload=False,
             tc_model_name="export",
             gcs_model_name="exported",
             gcs_eval_name="exported",
@@ -791,6 +849,7 @@ def get_model(
     task: dict,
     training_run: TrainingRun,
     tasks_in_all_runs: list[dict],
+    upload: bool,
     # The model name in Taskcluster tasks.
     tc_model_name: str,
     # The model directory name in GCS.
@@ -806,6 +865,8 @@ def get_model(
     model = Model.create()
     model.config = get_config(task_group_id)
     model.task_group_id = task_group_id
+    model.task_id = task["status"]["taskId"]
+    model.task_name = task["task"]["metadata"]["name"]
     model.date = get_completed_time(task)
 
     flores_blob = get_flores_eval_blob(
@@ -867,12 +928,16 @@ def get_model(
     else:
         print(f"  [model] no {tc_model_name} files found")
 
+    if upload:
+        model.sync_live_log(training_run, gcs_model_name)
+
     return model
 
 
 def get_model_without_evals(
     task: dict,
     training_run: TrainingRun,
+    upload: bool,
     model_name: str,
 ):
     """
@@ -883,6 +948,8 @@ def get_model_without_evals(
     model = Model.create()
     model.config = get_config(task_group_id)
     model.task_group_id = task_group_id
+    model.task_id = task["status"]["taskId"]
+    model.task_name = task["task"]["metadata"]["name"]
     model.date = get_completed_time(task)
 
     prefix = f"models/{training_run.langpair}/{training_run.name}_{task_group_id}/{model_name}/"
@@ -897,6 +964,9 @@ def get_model_without_evals(
         ]
     else:
         print(f"  [model] no {model_name} files found")
+
+    if upload:
+        model.sync_live_log(training_run, model_name)
 
     return model
 

@@ -37,6 +37,8 @@ export interface ModelRun {
   date: string;
   config: ModelConfig;
   task_group_id: string;
+  task_id: string;
+  task_name: string;
   flores?: {
     chrf: number;
     bleu: number;

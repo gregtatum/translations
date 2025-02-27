@@ -393,8 +393,7 @@ class ModelCardOverlay {
       parent: elements.overlayContent,
     });
 
-    this.initDate(detailsUL);
-    this.initTaskGroupLink(detailsUL);
+    this.initModelDetails(detailsUL);
     this.initArtifacts(detailsUL);
     this.initTrainingContinuation();
     this.initTrainingConfig();
@@ -419,27 +418,117 @@ class ModelCardOverlay {
   /**
    * @param {HTMLElement} parent
    */
-  initDate(parent) {
-    create.li({
-      parent,
-      children: `Date – ${this.modelRun.date.slice(0, "2025-01-01".length)}`,
-    });
-  }
+  initModelDetails(parent) {
+    const tbody = create.tbody();
 
-  /**
-   * @param {HTMLElement} parent
-   */
-  initTaskGroupLink(parent) {
+    const { task_group_id: taskGroupId, task_id: taskId } = this.modelRun;
+    const { langpair, name } = this.trainingRun;
+
     create.li({
       parent,
       children: [
-        "TaskGroup – ",
-        create.a({
-          children: this.modelRun.task_group_id,
-          href: `https://firefox-ci-tc.services.mozilla.com/tasks/groups/${this.modelRun.task_group_id}`,
+        "Model Details",
+        create.table({
+          className: "details-table",
+          children: [
+            create.thead({
+              children: [
+                create.tr({
+                  children: [
+                    create.th({ children: "Label" }),
+                    create.th({ children: "Details" }),
+                  ],
+                }),
+              ],
+            }),
+            tbody,
+          ],
         }),
       ],
     });
+
+    /**
+     * @param {string} label
+     * @param {any} value
+     */
+    const createRow = (label, value) => {
+      create.tr({
+        parent: tbody,
+        children: [
+          create.td({ children: label }),
+          create.td({ children: value ? value : "-" }),
+        ],
+      });
+    };
+
+    createRow("Date", this.modelRun.date.slice(0, "2025-01-01".length));
+    createRow(
+      "TaskGroup",
+      create.a({
+        children: this.modelRun.task_group_id,
+        href: `https://firefox-ci-tc.services.mozilla.com/tasks/groups/${taskGroupId}`,
+      })
+    );
+    createRow(
+      "Task",
+      create.a({
+        children: this.modelRun.task_name,
+        href: `https://firefox-ci-tc.services.mozilla.com/tasks/${taskId}`,
+      })
+    );
+
+    // https://wandb.ai/moz-translations/cs-en/runs/teacher-1_ThgMJX?nw=nwuserepavlov
+    // https://wandb.ai/moz-translations/cs-en/runs/teacher-1_LjL0bY
+    const modelName = this.modelReference.modelName.replace("_", "-");
+    const idPart = this.modelRun.task_group_id.slice(0, 6);
+
+    createRow(
+      "W&B",
+      create.ul({
+        children: [
+          create.li({
+            children: create.a({
+              children: "Model Run",
+              href: `https://wandb.ai/moz-translations/${langpair}/runs/${modelName}_${idPart}`,
+            }),
+          }),
+          create.li({
+            children: create.a({
+              children: `Task Group ${taskGroupId}`,
+              href: `https://wandb.ai/moz-translations/${langpair}/groups/${name}_${taskGroupId}/workspace`,
+            }),
+          }),
+          create.li({
+            children: [
+              create.a({
+                children: langpair,
+                href: `https://wandb.ai/moz-translations/${langpair}/`,
+              }),
+              create.div({
+                className: "wandb-filter",
+                children: [
+                  "Group by ",
+                  create.span({ children: "Group" }),
+                  ", filter by ",
+                  create.span({ children: name }),
+                ],
+              }),
+              create.div({
+                className: "wandb-filter",
+                children: [
+                  `Or filter by regex: `,
+                  create.span({
+                    children: this.trainingRun.task_group_ids
+                      .map((t) => t.slice(0, 6))
+                      .join("|"),
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      })
+    );
   }
 
   /**
@@ -458,10 +547,7 @@ class ModelCardOverlay {
         const fileName = urlParts[urlParts.length - 1];
         create.li({
           parent: artifactsUL,
-          children: [
-            "Artifact – ",
-            create.a({ children: fileName, href: url }),
-          ],
+          children: create.a({ children: fileName, href: url }),
         });
       }
     }
@@ -473,14 +559,14 @@ class ModelCardOverlay {
    * @param {ModelRun} modelRun
    */
   createEvaluationTable(detailsUL, trainingRun, modelRun) {
-    const floresTbody = create.tbody();
+    const tbody = create.tbody();
 
     create.li({
       parent: detailsUL,
       children: [
         "Flores Evaluation",
         create.table({
-          className: "flores-table",
+          className: "details-table",
           children: [
             create.thead({
               children: [
@@ -492,7 +578,7 @@ class ModelCardOverlay {
                 }),
               ],
             }),
-            floresTbody,
+            tbody,
           ],
         }),
       ],
@@ -504,7 +590,7 @@ class ModelCardOverlay {
      */
     const createMetricRow = (metric, value) => {
       create.tr({
-        parent: floresTbody,
+        parent: tbody,
         children: [
           create.td({ children: metric }),
           create.td({ children: value ? value : "-" }),

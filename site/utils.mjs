@@ -327,6 +327,7 @@ export function createElement(tagName, options) {
  */
 const tagNames = [
   /** @type {const} */ ("a"),
+  /** @type {const} */ ("br"),
   /** @type {const} */ ("button"),
   /** @type {const} */ ("div"),
   /** @type {const} */ ("h1"),
