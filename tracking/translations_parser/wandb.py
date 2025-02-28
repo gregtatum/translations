@@ -1,3 +1,16 @@
+"""
+This file provides functionality for integrating with Weights & Biases (W&B) to log and
+manage training runs in the NMT pipeline. It includes argument parsing for configuring
+W&B publication, retrieval of authentication tokens from Taskcluster, and automated
+naming conventions based on Taskcluster metadata.
+
+It defines methods for initializing a W&B publisher, handling experiment metadata,
+and retrieving existing logged metrics. The file ensures that W&B runs are properly
+named, grouped, and tagged while supporting artifact uploads. It also provides utilities
+for listing previously logged group metrics, helping maintain consistency in tracking
+and comparing training results.
+"""
+
 import json
 import os
 from pathlib import Path

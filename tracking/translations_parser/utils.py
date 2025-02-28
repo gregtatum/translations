@@ -1,3 +1,16 @@
+"""
+This file provides utility functions for parsing, transforming, and handling metadata
+related to task labels, metrics, and training logs in the translations pipeline. It includes
+regex-based parsing for structured task labels, extraction of evaluation metrics, and
+integration with Taskcluster for automated log retrieval.
+
+It supports normalizing model names, filtering Taskcluster logs, and extracting key
+metadata for logging and reporting. Additionally, it provides methods for retrieving
+dataset statistics, publishing grouped logs, and handling GCP-based metrics. These
+utilities help maintain consistency in data tracking and facilitate automated workflows
+for model training and evaluation.
+"""
+
 import logging
 import os
 import re
@@ -5,7 +18,7 @@ import tempfile
 from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
-from typing import NamedTuple, Optional
+from typing import Any, Dict, NamedTuple, Optional
 
 import yaml
 
@@ -206,11 +219,14 @@ def metric_from_tc_context(chrf: float, bleu: float, comet: float):
 
     # CI task groups do not expose any configuration, so we must use default values
     queue = taskcluster.Queue({"rootUrl": os.environ["TASKCLUSTER_PROXY_URL"]})
-    task = queue.task(task_id)
+    task: Any = queue.task(task_id)
     parsed = parse_task_label(task["tags"]["label"])
 
     # Multiply comet metric by 100 to match other metrics percentage style
     comet *= 100
+
+    assert parsed.importer, "Importer was found."
+    assert parsed.dataset, "Dataset was found."
 
     return Metric(
         importer=parsed.importer,
@@ -254,10 +270,11 @@ def publish_group_logs_from_tasks(
                 (train_suffix,) = re_match.groups()
                 filename = MULTIPLE_TRAIN_SUFFIX.sub(train_suffix, filename)
 
+            list_artifacts: Any = queue.listLatestArtifacts(metric_task_id)
             metric_artifact = next(
                 (
                     artifact["name"]
-                    for artifact in queue.listLatestArtifacts(metric_task_id)["artifacts"]
+                    for artifact in list_artifacts["artifacts"]
                     if artifact["name"].endswith(".metrics")
                 ),
                 None,
@@ -304,12 +321,12 @@ def get_lines_count(file_path: str) -> int:
         return sum(1 for _ in f)
 
 
-def parse_gcp_metric(filename: str) -> tuple[str, str, str]:
+def parse_gcp_metric(filename: str) -> ParsedGCPMetric:
     importer, *extra_str = filename.split("_", 1)
     if importer not in DATASET_KEYWORDS:
         raise ValueError(f"Importer {importer} is not supported")
 
-    extra_args = {"dataset": None}
+    extra_args: Dict[str, Optional[str]] = {"dataset": None}
     if extra_str:
         (extra_str,) = extra_str
         re_match = re.match(

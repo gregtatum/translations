@@ -1,3 +1,16 @@
+"""
+This file defines a parser for training logs generated during NMT model training with
+Marian. It extracts key information such as training epochs, validation metrics, and
+Marian execution details, ensuring that the logs are structured and interpretable.
+
+The parser identifies and processes log entries using regular expressions, handling
+variations in formatting and different levels of detail. It supports extracting
+configuration details, tracking training progress, and publishing parsed data to
+external systems. Additionally, it verifies that logs match supported Marian versions
+and warns about inconsistencies or incomplete entries. This ensures reliable logging
+and monitoring of training runs.
+"""
+
 import logging
 import os
 import re

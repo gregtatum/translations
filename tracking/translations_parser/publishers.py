@@ -1,3 +1,16 @@
+"""
+This file defines publishers for exporting parsed training data to different formats
+and external systems. It provides an abstract Publisher class as a base for specific
+implementations and includes concrete publishers for exporting data as CSV files and
+logging results to Weights and Biases (W&B).
+
+The CSVExport class writes parsed training and validation data to structured CSV files
+for easy analysis. The WandB class integrates with W&B, logging training progress,
+validation results, and evaluation metrics while also handling dataset statistics and
+artifact uploads. The file ensures standardized and automated data publication for
+tracking model training progress and comparing results across runs.
+"""
+
 import csv
 import logging
 import sys
@@ -26,23 +39,17 @@ class Publisher(ABC):
     with all results (including parser run date, configuration…).
     """
 
-    def open(self, parser) -> None:
-        ...
+    def open(self, parser) -> None: ...
 
-    def handle_training(self, training: TrainingEpoch) -> None:
-        ...
+    def handle_training(self, training: TrainingEpoch) -> None: ...
 
-    def handle_validation(self, validation: ValidationEpoch) -> None:
-        ...
+    def handle_validation(self, validation: ValidationEpoch) -> None: ...
 
-    def handle_metrics(self, metrics: Sequence[Metric]) -> None:
-        ...
+    def handle_metrics(self, metrics: Sequence[Metric]) -> None: ...
 
-    def publish(self) -> None:
-        ...
+    def publish(self) -> None: ...
 
-    def close(self) -> None:
-        ...
+    def close(self) -> None: ...
 
 
 class CSVExport(Publisher):
