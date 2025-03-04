@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "translations_taskgraph"
 version = "0.1.0"
 description = "Translations specific code needed to generate Taskcluster tasks & graphs"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<4.0"
 
 [tool.setuptools]
 include-package-data = true
@@ -21,3 +21,6 @@ target-version = "py37"
 [tool.black]
 line-length = 120
 target-version = ["py37"]
+
+[tool.poetry.dependencies]
+dataclasses-json = "^0.6.7"
