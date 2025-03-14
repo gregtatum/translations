@@ -13,7 +13,7 @@ This file contains helpers for converting untyped JSON configurations into typed
 3. Dataclasses don't validate unions of string literals at runtime. These helpers do.
 """
 
-from dataclasses import fields, is_dataclass
+from dataclasses import dataclass, fields, is_dataclass
 import types
 from typing import Optional, Any, Literal, Tuple, Union, cast, get_origin, get_args, Type, TypeVar
 import voluptuous
@@ -72,13 +72,15 @@ class StricterDataclass(ABC):
                     raise ValueError('Expected a dict key to be a string at "{key_path_display}".')
                 # Replace the kebab casing where needed.
                 vargs_key = cast(str, dict_key)
-                if issubclass(data_type, KebabDataclass):
+                if issubclass(data_type, KebabDataclass) or MixedCaseDataclass.is_kebab(
+                    data_type, dict_key
+                ):
                     vargs_key = dict_key.replace("-", "_")
 
                 next_key_path = f"{key_path}.{dict_key}" if key_path else dict_key
                 if vargs_key not in fields:
                     raise ValueError(
-                        f'Unexpected field "{dict_key}" when deserializing "{next_key_path}". See dataclass {data_type.__name__}'
+                        f'Unexpected field "{next_key_path}" when deserializing dataclass "{data_type.__name__}".'
                     )
 
                 field: dataclasses.Field = fields[vargs_key]
@@ -90,9 +92,14 @@ class StricterDataclass(ABC):
                 required_fields.discard(vargs_key)
 
             if required_fields:
-                raise ValueError(
-                    f'Fields missing in {key_path_display}: {", ".join(required_fields)}. See dataclass {data_type.__name__}'
-                )
+                if len(required_fields) == 1:
+                    raise ValueError(
+                        f'Field "{key_path}.{next(iter(required_fields))}" missing when deserializing dataclass "{data_type.__name__}".'
+                    )
+                else:
+                    raise ValueError(
+                        f'Fields missing when deserializing "{data_type.__name__}" at "{key_path}": {", ".join(required_fields)}.'
+                    )
 
             return data_type(**vargs)
 
@@ -151,7 +158,10 @@ class StricterDataclass(ABC):
         return data
 
     @classmethod
-    def from_dict(cls: Type[T], data: dict[str, Any]) -> T:
+    def from_dict(cls: Type[T], data: Any) -> T:
+        if not isinstance(data, dict):
+            raise ValueError("Expected a dict for a training config.")
+
         result = StricterDataclass._deserialize(cls, data, "")
         assert isinstance(result, cls)
         return result
@@ -169,7 +179,9 @@ class StricterDataclass(ABC):
             for field in fields(value):
                 # Handle the Kebab casing.
                 field_name = field.name
-                if issubclass(type(value), KebabDataclass):
+                if issubclass(type(value), KebabDataclass) or MixedCaseDataclass.is_kebab(
+                    type(value), field_name
+                ):
                     field_name = field_name.replace("_", "-")
 
                 # Serialize the value, but omit it if the value is None.
@@ -208,6 +220,36 @@ class KebabDataclass(StricterDataclass):
     """
 
     pass
+
+# Map the type to a list of properties.
+kebab_mapping: dict[type, list[str]] = {}
+
+@dataclass
+class MixedCaseDataclass(StricterDataclass):
+    @staticmethod
+    def is_kebab(cls_type: type, key_name: str):
+        if cls_type not in kebab_mapping:
+            return False
+        kebab = kebab_mapping[cls_type]
+        return key_name.replace("-", "_") in kebab
+
+
+def mixed_casing(kebab: list[str]):
+    """Decorator to remember the kebab list and enforce MixedCaseDataclass inheritance."""
+    kebab = kebab or []
+
+    def wrapper(cls: type):
+        if not issubclass(cls, MixedCaseDataclass):
+            raise TypeError(
+                "The mixed_casing decorator must be applied to the mixed case datalcass"
+            )
+        
+        # Store them all as underscores.
+        kebab_mapping[cls] = [v.replace("-", "_") for v in kebab]  # type: ignore
+
+        return cls
+
+    return wrapper
 
 
 def extract_voluptuous_optional_type(
@@ -251,19 +293,29 @@ def extract_optional_properties(
     origin = get_origin(t)
     if origin is not Union:
         return False, t
+    
 
     args = get_args(t)
-    if len(args) != 2:
+    
+    if len(args) == 1:
         return False, t
+    
+    if len(args) == 2:
+        # Extract the non-optional parameter.
+        arg1, arg2 = args
+        if arg1 is types.NoneType:
+            return True, arg2
 
-    arg1, arg2 = args
-    if arg1 is types.NoneType:
-        return True, arg2
-
-    if arg2 is types.NoneType:
-        return True, arg1
-
-    return False, t
+        if arg2 is types.NoneType:
+            return True, arg1
+    
+    # This is an optional Union, for instance an optional Union of string literals.
+    args_no_none = [arg for arg in args if arg is not types.NoneType]
+    
+    if len(args_no_none) == len(args):
+        return False, args
+    
+    return True, Union[tuple(args_no_none)]
 
 
 def is_type_optional(t: Any) -> bool:

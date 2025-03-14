@@ -22,6 +22,7 @@ from translations_taskgraph.util.dataclass_helpers import (
     build_voluptuous_schema,
     extract_optional_properties,
 )
+from fixtures import recursively_remove_none_keys
 
 
 def load_yaml(path: str):
@@ -148,17 +149,6 @@ def test_kind_yaml_references():
     for kind_file in kind_files:
         print(f"Checking {kind_file}")
         check_values(load_yaml(kind_file))
-
-
-def recursively_remove_none_keys(value: Any):
-    if isinstance(value, dict):
-        return {
-            k: recursively_remove_none_keys(v)
-            for k, v in value.items()
-            if v is not None
-        }  # fmt: skip
-
-    return value
 
 
 def test_roundtrip_serialization_deserialization():

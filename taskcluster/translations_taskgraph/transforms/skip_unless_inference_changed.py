@@ -1,14 +1,16 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-#
-# This transform sequence will remove all jobs unless at least one inference
-# impacting thing (an inference script or relevant Taskcluster code) has changed
-# (This is done with the `files_changed` helper, which uses data in the
-# parameters to determine files changed between the `base` and `head` revisions.)
 
-# When upstream taskgraph supports better selection (https://github.com/taskcluster/taskgraph/issues/369)
-# this can be replaced with it.
+"""
+This transform sequence will remove all jobs unless at least one inference
+impacting thing (an inference script or relevant Taskcluster code) has changed
+(This is done with the `files_changed` helper, which uses data in the
+parameters to determine files changed between the `base` and `head` revisions.)
+
+When upstream taskgraph supports better selection (https://github.com/taskcluster/taskgraph/issues/369)
+this can be replaced with it.
+"""
 
 import os
 from pathlib import Path

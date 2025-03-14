@@ -9,7 +9,7 @@ import subprocess
 import time
 from pathlib import Path
 from subprocess import CompletedProcess
-from typing import Iterable, List, Optional, Tuple, Union
+from typing import Any, Iterable, List, Optional, Tuple, Union
 
 import zstandard as zstd
 
@@ -632,3 +632,13 @@ def hash_file(hash: any, path: str):
     with open(path, "rb") as f:
         while chunk := f.read(4096):
             hash.update(chunk)
+
+def recursively_remove_none_keys(value: Any):
+    if isinstance(value, dict):
+        return {
+            k: recursively_remove_none_keys(v)
+            for k, v in value.items()
+            if v is not None
+        }  # fmt: skip
+
+    return value

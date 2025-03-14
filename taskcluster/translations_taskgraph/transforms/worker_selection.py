@@ -1,11 +1,13 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-#
-# This transform sequence injects worker-specific environment variables
-# (such as those that dependent on the number and type of GPUs a worker has)
-# into task definitions. This avoids the need to discover this information at
-# runtime, or adjust in kinds when changing worker types.
+
+"""
+This transform sequence injects worker-specific environment variables
+(such as those that dependent on the number and type of GPUs a worker has)
+into task definitions. This avoids the need to discover this information at
+runtime, or adjust in kinds when changing worker types.
+"""
 
 from taskgraph.transforms.base import TransformSequence
 from taskgraph.util.schema import evaluate_keyed_by

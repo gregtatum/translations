@@ -1,23 +1,24 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-#
-# This transform sequence sets `dependencies` and `fetches` based on
-# the information provided in the `upstreams-config` data in each job
-# and the given parameters.
 
-# It will through all tasks generated from `kind-dependencies` and
-# set any tasks that match the following conditions as dependencies:
-# - src and trg locale given match the {src,trg}_locale attributes on the upstream task
-# - `upstream-task-attributes` given match their equivalents on the upstream task
-# - `dataset` attribute on the upstream task is one of the datasets provided in `parameters`
-#   for the `dataset-category` given in the job.
-#
-# Additionally, fetches will be added for those tasks for each entry in `upstream-artifacts`.
-#
-# (It is not ideal that this transform hardcodes dataset handling, but because kinds are
-# completely unaware of parameters, there's no other real way to do this.)
+"""
+This transform sequence sets `dependencies` and `fetches` based on
+the information provided in the `upstreams-config` data in each job
+and the given parameters.
 
+It will through all tasks generated from `kind-dependencies` and
+set any tasks that match the following conditions as dependencies:
+- src and trg locale given match the {src,trg}_locale attributes on the upstream task
+- `upstream-task-attributes` given match their equivalents on the upstream task
+- `dataset` attribute on the upstream task is one of the datasets provided in `parameters`
+  for the `dataset-category` given in the job.
+
+Additionally, fetches will be added for those tasks for each entry in `upstream-artifacts`.
+
+(It is not ideal that this transform hardcodes dataset handling, but because kinds are
+completely unaware of parameters, there's no other real way to do this.)
+"""
 import copy
 
 from taskgraph.transforms.base import TransformSequence
