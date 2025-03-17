@@ -1,16 +1,11 @@
 from dataclasses import dataclass
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal, Optional
 
-from translations_taskgraph.util.dataclass_helpers import (
-    MixedCaseDataclass,
-    KebabDataclass,
-    StricterDataclass,
-    mixed_casing,
-)
+from translations_taskgraph.util.dataclass_helpers import Casing, StricterDataclass, stricter_dataclass
 
 
-@dataclass(kw_only=True)
-class Cache(KebabDataclass):
+@stricter_dataclass(casing=Casing.kebab)
+class Cache(StricterDataclass):
     # Invalidates the cache whenever a parameter from the config changes.
     #
     # {
@@ -18,7 +13,7 @@ class Cache(KebabDataclass):
     #   "pretrained_teacher": "training_config.experiment.pretrained-models.train-teacher",
     #   "teacher_mode": "training_config.experiment.teacher-mode"
     # }
-    from_parameters: Optional[dict[str, str]] = None
+    from_parameters: Optional[dict[str, Any]] = None
 
     # The list of files that will invalidate the cache when they change.
     resources: list[str]
@@ -30,7 +25,8 @@ class Cache(KebabDataclass):
 
 
 @dataclass(kw_only=True)
-class CachedTask:
+@stricter_dataclass()
+class CachedTask(StricterDataclass):
     # The hash
     digest: str
     # The name, e.g. "evaluate-backward-sacrebleu-wmt09-en-ru"
@@ -39,8 +35,7 @@ class CachedTask:
     type: str
 
 
-@dataclass(kw_only=True)
-@mixed_casing(
+@stricter_dataclass(
     kebab=[
         "cleaning-type",
         "dataset-category",
@@ -49,7 +44,7 @@ class CachedTask:
         "toolchain-artifact",
     ]
 )
-class TaskAttributes(MixedCaseDataclass):
+class TaskAttributes(StricterDataclass):
     src_locale: Optional[str] = None
     trg_locale: Optional[str] = None
     always_target: Optional[bool] = None
@@ -99,6 +94,7 @@ DateStamp = dict[str, str]  # e.g. { "relative-datestamp": "0 seconds" }
 
 
 @dataclass(kw_only=True)
+@stricter_dataclass()
 class Treeherder(StricterDataclass):
     collection: dict[str, bool]
     groupName: Optional[str] = None
@@ -109,8 +105,8 @@ class Treeherder(StricterDataclass):
     tier: int
 
 
-@dataclass(kw_only=True)
-class TaskExtra(KebabDataclass):
+@stricter_dataclass(casing=Casing.kebab)
+class TaskExtra(StricterDataclass):
     index: dict[str, int]
     parent: str
     treeherder: Optional[Treeherder] = None
@@ -119,7 +115,8 @@ class TaskExtra(KebabDataclass):
 
 
 @dataclass(kw_only=True)
-class Task:
+@stricter_dataclass()
+class Task(StricterDataclass):
     created: DateStamp
     deadline: DateStamp
     expires: DateStamp
@@ -135,7 +132,8 @@ class Task:
 
 
 @dataclass(kw_only=True)
-class UnresolvedCache(KebabDataclass):
+@stricter_dataclass()
+class UnresolvedCache(StricterDataclass):
     """
     When resolving the cache when building the full taskgraph, this is the additional
     data, along with the dependencies that Taskgraph will use.
@@ -147,7 +145,8 @@ class UnresolvedCache(KebabDataclass):
 
 
 @dataclass(kw_only=True)
-class Artifact:
+@stricter_dataclass()
+class Artifact(StricterDataclass):
     # type of artifact -- simple file, or recursive directory
     type: Literal["file"] | Literal["directory"]
     # Task image path from which to read artifact
@@ -156,7 +155,8 @@ class Artifact:
     name: str
 
 
-class WorkerCache(KebabDataclass):
+@stricter_dataclass(casing=Casing.kebab)
+class WorkerCache(StricterDataclass):
     # e.g. "persistent"
     type: str
     # The name of the cache, allowing reuse by subsequent tasks naming the same cache.
@@ -167,8 +167,8 @@ class WorkerCache(KebabDataclass):
     skip_untrusted: Optional[bool]
 
 
-@dataclass(kw_only=True)
-class Worker(KebabDataclass):
+@stricter_dataclass(casing=Casing.kebab)
+class Worker(StricterDataclass):
     # The name of the docker image, or {"in-tree": "train"}
     docker_image: dict[str, str]
     # The time in seconds that this task can run.
@@ -188,7 +188,7 @@ class Worker(KebabDataclass):
     command: list[str]
 
 
-@mixed_casing(
+@stricter_dataclass(
     kebab=[
         "worker-type",
         "run-on-tasks-for",
@@ -199,8 +199,7 @@ class Worker(KebabDataclass):
         "soft-dependencies",
     ]
 )
-@dataclass(kw_only=True)
-class TaskDescription(MixedCaseDataclass):
+class TaskDescription(StricterDataclass):
     """
     When generating the Taskgraph, this is the description of a single task. Confusingly
     it also contains a task key. This corresponds to the file:
@@ -221,7 +220,7 @@ class TaskDescription(MixedCaseDataclass):
     # A short description of the task.
     description: str
     # A dictionary of attributes for this task (used for filtering)
-    attributes: Optional[TaskAttributes] = None
+    attributes: Optional[TaskAttributes]
     # tasks this one depends on, in the form {name: label}, for example
     #   {'build': 'build-linux64/opt', 'docker-image': 'docker-image-desktop-test'}
     dependencies: dict[str, str]
@@ -234,7 +233,7 @@ class TaskDescription(MixedCaseDataclass):
         | Literal["very-low"]
         | Literal["lowest"]
     ]
-    # (kebab) Tasks this one may depend on if they are available post optimisation. They
+    # Tasks this one may depend on if they are available post optimisation. They
     # are set as a list of tasks label.
     soft_dependencies: Optional[list[str]]
     # Dependencies that must be scheduled in order for this task to run.
@@ -252,17 +251,17 @@ class TaskDescription(MixedCaseDataclass):
     #   "os": "linux",
     #   "worker-implementation": "docker-worker"
     # }
-    tags: Optional[dict[str, str]] = None
+    tags: Optional[dict[str, str]]
     # custom "task.extra" content
     extra: Optional[dict[str, Any]]
-    treeherder: Optional[Treeherder] = None
-    index: Optional[Any] = None
+    treeherder: Optional[Treeherder]
+    index: Optional[Any]
     # (kebab_cased)
-    run_on_projects: Optional[list[str]] = None
+    run_on_projects: Optional[list[str]]
     # (kebab-cased) Generally used in the CI configuration, e.g. "github-push", "github-pull-request"
-    run_on_tasks_for: Optional[list[str]] = None
+    run_on_tasks_for: Optional[list[str]]
     # (kebab-cased)
-    run_on_git_branches: Optional[list[str]] = None
+    run_on_git_branches: Optional[list[str]]
     # Used for Firefox releases.
     shipping_phase: Optional[str]
     # (kebab-cased) The `always-target` attribute will cause the task to be included in the
@@ -270,19 +269,19 @@ class TaskDescription(MixedCaseDataclass):
     # will be candidates for optimization even when `optimize_target_tasks` is
     # False, unless the task was also explicitly chosen by the target_tasks
     # method.
-    always_target: Optional[bool] = None
+    always_target: Optional[bool]
     # The list of task labels.
     optimization: Optional[dict[str, list[str]]]
     # (kebab-cased) The type of worker for the task, e.g. "b-linux-large-gcp"
     # These are defined in taskcluster/config.yml under worker.aliases.
-    worker_type: Optional[str] = None
+    worker_type: Optional[str]
 
     # The name of the task kind, e.g. taskcluster/kinds/{name}/kind.yml
     kind: Optional[str]
     task: Optional[Task]
     # This gets removed when a task is resolved by Taskgraph.
-    cache: Optional[UnresolvedCache] = None
-    worker: Optional[Worker] = None
+    cache: Optional[UnresolvedCache]
+    worker: Optional[Worker]
     # (kebab-cased) "kind.yml" or a path to the kind.yml
-    task_from: Optional[str] = None
+    task_from: Optional[str]
     routes: Optional[list[str]]

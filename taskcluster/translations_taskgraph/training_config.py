@@ -5,24 +5,24 @@ type-safe dataclass, and then shared in other parts of the codebase.
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Literal
+from typing import Any, Optional, Literal
 
 import yaml
-from translations_taskgraph.util.dataclass_helpers import KebabDataclass, StricterDataclass
-
-
-@dataclass(kw_only=True)
-class MarianArgs(KebabDataclass):
-    training_backward: Optional[dict[str, str]] = None
-    training_teacher: Optional[dict[str, str]] = None
-    training_student: Optional[dict[str, str]] = None
-    training_student_finetuned: Optional[dict[str, str]] = None
-    decoding_backward: Optional[dict[str, str]] = None
-    decoding_teacher: Optional[dict[str, str]] = None
-
+from translations_taskgraph.util.dataclass_helpers import Casing, StricterDataclass, stricter_dataclass
 
 @dataclass(kw_only=True)
-class MonoMaxSentences(KebabDataclass):
+@stricter_dataclass(casing=Casing.kebab)
+class MarianArgs(StricterDataclass):
+    training_backward: Optional[dict[str, str]]
+    training_teacher: Optional[dict[str, str]]
+    training_student: Optional[dict[str, str]]
+    training_student_finetuned: Optional[dict[str, str]]
+    decoding_backward: Optional[dict[str, str]]
+    decoding_teacher: Optional[dict[str, str]]
+
+@dataclass(kw_only=True)
+@stricter_dataclass(casing=Casing.kebab)
+class MonoMaxSentences(StricterDataclass):
     """
     Limits for monolingual datasets.
     """
@@ -32,27 +32,27 @@ class MonoMaxSentences(KebabDataclass):
     # Limits per downloaded dataset.
     per_dataset: int
 
-
 @dataclass(kw_only=True)
-class CleanerThresholds(KebabDataclass):
+@stricter_dataclass(casing=Casing.kebab)
+class CleanerThresholds(StricterDataclass):
     default_threshold: float
-    dataset_thresholds: Optional[dict[str, float]] = None
-
+    dataset_thresholds: Optional[dict[str, float]]
 
 @dataclass(kw_only=True)
-class MonocleanerConfig(KebabDataclass):
+@stricter_dataclass(casing=Casing.kebab)
+class MonocleanerConfig(StricterDataclass):
     mono_src: CleanerThresholds
     mono_trg: CleanerThresholds
 
-
 @dataclass(kw_only=True)
-class HpltMinDocScore(KebabDataclass):
+@stricter_dataclass(casing=Casing.kebab)
+class HpltMinDocScore(StricterDataclass):
     mono_src: float
     mono_trg: float
 
-
 @dataclass(kw_only=True)
-class PretrainedModel(KebabDataclass):
+@stricter_dataclass(casing=Casing.kebab)
+class PretrainedModel(StricterDataclass):
     """
     Pre-trained models use URLs as they are flexible to continue training from either
     long-term bucket storage, or from tasks in Taskcluster.
@@ -62,15 +62,15 @@ class PretrainedModel(KebabDataclass):
     mode: Literal["continue"] | Literal["init"] | Literal["use"]
     type: Literal["default"] | Literal["opusmt"]
 
+@dataclass(kw_only=True)
+@stricter_dataclass(casing=Casing.kebab)
+class PretrainedModels(StricterDataclass):
+    train_backwards: Optional[PretrainedModel]
+    train_teacher: Optional[PretrainedModel]
 
 @dataclass(kw_only=True)
-class PretrainedModels(KebabDataclass):
-    train_backwards: Optional[PretrainedModel] = None
-    train_teacher: Optional[PretrainedModel] = None
-
-
-@dataclass(kw_only=True)
-class Experiment(KebabDataclass):
+@stricter_dataclass(casing=Casing.kebab)
+class Experiment(StricterDataclass):
     # A name for the experiment.
     name: str
     # The source locale to train.
@@ -118,18 +118,18 @@ class Experiment(KebabDataclass):
     hplt_min_doc_score: HpltMinDocScore
     # Instead of training models from scratch, use pre-trained models.
     pretrained_models: PretrainedModels
-    corpus_max_sentences: Optional[int] = None
-    spm_vocab_size: Optional[int] = None
-
+    corpus_max_sentences: Optional[int]
+    spm_vocab_size: Optional[int]
 
 @dataclass(kw_only=True)
-class Taskcluster(KebabDataclass):
+@stricter_dataclass(casing=Casing.kebab)
+class Taskcluster(StricterDataclass):
     split_chunks: int
     worker_classes: dict[str, Literal["gcp-standard"] | Literal["gcp-spot"]]
 
-
 @dataclass(kw_only=True)
-class Datasets(KebabDataclass):
+@stricter_dataclass(casing=Casing.kebab)
+class Datasets(StricterDataclass):
     """
     Represents the datasets used for training.
     """
@@ -147,9 +147,9 @@ class Datasets(KebabDataclass):
     # synthesize data to increase the amount of data available for teacher training.
     mono_trg: list[str]
 
-
 @dataclass(kw_only=True)
-class TrainingConfig(KebabDataclass):
+@stricter_dataclass(casing=Casing.kebab)
+class TrainingConfig(StricterDataclass):
     datasets: dict[str, list[str]]
 
     marian_args: MarianArgs
@@ -168,12 +168,12 @@ class TrainingConfig(KebabDataclass):
     # doesn't match what the downstream task wants, it will still be used. This can be
     # used for quick iteration of functionality where the quality of the outputs is not
     # important.
-    previous_group_ids: Optional[list[str]] = None
+    previous_group_ids: Optional[list[str]]
 
     # The stage of the pipeline to begin at, provided replacements can be found for tasks
     # upstream of this stage. Usually used in conjunction with `previous-group-ids`
     # which allows for specifying task group ids to fetch existing tasks from.
-    start_stage: Optional[str] = None
+    start_stage: Optional[str]
 
     # The stage of the pipeline to run until (any stages this choice depends on will
     # be automatically included).
@@ -195,7 +195,7 @@ class TrainingConfig(KebabDataclass):
     # them to be used by the type system.
 
     @staticmethod
-    def from_dict_validated(config_dict: dict):
+    def from_dict_validated(config_dict: dict[str, Any]):
         """
         Creates a TrainingConfig and validates it from the graph config.
         """
@@ -216,8 +216,8 @@ class TrainingConfig(KebabDataclass):
 
         return training_config
 
-
 @dataclass(kw_only=True)
+@stricter_dataclass()
 class Parameters(StricterDataclass):
     base_repository: str
     base_ref: str
@@ -227,7 +227,7 @@ class Parameters(StricterDataclass):
     do_not_optimize: list[str]
     enable_always_target: bool
     existing_tasks: dict[str, str]
-    files_changed: Optional[list[str]] = None
+    files_changed: Optional[list[str]]
     filters: list[str]
     head_ref: str
     head_repository: str
@@ -245,5 +245,5 @@ class Parameters(StricterDataclass):
     repository_type: str
     target_tasks_method: str
     tasks_for: str
-    version: Optional[str] = None
+    version: Optional[str]
     training_config: TrainingConfig

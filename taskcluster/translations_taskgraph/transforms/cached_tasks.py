@@ -20,7 +20,7 @@ from taskgraph.util.hash import hash_path
 from taskgraph.util.schema import Schema, optionally_keyed_by, resolve_keyed_by
 from voluptuous import ALLOW_EXTRA, Any, Required, Optional
 
-from translations_taskgraph.task import UnresolvedCache, TaskDescription
+from translations_taskgraph.task import Cache, UnresolvedCache, TaskDescription
 from translations_taskgraph.util.dict_helpers import deep_get
 
 transforms = TransformSequence()
@@ -48,15 +48,20 @@ transforms.add_validate(SCHEMA)
 def resolved_keyed_by_fields(config: TransformConfig, tasks: Generator[dict[str, Any], Any, Any]):
     for task_dict in tasks:
         import json
+        import sys
 
-        print("!!! task_dict", json.dumps(task_dict, indent=2))
+        sys.stdout = sys.__stdout__
         task = TaskDescription.from_dict(task_dict)
-        resolve_keyed_by(
-            task.attributes.cache,
-            "resources",
-            item_name=task.description,
-            **{"provider": task.attributes.provider is not None},
-        )
+        if task.attributes and task.attributes.cache:
+            cache = task.attributes.cache
+            cache_dict = cache.to_dict()
+            resolve_keyed_by(
+                cache_dict,
+                "resources",
+                item_name=task.description,
+                **{"provider": task.attributes.provider is not None},
+            )
+            task.attributes.cache = Cache.from_dict(cache_dict)
 
         yield task.to_dict()
 
@@ -65,15 +70,15 @@ def resolved_keyed_by_fields(config: TransformConfig, tasks: Generator[dict[str,
 def add_cache(config: TransformConfig, tasks: Generator[dict[str, Any], Any, Any]):
     for task_dict in tasks:
         task = TaskDescription.from_dict(task_dict)
+        assert task.attributes
         cache = task.attributes.cache
         assert cache
         cache_type = cache.type
         cache_resources = cache.resources
         cache_parameters = cache.from_parameters or {}
         digest_data: list[str] = []
-        # This is untyped
-        print('!!! task_dict["worker"]["command"]', task_dict["worker"])
-        digest_data.extend(list(itertools.chain.from_iterable(task_dict["worker"]["command"])))
+        assert task.worker
+        digest_data.extend(list(itertools.chain.from_iterable(task.worker.command)))
 
         if cache_resources:
             for r in cache_resources:
@@ -82,11 +87,12 @@ def add_cache(config: TransformConfig, tasks: Generator[dict[str, Any], Any, Any
         if cache_parameters:
             for param, path in cache_parameters.items():
                 print("!!! path Is this sometimes not a string?", path)
-                if isinstance(path, str):
+                if isinstance(path, str): # type: ignore[reportUnnecessaryIsInstance]
                     value = deep_get(config.params, path)
                     digest_data.append(f"{param}:{value}")
-                else:
+                elif isinstance(path, list):
                     for choice in path:
+                        assert isinstance(choice, str)
                         value = deep_get(config.params, choice)
                         if value is not None:
                             digest_data.append(f"{param}:{value}")

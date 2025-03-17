@@ -13,14 +13,65 @@ This file contains helpers for converting untyped JSON configurations into typed
 3. Dataclasses don't validate unions of string literals at runtime. These helpers do.
 """
 
-from dataclasses import dataclass, fields, is_dataclass
+from dataclasses import dataclass, fields, is_dataclass, field
+from enum import Enum
 import types
-from typing import Optional, Any, Literal, Tuple, Union, cast, get_origin, get_args, Type, TypeVar
+from typing import Optional, Any, Literal, Tuple, Union, cast, get_origin, get_args, Type, TypeVar, get_type_hints
+from collections.abc import Callable
 import voluptuous
 import dataclasses
 from abc import ABC
 
-T = TypeVar("T", bound="StricterDataclass")
+# A type that inherits from the StricterDataclass.
+StricterDataclassCls = TypeVar("StricterDataclassCls", bound="StricterDataclass")
+
+
+class Casing(Enum):
+    kebab = "kebab"
+    underscore = "underscore"
+
+
+class CasingManager:
+    """
+    Static class to manage cases
+    """
+
+    kebab_cased_fields_by_class: dict[type, list[str]] = {}
+    underscore_cased_fields_by_class: dict[type, list[str]] = {}
+    casing_by_class: dict[type, Casing] = {}
+
+    @staticmethod
+    def add_class(
+        cls_type: type[StricterDataclassCls],
+        casing: Casing = Casing.underscore,
+        kebab: list[str] = [],
+        underscore: list[str] = [],
+    ):
+        # Store them all as underscores.
+        CasingManager.kebab_cased_fields_by_class[cls_type] = [v.replace("-", "_") for v in kebab]
+        CasingManager.underscore_cased_fields_by_class[cls_type] = [v.replace("-", "_") for v in underscore]
+        CasingManager.casing_by_class[cls_type] = casing
+
+    @staticmethod
+    def get_field_casing(cls_type: type, key_name: str):
+        """
+        Apply the casing of the class, and the casing of the fields to determine the
+        individual casing of a field.
+        """
+        key_name = key_name.replace("-", "_")
+        casing = CasingManager.casing_by_class.get(cls_type, Casing.underscore)
+        if casing is Casing.underscore:
+            # Casing is underscore by default.
+            kebab_fields = CasingManager.kebab_cased_fields_by_class.get(cls_type, None)
+            if kebab_fields and key_name in kebab_fields:
+                return Casing.kebab
+            return Casing.underscore
+
+        # Casing is kebab by default.
+        underscore_fields = CasingManager.underscore_cased_fields_by_class.get(cls_type, None)
+        if underscore_fields and key_name in underscore_fields:
+            return Casing.underscore
+        return Casing.kebab
 
 
 class StricterDataclass(ABC):
@@ -51,13 +102,19 @@ class StricterDataclass(ABC):
         of Literals.
         """
         assert not is_type_optional(data_type), "Optional types should not be passed into this function."
-
+        
         if data_type is Any:
+            print("!!! any")
             # Do not type check any types, just pass them through.
             return data
 
         key_path_display = key_path or "<root>"
-        if is_dataclass(data_type):
+        import sys
+        sys.stdout = sys.__stdout__
+        print("!!! data_type", data_type)
+        
+        if is_dataclass(data_type) or issubclass(data_type, StricterDataclass):
+            print("!!! dataclass")
             if not isinstance(data, dict):
                 print("Data:", data)
                 raise ValueError(f'Expected a dictionary at "{key_path_display}".')
@@ -67,17 +124,25 @@ class StricterDataclass(ABC):
             vargs = {}
             for dict_key, dict_value in data.items():
                 if not isinstance(dict_key, str):
-                    print(dict_key)
+                    print(dict_key)  # type: ignore[reportUnknownArgumentType]
                     raise ValueError(f'Expected a dict key to be a string at "{key_path_display}".')
                 # Replace the kebab casing where needed.
-                vargs_key = cast(str, dict_key)
-                if issubclass(data_type, KebabDataclass) or MixedCaseDataclass.is_kebab(data_type, dict_key):
+                vargs_key = cast(str, dict_key)  # type: ignore[reportUnnecessaryCast]
+                if CasingManager.get_field_casing(data_type, dict_key) is Casing.kebab:
                     vargs_key = dict_key.replace("-", "_")
 
                 next_key_path = f"{key_path}.{dict_key}" if key_path else dict_key
                 if vargs_key not in fields:
+                    underscore_vargs_key = vargs_key.replace("-", "_")
+                    kebab_vargs_key = vargs_key.replace("_", "-")
+                    extra_message = ""
+                    if underscore_vargs_key in fields:
+                        extra_message = f' The underscore version of this field was found "{underscore_vargs_key}". Do you need to update the type definition?'
+                    if kebab_vargs_key in fields:
+                        extra_message = f' The kebab version of this field was found "{kebab_vargs_key}". Do you need to update the type definition?'
+
                     raise ValueError(
-                        f'Unexpected field "{next_key_path}" when deserializing dataclass "{data_type.__name__}".'
+                        f'Unexpected field "{next_key_path}" when deserializing dataclass "{data_type.__name__}".{extra_message}'
                     )
 
                 field: dataclasses.Field[Any] = fields[vargs_key]
@@ -111,18 +176,20 @@ class StricterDataclass(ABC):
         type_origin = get_origin(data_type)
 
         if type_origin is list:
+            print("!!! list")
             if not isinstance(data, list):
                 print(data)
                 raise ValueError(f'A list was not provided at "{key_path_display}"')
             list_type = get_args(data_type)[0]
             return [
                 StricterDataclass._deserialize(list_type, list_item, f"{key_path}[{index}]")
-                for index, list_item in enumerate(data)
+                for index, list_item in enumerate(data)  # type: ignore[reportUnknownArgumentType]
             ]
 
         primitives = {float, int, str, dict, None}
 
         if type_origin is Union:
+            print("!!! Union")
             union_items = get_args(data_type)
             literals: Optional[list[str]] = None
             has_literals = False
@@ -154,21 +221,24 @@ class StricterDataclass(ABC):
         if type_origin not in primitives:
             raise ValueError(f'Non-primitive value {type_origin} provided at "{key_path_display}".')
 
+        print("!!! primitive")
+
         return data
 
     @classmethod
-    def from_dict(cls: Type[T], data: Any, key_path: str = "") -> T:
+    def from_dict(cls: Type[StricterDataclassCls], data: Any, key_path: str = "") -> StricterDataclassCls:
         if not isinstance(data, dict):
             raise ValueError("Expected a dict for a training config.")
-        import sys
-
-        sys.stdout = sys.__stdout__
+        print("!!! -------------------------------------------", )
         result = StricterDataclass._deserialize(cls, data, key_path)
+        print("!!! cls", cls)
+        print("!!! result", result)
         assert isinstance(result, cls)
         return result
 
     @staticmethod
     def _serialize(value: Any) -> Any:
+
         if isinstance(value, (float, int, str, dict, type(None))):
             return value
 
@@ -180,7 +250,7 @@ class StricterDataclass(ABC):
             for field in fields(value):
                 # Handle the Kebab casing.
                 field_name = field.name
-                if issubclass(type(value), KebabDataclass) or MixedCaseDataclass.is_kebab(type(value), field_name):
+                if CasingManager.get_field_casing(type(value), field_name) == Casing.kebab:
                     field_name = field_name.replace("_", "-")
 
                 # Serialize the value, but omit it if the value is None.
@@ -192,60 +262,31 @@ class StricterDataclass(ABC):
 
         raise ValueError("Unexpected value type")
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return StricterDataclass._serialize(self)
 
+from functools import wraps
 
-class KebabDataclass(StricterDataclass):
+def stricter_dataclass(
+    casing: Casing = Casing.underscore,
+    kebab: list[str] = [],
+    underscore: list[str] = [],
+):
     """
-    Convert the dataclass's underscore style names to kebab style casing when serializing
-    and the reverse for deserializing.
-
-    Serializing:    "mono_max_sentences_trg" -> "mono-max-sentences-trg"
-    De-serializing: "mono_max_sentences_trg" -> "mono-max-sentences-trg"
-
-    Usage:
-        @dataclass(kw_only=True)
-        class MyConfig(KebabDataclass):
-            attribute_name: str
-
-        config_dict = { "attribute-name": "Kebab case example" }
-        config = MyConfig.from_dict(config_dict)
-
-        assert config.attribute_name == "Kebab case example"
-
-        # It can be round tripped.
-        assert config.to_dict() == config_dict
+    Decorator to instantiate a stricter dataclass with the given configuration.
     """
+    def wrapper(cls: type[StricterDataclassCls]) -> type[StricterDataclassCls]:
+        CasingManager.add_class(cls, casing, kebab, underscore)
 
-    pass
+        # Get type hints to check for Optional fields
+        type_hints = get_type_hints(cls)
 
+        # Modify class attributes to default to None if they are Optional
+        for attr, attr_type in type_hints.items():
+            if is_type_optional(attr_type) and not hasattr(cls, attr):
+                setattr(cls, attr, field(default=None))
 
-# Map the type to a list of properties.
-kebab_mapping: dict[type, list[str]] = {}
-
-
-@dataclass
-class MixedCaseDataclass(StricterDataclass):
-    @staticmethod
-    def is_kebab(cls_type: type, key_name: str):
-        if cls_type not in kebab_mapping:
-            return False
-        kebab = kebab_mapping[cls_type]
-        return key_name.replace("-", "_") in kebab
-
-
-MixedCasingCls = TypeVar("MixedCasingCls", bound="StricterDataclass")
-
-
-def mixed_casing(kebab: list[str]):
-    """Decorator to remember the kebab list and enforce MixedCaseDataclass inheritance."""
-    kebab = kebab or []
-
-    def wrapper(cls: type[MixedCasingCls]) -> type[MixedCasingCls]:
-        # Store them all as underscores.
-        kebab_mapping[cls] = [v.replace("-", "_") for v in kebab]  # type: ignore
-
+        # Apply the dataclass decorator.
         return cls
 
     return wrapper
@@ -253,7 +294,7 @@ def mixed_casing(kebab: list[str]):
 
 def extract_voluptuous_optional_type(
     t: Any,
-) -> Tuple:
+) -> Tuple[type[voluptuous.Required] | type[voluptuous.Optional], type]:
     """
     Determines if a property is optional or not.
     Optional[T] is an alias for Union[T, None].
@@ -320,19 +361,9 @@ def is_type_optional(t: Any) -> bool:
     return extract_optional_properties(t)[0]
 
 
-def handle_field_casing(type_value: type, field_name: str) -> str:
-    """
-    Data classes don't support hyphens, so map them to dashes if they have been configured
-    to do so with dataclasses_json.
-    """
-
-    if issubclass(type_value, KebabDataclass):
-        return field_name.replace("_", "-")
-
-    return field_name
-
-
-def build_voluptuous_schema(value: type, key_requirement=voluptuous.Required):
+def build_voluptuous_schema(
+    value: type, key_requirement: type[voluptuous.Required] | type[voluptuous.Optional] = voluptuous.Required
+):
     # Is this just a basic data type?
     if value in [str, float, int, bool]:
         if key_requirement == voluptuous.Optional:
@@ -347,7 +378,11 @@ def build_voluptuous_schema(value: type, key_requirement=voluptuous.Required):
         schema_dict = {}
         for field in fields(value):
             key_wrapper, field_type = extract_voluptuous_optional_type(field.type)
-            field_name = handle_field_casing(value, field.name)
+
+            if CasingManager.get_field_casing(value, field.name) is Casing.kebab:
+                field_name = field.name.replace("_", "-")
+            else:
+                field_name = field.name
 
             schema_dict[key_wrapper(field_name)] = build_voluptuous_schema(field_type, key_wrapper)
         return schema_dict
@@ -398,7 +433,7 @@ def build_voluptuous_schema(value: type, key_requirement=voluptuous.Required):
 json_schema_type = {str: "string", float: "number", int: "number", bool: "boolean"}
 
 
-def build_json_schema(type_value: type, is_key_optional=False):
+def build_json_schema(type_value: type, is_key_optional: bool = False):
     """
     https://json-schema.org/
     """
@@ -415,11 +450,16 @@ def build_json_schema(type_value: type, is_key_optional=False):
     # Handle creating the schema from a dataclass. Also handle the kebab casing.
     if is_dataclass(type_value):
         properties: dict[str, Any] = {}
-        schema_dict = {"type": "object", "additionalProperties": False, "properties": properties}
+        schema_dict: dict[str, Any] = {"type": "object", "additionalProperties": False, "properties": properties}
         required: list[str] = []
         for field in fields(type_value):
             is_optional, field_type = extract_optional_properties(field.type)
-            field_name = handle_field_casing(type_value, field.name)
+
+            if CasingManager.get_field_casing(type_value, field.name) is Casing.kebab:
+                field_name = field.name.replace("_", "-")
+            else:
+                field_name = field.name
+
             if not is_optional:
                 required.append(field_name)
             properties[field_name] = build_json_schema(field_type, is_optional)
