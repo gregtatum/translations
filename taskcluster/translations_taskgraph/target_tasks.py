@@ -1,23 +1,27 @@
 from taskgraph.target_tasks import register_target_task
+from taskgraph.taskgraph import TaskGraph
+from taskgraph.parameters import Parameters
+from taskgraph.config import GraphConfig
+from taskgraph.task import Task
+
+from translations_taskgraph.training_config import TrainingConfig
 
 
 @register_target_task("train-target-tasks")
-def train_target_tasks(full_task_graph, parameters, graph_config):
-    training_config = parameters["training_config"]
-    stage = training_config["target-stage"]
-    src = training_config["experiment"]["src"]
-    trg = training_config["experiment"]["trg"]
-    datasets = parameters["training_config"]["datasets"]
+def train_target_tasks(
+    full_task_graph: TaskGraph, parameters: Parameters, graph_config: GraphConfig
+):
+    training_config = TrainingConfig.from_dict(parameters["training_config"])
 
-    def filter(task):
+    def filter(task: Task):
         # These attributes will be present on tasks from all stages
-        if task.attributes.get("stage") != stage:
+        if task.attributes.get("stage") != training_config.target_stage:
             return False
 
-        if task.attributes.get("src_locale") != src:
+        if task.attributes.get("src_locale") != training_config.experiment.src:
             return False
 
-        if task.attributes.get("trg_locale") != trg:
+        if task.attributes.get("trg_locale") != training_config.experiment.trg:
             return False
 
         # Datasets are only applicable to dataset-specific tasks. If these
@@ -28,8 +32,8 @@ def train_target_tasks(full_task_graph, parameters, graph_config):
         # the task generation level, usually by the `find_upstreams` transform.)
         if "dataset" in task.attributes:
             dataset_category = task.attributes["dataset-category"]
-            for ds in datasets[dataset_category]:
-                provider, dataset = ds.split("_", 1)
+            for dataset in training_config.datasets[dataset_category]:
+                provider, dataset = dataset.split("_", 1)
                 # If the task is for any of the datasets in the specified category,
                 # it's a match, and should be included in the target tasks.
                 if (

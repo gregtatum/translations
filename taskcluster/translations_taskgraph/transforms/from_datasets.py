@@ -41,8 +41,10 @@ from taskgraph.transforms.base import TransformSequence
 from taskgraph.util.schema import Schema
 from voluptuous import ALLOW_EXTRA, Optional
 
+from translations_taskgraph.training_config import TrainingConfig
 from translations_taskgraph.util.substitution import substitute
 from translations_taskgraph.util.dataset_helpers import sanitize_dataset_name
+from taskgraph.transforms.base import TransformSequence, TransformConfig
 
 SCHEMA = Schema(
     {
@@ -78,9 +80,10 @@ def jobs_from_datasets(config, jobs):
         provider = dataset_config.get("provider", "")
         substitution_fields = dataset_config.get("substitution-fields", [])
         exclude_locales = dataset_config.get("exclude-locales", [])
-        datasets = config.params["training_config"]["datasets"]
-        src = config.params["training_config"]["experiment"]["src"]
-        trg = config.params["training_config"]["experiment"]["trg"]
+        training_config = TrainingConfig.from_dict(config.params["training_config"])
+        datasets = training_config.datasets
+        src = training_config.experiment.src
+        trg = training_config.experiment.trg
 
         included_datasets = set()
         if category:

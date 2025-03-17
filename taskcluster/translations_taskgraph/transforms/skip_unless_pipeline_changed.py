@@ -16,6 +16,7 @@ import os
 from pathlib import Path
 
 from taskgraph.transforms.base import TransformSequence
+from taskgraph.transforms.base import TransformSequence, TransformConfig
 
 KIND_DIR = Path(__file__).parent.parent.parent / "kinds"
 

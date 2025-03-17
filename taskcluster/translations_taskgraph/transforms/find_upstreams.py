@@ -27,6 +27,7 @@ from voluptuous import ALLOW_EXTRA, Required, Optional
 
 from translations_taskgraph.util.substitution import substitute
 from translations_taskgraph.util.dataset_helpers import sanitize_dataset_name
+from taskgraph.transforms.base import TransformSequence, TransformConfig
 
 SCHEMA = Schema(
     {

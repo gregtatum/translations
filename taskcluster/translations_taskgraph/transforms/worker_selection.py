@@ -9,14 +9,16 @@ into task definitions. This avoids the need to discover this information at
 runtime, or adjust in kinds when changing worker types.
 """
 
+from typing import Any, Generator
 from taskgraph.transforms.base import TransformSequence
 from taskgraph.util.schema import evaluate_keyed_by
+from taskgraph.transforms.base import TransformSequence, TransformConfig
 
 transforms = TransformSequence()
 
 
 @transforms.add
-def set_worker_type(config, jobs):
+def set_worker_type(config: TransformConfig, jobs: Generator[dict[str, Any], Any, Any]):
     """Determines the general type of worker each task wants, which sometimes
     depends on `tasks-for`. Tasks typically will end up specifying one of the
     worker `aliases` from config.yml after this is evaluated, eg: b-cpu,

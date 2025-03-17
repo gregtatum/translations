@@ -9,10 +9,9 @@ that `task_context` fills in as a string, but that other transforms or code
 requires to be an int."
 """
 
-from taskgraph.transforms.base import TransformSequence
+from taskgraph.transforms.base import TransformSequence, TransformConfig
 from taskgraph.util.schema import Schema
 from voluptuous import ALLOW_EXTRA, Optional
-
 
 SCHEMA = Schema(
     {

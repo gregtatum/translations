@@ -50,10 +50,11 @@ class StricterDataclass(ABC):
         kebab casing requirements for the KebabDataclass. It also validates Unions
         of Literals.
         """
+        assert not is_type_optional(data_type), "Optional types should not be passed into this function."
 
-        assert not is_type_optional(
-            data_type
-        ), "Optional types should not be passed into this function."
+        if data_type is Any:
+            # Do not type check any types, just pass them through.
+            return data
 
         key_path_display = key_path or "<root>"
         if is_dataclass(data_type):
@@ -62,19 +63,15 @@ class StricterDataclass(ABC):
                 raise ValueError(f'Expected a dictionary at "{key_path_display}".')
 
             fields = {field.name: field for field in dataclasses.fields(data_type)}
-            required_fields = {
-                field.name for field in fields.values() if not is_type_optional(field.type)
-            }
+            required_fields = {field.name for field in fields.values() if not is_type_optional(field.type)}
             vargs = {}
             for dict_key, dict_value in data.items():
                 if not isinstance(dict_key, str):
                     print(dict_key)
-                    raise ValueError('Expected a dict key to be a string at "{key_path_display}".')
+                    raise ValueError(f'Expected a dict key to be a string at "{key_path_display}".')
                 # Replace the kebab casing where needed.
                 vargs_key = cast(str, dict_key)
-                if issubclass(data_type, KebabDataclass) or MixedCaseDataclass.is_kebab(
-                    data_type, dict_key
-                ):
+                if issubclass(data_type, KebabDataclass) or MixedCaseDataclass.is_kebab(data_type, dict_key):
                     vargs_key = dict_key.replace("-", "_")
 
                 next_key_path = f"{key_path}.{dict_key}" if key_path else dict_key
@@ -83,12 +80,20 @@ class StricterDataclass(ABC):
                         f'Unexpected field "{next_key_path}" when deserializing dataclass "{data_type.__name__}".'
                     )
 
-                field: dataclasses.Field = fields[vargs_key]
+                field: dataclasses.Field[Any] = fields[vargs_key]
                 field_type = extract_optional_properties(field.type)[1]
 
-                vargs[vargs_key] = StricterDataclass._deserialize(
-                    field_type, dict_value, next_key_path
-                )
+                is_stricter_dataclass = False
+                try:
+                    # A type like `list[str]` throws an exception.
+                    is_stricter_dataclass = issubclass(field_type, StricterDataclass)
+                except TypeError:
+                    pass
+
+                if is_stricter_dataclass:
+                    vargs[vargs_key] = field_type.from_dict(dict_value, next_key_path)
+                else:
+                    vargs[vargs_key] = StricterDataclass._deserialize(field_type, dict_value, next_key_path)
                 required_fields.discard(vargs_key)
 
             if required_fields:
@@ -98,7 +103,7 @@ class StricterDataclass(ABC):
                     )
                 else:
                     raise ValueError(
-                        f'Fields missing when deserializing "{data_type.__name__}" at "{key_path}": {", ".join(required_fields)}.'
+                        f'Fields missing when deserializing "{data_type.__name__}" at "{key_path_display}": {", ".join(required_fields)}.'
                     )
 
             return data_type(**vargs)
@@ -138,31 +143,27 @@ class StricterDataclass(ABC):
                             f'An unexpected value "{data}" was provided at "{key_path_display}", expected it to be one of: {literals}'
                         )
                 else:
-                    raise TypeError(
-                        f'Union contained a mix of literal and non-literal types at "{key_path_display}"'
-                    )
+                    raise TypeError(f'Union contained a mix of literal and non-literal types at "{key_path_display}"')
 
             for union_item in union_items:
                 if union_item not in primitives:
-                    raise TypeError(
-                        f'A union contained a non-primitive value "{union_item}" at "{key_path_display}"'
-                    )
+                    raise TypeError(f'A union contained a non-primitive value "{union_item}" at "{key_path_display}"')
 
             return data
 
         if type_origin not in primitives:
-            raise ValueError(
-                f'Non-primitive value {type_origin} provided at "{key_path_display}".'
-            )
+            raise ValueError(f'Non-primitive value {type_origin} provided at "{key_path_display}".')
 
         return data
 
     @classmethod
-    def from_dict(cls: Type[T], data: Any) -> T:
+    def from_dict(cls: Type[T], data: Any, key_path: str = "") -> T:
         if not isinstance(data, dict):
             raise ValueError("Expected a dict for a training config.")
+        import sys
 
-        result = StricterDataclass._deserialize(cls, data, "")
+        sys.stdout = sys.__stdout__
+        result = StricterDataclass._deserialize(cls, data, key_path)
         assert isinstance(result, cls)
         return result
 
@@ -179,9 +180,7 @@ class StricterDataclass(ABC):
             for field in fields(value):
                 # Handle the Kebab casing.
                 field_name = field.name
-                if issubclass(type(value), KebabDataclass) or MixedCaseDataclass.is_kebab(
-                    type(value), field_name
-                ):
+                if issubclass(type(value), KebabDataclass) or MixedCaseDataclass.is_kebab(type(value), field_name):
                     field_name = field_name.replace("_", "-")
 
                 # Serialize the value, but omit it if the value is None.
@@ -221,8 +220,10 @@ class KebabDataclass(StricterDataclass):
 
     pass
 
+
 # Map the type to a list of properties.
 kebab_mapping: dict[type, list[str]] = {}
+
 
 @dataclass
 class MixedCaseDataclass(StricterDataclass):
@@ -234,16 +235,14 @@ class MixedCaseDataclass(StricterDataclass):
         return key_name.replace("-", "_") in kebab
 
 
+MixedCasingCls = TypeVar("MixedCasingCls", bound="StricterDataclass")
+
+
 def mixed_casing(kebab: list[str]):
     """Decorator to remember the kebab list and enforce MixedCaseDataclass inheritance."""
     kebab = kebab or []
 
-    def wrapper(cls: type):
-        if not issubclass(cls, MixedCaseDataclass):
-            raise TypeError(
-                "The mixed_casing decorator must be applied to the mixed case datalcass"
-            )
-        
+    def wrapper(cls: type[MixedCasingCls]) -> type[MixedCasingCls]:
         # Store them all as underscores.
         kebab_mapping[cls] = [v.replace("-", "_") for v in kebab]  # type: ignore
 
@@ -293,13 +292,12 @@ def extract_optional_properties(
     origin = get_origin(t)
     if origin is not Union:
         return False, t
-    
 
     args = get_args(t)
-    
+
     if len(args) == 1:
         return False, t
-    
+
     if len(args) == 2:
         # Extract the non-optional parameter.
         arg1, arg2 = args
@@ -308,13 +306,13 @@ def extract_optional_properties(
 
         if arg2 is types.NoneType:
             return True, arg1
-    
+
     # This is an optional Union, for instance an optional Union of string literals.
     args_no_none = [arg for arg in args if arg is not types.NoneType]
-    
+
     if len(args_no_none) == len(args):
         return False, args
-    
+
     return True, Union[tuple(args_no_none)]
 
 

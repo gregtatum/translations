@@ -10,19 +10,20 @@ It exists because there are two features that we need that are missing upstream:
 """
 
 import itertools
+from typing import Generator
 
 import taskgraph
-from taskgraph.transforms.base import TransformSequence
+from taskgraph.transforms.base import TransformSequence, TransformConfig
 from taskgraph.transforms.cached_tasks import order_tasks, format_task_digest
 from taskgraph.util.cached_tasks import add_optimization
 from taskgraph.util.hash import hash_path
 from taskgraph.util.schema import Schema, optionally_keyed_by, resolve_keyed_by
 from voluptuous import ALLOW_EXTRA, Any, Required, Optional
 
+from translations_taskgraph.task import UnresolvedCache, TaskDescription
 from translations_taskgraph.util.dict_helpers import deep_get
 
 transforms = TransformSequence()
-
 
 SCHEMA = Schema(
     {
@@ -44,28 +45,35 @@ transforms.add_validate(SCHEMA)
 
 
 @transforms.add
-def resolved_keyed_by_fields(config, jobs):
-    for job in jobs:
-        provider = job["attributes"].get("provider", None)
+def resolved_keyed_by_fields(config: TransformConfig, tasks: Generator[dict[str, Any], Any, Any]):
+    for task_dict in tasks:
+        import json
+
+        print("!!! task_dict", json.dumps(task_dict, indent=2))
+        task = TaskDescription.from_dict(task_dict)
         resolve_keyed_by(
-            job["attributes"]["cache"],
+            task.attributes.cache,
             "resources",
-            item_name=job["description"],
-            **{"provider": provider},
+            item_name=task.description,
+            **{"provider": task.attributes.provider is not None},
         )
 
-        yield job
+        yield task.to_dict()
 
 
 @transforms.add
-def add_cache(config, jobs):
-    for job in jobs:
-        cache = job["attributes"]["cache"]
-        cache_type = cache["type"]
-        cache_resources = cache["resources"]
-        cache_parameters = cache.get("from-parameters", {})
-        digest_data = []
-        digest_data.extend(list(itertools.chain.from_iterable(job["worker"]["command"])))
+def add_cache(config: TransformConfig, tasks: Generator[dict[str, Any], Any, Any]):
+    for task_dict in tasks:
+        task = TaskDescription.from_dict(task_dict)
+        cache = task.attributes.cache
+        assert cache
+        cache_type = cache.type
+        cache_resources = cache.resources
+        cache_parameters = cache.from_parameters or {}
+        digest_data: list[str] = []
+        # This is untyped
+        print('!!! task_dict["worker"]["command"]', task_dict["worker"])
+        digest_data.extend(list(itertools.chain.from_iterable(task_dict["worker"]["command"])))
 
         if cache_resources:
             for r in cache_resources:
@@ -73,6 +81,7 @@ def add_cache(config, jobs):
 
         if cache_parameters:
             for param, path in cache_parameters.items():
+                print("!!! path Is this sometimes not a string?", path)
                 if isinstance(path, str):
                     value = deep_get(config.params, path)
                     digest_data.append(f"{param}:{value}")
@@ -83,52 +92,51 @@ def add_cache(config, jobs):
                             digest_data.append(f"{param}:{value}")
                             break
 
-        job["cache"] = {
-            "type": cache_type,
+        task.cache = UnresolvedCache(
+            type=cache_type,
             # Upstream cached tasks use "/" as a separator for different parts
             # of the digest. If we don't remove them, caches are busted for
             # anything with a "/" in its label.
-            "name": job["label"].replace("/", "_"),
-            "digest-data": digest_data,
-        }
+            name=task.label.replace("/", "_"),
+            digest_data=digest_data,
+        )
 
-        yield job
+        yield task.to_dict()
 
 
 @transforms.add
-def cache_task(config, tasks):
+def cache_task(config: TransformConfig, tasks: Generator[dict[str, Any], Any, Any]):
     if taskgraph.fast:
         for task in tasks:
             yield task
         return
 
-    digests = {}
+    digests: dict[str, str] = {}
     for task in config.kind_dependencies_tasks.values():
         if "cached_task" in task.attributes:
             digests[task.label] = format_task_digest(task.attributes["cached_task"])
 
-    for task in order_tasks(config, tasks):
-        cache = task.pop("cache", None)
+    for task_dict in order_tasks(config, tasks):
+        task = TaskDescription.from_dict(task_dict)
+        cache = task.cache
         if cache is None:
             yield task
             continue
 
-        dependency_digests = []
-        for p in task.get("dependencies", {}).values():
+        dependency_digests: list[str] = []
+        for p in task.dependencies:
             if p in digests:
                 dependency_digests.append(digests[p])
             else:
-                raise Exception(
-                    "Cached task {} has uncached parent task: {}".format(task["label"], p)
-                )
-        digest_data = cache["digest-data"] + sorted(dependency_digests)
+                raise Exception("Cached task {} has uncached parent task: {}".format(task["label"], p))
+        digest_data = cache.digest_data + sorted(dependency_digests)
         add_optimization(
             config,
             task,
-            cache_type=cache["type"],
-            cache_name=cache["name"],
+            cache_type=cache.type,
+            cache_name=cache.name,
             digest_data=digest_data,
         )
-        digests[task["label"]] = format_task_digest(task["attributes"]["cached_task"])
+        digests[task.label] = format_task_digest(task.attributes.cached_task)
 
-        yield task
+        yield task.to_dict()
