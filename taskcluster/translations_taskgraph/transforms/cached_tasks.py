@@ -47,7 +47,6 @@ transforms.add_validate(SCHEMA)
 @transforms.add
 def resolved_keyed_by_fields(config: TransformConfig, tasks: Generator[dict[str, Any], Any, Any]):
     for task_dict in tasks:
-        import json
         import sys
 
         sys.stdout = sys.__stdout__
@@ -87,7 +86,7 @@ def add_cache(config: TransformConfig, tasks: Generator[dict[str, Any], Any, Any
         if cache_parameters:
             for param, path in cache_parameters.items():
                 print("!!! path Is this sometimes not a string?", path)
-                if isinstance(path, str): # type: ignore[reportUnnecessaryIsInstance]
+                if isinstance(path, str):  # type: ignore[reportUnnecessaryIsInstance]
                     value = deep_get(config.params, path)
                     digest_data.append(f"{param}:{value}")
                 elif isinstance(path, list):
@@ -134,7 +133,9 @@ def cache_task(config: TransformConfig, tasks: Generator[dict[str, Any], Any, An
             if p in digests:
                 dependency_digests.append(digests[p])
             else:
-                raise Exception("Cached task {} has uncached parent task: {}".format(task["label"], p))
+                raise Exception(
+                    "Cached task {} has uncached parent task: {}".format(task["label"], p)
+                )
         digest_data = cache.digest_data + sorted(dependency_digests)
         add_optimization(
             config,

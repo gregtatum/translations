@@ -633,6 +633,7 @@ def hash_file(hash: any, path: str):
         while chunk := f.read(4096):
             hash.update(chunk)
 
+
 def recursively_remove_none_keys(value: Any):
     if isinstance(value, dict):
         return {

@@ -108,20 +108,20 @@ def train_action(
     parameters = serializable.from_dict(ParametersDataClass, parameters_dict)
     training_config = TrainingConfig.from_dict_validated(training_config_dict)
 
-    start_stage = training_config.start_stage
+    start_stage = training_config["start_stage"]
     training_config["start_stage"] = None
 
     if start_stage:
-        if training_config.previous_group_ids is None:
+        if training_config["previous_group_ids"] is None:
             raise Exception(
                 "'previous-group-ids' is required to use 'start-stage' (otherwise we can't skip earlier tasks)"
             )
 
-        previous_group_ids = training_config.previous_group_ids
-        training_config.previous_group_ids = None
+        previous_group_ids = training_config["previous_group_ids"]
+        training_config["previous_group_ids"] = None
 
         # First, we create one big graph out of all of the tasks from the specified group IDs.
-        label_to_task_id = {}
+        label_to_task_id: dict[str, str] = {}
         combined_full_task_graph_dict = {}
         for graph_id in previous_group_ids:
             label_to_task_id.update(get_artifact(graph_id, "public/label-to-taskid.json"))
@@ -143,17 +143,17 @@ def train_action(
         # an identical name.
         # As of taskgraph 13.0 `get_ancestors` returns taskids -> labels
         # `existing_tasks` needs the opposite
-        parameters.existing_tasks = {v: k for k, v in get_ancestors(start_task_ids).items()}
+        parameters["existing_tasks"] = {v: k for k, v in get_ancestors(start_task_ids).items()}
 
     # Override the `existing_tasks` explicitly provided in the action's input
-    existing_tasks = training_config.existing_tasks
-    training_config.existing_tasks = {}
+    existing_tasks = training_config["existing_tasks"]
+    training_config["existing_tasks"] = {}
 
     # Find and log `overridden_existing_tasks`
     overridden_existing_tasks = {
-        existing_task: parameters.existing_tasks[existing_task]
+        existing_task: parameters["existing_tasks"][existing_task]
         for existing_task in existing_tasks.keys()
-        if existing_task in parameters.existing_tasks
+        if existing_task in parameters["existing_tasks"]
     }
 
     if overridden_existing_tasks:
@@ -162,11 +162,11 @@ def train_action(
         )
 
     # Do the override!
-    parameters.existing_tasks.update(existing_tasks)
+    parameters["existing_tasks"].update(existing_tasks)
 
     # Log the new values for the `overridden_existing_tasks`
     new_values_for_overridden = {
-        existing_task: parameters.existing_tasks[existing_task]
+        existing_task: parameters["existing_tasks"][existing_task]
         for existing_task in overridden_existing_tasks.keys()
     }
 
@@ -175,14 +175,14 @@ def train_action(
             f"New values for `overridden_existing_tasks`: {json.dumps(new_values_for_overridden, indent=2)}"
         )
 
-    parameters.target_tasks_method = "train-target-tasks"
-    parameters.optimize_target_tasks = True
-    parameters.tasks_for = "action"
+    parameters["target_tasks_method"] = "train-target-tasks"
+    parameters["optimize_target_tasks"] = True
+    parameters["tasks_for"] = "action"
 
     # The training config is taskcluster/configs/config.ci.yml by default, replace it with
     # the train action's config.
-    parameters.training_config = training_config
+    parameters["training_config"] = training_config
 
     validate_pretrained_models(parameters)
-    parameters = Parameters(strict=True, repo_root=None, **parameters.to_dict())
+    parameters = Parameters(strict=True, repo_root=None, **serializable.to_dict(parameters))
     taskgraph_decision({"root": graph_config.root_dir}, parameters=parameters)

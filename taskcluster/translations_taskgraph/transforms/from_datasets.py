@@ -44,7 +44,7 @@ from voluptuous import ALLOW_EXTRA, Optional
 from translations_taskgraph.training_config import TrainingConfig
 from translations_taskgraph.util.substitution import substitute
 from translations_taskgraph.util.dataset_helpers import sanitize_dataset_name
-from taskgraph.transforms.base import TransformSequence, TransformConfig
+from taskgraph.transforms.base import TransformSequence
 
 SCHEMA = Schema(
     {

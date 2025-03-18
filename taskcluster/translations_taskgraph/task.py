@@ -1,10 +1,10 @@
-from typing import Any, Literal, NamedTuple, Optional
+from typing import Any, Literal, TypedDict, Optional
 
 from translations_taskgraph.util.serializable import Casing, casing
 
 
 @casing(casing=Casing.kebab)
-class Cache(NamedTuple):
+class Cache(TypedDict):
     # The list of files that will invalidate the cache when they change.
     resources: list[str]
 
@@ -19,12 +19,11 @@ class Cache(NamedTuple):
     #   "pretrained_teacher": "training_config.experiment.pretrained-models.train-teacher",
     #   "teacher_mode": "training_config.experiment.teacher-mode"
     # }
-    from_parameters: Optional[dict[str, Any]] = None
-
+    from_parameters: Optional[dict[str, Any]]
 
 
 @casing()
-class CachedTask(NamedTuple):
+class CachedTask(TypedDict):
     # The hash
     digest: str
     # The name, e.g. "evaluate-backward-sacrebleu-wmt09-en-ru"
@@ -42,77 +41,81 @@ class CachedTask(NamedTuple):
         "toolchain-artifact",
     ]
 )
-class TaskAttributes(NamedTuple):
-    src_locale: Optional[str] = None
-    trg_locale: Optional[str] = None
-    always_target: Optional[bool] = None
-    artifact_prefix: Optional[str] = None
-    best_model: Optional[str] = None
-    cache: Optional[Cache] = None
-    cached_task: Optional[CachedTask] = None
+class TaskAttributes(TypedDict):
+    src_locale: Optional[str]
+    trg_locale: Optional[str]
+    always_target: Optional[bool]
+    artifact_prefix: Optional[str]
+    best_model: Optional[str]
+    cache: Optional[Cache]
+    cached_task: Optional[CachedTask]
     # (kebab-cased) For instance, clean-mono, bicleaner-ai, clean-corpus
-    cleaning_type: Optional[str] = None
+    cleaning_type: Optional[str]
     # The name of the dataset, e.g. "Neulab-tedtalks_test-1-eng-rus"
-    dataset: Optional[str] = None
+    dataset: Optional[str]
     # The type of category.
     dataset_category: Optional[
-        Literal["train"] | Literal["mono-src"] | Literal["mono-trg"] | Literal["test"] | Literal["devtest"]
-    ] = None
+        Literal["train"]
+        | Literal["mono-src"]
+        | Literal["mono-trg"]
+        | Literal["test"]
+        | Literal["devtest"]
+    ]
     # (kebab-cased) For fetch tasks, the fetched artifact public/marian-source.tar.zst
-    fetch_artifact: Optional[str] = None
+    fetch_artifact: Optional[str]
     # e.g. "toolchain-build", "train", "base"
-    image_name: Optional[str] = None
+    image_name: Optional[str]
     # The name of the task kind, e.g. taskcluster/kinds/{name}/kind.yml
-    kind: Optional[str] = None
+    kind: Optional[str]
     # The locale for the task, generally for monolingual tasks, e.g. "ru", "lt", "en".
-    locale: Optional[str] = None
+    locale: Optional[str]
     # (kebab-cased) Each task has a primary-kind. This is the kind dependency in each grouping
     # that comes first in the list of supported kinds
     # e.g. "translate-mono-src"
-    primary_kind_dependency: Optional[str] = None
+    primary_kind_dependency: Optional[str]
     # The dataset provider, e.g. "opus", "url", "mtdata", etc.
-    provider: Optional[str] = None
+    provider: Optional[str]
     # ["all"]
-    run_on_projects: Optional[list[str]] = None
+    run_on_projects: Optional[list[str]]
     # []
-    run_on_tasks_for: Optional[list[str]] = None
+    run_on_tasks_for: Optional[list[str]]
     #
-    shipping_phase: Optional[str] = None
+    shipping_phase: Optional[str]
     # What stage this task is part of, e.g. "translate-mono-trg"
-    stage: Optional[str] = None
+    stage: Optional[str]
     # (kebab-cased) For toolchain tasks, this is the artifact path.
-    toolchain_artifact: Optional[str] = None
+    toolchain_artifact: Optional[str]
     # When a task is chunked, this is the chunk number.
-    this_chunk: Optional[int] = None
+    this_chunk: Optional[int]
     # This is how many chunks this task was split into.
-    total_chunks: Optional[int] = None
+    total_chunks: Optional[int]
 
 
 DateStamp = dict[str, str]  # e.g. { "relative-datestamp": "0 seconds" }
 
 
 @casing()
-class Treeherder(NamedTuple):
+class Treeherder(TypedDict):
     collection: dict[str, bool]
     jobKind: str
     machine: dict[str, str]
     symbol: str
     tier: int
-    groupName: Optional[str] = None
-    groupSymbol: Optional[str] = None
+    groupName: Optional[str]
+    groupSymbol: Optional[str]
 
 
 @casing(casing=Casing.kebab)
-class TaskExtra(NamedTuple):
+class TaskExtra(TypedDict):
     index: dict[str, int]  # type: ignore[reportIncompatibleMethodOverride]
     parent: str
-    treeherder: Optional[Treeherder] = None
-    treeherder_platform: Optional[str] = None
-    chainOfTrust: Optional[dict[str, Any]] = None
+    treeherder: Optional[Treeherder]
+    treeherder_platform: Optional[str]
+    chainOfTrust: Optional[dict[str, Any]]
 
 
 @casing()
-class Task(NamedTuple):
+class Task(TypedDict):
     created: DateStamp
     deadline: DateStamp
     expires: DateStamp
@@ -128,7 +131,7 @@ class Task(NamedTuple):
 
 
 @casing()
-class UnresolvedCache(NamedTuple):
+class UnresolvedCache(TypedDict):
     """
     When resolving the cache when building the full taskgraph, this is the additional
     data, along with the dependencies that Taskgraph will use.
@@ -140,7 +143,7 @@ class UnresolvedCache(NamedTuple):
 
 
 @casing()
-class Artifact(NamedTuple):
+class Artifact(TypedDict):
     # type of artifact -- simple file, or recursive directory
     type: Literal["file"] | Literal["directory"]
     # Task image path from which to read artifact
@@ -150,7 +153,7 @@ class Artifact(NamedTuple):
 
 
 @casing(casing=Casing.kebab)
-class WorkerCache(NamedTuple):
+class WorkerCache(TypedDict):
     # e.g. "persistent"
     type: str
     # The name of the cache, allowing reuse by subsequent tasks naming the same cache.
@@ -162,7 +165,7 @@ class WorkerCache(NamedTuple):
 
 
 @casing(casing=Casing.kebab)
-class Worker(NamedTuple):
+class Worker(TypedDict):
     # The name of the docker image, or {"in-tree": "train"}
     docker_image: dict[str, str]
     # The time in seconds that this task can run.
@@ -193,7 +196,7 @@ class Worker(NamedTuple):
         "soft-dependencies",
     ]
 )
-class TaskDescription(NamedTuple):
+class TaskDescription(TypedDict):
     """
     When generating the Taskgraph, this is the description of a single task. Confusingly
     it also contains a task key. This corresponds to the file:
@@ -249,7 +252,7 @@ class TaskDescription(NamedTuple):
     # custom "task.extra" content
     extra: Optional[dict[str, Any]]
     treeherder: Optional[Treeherder]
-    index: Optional[Any] # type: ignore[reportIncompatibleMethodOverride]
+    index: Optional[Any]  # type: ignore[reportIncompatibleMethodOverride]
     # (kebab_cased)
     run_on_projects: Optional[list[str]]
     # (kebab-cased) Generally used in the CI configuration, e.g. "github-push", "github-pull-request"

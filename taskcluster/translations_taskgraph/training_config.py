@@ -4,156 +4,177 @@ type-safe dataclass, and then shared in other parts of the codebase.
 """
 
 from pathlib import Path
-from typing import Any, NamedTuple, Optional, Literal
+from typing import Any, TypedDict, Optional, Literal
 
 import yaml
 from translations_taskgraph.util import serializable
-from translations_taskgraph.util.serializable import Casing, casing
 
-@casing(casing=Casing.kebab)
-class MarianArgs(NamedTuple):
-    training_backward: Optional[dict[str, str]] = None
-    training_teacher: Optional[dict[str, str]] = None
-    training_student: Optional[dict[str, str]] = None
-    training_student_finetuned: Optional[dict[str, str]] = None
-    decoding_backward: Optional[dict[str, str]] = None
-    decoding_teacher: Optional[dict[str, str]] = None
+MarianArgs = TypedDict(
+    "MarianArgs",
+    {
+        "training-backward": dict[str, str],
+        "training-teacher": dict[str, str],
+        "training-student": dict[str, str],
+        "training-student-finetuned": dict[str, str],
+        "decoding-backward": dict[str, str],
+        "decoding-teacher": dict[str, str],
+    },
+    total=False,
+)
 
-@casing(casing=Casing.kebab)
-class MonoMaxSentences(NamedTuple):
-    """
-    Limits for monolingual datasets.
-    """
+# Limits for monolingual datasets.
+MonoMaxSentences = TypedDict(
+    "MonoMaxSentences",
+    {
+        # The limit sentence size for the total dataset.
+        "total": int,
+        # Limits per downloaded dataset.
+        "per-dataset": int
+    },
+)
 
-    # The limit sentence size for the total dataset.
-    total: int
-    # Limits per downloaded dataset.
-    per_dataset: int
 
-@casing(casing=Casing.kebab)
-class CleanerThresholds(NamedTuple):
-    default_threshold: float
-    dataset_thresholds: Optional[dict[str, float]] = None
+CleanerThresholds = TypedDict(
+    "CleanerThresholds",
+    {
+        "default-threshold": float,
+        "dataset-thresholds": dict[str, float],
+    },
+    total=False
+)
 
-@casing(casing=Casing.kebab)
-class MonocleanerConfig(NamedTuple):
-    mono_src: CleanerThresholds
-    mono_trg: CleanerThresholds
+MonocleanerConfig = TypedDict(
+  "MonocleanerConfig",
+  {
+    "mono-src": CleanerThresholds,
+    "mono-trg": CleanerThresholds,
+  },
+)
 
-@casing(casing=Casing.kebab)
-class HpltMinDocScore(NamedTuple):
-    mono_src: float
-    mono_trg: float
+HpltMinDocScore = TypedDict(
+  "HpltMinDocScore",
+  {
+    "mono-src": float,
+    "mono-trg": float,
+  },
+)
 
-@casing(casing=Casing.kebab)
-class PretrainedModel(NamedTuple):
-    """
-    Pre-trained models use URLs as they are flexible to continue training from either
-    long-term bucket storage, or from tasks in Taskcluster.
-    """
+    # Pre-trained models use URLs as they are flexible to continue training
+    # from either long-term bucket storage or from tasks in Taskcluster.
+PretrainedModel = TypedDict(
+  "PretrainedModel",
+  {
+    "urls": list[str],
+    "mode": Literal["continue", "init", "use"],
+    "type": Literal["default", "opusmt"],
+  },
+)
 
-    urls: list[str]
-    mode: Literal["continue"] | Literal["init"] | Literal["use"]
-    type: Literal["default"] | Literal["opusmt"]
 
-@casing(casing=Casing.kebab)
-class PretrainedModels(NamedTuple):
-    train_backwards: Optional[PretrainedModel] = None
-    train_teacher: Optional[PretrainedModel] = None
+PretrainedModels = TypedDict(
+  "PretrainedModels",
+  {
+    "train-backwards": Optional[PretrainedModel],
+    "train-teacher": Optional[PretrainedModel],
+  },
+  total=False,
+)
 
-@casing(casing=Casing.kebab)
-class Experiment(NamedTuple):
+Experiment = TypedDict(
+  "Experiment",
+  {
     # A name for the experiment.
-    name: str
+    "name": str,
     # The source locale to train.
-    src: str
+    "src": str,
     # The target locale to train.
-    trg: str
+    "trg": str,
     # Number of teachers to train in an ensemble.
-    teacher_ensemble: int
+    "teacher-ensemble": int,
     # Teacher training mode.
-    teacher_mode: Literal["one-stage"] | Literal["two-stage"]
+    "teacher-mode": Literal["one-stage", "two-stage"],
     # Translate with either Marian or CTranslate2.
-    teacher_decoder: Literal["marian"] | Literal["ctranslate2"]
-    # The student model architecture as defined in:
-    #   pipeline/train/configs/model/student.{model}.yml
-    student_model: Literal["tiny"] | Literal["base"]
+    "teacher-decoder": Literal["marian", "ctranslate2"],
+    # The student model architecture.
+    "student-model": Literal["tiny", "base"],
 
-    # Limits for the "target" monolingual data, e.g. data used for back translations.
-    mono_max_sentences_trg: MonoMaxSentences
-    # Limits for the "source" monolingual data, e.g. data used for student distillation.
-    mono_max_sentences_src: MonoMaxSentences
+    # Limits for monolingual datasets.
+    "mono-max-sentences-trg": MonoMaxSentences,
+    "mono-max-sentences-src": MonoMaxSentences,
 
-    # How large of a sample to use for the Sentence Piece sample size.
-    spm_sample_size: int
-    #  The metric to use for the best model.
-    best_model: (
-        Literal["cross-entropy"]
-        | Literal["ce-mean-words"]
-        | Literal["perplexity"]
-        | Literal["valid-script"]
-        | Literal["translation"]
-        | Literal["bleu"]
-        | Literal["bleu-detok"]
-        | Literal["bleu-segmented"]  # (deprecated, same as bleu)
-        | Literal["chrf"]
-    )
+    # Sentence Piece sample size.
+    "spm-sample-size": int,
+    # The metric to use for the best model.
+    "best-model": Literal[
+      "cross-entropy",
+      "ce-mean-words",
+      "perplexity",
+      "valid-script",
+      "translation",
+      "bleu",
+      "bleu-detok",
+      "bleu-segmented",  # (deprecated, same as bleu)
+      "chrf",
+    ],
     # Use OpusCleaner to clean the corpus.
-    # https://github.com/hplt-project/OpusCleaner
-    use_opuscleaner: Literal["true"] | Literal["false"]
+    "use-opuscleaner": Literal["true", "false"],
     # Indicates whether to use dataset specific configs.
-    opuscleaner_mode: Literal["custom"] | Literal["defaults"]
+    "opuscleaner-mode": Literal["custom", "defaults"],
     # Thresholds for running bicleaner-ai.
-    # https://github.com/bitextor/bicleaner-ai
-    bicleaner: CleanerThresholds
-    monocleaner: MonocleanerConfig
-    hplt_min_doc_score: HpltMinDocScore
+    "bicleaner": CleanerThresholds,
+    "monocleaner": MonocleanerConfig,
+    "hplt-min-doc-score": HpltMinDocScore,
     # Instead of training models from scratch, use pre-trained models.
-    pretrained_models: PretrainedModels
-    corpus_max_sentences: Optional[int] = None
-    spm_vocab_size: Optional[int] = None
+    "pretrained-models": PretrainedModels,
+    "corpus-max-sentences": Optional[int],
+    "spm-vocab-size": Optional[int],
+  },
+  total=False,
+)
 
-@casing(casing=Casing.kebab)
-class Taskcluster(NamedTuple):
-    split_chunks: int
-    worker_classes: dict[str, Literal["gcp-standard"] | Literal["gcp-spot"]]
 
-@casing(casing=Casing.kebab)
-class Datasets(NamedTuple):
-    """
-    Represents the datasets used for training.
-    """
+Taskcluster = TypedDict(
+  "Taskcluster",
+  {
+    "split-chunks": int,
+    "worker-classes": dict[str, Literal["gcp-standard", "gcp-spot"]],
+  },
+  total=False,
+)
 
+# Represents the datasets used for training.
+Datasets = TypedDict(
+  "Datasets",
+  {
     # Datasets to merge for validation while training.
-    devtest: list[str]
+    "devtest": list[str],
     # Datasets for evaluation. Each will generate an evaluate-* task for each model type.
-    test: list[str]
+    "test": list[str],
     # Parallel training corpora.
-    train: list[str]
+    "train": list[str],
     # Monolingual datasets that are translated by the teacher model to generate the
     # data to be used for student distillation.
-    mono_src: list[str]  # mono src docs
+    "mono-src": list[str],
     # Monolingual datasets that are translated by the back translations model to
     # synthesize data to increase the amount of data available for teacher training.
-    mono_trg: list[str]
+    "mono-trg": list[str],
+  },
+  total=False,
+)
 
-@casing(casing=Casing.kebab)
-class TrainingConfig(NamedTuple):
-    datasets: dict[str, list[str]]
-
-    marian_args: MarianArgs
-    experiment: Experiment
-
+TrainingConfig = TypedDict(
+  "TrainingConfig",
+  {
+    "datasets": dict[str, list[str]],
+    "marian-args": MarianArgs,
+    "experiment": Experiment,
     # Taskcluster-specific pipeline configuration, eg: chunking
-    taskcluster: Taskcluster
-
-    # Enable publication to Weights and Biases
-    wandb_publication: bool
-    
+    "taskcluster": Taskcluster,
+    # Enable publication to Weights and Biases.
+    "wandb-publication": bool,
     # The stage of the pipeline to run until (any stages this choice depends on will
     # be automatically included).
-    target_stage: str
-
+    "target-stage": str,
     # An array of taskIds of decision or action tasks from the previous group(s) to use
     # to populate our `previous_group_kinds`. Tasks specified here will be used as long
     # as their label matches a needed task, and that task is upstream of `start-stage`.
@@ -161,13 +182,12 @@ class TrainingConfig(NamedTuple):
     # doesn't match what the downstream task wants, it will still be used. This can be
     # used for quick iteration of functionality where the quality of the outputs is not
     # important.
-    previous_group_ids: Optional[list[str]] = None
-
+    "previous-group-ids": Optional[list[str]],
     # The stage of the pipeline to begin at, provided replacements can be found for tasks
     # upstream of this stage. Usually used in conjunction with `previous-group-ids`
     # which allows for specifying task group ids to fetch existing tasks from.
-    start_stage: Optional[str] = None
-
+    "start-stage": Optional[str],
+    
     # A mapping of task labels to task IDs that will be re-used in this training run.
     # For example:
     #
@@ -178,35 +198,37 @@ class TrainingConfig(NamedTuple):
     #         "build-docker-image-train": "fBMJa9R5SKaXd2wgWeD5yQ",
     #         "fetch-browsermt-marian": "BRviRlEMTie8AUFf5prHvg",
     #     }
-    existing_tasks: Optional[dict[str, str]] = None
+    "existing-tasks": Optional[dict[str, str]],
+  },
+  total=False,
+)
+@staticmethod
+def get_and_validate_training_config(config_dict: dict[str, Any]):
+    """
+    Creates a TrainingConfig and validates it from the graph config.
+    """
+    training_config = serializable.from_dict(TrainingConfig, config_dict)
 
-    # ------------------------------------------------------------------------------------
-    # them to be used by the type system.
+    with open(Path(__file__).parent / "../config.yml", "r") as file:
+        valid_stages = yaml.safe_load(file)["valid-stages"]
+        
+    start_stage: str | None = training_config.get("start-stage")
+    if start_stage and start_stage not in valid_stages:
+        raise ValueError(
+            f'start stage "{start_stage}" is not a valid stage in taskcluster/config.yml'
+        )
 
-    @staticmethod
-    def from_dict_validated(config_dict: dict[str, Any]):
-        """
-        Creates a TrainingConfig and validates it from the graph config.
-        """
-        training_config = serializable.from_dict(TrainingConfig, config_dict)
+    target_stage: str | None = training_config.get("target-stage")
+    if target_stage and target_stage not in valid_stages:
+        raise ValueError(
+            f'target stage "{target_stage}" is not a valid stage in taskcluster/config.yml'
+        )
 
-        with open(Path(__file__).parent / "../config.yml", "r") as file:
-            valid_stages = yaml.safe_load(file)["valid-stages"]
+    return training_config
 
-        if training_config.start_stage and training_config.start_stage not in valid_stages:
-            raise ValueError(
-                f'start stage "{training_config.start_stage}" is not a valid stage in taskcluster/config.yml'
-            )
-
-        if training_config.target_stage and training_config.target_stage not in valid_stages:
-            raise ValueError(
-                f'target stage "{training_config.target_stage}" is not a valid stage in taskcluster/config.yml'
-            )
-
-        return training_config
 
 @casing()
-class Parameters(NamedTuple):
+class Parameters(TypedDict):
     base_repository: str
     base_ref: str
     base_rev: str
@@ -231,7 +253,7 @@ class Parameters(NamedTuple):
     target_tasks_method: str
     tasks_for: str
     training_config: TrainingConfig
-    optimize_strategies: Optional[str] = None
-    files_changed: Optional[list[str]] = None
-    next_version: Optional[str] = None
-    version: Optional[str] = None
+    optimize_strategies: Optional[str]
+    files_changed: Optional[list[str]]
+    next_version: Optional[str]
+    version: Optional[str]

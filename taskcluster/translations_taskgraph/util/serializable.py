@@ -14,13 +14,23 @@ This file contains helpers for converting untyped JSON configurations into typed
 """
 
 from enum import Enum
-import sys
 import types
-from typing import NamedTuple, Optional, Any, Literal, Tuple, Union, cast, get_origin, get_args, Type, TypeVar, get_type_hints
+from typing import (
+    Optional,
+    Any,
+    Literal,
+    Tuple,
+    Union,
+    cast,
+    get_origin,
+    get_args,
+    Type,
+    TypeVar,
+    get_type_hints,
+)
 import voluptuous
 
-# A type that inherits from the StricterDataclass.
-NamedTupleCls = TypeVar("NamedTupleCls", bound="NamedTuple")
+TypedDictCls = TypeVar("TypedDictCls")
 
 
 class Casing(Enum):
@@ -39,14 +49,16 @@ class CasingManager:
 
     @staticmethod
     def add_class(
-        cls_type: type[NamedTupleCls],
+        cls_type: type[TypedDictCls],
         casing: Casing = Casing.underscore,
         kebab: list[str] = [],
         underscore: list[str] = [],
     ):
         # Store them all as underscores.
         CasingManager.kebab_cased_fields_by_class[cls_type] = [v.replace("-", "_") for v in kebab]
-        CasingManager.underscore_cased_fields_by_class[cls_type] = [v.replace("-", "_") for v in underscore]
+        CasingManager.underscore_cased_fields_by_class[cls_type] = [
+            v.replace("-", "_") for v in underscore
+        ]
         CasingManager.casing_by_class[cls_type] = casing
 
     @staticmethod
@@ -70,19 +82,14 @@ class CasingManager:
             return Casing.underscore
         return Casing.kebab
 
-# The implementation for the NamedTuple is different in Python 3.11, so add an if
-# statement to make future python migrations easier.
-if sys.version_info >= (3, 11):
-  print("This code is running under 3.11, and the if statement can be removed.")
-  from collections.abc import NamedTuple as NamedTupleABC
-  def is_named_tuple_subclass(cls: Any) -> bool:
-    return isinstance(cls, type) and issubclass(cls, NamedTupleABC)
-else:
-  def is_named_tuple_subclass(cls: Any) -> bool:
-    return isinstance(cls, type) and issubclass(cls, tuple) and hasattr(cls, '_fields') # type: ignore[reportUnknownArgumentType]
+
+def has_type_annotations(cls: type):
+    return bool(getattr(cls, "__annotations_", None))
+
 
 def get_fields(data_type: type) -> dict[str, type]:
     return data_type.__annotations__
+
 
 def _deserialize(data_type: type, data: Any, key_path: str):
     """
@@ -90,17 +97,20 @@ def _deserialize(data_type: type, data: Any, key_path: str):
     kebab casing requirements for the KebabDataclass. It also validates Unions
     of Literals.
     """
-    assert not is_type_optional(data_type), "Optional types should not be passed into this function."
-    
+    assert not is_type_optional(
+        data_type
+    ), "Optional types should not be passed into this function."
+
     if data_type is Any:
         # Do not type check any types, just pass them through.
         return data
 
     key_path_display = key_path or "<root>"
     import sys
+
     sys.stdout = sys.__stdout__
-    
-    if is_named_tuple_subclass(data_type):
+
+    if has_type_annotations(data_type):
         if not isinstance(data, dict):
             print("Data:", data)
             raise ValueError(f'Expected a dictionary at "{key_path_display}".')
@@ -111,7 +121,7 @@ def _deserialize(data_type: type, data: Any, key_path: str):
             for field_name, field_type in fields.items()
             if not is_type_optional(field_type)
         }
-        
+
         vargs = {}
         for dict_key, dict_value in data.items():
             dict_value: Any = dict_value
@@ -140,7 +150,7 @@ def _deserialize(data_type: type, data: Any, key_path: str):
             field_type = fields[vargs_key]
             field_type = extract_optional_properties(field_type)[1]
 
-            if is_named_tuple_subclass(field_type):
+            if has_type_annotations(field_type):
                 vargs[vargs_key] = from_dict(field_type, dict_value, next_key_path)
             else:
                 vargs[vargs_key] = _deserialize(field_type, dict_value, next_key_path)
@@ -195,11 +205,15 @@ def _deserialize(data_type: type, data: Any, key_path: str):
                         f'An unexpected value "{data}" was provided at "{key_path_display}", expected it to be one of: {literals}'
                     )
             else:
-                raise TypeError(f'Union contained a mix of literal and non-literal types at "{key_path_display}"')
+                raise TypeError(
+                    f'Union contained a mix of literal and non-literal types at "{key_path_display}"'
+                )
 
         for union_item in union_items:
             if union_item not in primitives:
-                raise TypeError(f'A union contained a non-primitive value "{union_item}" at "{key_path_display}"')
+                raise TypeError(
+                    f'A union contained a non-primitive value "{union_item}" at "{key_path_display}"'
+                )
 
         return data
 
@@ -210,18 +224,20 @@ def _deserialize(data_type: type, data: Any, key_path: str):
 
     return data
 
-def is_named_tuple(obj: Any) -> bool:
-    return isinstance(obj, tuple) and hasattr(obj, '_fields') # type: ignore[reportUnknownArgumentType]
 
-def from_dict(cls: Type[NamedTupleCls], data: Any, key_path: str = "") -> NamedTupleCls:
+def is_named_tuple(obj: Any) -> bool:
+    return isinstance(obj, tuple) and hasattr(obj, "_fields")  # type: ignore[reportUnknownArgumentType]
+
+
+def from_dict(cls: Type[TypedDictCls], data: Any, key_path: str = "") -> TypedDictCls:
     if not isinstance(data, dict):
         raise ValueError("Expected a dict")
     result = _deserialize(cls, data, key_path)
     assert is_named_tuple(result)
-    return result # type: ignore[This runtime check fails]
+    return result  # type: ignore[This runtime check fails]
+
 
 def _serialize(value: Any) -> Any:
-
     if isinstance(value, (float, int, str, dict, type(None))):
         return value
 
@@ -236,7 +252,7 @@ def _serialize(value: Any) -> Any:
             serialized_field_name = field_name
             if CasingManager.get_field_casing(value_type, field_name) == Casing.kebab:
                 serialized_field_name = field_name.replace("_", "-")
-            
+
             # Serialize the value, but omit it if the value is None.
             serialized_value = _serialize(getattr(value, field_name))
             if serialized_value is not None:
@@ -246,8 +262,10 @@ def _serialize(value: Any) -> Any:
 
     raise ValueError("Unexpected value type")
 
-def to_dict(named_tuple: NamedTuple) -> dict[str, Any]:
-    return _serialize(named_tuple)
+
+def to_dict(typed_dict: Any) -> dict[str, Any]:
+    return _serialize(typed_dict)
+
 
 def casing(
     casing: Casing = Casing.underscore,
@@ -257,7 +275,8 @@ def casing(
     """
     Decorator to instantiate a stricter dataclass with the given configuration.
     """
-    def wrapper(cls: type[NamedTupleCls]) -> type[NamedTupleCls]:
+
+    def wrapper(cls: type[TypedDictCls]) -> type[TypedDictCls]:
         CasingManager.add_class(cls, casing, kebab, underscore)
 
         # Get type hints to check for Optional fields
@@ -343,7 +362,8 @@ def is_type_optional(t: type) -> bool:
 
 
 def build_voluptuous_schema(
-    value: type, key_requirement: type[voluptuous.Required] | type[voluptuous.Optional] = voluptuous.Required
+    value: type,
+    key_requirement: type[voluptuous.Required] | type[voluptuous.Optional] = voluptuous.Required,
 ):
     # Is this just a basic data type?
     if value in [str, float, int, bool]:
@@ -431,7 +451,11 @@ def build_json_schema(type_value: type, is_key_optional: bool = False):
     # Handle creating the schema from a dataclass. Also handle the kebab casing.
     if is_named_tuple(type_value):
         properties: dict[str, Any] = {}
-        schema_dict: dict[str, Any] = {"type": "object", "additionalProperties": False, "properties": properties}
+        schema_dict: dict[str, Any] = {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": properties,
+        }
         required: list[str] = []
         for field_name, field_type in get_fields(type_value).items():
             is_optional, field_type = extract_optional_properties(field_type)

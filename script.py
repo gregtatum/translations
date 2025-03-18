@@ -1,4 +1,28 @@
-from translations_taskgraph.training_config import CleanerThresholds
+from typing import TypedDict
 
 
-CleanerThresholds(default_threshold=0.5, dataset_thresholds={'opus_ELRC-3075-wikipedia_health_v1': 0.6, 'opus_ada83_v1': 0.0})
+class CasedTypedDict(TypedDict):
+    def to_dict(self):
+        return dict(self)
+
+
+class Person(TypedDict):
+    name: str
+    age: int
+
+
+class Employee(Person):
+    job_title: str
+
+
+def is_typed_dict(cls) -> bool:
+    return any(
+        getattr(base, "__origin__", None) is TypedDict
+        for base in getattr(cls, "__orig_bases__", [])
+    )
+
+
+print(is_typed_dict(Person))  # True
+print(is_typed_dict(Employee))  # True
+print(is_typed_dict(dict))  # False
+print(is_typed_dict(TypedDict))  # False
