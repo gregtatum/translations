@@ -5,13 +5,14 @@ from taskgraph.config import GraphConfig
 from taskgraph.task import Task
 
 from translations_taskgraph.training_config import TrainingConfig
+from translations_taskgraph.util import serializable
 
 
 @register_target_task("train-target-tasks")
 def train_target_tasks(
     full_task_graph: TaskGraph, parameters: Parameters, graph_config: GraphConfig
 ):
-    training_config = TrainingConfig.from_dict(parameters["training_config"])
+    training_config = serializable.from_dict(TrainingConfig, parameters["training_config"])
 
     def filter(task: Task):
         # These attributes will be present on tasks from all stages

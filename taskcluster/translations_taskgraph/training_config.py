@@ -3,26 +3,24 @@ This file contains the canonical format for the training config. It's defined as
 type-safe dataclass, and then shared in other parts of the codebase.
 """
 
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional, Literal
+from typing import Any, NamedTuple, Optional, Literal
 
 import yaml
-from translations_taskgraph.util.dataclass_helpers import Casing, StricterDataclass, stricter_dataclass
+from translations_taskgraph.util import serializable
+from translations_taskgraph.util.serializable import Casing, casing
 
-@dataclass(kw_only=True)
-@stricter_dataclass(casing=Casing.kebab)
-class MarianArgs(StricterDataclass):
-    training_backward: Optional[dict[str, str]]
-    training_teacher: Optional[dict[str, str]]
-    training_student: Optional[dict[str, str]]
-    training_student_finetuned: Optional[dict[str, str]]
-    decoding_backward: Optional[dict[str, str]]
-    decoding_teacher: Optional[dict[str, str]]
+@casing(casing=Casing.kebab)
+class MarianArgs(NamedTuple):
+    training_backward: Optional[dict[str, str]] = None
+    training_teacher: Optional[dict[str, str]] = None
+    training_student: Optional[dict[str, str]] = None
+    training_student_finetuned: Optional[dict[str, str]] = None
+    decoding_backward: Optional[dict[str, str]] = None
+    decoding_teacher: Optional[dict[str, str]] = None
 
-@dataclass(kw_only=True)
-@stricter_dataclass(casing=Casing.kebab)
-class MonoMaxSentences(StricterDataclass):
+@casing(casing=Casing.kebab)
+class MonoMaxSentences(NamedTuple):
     """
     Limits for monolingual datasets.
     """
@@ -32,27 +30,23 @@ class MonoMaxSentences(StricterDataclass):
     # Limits per downloaded dataset.
     per_dataset: int
 
-@dataclass(kw_only=True)
-@stricter_dataclass(casing=Casing.kebab)
-class CleanerThresholds(StricterDataclass):
+@casing(casing=Casing.kebab)
+class CleanerThresholds(NamedTuple):
     default_threshold: float
-    dataset_thresholds: Optional[dict[str, float]]
+    dataset_thresholds: Optional[dict[str, float]] = None
 
-@dataclass(kw_only=True)
-@stricter_dataclass(casing=Casing.kebab)
-class MonocleanerConfig(StricterDataclass):
+@casing(casing=Casing.kebab)
+class MonocleanerConfig(NamedTuple):
     mono_src: CleanerThresholds
     mono_trg: CleanerThresholds
 
-@dataclass(kw_only=True)
-@stricter_dataclass(casing=Casing.kebab)
-class HpltMinDocScore(StricterDataclass):
+@casing(casing=Casing.kebab)
+class HpltMinDocScore(NamedTuple):
     mono_src: float
     mono_trg: float
 
-@dataclass(kw_only=True)
-@stricter_dataclass(casing=Casing.kebab)
-class PretrainedModel(StricterDataclass):
+@casing(casing=Casing.kebab)
+class PretrainedModel(NamedTuple):
     """
     Pre-trained models use URLs as they are flexible to continue training from either
     long-term bucket storage, or from tasks in Taskcluster.
@@ -62,15 +56,13 @@ class PretrainedModel(StricterDataclass):
     mode: Literal["continue"] | Literal["init"] | Literal["use"]
     type: Literal["default"] | Literal["opusmt"]
 
-@dataclass(kw_only=True)
-@stricter_dataclass(casing=Casing.kebab)
-class PretrainedModels(StricterDataclass):
-    train_backwards: Optional[PretrainedModel]
-    train_teacher: Optional[PretrainedModel]
+@casing(casing=Casing.kebab)
+class PretrainedModels(NamedTuple):
+    train_backwards: Optional[PretrainedModel] = None
+    train_teacher: Optional[PretrainedModel] = None
 
-@dataclass(kw_only=True)
-@stricter_dataclass(casing=Casing.kebab)
-class Experiment(StricterDataclass):
+@casing(casing=Casing.kebab)
+class Experiment(NamedTuple):
     # A name for the experiment.
     name: str
     # The source locale to train.
@@ -118,18 +110,16 @@ class Experiment(StricterDataclass):
     hplt_min_doc_score: HpltMinDocScore
     # Instead of training models from scratch, use pre-trained models.
     pretrained_models: PretrainedModels
-    corpus_max_sentences: Optional[int]
-    spm_vocab_size: Optional[int]
+    corpus_max_sentences: Optional[int] = None
+    spm_vocab_size: Optional[int] = None
 
-@dataclass(kw_only=True)
-@stricter_dataclass(casing=Casing.kebab)
-class Taskcluster(StricterDataclass):
+@casing(casing=Casing.kebab)
+class Taskcluster(NamedTuple):
     split_chunks: int
     worker_classes: dict[str, Literal["gcp-standard"] | Literal["gcp-spot"]]
 
-@dataclass(kw_only=True)
-@stricter_dataclass(casing=Casing.kebab)
-class Datasets(StricterDataclass):
+@casing(casing=Casing.kebab)
+class Datasets(NamedTuple):
     """
     Represents the datasets used for training.
     """
@@ -147,9 +137,8 @@ class Datasets(StricterDataclass):
     # synthesize data to increase the amount of data available for teacher training.
     mono_trg: list[str]
 
-@dataclass(kw_only=True)
-@stricter_dataclass(casing=Casing.kebab)
-class TrainingConfig(StricterDataclass):
+@casing(casing=Casing.kebab)
+class TrainingConfig(NamedTuple):
     datasets: dict[str, list[str]]
 
     marian_args: MarianArgs
@@ -160,6 +149,10 @@ class TrainingConfig(StricterDataclass):
 
     # Enable publication to Weights and Biases
     wandb_publication: bool
+    
+    # The stage of the pipeline to run until (any stages this choice depends on will
+    # be automatically included).
+    target_stage: str
 
     # An array of taskIds of decision or action tasks from the previous group(s) to use
     # to populate our `previous_group_kinds`. Tasks specified here will be used as long
@@ -168,16 +161,12 @@ class TrainingConfig(StricterDataclass):
     # doesn't match what the downstream task wants, it will still be used. This can be
     # used for quick iteration of functionality where the quality of the outputs is not
     # important.
-    previous_group_ids: Optional[list[str]]
+    previous_group_ids: Optional[list[str]] = None
 
     # The stage of the pipeline to begin at, provided replacements can be found for tasks
     # upstream of this stage. Usually used in conjunction with `previous-group-ids`
     # which allows for specifying task group ids to fetch existing tasks from.
-    start_stage: Optional[str]
-
-    # The stage of the pipeline to run until (any stages this choice depends on will
-    # be automatically included).
-    target_stage: str
+    start_stage: Optional[str] = None
 
     # A mapping of task labels to task IDs that will be re-used in this training run.
     # For example:
@@ -189,7 +178,7 @@ class TrainingConfig(StricterDataclass):
     #         "build-docker-image-train": "fBMJa9R5SKaXd2wgWeD5yQ",
     #         "fetch-browsermt-marian": "BRviRlEMTie8AUFf5prHvg",
     #     }
-    existing_tasks: dict[str, str]
+    existing_tasks: Optional[dict[str, str]] = None
 
     # ------------------------------------------------------------------------------------
     # them to be used by the type system.
@@ -199,7 +188,7 @@ class TrainingConfig(StricterDataclass):
         """
         Creates a TrainingConfig and validates it from the graph config.
         """
-        training_config = TrainingConfig.from_dict(config_dict)
+        training_config = serializable.from_dict(TrainingConfig, config_dict)
 
         with open(Path(__file__).parent / "../config.yml", "r") as file:
             valid_stages = yaml.safe_load(file)["valid-stages"]
@@ -216,9 +205,8 @@ class TrainingConfig(StricterDataclass):
 
         return training_config
 
-@dataclass(kw_only=True)
-@stricter_dataclass()
-class Parameters(StricterDataclass):
+@casing()
+class Parameters(NamedTuple):
     base_repository: str
     base_ref: str
     base_rev: str
@@ -227,7 +215,6 @@ class Parameters(StricterDataclass):
     do_not_optimize: list[str]
     enable_always_target: bool
     existing_tasks: dict[str, str]
-    files_changed: Optional[list[str]]
     filters: list[str]
     head_ref: str
     head_repository: str
@@ -235,8 +222,6 @@ class Parameters(StricterDataclass):
     head_tag: str
     level: str
     moz_build_date: str
-    next_version: Optional[str]
-    optimize_strategies: Optional[str]
     optimize_target_tasks: bool
     owner: str
     project: str
@@ -245,5 +230,8 @@ class Parameters(StricterDataclass):
     repository_type: str
     target_tasks_method: str
     tasks_for: str
-    version: Optional[str]
     training_config: TrainingConfig
+    optimize_strategies: Optional[str] = None
+    files_changed: Optional[list[str]] = None
+    next_version: Optional[str] = None
+    version: Optional[str] = None

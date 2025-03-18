@@ -8,7 +8,7 @@ from taskgraph.parameters import extend_parameters_schema
 import yaml
 import voluptuous
 from translations_taskgraph.training_config import TrainingConfig
-from translations_taskgraph.util.dataclass_helpers import build_voluptuous_schema
+from translations_taskgraph.util.serializable import build_voluptuous_schema
 
 
 logger = logging.getLogger(__name__)

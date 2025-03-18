@@ -1,11 +1,17 @@
-from dataclasses import dataclass
-from typing import Any, Literal, Optional
+from typing import Any, Literal, NamedTuple, Optional
 
-from translations_taskgraph.util.dataclass_helpers import Casing, StricterDataclass, stricter_dataclass
+from translations_taskgraph.util.serializable import Casing, casing
 
 
-@stricter_dataclass(casing=Casing.kebab)
-class Cache(StricterDataclass):
+@casing(casing=Casing.kebab)
+class Cache(NamedTuple):
+    # The list of files that will invalidate the cache when they change.
+    resources: list[str]
+
+    # This is used to form part of the cache key, and organizes the caches by type.
+    # e.g. "train-teacher", "merge-mono", "bicleaner-ai"
+    # See: https://firefox-ci-tc.services.mozilla.com/tasks/index/translations.cache.level-1/
+    type: str
     # Invalidates the cache whenever a parameter from the config changes.
     #
     # {
@@ -15,18 +21,10 @@ class Cache(StricterDataclass):
     # }
     from_parameters: Optional[dict[str, Any]] = None
 
-    # The list of files that will invalidate the cache when they change.
-    resources: list[str]
-
-    # This is used to form part of the cache key, and organizes the caches by type.
-    # e.g. "train-teacher", "merge-mono", "bicleaner-ai"
-    # See: https://firefox-ci-tc.services.mozilla.com/tasks/index/translations.cache.level-1/
-    type: str
 
 
-@dataclass(kw_only=True)
-@stricter_dataclass()
-class CachedTask(StricterDataclass):
+@casing()
+class CachedTask(NamedTuple):
     # The hash
     digest: str
     # The name, e.g. "evaluate-backward-sacrebleu-wmt09-en-ru"
@@ -35,7 +33,7 @@ class CachedTask(StricterDataclass):
     type: str
 
 
-@stricter_dataclass(
+@casing(
     kebab=[
         "cleaning-type",
         "dataset-category",
@@ -44,7 +42,7 @@ class CachedTask(StricterDataclass):
         "toolchain-artifact",
     ]
 )
-class TaskAttributes(StricterDataclass):
+class TaskAttributes(NamedTuple):
     src_locale: Optional[str] = None
     trg_locale: Optional[str] = None
     always_target: Optional[bool] = None
@@ -93,30 +91,28 @@ class TaskAttributes(StricterDataclass):
 DateStamp = dict[str, str]  # e.g. { "relative-datestamp": "0 seconds" }
 
 
-@dataclass(kw_only=True)
-@stricter_dataclass()
-class Treeherder(StricterDataclass):
+@casing()
+class Treeherder(NamedTuple):
     collection: dict[str, bool]
-    groupName: Optional[str] = None
-    groupSymbol: Optional[str] = None
     jobKind: str
     machine: dict[str, str]
     symbol: str
     tier: int
+    groupName: Optional[str] = None
+    groupSymbol: Optional[str] = None
 
 
-@stricter_dataclass(casing=Casing.kebab)
-class TaskExtra(StricterDataclass):
-    index: dict[str, int]
+@casing(casing=Casing.kebab)
+class TaskExtra(NamedTuple):
+    index: dict[str, int]  # type: ignore[reportIncompatibleMethodOverride]
     parent: str
     treeherder: Optional[Treeherder] = None
     treeherder_platform: Optional[str] = None
     chainOfTrust: Optional[dict[str, Any]] = None
 
 
-@dataclass(kw_only=True)
-@stricter_dataclass()
-class Task(StricterDataclass):
+@casing()
+class Task(NamedTuple):
     created: DateStamp
     deadline: DateStamp
     expires: DateStamp
@@ -131,9 +127,8 @@ class Task(StricterDataclass):
     workerType: Any
 
 
-@dataclass(kw_only=True)
-@stricter_dataclass()
-class UnresolvedCache(StricterDataclass):
+@casing()
+class UnresolvedCache(NamedTuple):
     """
     When resolving the cache when building the full taskgraph, this is the additional
     data, along with the dependencies that Taskgraph will use.
@@ -144,9 +139,8 @@ class UnresolvedCache(StricterDataclass):
     digest_data: list[str]
 
 
-@dataclass(kw_only=True)
-@stricter_dataclass()
-class Artifact(StricterDataclass):
+@casing()
+class Artifact(NamedTuple):
     # type of artifact -- simple file, or recursive directory
     type: Literal["file"] | Literal["directory"]
     # Task image path from which to read artifact
@@ -155,8 +149,8 @@ class Artifact(StricterDataclass):
     name: str
 
 
-@stricter_dataclass(casing=Casing.kebab)
-class WorkerCache(StricterDataclass):
+@casing(casing=Casing.kebab)
+class WorkerCache(NamedTuple):
     # e.g. "persistent"
     type: str
     # The name of the cache, allowing reuse by subsequent tasks naming the same cache.
@@ -167,8 +161,8 @@ class WorkerCache(StricterDataclass):
     skip_untrusted: Optional[bool]
 
 
-@stricter_dataclass(casing=Casing.kebab)
-class Worker(StricterDataclass):
+@casing(casing=Casing.kebab)
+class Worker(NamedTuple):
     # The name of the docker image, or {"in-tree": "train"}
     docker_image: dict[str, str]
     # The time in seconds that this task can run.
@@ -188,7 +182,7 @@ class Worker(StricterDataclass):
     command: list[str]
 
 
-@stricter_dataclass(
+@casing(
     kebab=[
         "worker-type",
         "run-on-tasks-for",
@@ -199,7 +193,7 @@ class Worker(StricterDataclass):
         "soft-dependencies",
     ]
 )
-class TaskDescription(StricterDataclass):
+class TaskDescription(NamedTuple):
     """
     When generating the Taskgraph, this is the description of a single task. Confusingly
     it also contains a task key. This corresponds to the file:
@@ -255,7 +249,7 @@ class TaskDescription(StricterDataclass):
     # custom "task.extra" content
     extra: Optional[dict[str, Any]]
     treeherder: Optional[Treeherder]
-    index: Optional[Any]
+    index: Optional[Any] # type: ignore[reportIncompatibleMethodOverride]
     # (kebab_cased)
     run_on_projects: Optional[list[str]]
     # (kebab-cased) Generally used in the CI configuration, e.g. "github-push", "github-pull-request"

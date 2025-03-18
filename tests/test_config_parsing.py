@@ -17,7 +17,8 @@ from jsonschema import validate
 from voluptuous import Schema
 import typing
 
-from translations_taskgraph.util.dataclass_helpers import (
+from translations_taskgraph.util import serializable
+from translations_taskgraph.util.serializable import (
     build_json_schema,
     build_voluptuous_schema,
     extract_optional_properties,
@@ -155,8 +156,8 @@ def test_roundtrip_serialization_deserialization():
     params = "taskcluster/test/params/small-ru-en.yml"
     print(f"Reading {params}")
     source_dict = load_yaml(params)
-    parameters = Parameters.from_dict(source_dict)
-    target_dict = parameters.to_dict()
+    parameters = serializable.from_dict(Parameters, source_dict)
+    target_dict = serializable.to_dict(parameters)
 
     assert (
         recursively_remove_none_keys(source_dict) == target_dict

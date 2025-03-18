@@ -18,7 +18,8 @@ from translations_taskgraph.training_config import (
     TrainingConfig,
     Parameters as ParametersDataClass,
 )
-from translations_taskgraph.util.dataclass_helpers import build_json_schema
+from translations_taskgraph.util import serializable
+from translations_taskgraph.util.serializable import build_json_schema
 
 logger = logging.getLogger(__name__)
 
@@ -104,11 +105,11 @@ def train_action(
         task_id:
             This will be not be set when running locally.
     """
-    parameters = ParametersDataClass.from_dict(parameters_dict)
+    parameters = serializable.from_dict(ParametersDataClass, parameters_dict)
     training_config = TrainingConfig.from_dict_validated(training_config_dict)
 
     start_stage = training_config.start_stage
-    training_config.start_stage = None
+    training_config["start_stage"] = None
 
     if start_stage:
         if training_config.previous_group_ids is None:
