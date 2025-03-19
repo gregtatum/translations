@@ -61,6 +61,7 @@ tasks:
                     - taskcluster/scripts/pipeline/train-taskcluster.sh
                 from-parameters:
                     marian_args: training_config.marian-args.training-student
+                    corpora: training_config.corpora.student_distillation
         worker-type:
             by-tasks-for:
                 # pull requests and nightly pipeline runs use a minimal config
@@ -130,6 +131,12 @@ tasks:
             train-vocab: train-vocab-{src_locale}-{trg_locale}
             merge-devset: merge-devset-{src_locale}-{trg_locale}
             alignments: alignments-student-{src_locale}-{trg_locale}
+
+        # corpus_continuation:
+        #     dependencies:
+        #         train-vocab: train-vocab-{src_locale}-{trg_locale}
+        #         merge-devset: merge-devset-{src_locale}-{trg_locale}
+        #         alignments: alignments-student-{src_locale}-{trg_locale}
 
         fetches:
             toolchain:

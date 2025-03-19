@@ -60,6 +60,9 @@ mono.add_validate(MONO)
 
 
 def get_cleaning_type(upstreams):
+    import sys
+
+    sys.stdout = sys.__stdout__
     candidates = set()
 
     for upstream in upstreams:
@@ -72,7 +75,8 @@ def get_cleaning_type(upstreams):
         if type_ in candidates:
             return type_
 
-    raise Exception("Unable to find cleaning type!")
+    # Default to bicleaner-ai if no cleaning steps were found.
+    return "bicleaner-ai"
 
 
 @by_locales.add
@@ -94,7 +98,10 @@ def resolve_keyed_by_fields(config, jobs):
 
 @by_locales.add
 def upstreams_for_locales(config, jobs):
-    datasets = config.params.get("training_config", {}).get("datasets", {})
+    datasets = config.params.get("training_config", {}).get("datasets")
+    if not datasets:
+        # There are no dataset jobs to yield.
+        return
     for job in jobs:
         dataset_category = job["attributes"]["dataset-category"]
         target_datasets = datasets[dataset_category]
@@ -144,9 +151,13 @@ def upstreams_for_locales(config, jobs):
 @mono.add
 def upstreams_for_mono(config, jobs):
     training_config = config.params.get("training_config", {})
-    datasets = training_config.get("datasets", {})
+    datasets = training_config.get("datasets")
     src = training_config["experiment"]["src"]
     trg = training_config["experiment"]["trg"]
+    if not datasets:
+        # There are no dataset jobs to yield.
+        return
+
     for job in jobs:
         dataset_category = job["attributes"]["dataset-category"]
         target_datasets = datasets[dataset_category]

@@ -96,6 +96,23 @@ extend_parameters_schema(
             Optional("datasets"): {
                 str: [str],
             },
+            Optional("corpora"): {
+                Optional("backtranslations"): {
+                    Required("src"): str,
+                    Required("trg"): str,
+                    Optional("aln"): str,
+                },
+                Optional("original-parallel"): {
+                    Required("src"): str,
+                    Required("trg"): str,
+                    Optional("aln"): str,
+                },
+                Optional("student-distillation"): {
+                    Required("src"): str,
+                    Required("trg"): str,
+                    Optional("aln"): str,
+                },
+            },
             Optional("taskcluster"): {
                 Optional("split-chunks"): int,
                 Required("worker-classes"): {

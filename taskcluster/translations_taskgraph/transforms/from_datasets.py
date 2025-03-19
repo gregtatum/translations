@@ -77,9 +77,13 @@ def jobs_from_datasets(config, jobs):
         provider = dataset_config.get("provider", "")
         substitution_fields = dataset_config.get("substitution-fields", [])
         exclude_locales = dataset_config.get("exclude-locales", [])
-        datasets = config.params["training_config"]["datasets"]
+        datasets = config.params["training_config"].get("datasets")
         src = config.params["training_config"]["experiment"]["src"]
         trg = config.params["training_config"]["experiment"]["trg"]
+
+        if not datasets:
+            # This is using corpus continuation, don't yield any dataset jobs.
+            return
 
         included_datasets = set()
         if category:
@@ -130,9 +134,12 @@ def jobs_for_mono_datasets(config, jobs):
         provider = dataset_config.get("provider", "")
         substitution_fields = dataset_config.get("substitution-fields", [])
         exclude_locales = dataset_config.get("exclude-locales", [])
-        datasets = config.params["training_config"]["datasets"]
+        datasets = config.params["training_config"].get("datasets")
         src = config.params["training_config"]["experiment"]["src"]
         trg = config.params["training_config"]["experiment"]["trg"]
+        if not datasets:
+            # This is using corpus continuation, don't yield any dataset jobs.
+            return
 
         if {"src": src, "trg": trg} in exclude_locales:
             continue
