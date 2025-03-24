@@ -90,11 +90,17 @@ def apply_corpus_continuation(config: TransformConfig, jobs: Iterable[Job]):
     for job in jobs:
         if original_parallel:
             rewrite_dependencies(job, old_task="merge-corpus", new_task="corpus-original-parallel")
+            if original_parallel.get("aln"):
+                rewrite_dependencies(job, old_task="alignments-original", new_task="corpus-original-parallel")
 
         if backtranslations:
             rewrite_dependencies(job, old_task="merge-mono-trg", new_task="corpus-backtranslations")
-
+            if backtranslations.get("aln"):
+                rewrite_dependencies(job, old_task="alignments-backtranslations", new_task="corpus-backtranslations")
+                
         if student_distillation:
             rewrite_dependencies(job, old_task="cefilter", new_task="corpus-student-distillation")
+            if student_distillation.get("aln"):
+                rewrite_dependencies(job, old_task="alignments-student", new_task="corpus-student-distillation")
         
         yield job

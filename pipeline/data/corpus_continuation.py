@@ -1,7 +1,7 @@
 import argparse
 from contextlib import ExitStack
 from pathlib import Path
-from typing import Optional
+import shutil
 from pipeline.common.downloads import (
     read_lines,
     write_lines,
@@ -26,10 +26,10 @@ def main() -> None:
     )
     parser.add_argument("--src_url", type=str, required=True, help="The source URL for this corpus")
     parser.add_argument("--trg_url", type=str, required=True, help="The target URL for this file")
+    parser.add_argument("--aln_url", type=str, default="", help="The alignments file URL for this file")
     parser.add_argument("--src_locale", type=str, required=True, help="The source language for this corpus")
     parser.add_argument("--trg_locale", type=str, required=True, help="The target language for this file")
     parser.add_argument("--corpus", choices=["backtranslations", "original-parallel", "student-distillation"])
-    parser.add_argument("--aln_url", type=str, default="", help="The alignments file URL for this file")
     parser.add_argument("--artifacts", type=Path, help="The location where the dataset will be saved")
     
     args = parser.parse_args()
@@ -51,19 +51,22 @@ def main() -> None:
     else:
         raise ValueError(f"Unexpected corpus name: \"{corpus}\"")
     
-    aln_part = ""
-    if aln_url:
-        aln_part = ".tok-icu"
-    
     artifacts.mkdir(exist_ok=True)
-    src_destination = artifacts / f"{file_name_part}{aln_part}.{src_locale}.zst"
-    trg_destination = artifacts / f"{file_name_part}{aln_part}.{trg_locale}.zst"
+    src_destination = artifacts / f"{file_name_part}.{src_locale}.zst"
+    trg_destination = artifacts / f"{file_name_part}.{trg_locale}.zst"
     aln_destination = artifacts / f"{file_name_part}.aln.zst"
     
     download_file(src_url, src_destination)
     download_file(trg_url, trg_destination)
     if aln_url:
         download_file(aln_url, aln_destination)
+
+    if aln_url:
+        # Tasks may also need the tokenized version of the dataset.
+        src_tok_destination = artifacts / f"{file_name_part}.tok-icu.{src_locale}.zst"
+        trg_tok_destination = artifacts / f"{file_name_part}.tok-icu.{trg_locale}.zst"
+        shutil.copy2(src_destination, src_tok_destination)
+        shutil.copy2(trg_destination, trg_tok_destination)
     
 
 

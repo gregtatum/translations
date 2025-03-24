@@ -84,14 +84,18 @@ marian-args:
 
 corpora:
   backtranslations:
-    src: https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/SbJoe0ZNSIe85w9POrGWAA/runs/0/artifacts/public%2Fbuild%2Fmono.ru.zst
-    trg: https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/aalpG0j4QKirmyCuM-eN-Q/runs/0/artifacts/public%2Fbuild%2Fmono.en.zst
+    src: https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/BSVkFZWzQZ2McYpHCYdJDQ/runs/0/artifacts/public%2Fbuild%2Fmono.tok-icu.ru.zst
+    trg: https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/BSVkFZWzQZ2McYpHCYdJDQ/runs/0/artifacts/public%2Fbuild%2Fmono.tok-icu.en.zst
+    aln: https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/BSVkFZWzQZ2McYpHCYdJDQ/runs/0/artifacts/public%2Fbuild%2Fmono.aln.zst
   original-parallel:
-    src: https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/BDqZMm8OSCiV52kpR8fXdA/runs/0/artifacts/public%2Fbuild%2Fcorpus.ru.zst
-    trg: https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/BDqZMm8OSCiV52kpR8fXdA/runs/0/artifacts/public%2Fbuild%2Fcorpus.en.zst
+    src: https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/Ny150M16SuC9Y-_bTsIA8g/runs/0/artifacts/public%2Fbuild%2Fcorpus.tok-icu.ru.zst
+    trg: https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/Ny150M16SuC9Y-_bTsIA8g/runs/0/artifacts/public%2Fbuild%2Fcorpus.tok-icu.en.zst
+    aln: https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/Ny150M16SuC9Y-_bTsIA8g/runs/0/artifacts/public%2Fbuild%2Fcorpus.aln.zst
+  # https://firefox-ci-tc.services.mozilla.com/tasks/egz2pCxdRgW6lHV44mBZUw
   student-distillation:
-    src: https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/Pb_2ippdQmOGPqc9NABC3g/runs/0/artifacts/public%2Fbuild%2Fcorpus.en.zst
-    trg: https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/Pb_2ippdQmOGPqc9NABC3g/runs/0/artifacts/public%2Fbuild%2Fcorpus.ru.zst
+    src: https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/egz2pCxdRgW6lHV44mBZUw/runs/0/artifacts/public%2Fbuild%2Fcorpus.tok-icu.ru.zst
+    trg: https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/egz2pCxdRgW6lHV44mBZUw/runs/0/artifacts/public%2Fbuild%2Fcorpus.tok-icu.en.zst
+    aln: https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/egz2pCxdRgW6lHV44mBZUw/runs/0/artifacts/public%2Fbuild%2Fcorpus.aln.zst
 
 datasets:
   devtest:
