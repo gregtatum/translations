@@ -104,7 +104,7 @@ def upstreams_for_locales(config, jobs):
         return
     for job in jobs:
         dataset_category = job["attributes"]["dataset-category"]
-        target_datasets = datasets[dataset_category]
+        target_datasets = datasets.get(dataset_category, [])
         upstreams_config = job.pop("upstreams-config")
         artifacts = upstreams_config["upstream-artifacts"]
         upstream_task_attributes = upstreams_config["upstream-task-attributes"]
@@ -160,7 +160,7 @@ def upstreams_for_mono(config, jobs):
 
     for job in jobs:
         dataset_category = job["attributes"]["dataset-category"]
-        target_datasets = datasets[dataset_category]
+        target_datasets = datasets.get(dataset_category, [])
         job.setdefault("dependencies", {})
         job.setdefault("fetches", {})
         upstreams_config = job.pop("upstreams-config")

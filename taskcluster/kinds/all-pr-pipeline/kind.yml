@@ -6,12 +6,12 @@
 loader: taskgraph.loader.transform:loader
 
 transforms:
+    - translations_taskgraph.transforms.corpus_continuation
     - translations_taskgraph.transforms.skip_unless_pipeline_changed
     - taskgraph.transforms.task_context
     - taskgraph.transforms.from_deps
     - translations_taskgraph.transforms.dependency_dummies
     - taskgraph.transforms.task:transforms
-    - translations_taskgraph.transforms.corpus_continuation
 
 # In order for tasks to be produced as "leaves" of the task graph, they must be attached
 # as dependencies to the "all-pr-pipeline" dummy task. This file is for full PR runs.
@@ -22,7 +22,6 @@ kind-dependencies:
     - evaluate-teacher-ensemble
     - analyze-corpus
     - analyze-mono
-    - corpus
 
 tasks:
     all-pr-pipeline:

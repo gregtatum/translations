@@ -6,6 +6,7 @@
 loader: taskgraph.loader.transform:loader
 
 transforms:
+    - translations_taskgraph.transforms.corpus_continuation
     - translations_taskgraph.transforms.worker_selection
     - translations_taskgraph.transforms.find_upstreams:by_locales
     - taskgraph.transforms.task_context
@@ -22,7 +23,7 @@ tasks:
         label: merge-corpus-{src_locale}-{trg_locale}
         description: >
             Merge all of the cleaned original parallel datasets into a
-            corpus.{src}.zst and corpus.{trg}.zst file.
+            corpus.{src_locale}.zst and corpus.{trg_locale}.zst file.
 
         worker-type: b-cpu-largedisk
         worker:

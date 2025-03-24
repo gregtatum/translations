@@ -97,6 +97,11 @@ corpora:
     trg: https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/egz2pCxdRgW6lHV44mBZUw/runs/0/artifacts/public%2Fbuild%2Fcorpus.tok-icu.en.zst
     aln: https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/egz2pCxdRgW6lHV44mBZUw/runs/0/artifacts/public%2Fbuild%2Fcorpus.aln.zst
 
+datasets:
+  devtest:
+    - flores_dev
+    - sacrebleu_aug-upper_wmt19
+
 
 # Publishes to the "ci" project.
 wandb-publication: true
