@@ -96,7 +96,7 @@ extend_parameters_schema(
             Optional("datasets"): {
                 str: [str],
             },
-            Optional("corpora"): {
+            Optional("fetches"): {
                 Optional("backtranslations"): {
                     Required("src"): str,
                     Required("trg"): str,

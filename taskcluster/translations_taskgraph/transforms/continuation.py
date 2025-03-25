@@ -16,10 +16,13 @@ class Job(TypedDict):
     fetches: dict[str, list[dict[str, Any]]]
     dependencies: dict[str, str]
 
-class Corpora(TypedDict):
-    src: str
-    trg: str
-    aln: str
+Corpus = TypedDict("Corpus", {
+    "src": str,
+    "trg": str,
+    "alignments": Optional[str],
+    "tok-src": Optional[str],
+    "tok-trg": Optional[str],
+})
 
 transforms = TransformSequence()
 
@@ -66,7 +69,7 @@ def rewrite_dependencies(job: Job, old_task: str, new_task: str):
 
 
 @transforms.add
-def apply_corpus_continuation(config: TransformConfig, jobs: Iterable[Job]):
+def apply_continuation(config: TransformConfig, jobs: Iterable[Job]):
     """
     When an existing corpus is available, rewriting the task graph to omit the steps
     needed to generate that corpus.
@@ -76,31 +79,62 @@ def apply_corpus_continuation(config: TransformConfig, jobs: Iterable[Job]):
         merge-mono-trg -> corpus-backtranslations
         cefilter -> corpus-distillation
     """
-    import sys
-
-    sys.stdout = sys.__stdout__
-    
     training_config: dict = config.params["training_config"]
-    corpora: dict = training_config.get("corpora", {})
+    continuation: dict = training_config.get("continuation", {})
     
-    backtranslations: Optional[Corpora] = corpora.get("backtranslations")
-    original_parallel: Optional[Corpora] = corpora.get("original-parallel")
-    student_distillation: Optional[Corpora] = corpora.get("student-distillation")
+    backtranslations = validate_corpora_config(continuation, "backtranslations")
+    original_parallel = validate_corpora_config(continuation, "original-parallel")
+    student_distillation = validate_corpora_config(continuation, "student-distillation")
+    vocab = continuation.get("vocab")
     
     for job in jobs:
         if original_parallel:
-            rewrite_dependencies(job, old_task="merge-corpus", new_task="corpus-original-parallel")
+            rewrite_dependencies(job, old_task="merge-corpus", new_task="continuation-corpus-original-parallel")
             if original_parallel.get("aln"):
-                rewrite_dependencies(job, old_task="alignments-original", new_task="corpus-original-parallel")
+                rewrite_dependencies(job, old_task="alignments-original", new_task="continuation-corpus-original-parallel")
 
         if backtranslations:
-            rewrite_dependencies(job, old_task="merge-mono-trg", new_task="corpus-backtranslations")
-            if backtranslations.get("aln"):
-                rewrite_dependencies(job, old_task="alignments-backtranslations", new_task="corpus-backtranslations")
+            rewrite_dependencies(job, old_task="merge-mono-trg", new_task="continuation-corpus-backtranslations")
+            if backtranslations.get("alignments"):
+                rewrite_dependencies(job, old_task="alignments-backtranslations", new_task="continuation-corpus-backtranslations")
                 
         if student_distillation:
-            rewrite_dependencies(job, old_task="cefilter", new_task="corpus-student-distillation")
-            if student_distillation.get("aln"):
-                rewrite_dependencies(job, old_task="alignments-student", new_task="corpus-student-distillation")
+            rewrite_dependencies(job, old_task="cefilter", new_task="continuation-corpus-student-distillation")
+            if student_distillation.get("alignments"):
+                rewrite_dependencies(job, old_task="alignments-student", new_task="continuation-corpus-student-distillation")
+                
+        if vocab:
+            rewrite_dependencies(job, old_task="train-vocab", new_task="continuation-corpus-vocab")
         
         yield job
+
+
+def validate_corpora_config(continuation: dict[str, Optional[Corpus]], corpus_key: str) -> Optional[Corpus]:
+    """
+    Ensure that all of the files are defined if using an existing corpus.
+    """
+    if not continuation:
+        return
+    
+    corpus_files: Optional[dict[str, str]] = continuation.get(corpus_key) # type: ignore[reportAssignmentType]
+    
+    if not corpus_files:
+        return
+    
+    def raise_error(file_key: str):
+        raise ValueError(f"The \"{file_key}\" key was not found in the \"corpora.{corpus_key}\"")
+    
+    if "src" not in corpus_files:
+        raise_error("src")
+    if "trg" not in corpus_files:
+        raise_error("trg")
+    
+    if "tok-src" in corpus_files or "tok-trg" in corpus_files or "alignments" in corpus_files:
+        if "tok-src" not in corpus_files:
+            raise_error("tok-src")
+        if "tok-trg" not in corpus_files:
+            raise_error("tok-src")
+        if "alignments" not in corpus_files:
+            raise_error("alignments")
+
+    return continuation[corpus_key]

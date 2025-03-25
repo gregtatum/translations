@@ -6,7 +6,7 @@
 loader: taskgraph.loader.transform:loader
 
 transforms:
-    - translations_taskgraph.transforms.corpus_continuation
+    - translations_taskgraph.transforms.continuation
     - translations_taskgraph.transforms.marian_args:transforms
     - translations_taskgraph.transforms.worker_selection
     - taskgraph.transforms.task_context
@@ -20,7 +20,8 @@ kind-dependencies:
     - alignments-student
     - shortlist
     - toolchain
-    - corpus
+    - continuation-corpus
+    - continuation-vocab
 
 tasks:
     "{src_locale}-{trg_locale}":
@@ -62,7 +63,6 @@ tasks:
                     - taskcluster/scripts/pipeline/train-taskcluster.sh
                 from-parameters:
                     marian_args: training_config.marian-args.training-student
-                    corpora: training_config.corpora.student_distillation
         worker-type:
             by-tasks-for:
                 # pull requests and nightly pipeline runs use a minimal config

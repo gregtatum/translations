@@ -60,9 +60,6 @@ mono.add_validate(MONO)
 
 
 def get_cleaning_type(upstreams):
-    import sys
-
-    sys.stdout = sys.__stdout__
     candidates = set()
 
     for upstream in upstreams:
