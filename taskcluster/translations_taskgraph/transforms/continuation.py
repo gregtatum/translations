@@ -35,9 +35,14 @@ def rewrite_dependencies(job: Job, old_task: str, new_task: str):
     #   dependencies:
     #       corpus-original-parallel: corpus-original-parallel-{src_locale}-{trg_locale}
     dependencies = job.get("dependencies", {})
+    # print("!!! job:", job["name"])
+    # print("!!! old_task", old_task)
+    # print("!!! dependencies", dependencies)
+    # print("!!! ----")
     merge_corpus_dependency = dependencies.pop(old_task, None)
     if merge_corpus_dependency:
         dependencies[new_task] = new_task + "-{src_locale}-{trg_locale}"
+        print("!!! rewriting:", job["attributes"]["stage"], job["name"], old_task)
 
     # Rewrite the fetches name to the new task.
     # For example here:
@@ -99,12 +104,16 @@ def apply_continuation(config: TransformConfig, jobs: Iterable[Job]):
                 rewrite_dependencies(job, old_task="alignments-backtranslations", new_task="continuation-corpus-backtranslations")
                 
         if student_distillation:
+            import sys
+            og=sys.stdout
+            sys.stdout = sys.__stdout__
             rewrite_dependencies(job, old_task="cefilter", new_task="continuation-corpus-student-distillation")
             if student_distillation.get("alignments"):
                 rewrite_dependencies(job, old_task="alignments-student", new_task="continuation-corpus-student-distillation")
+            sys.stdout = og
                 
         if vocab:
-            rewrite_dependencies(job, old_task="train-vocab", new_task="continuation-corpus-vocab")
+            rewrite_dependencies(job, old_task="train-vocab", new_task="continuation-vocab")
         
         yield job
 

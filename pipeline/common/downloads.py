@@ -2,6 +2,7 @@ import gzip
 import io
 import json
 import os
+import shutil
 import time
 from contextlib import ExitStack, contextmanager
 from io import BufferedReader
@@ -27,6 +28,13 @@ def stream_download_to_file(url: str, destination: Union[str, Path]) -> None:
         raise Exception(f"That file already exists: {destination}")
 
     logger.info(f"Destination: {destination}")
+    
+    # If this is mocked for a test, use the locally mocked path.
+    mocked_location = get_mocked_downloads_file_path(url)
+    if mocked_location:
+        shutil.copy(mocked_location, destination)
+        return
+
 
     with open(destination, "wb") as file, DownloadChunkStreamer(url) as chunk_streamer:
         for chunk in chunk_streamer.download_chunks():

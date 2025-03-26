@@ -27,11 +27,11 @@ task-defaults:
             type: continuation-corpus
             version: 1 # Bump the cache version to manually invalidate the previous caches
             from-parameters:
-                src_url: training_config.continuations.{corpus}.src
-                trg_url: training_config.continuations.{corpus}.trg
-                tok_src_url: training_config.continuations.{corpus}.tok-src
-                tok_trg_url: training_config.continuations.{corpus}.tok-trg
-                alignments_url: training_config.continuations.original-parallel.alignments
+                src_url: training_config.continuation.{corpus}.src
+                trg_url: training_config.continuation.{corpus}.trg
+                tok_src_url: training_config.continuation.{corpus}.tok-src
+                tok_trg_url: training_config.continuation.{corpus}.tok-trg
+                alignments_url: training_config.continuation.original-parallel.alignments
     task-context:
         from-parameters:
             src_locale: training_config.experiment.src
@@ -86,33 +86,33 @@ tasks:
     backtranslations-{src_locale}-{trg_locale}:
         task-context:
             from-parameters:
-                src_url: training_config.continuations.backtranslations.src
-                trg_url: training_config.continuations.backtranslations.trg
-                tok_src_url: training_config.continuations.backtranslations.tok-src
-                tok_trg_url: training_config.continuations.backtranslations.tok-trg
-                alignments_url: training_config.continuations.backtranslations.alignments
+                src_url: training_config.continuation.backtranslations.src
+                trg_url: training_config.continuation.backtranslations.trg
+                tok_src_url: training_config.continuation.backtranslations.tok-src
+                tok_trg_url: training_config.continuation.backtranslations.tok-trg
+                alignments_url: training_config.continuation.backtranslations.alignments
             from-object:
                 corpus: backtranslations
 
     original-parallel-{src_locale}-{trg_locale}:
         task-context:
             from-parameters:
-                src_url: training_config.continuations.original-parallel.src
-                trg_url: training_config.continuations.original-parallel.trg
-                tok_src_url: training_config.continuations.original-parallel.tok-src
-                tok_trg_url: training_config.continuations.original-parallel.tok-trg
-                alignments_url: training_config.continuations.original-parallel.alignments
+                src_url: training_config.continuation.original-parallel.src
+                trg_url: training_config.continuation.original-parallel.trg
+                tok_src_url: training_config.continuation.original-parallel.tok-src
+                tok_trg_url: training_config.continuation.original-parallel.tok-trg
+                alignments_url: training_config.continuation.original-parallel.alignments
             from-object:
                 corpus: original-parallel
                 
     student-distillation-{src_locale}-{trg_locale}:
         task-context:
             from-parameters:
-                src_url: training_config.continuations.student-distillation.src
-                trg_url: training_config.continuations.student-distillation.trg
-                tok_src_url: training_config.continuations.student-distillation.tok-src
-                tok_trg_url: training_config.continuations.student-distillation.tok-trg
-                alignments_url: training_config.continuations.student-distillation.alignments
+                src_url: training_config.continuation.student-distillation.src
+                trg_url: training_config.continuation.student-distillation.trg
+                tok_src_url: training_config.continuation.student-distillation.tok-src
+                tok_trg_url: training_config.continuation.student-distillation.tok-trg
+                alignments_url: training_config.continuation.student-distillation.alignments
             from-object:
                 corpus: student-distillation
     
