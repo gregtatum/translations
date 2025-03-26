@@ -121,7 +121,7 @@ markers = [
 # new files default to being typed.
 include = [
   "utils/**/*",
-  "taskcluster/translations_taskgraph/transforms/corpus_continuation.py",
+  "taskcluster/translations_taskgraph/transforms/continuation.py",
   "pipeline/continuation/**/*",
   "tests/test_corpus_continuation.py",
 ]

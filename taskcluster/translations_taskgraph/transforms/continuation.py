@@ -5,7 +5,7 @@
 """
 """
 
-from typing import Any, Iterable, Optional, TypedDict
+from typing import Any, Iterable, Literal, Optional, TypedDict
 from taskgraph.transforms.base import TransformSequence, TransformConfig
 
 transforms = TransformSequence()
@@ -16,12 +16,40 @@ class Job(TypedDict):
     fetches: dict[str, list[dict[str, Any]]]
     dependencies: dict[str, str]
 
+Vocab = TypedDict("Vocab", {
+    "src": str,
+    "trg": str,
+})
+
+Model = TypedDict("Model", {
+    "urls": list[str],
+    "mode": Literal["continue"] | Literal["init"] | Literal["use"],
+    "type": Literal["default"] | Literal["opusmt"],
+})
+
+Models = TypedDict("Models", {
+    "backwards": Optional[Model],
+    "teacher": Optional[Model],
+})
+
 Corpus = TypedDict("Corpus", {
     "src": str,
     "trg": str,
     "alignments": Optional[str],
     "tok-src": Optional[str],
     "tok-trg": Optional[str],
+})
+
+Corpora = TypedDict("Corpora", {
+    "backtranslations": Optional[Corpus],
+    "original-parallel": Optional[Corpus],
+    "student-distillation": Optional[Corpus],
+})
+
+Continuation = TypedDict("Continuation", {
+    "models": Optional[Models],
+    "corpora": Optional[Corpora],
+    "vocab": Optional[Vocab],
 })
 
 transforms = TransformSequence()
@@ -42,7 +70,6 @@ def rewrite_dependencies(job: Job, old_task: str, new_task: str):
     merge_corpus_dependency = dependencies.pop(old_task, None)
     if merge_corpus_dependency:
         dependencies[new_task] = new_task + "-{src_locale}-{trg_locale}"
-        print("!!! rewriting:", job["attributes"]["stage"], job["name"], old_task)
 
     # Rewrite the fetches name to the new task.
     # For example here:
@@ -85,12 +112,26 @@ def apply_continuation(config: TransformConfig, jobs: Iterable[Job]):
         cefilter -> corpus-distillation
     """
     training_config: dict = config.params["training_config"]
-    continuation: dict = training_config.get("continuation", {})
+    continuation: Continuation = training_config.get("continuation", {})
     
     backtranslations = validate_corpora_config(continuation, "backtranslations")
     original_parallel = validate_corpora_config(continuation, "original-parallel")
     student_distillation = validate_corpora_config(continuation, "student-distillation")
-    vocab = continuation.get("vocab")
+    vocab: Optional[Vocab] = continuation.get("vocab")
+    models: Optional[Models] = continuation.get("models")
+    
+    # If the models are in the "use" mode and are the "default" type, they can be used
+    # for changing dependencies of tasks.
+    teacher_model: Optional[Model] = None
+    backwards_model: Optional[Model] = None
+    if models:
+        teacher_model = models.get("teacher")
+        backwards_model = models.get("backtranslations")
+        
+        if not teacher_model or teacher_model["mode"] != "use" or teacher_model["type"] != "default":
+            teacher_model = None
+        if not backwards_model or backwards_model["mode"] != "use" or backwards_model["type"] != "default":
+            backwards_model = None
     
     for job in jobs:
         if original_parallel:
@@ -104,21 +145,22 @@ def apply_continuation(config: TransformConfig, jobs: Iterable[Job]):
                 rewrite_dependencies(job, old_task="alignments-backtranslations", new_task="continuation-corpus-backtranslations")
                 
         if student_distillation:
-            import sys
-            og=sys.stdout
-            sys.stdout = sys.__stdout__
             rewrite_dependencies(job, old_task="cefilter", new_task="continuation-corpus-student-distillation")
             if student_distillation.get("alignments"):
                 rewrite_dependencies(job, old_task="alignments-student", new_task="continuation-corpus-student-distillation")
-            sys.stdout = og
                 
         if vocab:
             rewrite_dependencies(job, old_task="train-vocab", new_task="continuation-vocab")
         
+        if teacher_model:
+            rewrite_dependencies(job, old_task="train-teacher", new_task="continuation-model-teacher")
+        if backwards_model:
+            rewrite_dependencies(job, old_task="train-backwards", new_task="continuation-model-backwards")
+
         yield job
 
 
-def validate_corpora_config(continuation: dict[str, Optional[Corpus]], corpus_key: str) -> Optional[Corpus]:
+def validate_corpora_config(continuation: Continuation, corpus_key: str) -> Optional[Corpus]:
     """
     Ensure that all of the files are defined if using an existing corpus.
     """
