@@ -80,37 +80,43 @@ extend_parameters_schema(
                     Required("mono-src"): float,
                     Required("mono-trg"): float,
                 },
-                Optional("pretrained-models"): {
-                    Optional("train-teacher"): {
-                        Required("urls"): [str],
-                        Required("mode"): str,
-                        Required("type"): str,
-                    },
-                    Optional("train-backwards"): {
-                        Required("urls"): [str],
-                        Required("mode"): str,
-                        Required("type"): str,
-                    },
-                },
             },
             Optional("datasets"): {
                 str: [str],
             },
-            Optional("fetches"): {
-                Optional("backtranslations"): {
+            Optional("continuation"): {
+                Optional("vocab"): {
                     Required("src"): str,
-                    Required("trg"): str,
-                    Optional("aln"): str,
+                    Required("trg"): str,                    
                 },
-                Optional("original-parallel"): {
-                    Required("src"): str,
-                    Required("trg"): str,
-                    Optional("aln"): str,
+                Optional("models"): {
+                    Optional("teacher"): {
+                        Required("urls"): [str],
+                        Required("mode"): str,
+                        Required("type"): str,
+                    },
+                    Optional("backwards"): {
+                        Required("urls"): [str],
+                        Required("mode"): str,
+                        Required("type"): str,
+                    },
                 },
-                Optional("student-distillation"): {
-                    Required("src"): str,
-                    Required("trg"): str,
-                    Optional("aln"): str,
+                Optional("corpora"): {
+                    Optional("backtranslations"): {
+                        Required("src"): str,
+                        Required("trg"): str,
+                        Optional("aln"): str,
+                    },
+                    Optional("original-parallel"): {
+                        Required("src"): str,
+                        Required("trg"): str,
+                        Optional("aln"): str,
+                    },
+                    Optional("student-distillation"): {
+                        Required("src"): str,
+                        Required("trg"): str,
+                        Optional("aln"): str,
+                    },
                 },
             },
             Optional("taskcluster"): {

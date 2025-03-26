@@ -49,15 +49,16 @@ def get_config_rewriter(yaml_str: str):
 
 corpora_yaml_str = """
 continuation:
-  backtranslations:
-    src: https://example.com/backtranslations.ru.zst
-    trg: https://example.com/backtranslations.en.zst
-  original-parallel:
-    src: https://example.com/original-parallel.ru.zst
-    trg: https://example.com/original-parallel.en.zst
-  student-distillation:
-    src: https://example.com/student-distillation.ru.zst
-    trg: https://example.com/student-distillation.en.zst
+  corpora:
+    backtranslations:
+      src: https://example.com/backtranslations.ru.zst
+      trg: https://example.com/backtranslations.en.zst
+    original-parallel:
+      src: https://example.com/original-parallel.ru.zst
+      trg: https://example.com/original-parallel.en.zst
+    student-distillation:
+      src: https://example.com/student-distillation.ru.zst
+      trg: https://example.com/student-distillation.en.zst
 """
 
 @dataclass
@@ -127,28 +128,30 @@ continuation:
   vocab:
     src: https://example.com/vocab.spm
     trg: https://example.com/vocab.spm
-  student-distillation:
-    src: https://example.com/student-distillation.ru.zst
-    trg: https://example.com/student-distillation.en.zst
-    tok-src: https://example.com/student-distillation.tok-icu.ru.zst
-    tok-trg: https://example.com/student-distillation.tok-icu.en.zst
-    alignments: https://example.com/student-distillation.aln.zst
+  corpora:
+    student-distillation:
+      src: https://example.com/student-distillation.ru.zst
+      trg: https://example.com/student-distillation.en.zst
+      tok-src: https://example.com/student-distillation.tok-icu.ru.zst
+      tok-trg: https://example.com/student-distillation.tok-icu.en.zst
+      alignments: https://example.com/student-distillation.aln.zst
 """
 
 alignments_teacher_yaml_str = """
 continuation:
-  backtranslations:
-    src: https://example.com/backtranslations.ru.zst
-    trg: https://example.com/backtranslations.en.zst
-    tok-src: https://example.com/backtranslations.tok-icu.ru.zst
-    tok-trg: https://example.com/backtranslations.tok-icu.en.zst
-    alignments: https://example.com/backtranslations.aln.zst
-  original-parallel:
-    src: https://example.com/original-parallel.ru.zst
-    trg: https://example.com/original-parallel.en.zst
-    tok-src: https://example.com/original-parallel.tok-icu.ru.zst
-    tok-trg: https://example.com/original-parallel.tok-icu.en.zst
-    alignments: https://example.com/original-parallel.aln.zst
+  corpora:
+    backtranslations:
+        src: https://example.com/backtranslations.ru.zst
+        trg: https://example.com/backtranslations.en.zst
+        tok-src: https://example.com/backtranslations.tok-icu.ru.zst
+        tok-trg: https://example.com/backtranslations.tok-icu.en.zst
+        alignments: https://example.com/backtranslations.aln.zst
+    original-parallel:
+        src: https://example.com/original-parallel.ru.zst
+        trg: https://example.com/original-parallel.en.zst
+        tok-src: https://example.com/original-parallel.tok-icu.ru.zst
+        tok-trg: https://example.com/original-parallel.tok-icu.en.zst
+        alignments: https://example.com/original-parallel.aln.zst
 """
 
 @dataclass

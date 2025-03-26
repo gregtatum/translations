@@ -54,7 +54,7 @@ transforms = TransformSequence()
 
 @transforms.add
 def add_pretrained_model_mounts(config, jobs):
-    pretrained_models = config.params["training_config"]["experiment"].get("pretrained-models", {})
+    pretrained_models = config.params["training_config"]["continuation"].get("models", {})
     for job in jobs:
         pretrained_models_training_artifact_mounts = {
             pretrained_model: get_artifact_mounts(
@@ -103,8 +103,9 @@ def skip_for_pretrained_models(config, jobs):
     # it easier to filter them out in the loop below.
     pretrained_models = [
         pretrained.split("-")[-1].replace("backwards", "backward")
-        for pretrained in config.params["training_config"]["experiment"]
-        .get("pretrained-models", {})
+        for pretrained in config.params["training_config"]
+        .get("continuation", {})
+        .get("models", {})
         .keys()
     ]
 
