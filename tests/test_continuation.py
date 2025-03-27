@@ -59,7 +59,6 @@ class Continuation:
 class TestParams:
     test_name: str
     config_yaml: str
-    continuations: set[str]
     included_task_labels: set[str]
     excluded_task_labels: set[str]
 
@@ -99,10 +98,6 @@ test_params: list[TestParams] = [
                         urls: [https://example.com/ru-en/backwards]
                         mode: use
                         type: default
-                    teacher:
-                        urls: [https://example.com/ru-en/teacher]
-                        mode: use
-                        type: default
                 corpora:
                     backtranslations:
                         src: https://example.com/backtranslations.ru.zst
@@ -112,14 +107,12 @@ test_params: list[TestParams] = [
                         trg: https://example.com/original-parallel.en.zst
 
         """,
-        continuations={
-            "continuation-vocab",
-            "continuation-model-backwards",
-            "continuation-model-teacher",
-            "continuation-corpus-student-distillation"
-        },
         included_task_labels={
             "alignments-student-ru-en",
+            "continuation-vocab-ru-en",
+            "continuation-model-backwards-ru-en",
+            "continuation-corpus-backtranslations-ru-en",
+            "continuation-corpus-original-parallel-ru-en",
             "merge-devset-ru-en",
             "train-student-ru-en",
             "train-teacher-ru-en-1",
@@ -127,6 +120,8 @@ test_params: list[TestParams] = [
         excluded_task_labels={
             "alignments-backtranslated-ru-en"
             "alignments-original-ru-en",
+            "continuation-corpus-student-distillation-ru-en",
+            "continuation-model-teacher-ru-en",
             "merge-corpus-ru-en",
             "merge-mono-ru-en",
             "train-backwards-ru-en",
@@ -140,30 +135,25 @@ test_params: list[TestParams] = [
                 vocab:
                     src: https://example.com/vocab.spm
                     trg: https://example.com/vocab.spm
-                models:
-                    # Required for the scoring step.
-                    backwards:
-                        urls: [https://example.com/ru-en/backwards]
-                        mode: use
-                        type: default
                 corpora:
                     student-distillation:
                         src: https://example.com/student-distillation.ru.zst
                         trg: https://example.com/student-distillation.en.zst
         """,
-        continuations={
-            "continuation-corpus-student-distillation",
-            "continuation-model-backwards",
-            "continuation-vocab",
-        },
         included_task_labels={
             "alignments-student-ru-en",
+            "continuation-corpus-student-distillation-ru-en",
+            "continuation-vocab-ru-en",
             "merge-devset-ru-en",
             "train-student-ru-en",
         },
         excluded_task_labels={
             "alignments-backtranslated-ru-en",
             "alignments-original-ru-en",
+            "continuation-corpus-backtranslations-ru-en",
+            "continuation-corpus-original-parallel-ru-en",
+            "continuation-model-backwards-ru-en",
+            "continuation-model-teacher-ru-en",
             "merge-corpus-ru-en",
             "merge-mono-ru-en",
             "train-backwards-ru-en",
@@ -197,16 +187,12 @@ test_params: list[TestParams] = [
                         tok-src: https://example.com/original-parallel.tok-icu.ru.zst
                         tok-trg: https://example.com/original-parallel.tok-icu.en.zst
                         alignments: https://example.com/original-parallel.aln.zst
-
         """,
-        continuations={
-            "continuation-vocab",
-            "continuation-model-backwards",
-            "continuation-model-teacher",
-            "continuation-corpus-backtranslations"
-            "continuation-original-parallel"
-        },
         included_task_labels={
+            "continuation-corpus-backtranslations-ru-en",
+            "continuation-corpus-original-parallel-ru-en",
+            "continuation-model-backwards-ru-en",
+            "continuation-vocab-ru-en",
             "merge-devset-ru-en",
             "train-student-ru-en",
             "train-teacher-ru-en-1",
@@ -215,6 +201,8 @@ test_params: list[TestParams] = [
         excluded_task_labels={
             "alignments-backtranslated-ru-en"
             "alignments-original-ru-en",
+            "continuation-corpus-student-distillation-ru-en",
+            "continuation-model-teacher-ru-en",
             "merge-mono-ru-en",
             "merge-corpus-ru-en",
             "train-backwards-ru-en",
@@ -229,12 +217,6 @@ test_params: list[TestParams] = [
                 vocab:
                     src: https://example.com/vocab.spm
                     trg: https://example.com/vocab.spm
-                models:
-                    # Required for the scoring step.
-                    backwards:
-                        urls: [https://example.com/ru-en/backwards]
-                        mode: use
-                        type: default
                 corpora:
                     student-distillation:
                         src: https://example.com/student-distillation.ru.zst
@@ -243,16 +225,17 @@ test_params: list[TestParams] = [
                         tok-trg: https://example.com/student-distillation.tok-icu.en.zst
                         alignments: https://example.com/student-distillation.aln.zst
         """,
-        continuations={
-            "continuation-corpus-student-distillation",
-            "continuation-model-backwards",
-            "continuation-vocab",
-        },
         included_task_labels={
+            "continuation-corpus-student-distillation-ru-en",
+            "continuation-vocab-ru-en",
             "merge-devset-ru-en",
             "train-student-ru-en",
         },
         excluded_task_labels={
+            "continuation-corpus-backtranslations-ru-en",
+            "continuation-corpus-original-parallel-ru-en",
+            "continuation-model-backwards-ru-en",
+            "continuation-model-teacher-ru-en",
             "merge-mono-ru-en",
             "merge-corpus-ru-en",
             "alignments-backtranslated-ru-en"

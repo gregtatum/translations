@@ -86,14 +86,8 @@ def rewrite_dependencies(job: Job, old_task: str, new_task: str):
     #       corpus-original-parallel: corpus-original-parallel-{src_locale}-{trg_locale}
     dependencies = job.get("dependencies", {})
     task_dependency = dependencies.pop(old_task, None)
-    stage = job.get("attributes", {}).get("stage")
-    if stage == "score":
-        print("!!! old_task, new_task", old_task, new_task)
-        print("!!! dependencies", dependencies)
-        print("!!! task_dependency", task_dependency)
         
     if task_dependency:
-        print("  !!! job, old_task, new_task", old_task, new_task)
         dependencies[new_task] = new_task + "-{src_locale}-{trg_locale}"
 
     # Rewrite the fetches name to the new task.
@@ -124,7 +118,6 @@ def rewrite_dependencies(job: Job, old_task: str, new_task: str):
     for key, value in enumerate(substitution_fields):
         substitution_fields[key] = value.replace(old_task, new_task)
 
-
 @transforms.add
 def apply_continuation(config: TransformConfig, jobs: Iterable[Job]):
     """
@@ -140,49 +133,64 @@ def apply_continuation(config: TransformConfig, jobs: Iterable[Job]):
     continuation: Continuation = training_config.get("continuation", {})
 
     corpora = continuation.get("corpora")
-    backtranslations = validate_corpora_config(corpora, "backtranslations")
-    original_parallel = validate_corpora_config(corpora, "original-parallel")
-    student_distillation = validate_corpora_config(corpora, "student-distillation")
+    corpus_backtranslations = validate_corpora_config(corpora, "backtranslations")
+    corpus_original_parallel = validate_corpora_config(corpora, "original-parallel")
+    corpus_student_distillation = validate_corpora_config(corpora, "student-distillation")
 
     vocab: Optional[Vocab] = continuation.get("vocab")
     models: Optional[Models] = continuation.get("models")
     # If the models are in the "use" mode and are the "default" type, they can be used
     # for changing dependencies of tasks.
-    teacher_model: Optional[Model] = None
-    backwards_model: Optional[Model] = None
+    model_teacher: Optional[Model] = None
+    model_backwards: Optional[Model] = None
 
     if models:
-        teacher_model = models.get("teacher")
-        backwards_model = models.get("backwards")
+        model_teacher = models.get("teacher")
+        model_backwards = models.get("backwards")
 
         if (
-            not teacher_model
-            or teacher_model["mode"] != "use"
-            or teacher_model["type"] != "default"
+            not model_teacher
+            or model_teacher["mode"] != "use"
+            or model_teacher["type"] != "default"
         ):
-            teacher_model = None
+            model_teacher = None
         if (
-            not backwards_model
-            or backwards_model["mode"] != "use"
-            or backwards_model["type"] != "default"
+            not model_backwards
+            or model_backwards["mode"] != "use"
+            or model_backwards["type"] != "default"
         ):
-            backwards_model = None
-    # import sys
-    # og = sys.stdout
-    # sys.stdout = sys.__stdout__
+            model_backwards = None
+    import sys
+    og = sys.stdout
+    sys.stdout = sys.__stdout__
     
-    print("!!! ----------------- ")
     for job in jobs:
         stage = job.get("attributes", {}).get("stage")
-        print("!!! ", stage, job["name"])
-        if original_parallel:
+        name = job["name"]
+        
+        # Ensure continuation tasks don't get produced unless they are explicitly requested.
+        if stage == "continuation":
+            if not corpus_backtranslations and name == "backtranslations-{src_locale}-{trg_locale}":
+                continue
+            if not corpus_original_parallel and name == "original-parallel-{src_locale}-{trg_locale}":
+                continue            
+            if not corpus_student_distillation and name == "student-distillation-{src_locale}-{trg_locale}":
+                continue
+            if not vocab and name == "vocab-{src_locale}-{trg_locale}":
+                continue
+            if not model_teacher and name == "teacher-{src_locale}-{trg_locale}":
+                continue            
+            if not model_backwards and name == "backwards-{src_locale}-{trg_locale}":
+                continue
+        
+        if corpus_original_parallel:
             if job["name"] == "merge-corpus":
                 continue
             
             rewrite_dependencies(
                 job, old_task="merge-corpus", new_task="continuation-corpus-original-parallel"
             )
-            if original_parallel.get("aln"):
+            if corpus_original_parallel.get("aln"):
                 if job["name"] == "alignments-original":
                     continue
                 rewrite_dependencies(
@@ -191,13 +199,13 @@ def apply_continuation(config: TransformConfig, jobs: Iterable[Job]):
                     new_task="continuation-corpus-original-parallel",
                 )
 
-        if backtranslations:
+        if corpus_backtranslations:
             if job["name"] == "merge-mono-trg":
                 continue
             rewrite_dependencies(
                 job, old_task="merge-mono-trg", new_task="continuation-corpus-backtranslations"
             )
-            if backtranslations.get("alignments"):
+            if corpus_backtranslations.get("alignments"):
                 if job["name"] == "alignments-backtranslated":
                     continue
                 rewrite_dependencies(
@@ -206,14 +214,14 @@ def apply_continuation(config: TransformConfig, jobs: Iterable[Job]):
                     new_task="continuation-corpus-backtranslations",
                 )
 
-        if student_distillation:
+        if corpus_student_distillation:
             if job["name"] == "cefilter":
                 continue
 
             rewrite_dependencies(
                 job, old_task="cefilter", new_task="continuation-corpus-student-distillation"
             )
-            if student_distillation.get("alignments"):
+            if corpus_student_distillation.get("alignments"):
                 if job["name"] == "alignments-student":
                     continue
                 rewrite_dependencies(
@@ -227,13 +235,13 @@ def apply_continuation(config: TransformConfig, jobs: Iterable[Job]):
                 continue
             rewrite_dependencies(job, old_task="train-vocab", new_task="continuation-vocab")
 
-        if teacher_model:
+        if model_teacher:
             if job["name"] == "train-teacher":
                 continue
             rewrite_dependencies(
                 job, old_task="train-teacher", new_task="continuation-model-teacher"
             )
-        if backwards_model:
+        if model_backwards:
             if job["name"] == "train-backwards":
                 continue
             rewrite_dependencies(
@@ -242,13 +250,13 @@ def apply_continuation(config: TransformConfig, jobs: Iterable[Job]):
             
         # If alignments need to be re-generated, don't attempt to re-use alignment priors.
         if (
-            (student_distillation and not student_distillation.get("alignments")) or
-            (backtranslations and not backtranslations.get("alignments"))
+            (corpus_student_distillation and not corpus_student_distillation.get("alignments")) or
+            (corpus_backtranslations and not corpus_backtranslations.get("alignments"))
         ):
             remove_alignment_priors_dependencies(job)
 
         yield job
-    # sys.stdout = og
+    sys.stdout = og
 
 def remove_alignment_priors_dependencies(job: Job):
     """
@@ -275,7 +283,6 @@ def validate_corpora_config(corpora: Optional[Corpora], corpus_key: str) -> Opti
     Ensure that all of the files are defined if using an existing corpus.
     """
     if not corpora:
-        print("!!! no corpora", corpora)
         return
 
     corpus_files: Optional[dict[str, str]] = corpora.get(corpus_key)
