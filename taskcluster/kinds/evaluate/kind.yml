@@ -24,6 +24,7 @@ kind-dependencies:
     - train-student
     - finetune-student
     - toolchain
+    - continuation-model
 
 task-defaults:
     attributes:

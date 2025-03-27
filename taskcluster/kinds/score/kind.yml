@@ -17,6 +17,7 @@ kind-dependencies:
     - train-backwards
     - merge-translated
     - toolchain
+    - continuation-model
 
 tasks:
     "{src_locale}-{trg_locale}":

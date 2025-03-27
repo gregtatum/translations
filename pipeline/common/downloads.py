@@ -7,7 +7,7 @@ import time
 from contextlib import ExitStack, contextmanager
 from io import BufferedReader
 from pathlib import Path
-from typing import Any, Callable, Generator, Iterator, Literal, Optional, Union
+from typing import Any, Callable, Generator, Literal, Optional, Union
 from zipfile import ZipFile
 
 import requests
@@ -28,13 +28,12 @@ def stream_download_to_file(url: str, destination: Union[str, Path]) -> None:
         raise Exception(f"That file already exists: {destination}")
 
     logger.info(f"Destination: {destination}")
-    
+
     # If this is mocked for a test, use the locally mocked path.
     mocked_location = get_mocked_downloads_file_path(url)
     if mocked_location:
         shutil.copy(mocked_location, destination)
         return
-
 
     with open(destination, "wb") as file, DownloadChunkStreamer(url) as chunk_streamer:
         for chunk in chunk_streamer.download_chunks():
@@ -73,6 +72,9 @@ def location_exists(location: str):
     """
     Checks if a location (url or file path) exists.
     """
+    if get_mocked_downloads_file_path(location):
+        return True
+
     if location.startswith("http://") or location.startswith("https://"):
         response = requests.head(location, allow_redirects=True)
         return response.ok
@@ -357,6 +359,7 @@ def _read_lines_multiple_files(
     """
 
     stack = None
+
     def iter(stack: ExitStack):
         for file_path in files:
             logger.info(f"Reading lines from: {file_path}")
@@ -410,35 +413,35 @@ def _read_lines_single_file(
             response = requests.head(location, allow_redirects=True)
             content_type = response.headers.get("Content-Type")
             if content_type == "application/gzip":
-                yield stack.enter_context(RemoteGzipLineStreamer(location)) # type: ignore[reportReturnType]
+                yield stack.enter_context(RemoteGzipLineStreamer(location))  # type: ignore[reportReturnType]
 
             elif content_type == "application/zstd":
-                yield stack.enter_context(RemoteZstdLineStreamer(location)) # type: ignore[reportReturnType]
+                yield stack.enter_context(RemoteZstdLineStreamer(location))  # type: ignore[reportReturnType]
 
             elif content_type == "application/zip":
                 raise Exception("Streaming a zip from a remote location is supported.")
 
             elif content_type == "text/plain":
-                yield stack.enter_context(RemoteDecodingLineStreamer(location)) # type: ignore[reportReturnType]
+                yield stack.enter_context(RemoteDecodingLineStreamer(location))  # type: ignore[reportReturnType]
 
             elif location.endswith(".gz") or location.endswith(".gzip"):
-                yield stack.enter_context(RemoteGzipLineStreamer(location)) # type: ignore[reportReturnType]
+                yield stack.enter_context(RemoteGzipLineStreamer(location))  # type: ignore[reportReturnType]
 
             elif location.endswith(".zst"):
-                yield stack.enter_context(RemoteZstdLineStreamer(location)) # type: ignore[reportReturnType]
+                yield stack.enter_context(RemoteZstdLineStreamer(location))  # type: ignore[reportReturnType]
             else:
                 # Treat as plain text.
-                yield stack.enter_context(RemoteDecodingLineStreamer(location)) # type: ignore[reportReturnType]
+                yield stack.enter_context(RemoteDecodingLineStreamer(location))  # type: ignore[reportReturnType]
 
         else:  # noqa: PLR5501
             # This is a local file.
             if location.endswith(".gz") or location.endswith(".gzip"):
-                yield stack.enter_context(gzip.open(location, "rt", encoding=encoding)) # type: ignore[reportReturnType]
+                yield stack.enter_context(gzip.open(location, "rt", encoding=encoding))  # type: ignore[reportReturnType]
 
             elif location.endswith(".zst"):
                 input_file = stack.enter_context(open(location, "rb"))
                 zst_reader = stack.enter_context(ZstdDecompressor().stream_reader(input_file))
-                yield stack.enter_context(io.TextIOWrapper(zst_reader, encoding=encoding)) # type: ignore[reportReturnType]
+                yield stack.enter_context(io.TextIOWrapper(zst_reader, encoding=encoding))  # type: ignore[reportReturnType]
 
             elif location.endswith(".zip"):
                 if not path_in_archive:
@@ -447,10 +450,10 @@ def _read_lines_single_file(
                 if path_in_archive not in zip.namelist():
                     raise Exception(f"Path did not exist in the zip file: {path_in_archive}")
                 file = stack.enter_context(zip.open(path_in_archive, "r"))
-                yield stack.enter_context(io.TextIOWrapper(file, encoding=encoding)) # type: ignore[reportReturnType]
+                yield stack.enter_context(io.TextIOWrapper(file, encoding=encoding))  # type: ignore[reportReturnType]
             else:
                 # Treat as plain text.
-                yield stack.enter_context(open(location, "rt", encoding=encoding)) # type: ignore[reportReturnType]
+                yield stack.enter_context(open(location, "rt", encoding=encoding))  # type: ignore[reportReturnType]
     finally:
         stack.close()
 
@@ -551,7 +554,9 @@ def is_file_empty(path: Path | str) -> bool:
 
 def get_file_size(location: Path | str) -> int:
     """Get the size of a file, whether it is remote or local."""
-    if isinstance(location, str) and (location.startswith("http://") or location.startswith("https://")):
+    if isinstance(location, str) and (
+        location.startswith("http://") or location.startswith("https://")
+    ):
         return get_download_size(location)
     return os.path.getsize(location)
 

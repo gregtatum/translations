@@ -284,7 +284,7 @@ class DataDir:
             )
 
             fail_on_error(result)
-            
+
     def rewrite_ci_config(self, rewrite_config: Callable[[dict[str, Any]], None]) -> str:
         """
         Take the config.ci.yml file, and rewrite the deserialized python values for a
@@ -357,17 +357,17 @@ class TaskgraphFiles:
     # artifacts/full-task-graph.json
     # { "merge-corpus-ru-en": TaskDescription, ... }
     full: dict[str, dict[str, Any]]
-    
+
     # Task id to task description. These are just the tasks that are resolved.
     # artifacts/task-graph.json
     # { "AnmIFVMrT0OoS7UdB4mQGQ": TaskDescription, ... }
     resolved: dict[str, dict[str, Any]]
-    
+
     @staticmethod
     def from_config(config: str) -> "TaskgraphFiles":
         start = time.time()
-        artifacts =  Path(__file__).parent / "../../artifacts"
-        
+        artifacts = Path(__file__).parent / "../../artifacts"
+
         if os.environ.get("SKIP_TASKGRAPH"):
             print("Using existing taskgraph generation.")
         else:
@@ -389,6 +389,7 @@ class TaskgraphFiles:
 # Cache the taskgraphs as it's quite slow to generate them.
 _full_taskgraph_cache: dict[str, TaskgraphFiles] = {}
 
+
 def get_taskgraph_files(config: Optional[str] = None) -> TaskgraphFiles:
     """
     Generates the full taskgraph and stores it for re-use. It uses the config.pytest.yml
@@ -405,6 +406,7 @@ def get_taskgraph_files(config: Optional[str] = None) -> TaskgraphFiles:
     taskgraph_files = TaskgraphFiles.from_config(config)
     _full_taskgraph_cache[config] = taskgraph_files
     return taskgraph_files
+
 
 # Taskcluster commands can either be a single list of commands, or a nested list.
 Commands = Union[list[str], list[list[str]]]

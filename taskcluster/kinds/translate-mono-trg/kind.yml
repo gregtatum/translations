@@ -19,6 +19,7 @@ kind-dependencies:
     - split-mono-trg
     - train-backwards
     - toolchain
+    - continuation-model
 
 # Translates monolingual data from target to source. This is used to synthesize
 # training data for back translations.

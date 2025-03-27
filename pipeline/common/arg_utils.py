@@ -10,7 +10,7 @@ def ensure_string(name: str, value: str) -> str:
     if handle_none_value(value):
         return value
     raise ValueError(f"A value for {name} was not provided.")
-        
+
 
 def handle_none_value(value: str) -> Optional[str]:
     """When Taskcluster can't find a value, it uses the string "None"."""

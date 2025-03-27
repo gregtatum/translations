@@ -87,7 +87,7 @@ extend_parameters_schema(
             Optional("continuation"): {
                 Optional("vocab"): {
                     Required("src"): str,
-                    Required("trg"): str,                    
+                    Required("trg"): str,
                 },
                 Optional("models"): {
                     Optional("teacher"): {

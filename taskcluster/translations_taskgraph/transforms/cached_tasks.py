@@ -86,7 +86,7 @@ def add_cache(config, jobs):
 
         if cache_version:
             digest_data.append(str(cache_version))
-            
+
         job["cache"] = {
             "type": cache_type,
             # Upstream cached tasks use "/" as a separator for different parts

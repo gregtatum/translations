@@ -123,7 +123,7 @@ include = [
   "utils/**/*",
   "taskcluster/translations_taskgraph/transforms/continuation.py",
   "pipeline/continuation/**/*",
-  "tests/test_corpus_continuation.py",
+  "tests/test_continuation.py",
 ]
 exclude = []
 pythonVersion="3.10"
