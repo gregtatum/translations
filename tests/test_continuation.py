@@ -1,11 +1,11 @@
 from dataclasses import dataclass
-from typing import Any, Literal
+import shutil
+from typing import Any, Literal, Optional
 import pytest
 import yaml
 import json
 from pathlib import Path
 from fixtures import DataDir, get_taskgraph_files
-
 
 class CorporaMocks:
     """
@@ -50,7 +50,264 @@ def get_config_rewriter(yaml_str: str):
 
     return rewrite
 
+@dataclass
+class Continuation:
+    task_label: str
+    files: list[str]
+    
+@dataclass
+class TestParams:
+    test_name: str
+    config_yaml: str
+    continuations: set[str]
+    included_task_labels: set[str]
+    excluded_task_labels: set[str]
 
+continuation_artifacts = {
+    "continuation-vocab": [
+        "vocab.spm",
+        # TODO - For split vocab - ["vocab.ru.spm", "vocab.en.spm"]
+    ],
+    "continuation-model-backwards": [
+        "final.model.npz.best-chrf.npz",
+        "final.model.npz.best-chrf.npz.decoder.yml"
+        "vocab.spm",
+        # TODO - For split vocab - ["vocab.ru.spm", "vocab.en.spm"]
+    ],
+    "continuation-model-teacher": [
+        "final.model.npz.best-chrf.npz",
+        "final.model.npz.best-chrf.npz.decoder.yml"
+        "vocab.spm",
+        # TODO - For split vocab - ["vocab.ru.spm", "vocab.en.spm"]
+    ],
+    "continuation-corpus-student-distillation": [
+        "corpus.ru.zst",
+        "corpus.en.zst",
+    ],
+}
+
+test_params: list[TestParams] = [
+    TestParams(
+        test_name="teacher_no_alignments",
+        config_yaml="""
+            continuation:
+                vocab:
+                    src: https://example.com/vocab.spm
+                    trg: https://example.com/vocab.spm
+                models:
+                    backwards:
+                        urls: [https://example.com/ru-en/backwards]
+                        mode: use
+                        type: default
+                    teacher:
+                        urls: [https://example.com/ru-en/teacher]
+                        mode: use
+                        type: default
+                corpora:
+                    backtranslations:
+                        src: https://example.com/backtranslations.ru.zst
+                        trg: https://example.com/backtranslations.en.zst
+                    original-parallel:
+                        src: https://example.com/original-parallel.ru.zst
+                        trg: https://example.com/original-parallel.en.zst
+
+        """,
+        continuations={
+            "continuation-vocab",
+            "continuation-model-backwards",
+            "continuation-model-teacher",
+            "continuation-corpus-student-distillation"
+        },
+        included_task_labels={
+            "alignments-student-ru-en",
+            "merge-devset-ru-en",
+            "train-student-ru-en",
+            "train-teacher-ru-en-1",
+        },
+        excluded_task_labels={
+            "alignments-backtranslated-ru-en"
+            "alignments-original-ru-en",
+            "merge-corpus-ru-en",
+            "merge-mono-ru-en",
+            "train-backwards-ru-en",
+            "train-vocab-ru-en",
+        },
+    ),
+    TestParams(
+        test_name="student_no_alignments",
+        config_yaml="""
+            continuation:
+                vocab:
+                    src: https://example.com/vocab.spm
+                    trg: https://example.com/vocab.spm
+                models:
+                    # Required for the scoring step.
+                    backwards:
+                        urls: [https://example.com/ru-en/backwards]
+                        mode: use
+                        type: default
+                corpora:
+                    student-distillation:
+                        src: https://example.com/student-distillation.ru.zst
+                        trg: https://example.com/student-distillation.en.zst
+        """,
+        continuations={
+            "continuation-corpus-student-distillation",
+            "continuation-model-backwards",
+            "continuation-vocab",
+        },
+        included_task_labels={
+            "alignments-student-ru-en",
+            "merge-devset-ru-en",
+            "train-student-ru-en",
+        },
+        excluded_task_labels={
+            "alignments-backtranslated-ru-en",
+            "alignments-original-ru-en",
+            "merge-corpus-ru-en",
+            "merge-mono-ru-en",
+            "train-backwards-ru-en",
+            "train-teacher-ru-en-1",
+            "train-vocab-ru-en",
+        },
+    ),
+    
+    TestParams(
+        test_name="teacher_with_alignments",
+        config_yaml="""
+            continuation:
+                vocab:
+                    src: https://example.com/vocab.spm
+                    trg: https://example.com/vocab.spm
+                models:
+                    backwards:
+                        urls: [https://example.com/ru-en/backwards]
+                        mode: use
+                        type: default
+                corpora:
+                    backtranslations:
+                        src: https://example.com/backtranslations.ru.zst
+                        trg: https://example.com/backtranslations.en.zst
+                        tok-src: https://example.com/backtranslations.tok-icu.ru.zst
+                        tok-trg: https://example.com/backtranslations.tok-icu.en.zst
+                        alignments: https://example.com/backtranslations.aln.zst
+                    original-parallel:
+                        src: https://example.com/original-parallel.ru.zst
+                        trg: https://example.com/original-parallel.en.zst
+                        tok-src: https://example.com/original-parallel.tok-icu.ru.zst
+                        tok-trg: https://example.com/original-parallel.tok-icu.en.zst
+                        alignments: https://example.com/original-parallel.aln.zst
+
+        """,
+        continuations={
+            "continuation-vocab",
+            "continuation-model-backwards",
+            "continuation-model-teacher",
+            "continuation-corpus-backtranslations"
+            "continuation-original-parallel"
+        },
+        included_task_labels={
+            "merge-devset-ru-en",
+            "train-student-ru-en",
+            "train-teacher-ru-en-1",
+            "alignments-student-ru-en",
+        },
+        excluded_task_labels={
+            "alignments-backtranslated-ru-en"
+            "alignments-original-ru-en",
+            "merge-mono-ru-en",
+            "merge-corpus-ru-en",
+            "train-backwards-ru-en",
+            "train-vocab-ru-en",
+        },
+    ),
+    
+    TestParams(
+        test_name="student_with_alignments",
+        config_yaml="""
+            continuation:
+                vocab:
+                    src: https://example.com/vocab.spm
+                    trg: https://example.com/vocab.spm
+                models:
+                    # Required for the scoring step.
+                    backwards:
+                        urls: [https://example.com/ru-en/backwards]
+                        mode: use
+                        type: default
+                corpora:
+                    student-distillation:
+                        src: https://example.com/student-distillation.ru.zst
+                        trg: https://example.com/student-distillation.en.zst
+                        tok-src: https://example.com/student-distillation.tok-icu.ru.zst
+                        tok-trg: https://example.com/student-distillation.tok-icu.en.zst
+                        alignments: https://example.com/student-distillation.aln.zst
+        """,
+        continuations={
+            "continuation-corpus-student-distillation",
+            "continuation-model-backwards",
+            "continuation-vocab",
+        },
+        included_task_labels={
+            "merge-devset-ru-en",
+            "train-student-ru-en",
+        },
+        excluded_task_labels={
+            "merge-mono-ru-en",
+            "merge-corpus-ru-en",
+            "alignments-backtranslated-ru-en"
+            "alignments-original-ru-en",
+            "alignments-student-ru-en",
+            "train-backwards-ru-en",
+            "train-teacher-ru-en-1",
+            "train-vocab-ru-en",
+        },
+    )
+]
+
+@pytest.mark.parametrize("params", test_params, ids=[p.test_name for p in test_params])
+def test_continuation(params: TestParams):
+    data_dir = DataDir(f"test_continuation_{params.test_name}")
+    datasets_mock = CorporaMocks(params.test_name)
+    
+    # Apply the continuation to the yaml.
+    config_path = data_dir.rewrite_ci_config(get_config_rewriter(params.config_yaml))
+    
+    # Generate the taskgraph.
+    tasks_by_id = get_taskgraph_files(config_path).resolved
+    task_labels: list[str] = [task["label"] for task in tasks_by_id.values()]
+    task_labels.sort()
+
+    # Retain a copy of the task graph in the data dir to aid in debugging.
+    task_graph_json = (Path(__file__).parent / "../artifacts/task-graph.json").resolve()
+    artifacts_task_graph_json = data_dir.join("task-graph.json")
+    shutil.copy(task_graph_json, artifacts_task_graph_json)
+    print("The resolved tasks are available at:", artifacts_task_graph_json)
+    
+    print("Resolved tasks:")
+    for task in tasks_by_id.values():
+        print(" -", task["label"])
+        for dependency_label in task["dependencies"].keys():
+            print("    -", dependency_label)
+
+    # Check that the tasks resolved correctly.
+    missing_tasks = [
+        task_label
+        for task_label in params.included_task_labels
+        if task_label not in task_labels
+    ]    
+    assert missing_tasks == [], "All included tasks were resolved."
+
+    extra_tasks = [
+        task_label
+        for task_label in params.excluded_task_labels
+        if task_label in task_labels
+    ]
+    assert extra_tasks == [], "No excluded tasks were resolved."
+
+    
+    data_dir.print_tree()
+    
 corpora_yaml_str = """
 continuation:
   corpora:
@@ -194,11 +451,11 @@ test_alignments_params = [
                     trg: https://example.com/vocab.spm
                 corpora:
                     student-distillation:
-                    src: https://example.com/student-distillation.ru.zst
-                    trg: https://example.com/student-distillation.en.zst
-                    tok-src: https://example.com/student-distillation.tok-icu.ru.zst
-                    tok-trg: https://example.com/student-distillation.tok-icu.en.zst
-                    alignments: https://example.com/student-distillation.aln.zst
+                        src: https://example.com/student-distillation.ru.zst
+                        trg: https://example.com/student-distillation.en.zst
+                        tok-src: https://example.com/student-distillation.tok-icu.ru.zst
+                        tok-trg: https://example.com/student-distillation.tok-icu.en.zst
+                        alignments: https://example.com/student-distillation.aln.zst
         """,
     ),
 ]

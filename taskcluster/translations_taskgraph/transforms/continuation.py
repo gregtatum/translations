@@ -167,9 +167,9 @@ def apply_continuation(config: TransformConfig, jobs: Iterable[Job]):
             or backwards_model["type"] != "default"
         ):
             backwards_model = None
-    import sys
-    og = sys.stdout
-    sys.stdout = sys.__stdout__
+    # import sys
+    # og = sys.stdout
+    # sys.stdout = sys.__stdout__
     
     print("!!! ----------------- ")
     for job in jobs:
@@ -239,9 +239,36 @@ def apply_continuation(config: TransformConfig, jobs: Iterable[Job]):
             rewrite_dependencies(
                 job, old_task="train-backwards", new_task="continuation-model-backwards"
             )
+            
+        # If alignments need to be re-generated, don't attempt to re-use alignment priors.
+        if (
+            (student_distillation and not student_distillation.get("alignments")) or
+            (backtranslations and not backtranslations.get("alignments"))
+        ):
+            remove_alignment_priors_dependencies(job)
 
         yield job
-    sys.stdout = og
+    # sys.stdout = og
+
+def remove_alignment_priors_dependencies(job: Job):
+    """
+    Removes the following in case the corpus.priors are not available.
+    
+        dependencies:
+            alignments-original: alignments-original-{src_locale}-{trg_locale}
+        fetches:
+            alignments-original:
+                - artifact: corpus.priors
+    """
+    fetches = job.get("fetches")
+    dependencies = job.get("dependencies")
+    if not dependencies or not fetches:
+        return
+    alignments = fetches.get("alignments-original", {})
+    if len(alignments) == 1 and alignments[0].get("artifact") == "corpus.priors":
+        dependencies.pop("alignments-original")
+        fetches.pop("alignments-original")
+    
 
 def validate_corpora_config(corpora: Optional[Corpora], corpus_key: str) -> Optional[Corpus]:
     """
