@@ -6,6 +6,7 @@
 loader: taskgraph.loader.transform:loader
 
 transforms:
+    - translations_taskgraph.transforms.continuation
     - translations_taskgraph.transforms.worker_selection
     - taskgraph.transforms.task_context
     - taskgraph.transforms.run:transforms
@@ -14,6 +15,7 @@ transforms:
 
 kind-dependencies:
     - merge-corpus
+    - continuation-corpus
     - toolchain
 
 tasks:
@@ -84,6 +86,8 @@ tasks:
 
         dependencies:
             merge-corpus: merge-corpus-{src_locale}-{trg_locale}
+            # For corpus continuation, this gets replaced with the following:
+            # corpus-original-parallel: corpus-original-parallel-{src_locale}-{trg_locale}
 
         fetches:
             toolchain:

@@ -689,8 +689,8 @@ class ModelCardOverlay {
         create.pre({
           parent: elements.overlayContent,
           children: [
-            "experiment:",
-            "  pretrained-models:",
+            "continuation:",
+            "  models:",
             `    # Use the ${langpair} model from the "${name}" training run for back translations.`,
             "    # See: https://mozilla.github.io/translations/docs/training/using-pretrained-models/",
             "    train-backwards:",
@@ -708,8 +708,8 @@ class ModelCardOverlay {
         create.pre({
           parent: elements.overlayContent,
           children: [
-            "experiment:",
-            "  pretrained-models:",
+            "continuation:",
+            "  models:",
             `    # Use the existing ${langpair} model from the "${name}" training run.`,
             "    # See: https://mozilla.github.io/translations/docs/training/using-pretrained-models/",
             "    train-teacher:",
@@ -725,8 +725,8 @@ class ModelCardOverlay {
         create.pre({
           parent: elements.overlayContent,
           children: [
-            "experiment:",
-            "  pretrained-models:",
+            "continuation:",
+            "  models:",
             `    # Fine tune the ${langpair} model from the "${name}" training run.`,
             "    # See: https://mozilla.github.io/translations/docs/training/using-pretrained-models/",
             "    train-teacher:",
@@ -743,8 +743,8 @@ class ModelCardOverlay {
         create.pre({
           parent: elements.overlayContent,
           children: [
-            "experiment:",
-            "  pretrained-models:",
+            "continuation:",
+            "  models:",
             `    # Use the ${langpair} model from the "${name}" training run for back translations.`,
             "    # See: https://mozilla.github.io/translations/docs/training/using-pretrained-models/",
             "    train-backwards:",
@@ -760,8 +760,8 @@ class ModelCardOverlay {
         create.pre({
           parent: elements.overlayContent,
           children: [
-            "experiment:",
-            "  pretrained-models:",
+            "continuatioon:",
+            "  models:",
             `    # Fine tune the ${langpair} model from the "${name}" training run.`,
             "    # See: https://mozilla.github.io/translations/docs/training/using-pretrained-models/",
             "    train-student:",
@@ -777,8 +777,8 @@ class ModelCardOverlay {
         create.pre({
           parent: elements.overlayContent,
           children: [
-            "experiment:",
-            "  pretrained-models:",
+            "continuation:",
+            "  models:",
             `    # Use the existing ${langpair} model from the "${name}" training run.`,
             "    # See: https://mozilla.github.io/translations/docs/training/using-pretrained-models/",
             "    train-student:",

@@ -6,6 +6,7 @@
 loader: taskgraph.loader.transform:loader
 
 transforms:
+    - translations_taskgraph.transforms.continuation
     - translations_taskgraph.transforms.worker_selection
     - taskgraph.transforms.task_context
     - taskgraph.transforms.run:transforms
@@ -15,6 +16,7 @@ transforms:
 kind-dependencies:
     - merge-mono
     - merge-corpus
+    - continuation-corpus
     - collect-mono-src
     - collect-corpus
     - toolchain
@@ -81,11 +83,11 @@ tasks:
             Merge the teacher translated data that is used to distill students. There
             are two different parts of the pipeline that need to be merged here.
 
-            The first is the corpus.{lang}.zst dataset which represents the translated
+            The first is the corpus.[lang].zst dataset which represents the translated
             source side of the original parallel dataset. This can use n-best and
             with picking the best translation using the chrF metric.
 
-            The second is the mono.{lang}.zst dataset, which is the translated monolingual
+            The second is the mono.[lang].zst dataset, which is the translated monolingual
             source data. This step can't use the n-best step as there is no reference
             target translation.
         attributes:
