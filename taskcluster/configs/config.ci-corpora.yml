@@ -1,0 +1,108 @@
+####
+# Test using pre-defined corpora in CI
+###
+
+experiment:
+  name: ci
+  src: ru
+  trg: en
+
+  teacher-ensemble: 1
+
+  mono-max-sentences-src:
+    total: 1000
+    per-dataset: 500
+  mono-max-sentences-trg:
+    total: 1000
+    per-dataset: 500
+  spm-sample-size: 1000
+  spm-vocab-size: 1000
+
+  best-model: chrf
+
+  use-opuscleaner: "true"
+  opuscleaner-mode: "custom"
+  teacher-mode: "two-stage"
+  teacher-decoder: marian
+  corpus-max-sentences: 1000
+  student-model: "tiny"
+
+  bicleaner:
+    default-threshold: 0.5
+    dataset-thresholds:
+      opus_ada83_v1: 0.0
+      opus_ELRC-3075-wikipedia_health_v1: 0.6
+
+  monocleaner:
+    mono-src:
+      default-threshold: 0.5
+      dataset-thresholds:
+        news-crawl_news_2008: 0.0
+        opus_tldr-pages_v2023-08-29: 0.7
+    mono-trg:
+      default-threshold: 0.9
+      dataset-thresholds:
+        opus_tldr-pages_v2023-08-29: 0.6
+
+  hplt-min-doc-score:
+    mono-src: 7.0
+    mono-trg: 9.0
+
+marian-args:
+  training-backward:
+    # Run training for 10 updates, and display 5 updates. Only validate and save the
+    # model once.
+    disp-freq: "2"
+    save-freq: "25"
+    valid-freq: "50"
+    after: 50u
+    dim-vocabs: "1000 1000"
+  training-teacher:
+    disp-freq: "1"
+    save-freq: "25"
+    valid-freq: "50"
+    after: 50u
+    dim-vocabs: "1000 1000"
+    task: transformer-base
+  training-student:
+    disp-freq: "1"
+    save-freq: "25"
+    valid-freq: "50"
+    after: 50u
+    dim-vocabs: "1000 1000"
+  training-student-finetuned:
+    disp-freq: "1"
+    save-freq: "25"
+    valid-freq: "50"
+    after: 50u
+    dim-vocabs: 1000 1000
+  decoding-backward:
+    mini-batch-words: "2000"
+  decoding-teacher:
+    mini-batch-words: "1000"
+    precision: float16
+
+corpora:
+  backtranslations:
+    src: https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/SbJoe0ZNSIe85w9POrGWAA/runs/0/artifacts/public%2Fbuild%2Fmono.ru.zst
+    trg: https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/aalpG0j4QKirmyCuM-eN-Q/runs/0/artifacts/public%2Fbuild%2Fmono.en.zst
+  original-parallel:
+    src: https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/BDqZMm8OSCiV52kpR8fXdA/runs/0/artifacts/public%2Fbuild%2Fcorpus.ru.zst
+    trg: https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/BDqZMm8OSCiV52kpR8fXdA/runs/0/artifacts/public%2Fbuild%2Fcorpus.en.zst
+  student-distillation:
+    src: https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/Pb_2ippdQmOGPqc9NABC3g/runs/0/artifacts/public%2Fbuild%2Fcorpus.en.zst
+    trg: https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/Pb_2ippdQmOGPqc9NABC3g/runs/0/artifacts/public%2Fbuild%2Fcorpus.ru.zst
+
+datasets:
+  devtest:
+    - flores_dev
+    - sacrebleu_aug-upper_wmt19
+
+
+# Publishes to the "ci" project.
+wandb-publication: true
+target-stage: all-pipeline
+taskcluster:
+  split-chunks: 2
+  worker-classes:
+    default: gcp-spot
