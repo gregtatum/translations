@@ -32,6 +32,9 @@ valid-stages:
     - collect-backtranslations
     - collect-distillation-mono
     - collect-distillation-parallel
+    - continuation-corpus
+    - continuation-model
+    - continuation-vocab
     - distillation-parallel-keep-best
     - distillation-parallel-score
     - distillation-parallel-shortlist
