@@ -10,9 +10,7 @@ PARAMS["training_config"]["continuation"]["models"] = {
     "train-backwards": {
         "mode": "use",
         "type": "default",
-        "urls": [
-            "https://storage.googleapis.com/releng-translations-dev/models/ru-en/better-teacher/student"
-        ],
+        "url": "https://storage.googleapis.com/releng-translations-dev/models/ru-en/better-teacher/student",
     },
 }
 

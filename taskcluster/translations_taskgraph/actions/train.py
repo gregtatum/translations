@@ -48,14 +48,6 @@ def validate_model_continuation(params):
                 f"does not match the number of provided model 'urls' ({len(teacher['urls'])}) "
                 f"for the pretrained 'train-teacher' ensemble."
             )
-    backwards = pretrained_models.get("backwards")
-    if backwards:
-        if len(backwards["urls"]) != 1:
-            raise Exception(
-                f"The config's 'continuation.models.backward.urls' ({len(backwards['urls'])}) "
-                f"must be equal to one (1). "
-                f"The pipeline's backward model is _not_ an ensemble."
-            )
 
 
 @register_callback_action(
@@ -449,11 +441,7 @@ to be translated by the backward model to augment teacher corpus with back-trans
                             "train-backwards": {
                                 "type": "object",
                                 "properties": {
-                                    "urls": {
-                                        "type": "array",
-                                        "items": {"type": "string", "format": "uri"},
-                                        "minItems": 1,
-                                    },
+                                    "url": { "type": "string" },
                                     "mode": {
                                         "type": "string",
                                         "enum": ["continue", "init", "use"],
@@ -463,7 +451,7 @@ to be translated by the backward model to augment teacher corpus with back-trans
                                         "enum": ["default", "opusmt"],
                                     },
                                 },
-                                "required": ["urls", "mode", "type"],
+                                "required": ["url", "mode", "type"],
                             },
                         },
                     },

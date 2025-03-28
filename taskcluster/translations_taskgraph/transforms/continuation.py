@@ -27,10 +27,10 @@ Vocab = TypedDict(
     },
 )
 
-Model = TypedDict(
-    "Model",
+BackwardsModel = TypedDict(
+    "BackwardsModel",
     {
-        "urls": list[str],
+        "url": str,
         "mode": Literal["continue"] | Literal["init"] | Literal["use"],
         "type": Literal["default"] | Literal["opusmt"],
     },
@@ -39,8 +39,7 @@ Model = TypedDict(
 Models = TypedDict(
     "Models",
     {
-        "backwards": Optional[Model],
-        "teacher": Optional[Model],
+        "backwards": Optional[BackwardsModel],
     },
 )
 
@@ -141,19 +140,11 @@ def apply_continuation(config: TransformConfig, jobs: Iterable[Job]):
     models: Optional[Models] = continuation.get("models")
     # If the models are in the "use" mode and are the "default" type, they can be used
     # for changing dependencies of tasks.
-    model_teacher: Optional[Model] = None
-    model_backwards: Optional[Model] = None
+    model_backwards: Optional[BackwardsModel] = None
 
     if models:
-        model_teacher = models.get("teacher")
         model_backwards = models.get("backwards")
 
-        if (
-            not model_teacher
-            or model_teacher["mode"] != "use"
-            or model_teacher["type"] != "default"
-        ):
-            model_teacher = None
         if (
             not model_backwards
             or model_backwards["mode"] != "use"
@@ -178,8 +169,6 @@ def apply_continuation(config: TransformConfig, jobs: Iterable[Job]):
                 continue
             if not vocab and name == "vocab-{src_locale}-{trg_locale}":
                 continue
-            if not model_teacher and name == "teacher-{src_locale}-{trg_locale}":
-                continue            
             if not model_backwards and name == "backwards-{src_locale}-{trg_locale}":
                 continue
         
@@ -235,12 +224,6 @@ def apply_continuation(config: TransformConfig, jobs: Iterable[Job]):
                 continue
             rewrite_dependencies(job, old_task="train-vocab", new_task="continuation-vocab")
 
-        if model_teacher:
-            if job["name"] == "train-teacher":
-                continue
-            rewrite_dependencies(
-                job, old_task="train-teacher", new_task="continuation-model-teacher"
-            )
         if model_backwards:
             if job["name"] == "train-backwards":
                 continue

@@ -45,15 +45,11 @@ def main() -> None:
     # TODO - Change to the other "if" branch when split vocab lands:
     # See: https://github.com/mozilla/translations/pull/1051
     if True:
-        src_destination = artifacts / "vocab.spm"
-        trg_destination = artifacts / "vocab.spm"
+        assert src_url == trg_url, "Split vocab is not supported yet."
+        stream_download_to_file(src_url, artifacts / "vocab.spm")
     else:
-        src_destination = artifacts / f"vocab.{src_locale}.spm"
-        trg_destination = artifacts / f"vocab.{trg_locale}.spm"
-
-    stream_download_to_file(src_url, src_destination)
-    stream_download_to_file(trg_url, trg_destination)
-
+        stream_download_to_file(src_url, f"vocab.{src_locale}.spm")
+        stream_download_to_file(trg_url, f"vocab.{trg_locale}.spm")
 
 if __name__ == "__main__":
     main()

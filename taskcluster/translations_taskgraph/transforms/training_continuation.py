@@ -58,7 +58,12 @@ def add_pretrained_model_mounts(config, jobs):
     for job in jobs:
         pretrained_models_training_artifact_mounts = {
             pretrained_model: get_artifact_mounts(
-                pretrained_models[pretrained_model]["urls"],
+                (
+                    # Only teachers can have multiple urls.
+                    pretrained_models[pretrained_model]["urls"]
+                    if pretrained_models[pretrained_model].get("urls")
+                    else [pretrained_models[pretrained_model]["url"]]
+                ),
                 "./artifacts",
                 INITIALIZE_MODEL_ARTIFACTS
                 if pretrained_models[pretrained_model]["mode"] == "init"

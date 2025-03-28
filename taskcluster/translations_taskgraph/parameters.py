@@ -96,7 +96,7 @@ extend_parameters_schema(
                         Required("type"): str,
                     },
                     Optional("backwards"): {
-                        Required("urls"): [str],
+                        Required("url"): str,
                         Required("mode"): str,
                         Required("type"): str,
                     },

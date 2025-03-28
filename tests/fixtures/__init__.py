@@ -66,7 +66,12 @@ class DataDir:
 
     def __init__(self, dir_name: str) -> None:
         self.path = os.path.join(TESTS_DATA, dir_name)
+        self.clean()
 
+    def clean(self):
+        """
+        Cleans up the directory, useful if the data dir is iterated on in the test.
+        """
         # Ensure the base /data directory exists.
         os.makedirs(TESTS_DATA, exist_ok=True)
 
@@ -76,6 +81,7 @@ class DataDir:
 
         os.makedirs(self.path)
         print("Tests are using the subdirectory:", self.path)
+        
 
     def join(self, *paths: str):
         """Create a folder or file name by joining it to the test directory."""

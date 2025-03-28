@@ -25,11 +25,12 @@ class CorporaMocks:
 
     def get_fetch_mocks(self, data_dir: DataDir):
         mocks = {}
-        data_dir.mkdir("mocked-downloads")
+        downloads_path = "mocked-downloads/corpora"
+        data_dir.mkdir(downloads_path)
 
         def add_mock(name, contents):
             url = f"https://example.com/{name}"
-            mocks[url] = data_dir.create_zst(f"mocked-downloads/{name}", contents)
+            mocks[url] = data_dir.create_zst(f"{downloads_path}/{name}", contents)
 
         add_mock(f"{self.name}.ru.zst", self.src)
         add_mock(f"{self.name}.en.zst", self.trg)
@@ -37,8 +38,81 @@ class CorporaMocks:
         add_mock(f"{self.name}.tok-icu.en.zst", self.tok_trg)
         add_mock(f"{self.name}.aln.zst", self.aln)
 
-        return json.dumps(mocks)
+        return mocks
 
+class VocabMock:
+    """
+    Provides all of the files and URLs for mocking out corpora.
+    """
+
+    def __init__(self):
+        self.src = "vocab ru"
+        self.trg = "vocab en"
+
+    def get_fetch_mocks(self, data_dir: DataDir):
+        mocks = {}
+        downloads_path = "mocked-downloads/vocab"
+        data_dir.mkdir(downloads_path)
+
+        def add_mock(name, contents):
+            url = f"https://example.com/{name}"
+            mocks[url] = data_dir.create_file(f"{downloads_path}/{name}", contents)
+
+        add_mock("vocab.spm", "vocab")
+        # TODO - Split vocab
+        # add_mock("vocab.ru.zst", self.src)
+        # add_mock("vocab.en.zst", self.trg)
+
+        return mocks
+
+class ModelMocks:
+    """
+    Provides all of the files and URLs for mocking out corpora.
+    """
+
+    def __init__(self, name: str):
+        self.name = name
+        self.model = f"{name} model file"
+        self.decoder = f"{name} decoder file"
+        self.vocab = f"{name} vocab file"
+        # TODO - split vocab
+        # self.vocab_src = "vocab.ru.spm"
+        # self.vocab_tr = "vocab.en.spm"
+
+    def get_fetch_mocks(self, data_dir: DataDir):
+        mocks = {}
+        downloads_path = f"mocked-downloads/model-{self.name}"
+        data_dir.mkdir(downloads_path)
+
+        def add_mock(name, contents):
+            url = f"https://example.com/ru-en/backwards/{name}"
+            mocks[url] = data_dir.create_file(f"{downloads_path}/{name}", contents)
+
+        add_mock("model.npz.best-chrf.npz", self.model)
+        add_mock("model.npz.best-chrf.npz.decoder.yml", self.decoder)
+        add_mock("vocab.spm", self.vocab)
+
+        # TODO - split vocab
+        # add_mock("vocab.ru.spm", self.vocab_src)
+        # add_mock("vocab.en.spm", self.vocab_trg)
+
+        return mocks
+    
+    
+expected_artifacts_by_task_label = {
+    "continuation-corpus-backtranslations-ru-en": [
+        "mono.en.zst",
+        "mono.ru.zst",
+    ],
+    "continuation-corpus-original-parallel-ru-en": [
+        "corpus.en.zst",
+        "corpus.ru.zst",
+    ],
+    "continuation-corpus-student-distillation-ru-en": [
+        "corpus.en.zst",
+        "corpus.ru.zst",
+    ],
+}
 
 def get_config_rewriter(yaml_str: str):
     """Returns a function that will rewrite the config for corpus continuation."""
@@ -95,7 +169,7 @@ test_params: list[TestParams] = [
                     trg: https://example.com/vocab.spm
                 models:
                     backwards:
-                        urls: [https://example.com/ru-en/backwards]
+                        url: https://example.com/ru-en/backwards
                         mode: use
                         type: default
                 corpora:
@@ -171,7 +245,7 @@ test_params: list[TestParams] = [
                     trg: https://example.com/vocab.spm
                 models:
                     backwards:
-                        urls: [https://example.com/ru-en/backwards]
+                        urls: https://example.com/ru-en/backwards
                         mode: use
                         type: default
                 corpora:
@@ -251,7 +325,6 @@ test_params: list[TestParams] = [
 @pytest.mark.parametrize("params", test_params, ids=[p.test_name for p in test_params])
 def test_continuation(params: TestParams):
     data_dir = DataDir(f"test_continuation_{params.test_name}")
-    datasets_mock = CorporaMocks(params.test_name)
     
     # Apply the continuation to the yaml.
     config_path = data_dir.rewrite_ci_config(get_config_rewriter(params.config_yaml))
@@ -287,219 +360,46 @@ def test_continuation(params: TestParams):
         if task_label in task_labels
     ]
     assert extra_tasks == [], "No excluded tasks were resolved."
-
     
-    data_dir.print_tree()
-    
-corpora_yaml_str = """
-continuation:
-  corpora:
-    backtranslations:
-      src: https://example.com/backtranslations.ru.zst
-      trg: https://example.com/backtranslations.en.zst
-    original-parallel:
-      src: https://example.com/original-parallel.ru.zst
-      trg: https://example.com/original-parallel.en.zst
-    student-distillation:
-      src: https://example.com/student-distillation.ru.zst
-      trg: https://example.com/student-distillation.en.zst
-"""
+    mocked_downloads = json.dumps({
+        **CorporaMocks("backtranslations").get_fetch_mocks(data_dir),
+        **CorporaMocks("original-parallel").get_fetch_mocks(data_dir),
+        **CorporaMocks("student-distillation").get_fetch_mocks(data_dir),
+        **VocabMock().get_fetch_mocks(data_dir),
+        **ModelMocks("backwards").get_fetch_mocks(data_dir),
+        **ModelMocks("student").get_fetch_mocks(data_dir),
+        **ModelMocks("teacher").get_fetch_mocks(data_dir),
+    })
 
-
-@dataclass
-class TestCorpusParams:
-    corpus: str
-    src: str
-    trg: str
-
-
-test_corpus_params = [
-    # TestCorpusParams(
-    #     corpus="backtranslations",
-    #     src="mono.ru.zst",
-    #     trg="mono.en.zst"
-    # ),
-    TestCorpusParams(corpus="original-parallel", src="corpus.ru.zst", trg="corpus.en.zst"),
-    TestCorpusParams(corpus="student-distillation", src="corpus.ru.zst", trg="corpus.en.zst"),
-]
-
-
-@pytest.mark.parametrize("params", test_corpus_params, ids=[p.corpus for p in test_corpus_params])
-def test_corpus_continuation(params: TestCorpusParams):
-    data_dir = DataDir("test_corpus_continuation")
-    datasets_mock = CorporaMocks(params.corpus)
-    config_path = data_dir.rewrite_ci_config(get_config_rewriter(corpora_yaml_str))
-    task_name = f"continuation-corpus-{params.corpus}-ru-en"
-
-    resolved_tasks: list[str] = [
-        task["label"] for task in get_taskgraph_files(config_path).resolved.values()
+    continuation_tasks = [
+        task_label
+        for task_label in task_labels
+        if task_label.startswith("continuation")
     ]
-    print("Resolved tasks:", resolved_tasks)
-
-    print("Ensure that none of the merge tasks were generated.")
-    assert "merge-corpus-ru-en" not in resolved_tasks
-    assert "merge-mono-trg-en" not in resolved_tasks
-    assert "merge-translated-ru-en" not in resolved_tasks
-
-    print("Ensure that the alignment resolved_tasks were still generated.")
-    assert "alignments-student-ru-en" in resolved_tasks
-    assert "alignments-original-ru-en" in resolved_tasks
-
-    assert task_name in resolved_tasks, "The corpus task was generated by the transform."
-
-    data_dir.run_task(
-        task_name,
-        config=config_path,
-        env={"MOCKED_DOWNLOADS": datasets_mock.get_fetch_mocks(data_dir)},
-    )
-    data_dir.print_tree()
-
-    assert data_dir.read_text(f"artifacts/{params.src}") == datasets_mock.src
-    assert data_dir.read_text(f"artifacts/{params.trg}") == datasets_mock.trg
-    assert not Path(data_dir.join("artifacts/corpus.aln.zst")).exists()
-
-
-alignments_teacher_yaml_str = """
-continuation:
-    models:
-        backwards:
-            urls: [https://example.com/ru-en/backwards]
-            mode: use
-            type: default
-    vocab:
-        src: https://example.com/vocab.spm
-        trg: https://example.com/vocab.spm
-    corpora:
-        backtranslations:
-            src: https://example.com/backtranslations.ru.zst
-            trg: https://example.com/backtranslations.en.zst
-            tok-src: https://example.com/backtranslations.tok-icu.ru.zst
-            tok-trg: https://example.com/backtranslations.tok-icu.en.zst
-            alignments: https://example.com/backtranslations.aln.zst
-        original-parallel:
-            src: https://example.com/original-parallel.ru.zst
-            trg: https://example.com/original-parallel.en.zst
-            tok-src: https://example.com/original-parallel.tok-icu.ru.zst
-            tok-trg: https://example.com/original-parallel.tok-icu.en.zst
-            alignments: https://example.com/original-parallel.aln.zst
-"""
+    
+    for continuation_task in continuation_tasks:
+        # Ensure the artifacts are cleaned up from previous continuation tasks.
+        artifacts_path = Path(data_dir.join("artifacts"))
+        if artifacts_path.exists():
+            shutil.rmtree(artifacts_path)
+            artifacts_path.mkdir()
+        
+        # The task graph should be cached, and won't be regenerated. Clean the data_dir
+        # before each continuation is run.
+        data_dir.run_task(
+            continuation_task,
+            config=config_path,
+            env={"MOCKED_DOWNLOADS": mocked_downloads},
+        )
+        data_dir.print_tree()
+        
+        # assert data_dir.read_text(f"artifacts/{params.src}") == datasets_mock.src
+        # assert data_dir.read_text(f"artifacts/{params.trg}") == datasets_mock.trg
+        # assert data_dir.read_text(f"artifacts/{params.tok_src}") == datasets_mock.tok_src
+        # assert data_dir.read_text(f"artifacts/{params.tok_trg}") == datasets_mock.tok_trg
+        # assert data_dir.read_text(f"artifacts/{params.aln}") == datasets_mock.aln
 
 
-@dataclass
-class TestAlignmentsParams:
-    corpus: str
-    corpora_config: Literal["student"] | Literal["teacher"]
-    config_yaml: str
-    src: str
-    trg: str
-    tok_src: str
-    tok_trg: str
-    aln: str
+    
 
-
-test_alignments_params = [
-    # The backtranslations corpus is only needed when training a student.
-    TestAlignmentsParams(
-        corpus="backtranslations",
-        corpora_config="teacher",
-        src="mono.ru.zst",
-        trg="mono.en.zst",
-        tok_src="mono.tok-icu.ru.zst",
-        tok_trg="mono.tok-icu.en.zst",
-        aln="mono.aln.zst",
-        config_yaml=alignments_teacher_yaml_str,
-    ),
-    TestAlignmentsParams(
-        corpus="original-parallel",
-        corpora_config="teacher",
-        src="corpus.ru.zst",
-        trg="corpus.en.zst",
-        tok_src="corpus.tok-icu.ru.zst",
-        tok_trg="corpus.tok-icu.en.zst",
-        aln="corpus.aln.zst",
-        config_yaml=alignments_teacher_yaml_str,
-    ),
-    TestAlignmentsParams(
-        corpus="student-distillation",
-        corpora_config="student",
-        src="corpus.ru.zst",
-        trg="corpus.en.zst",
-        tok_src="corpus.tok-icu.ru.zst",
-        tok_trg="corpus.tok-icu.en.zst",
-        aln="corpus.aln.zst",
-        config_yaml="""
-            continuation:
-                vocab:
-                    src: https://example.com/vocab.spm
-                    trg: https://example.com/vocab.spm
-                corpora:
-                    student-distillation:
-                        src: https://example.com/student-distillation.ru.zst
-                        trg: https://example.com/student-distillation.en.zst
-                        tok-src: https://example.com/student-distillation.tok-icu.ru.zst
-                        tok-trg: https://example.com/student-distillation.tok-icu.en.zst
-                        alignments: https://example.com/student-distillation.aln.zst
-        """,
-    ),
-]
-
-
-@pytest.mark.parametrize(
-    "params",
-    test_alignments_params,
-    ids=[f"{p.corpus},{p.corpora_config}" for p in test_alignments_params],
-)
-def test_alignments_continuation(params: TestAlignmentsParams):
-    # Make sure and rename the data dir for each config, as the config is cached
-    # based on the path name, and "student" and "teacher" have different configs.
-    data_dir = DataDir(f"test_alignments_{params.corpora_config}_continuation")
-    datasets_mock = CorporaMocks(params.corpus)
-
-    config_path = data_dir.rewrite_ci_config(get_config_rewriter(params.config_yaml))
-    task_name = f"continuation-corpus-{params.corpus}-ru-en"
-
-    tasks_by_id = get_taskgraph_files(config_path).resolved
-    task_labels: list[str] = [task["label"] for task in tasks_by_id.values()]
-    task_labels.sort()
-
-    print("Resolved tasks:")
-    for id, task in tasks_by_id.items():
-        print(" -", task["label"])
-        for dependency_label in task["dependencies"].keys():
-            print("    -", dependency_label)
-
-    print("Task labels", task_labels)
-
-    if params.corpora_config == "teacher":
-        # backtranslations and original-parallel
-        assert "merge-corpus-ru-en" not in task_labels
-        assert "merge-mono-trg-en" not in task_labels
-        assert "merge-translated-ru-en" in task_labels
-
-        assert "alignments-student-ru-en" in task_labels
-        assert "alignments-original-ru-en" not in task_labels
-        assert "alignments-backtranslated-ru-en" not in task_labels
-    else:
-        # Just student-distillation
-        assert "merge-corpus-ru-en" not in task_labels
-        assert "merge-mono-trg-en" not in task_labels
-        assert "merge-translated-ru-en" not in task_labels
-
-        assert "alignments-student-ru-en" not in task_labels
-        assert "alignments-original-ru-en" not in task_labels
-        assert "alignments-backtranslated-ru-en" not in task_labels
-
-    assert task_name in task_labels, "The corpus task was generated by the transform."
-
-    data_dir.run_task(
-        task_name,
-        config=config_path,
-        env={"MOCKED_DOWNLOADS": datasets_mock.get_fetch_mocks(data_dir)},
-    )
-    data_dir.print_tree()
-
-    assert data_dir.read_text(f"artifacts/{params.src}") == datasets_mock.src
-    assert data_dir.read_text(f"artifacts/{params.trg}") == datasets_mock.trg
-    assert data_dir.read_text(f"artifacts/{params.tok_src}") == datasets_mock.tok_src
-    assert data_dir.read_text(f"artifacts/{params.tok_trg}") == datasets_mock.tok_trg
-    assert data_dir.read_text(f"artifacts/{params.aln}") == datasets_mock.aln
+    

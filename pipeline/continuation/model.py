@@ -10,19 +10,19 @@ from pipeline.common import arg_utils
 logger = get_logger(__file__)
 
 potential_models = (
+    "model.npz.best-chrf.npz",
     "model.npz",
     "model.npz.best-bleu-detok.npz",
     "model.npz.best-ce-mean-words.npz",
     "final.model.npz.best-chrf.npz",
-    "model.npz.best-chrf.npz",
     "model.npz.optimizer.npz",
 )
 
 potential_decoders = [
+    "model.npz.best-chrf.npz.decoder.yml",
     "model.npz.best-bleu-detok.npz.decoder.yml",
     "model.npz.best-ce-mean-words.npz.decoder.yml",
     "final.model.npz.best-chrf.npz.decoder.yml",
-    "model.npz.best-chrf.npz.decoder.yml",
     "model.npz.decoder.yml",
     "model.npz.progress.yml",
     "model.npz.yml",
@@ -64,36 +64,44 @@ def main() -> None:
     src_vocab_url = arg_utils.handle_none_value(args.vocab_src)
     trg_vocab_url = arg_utils.handle_none_value(args.vocab_trg)
     artifacts: Path = args.artifacts
+    
+    assert artifacts
 
-    model_out = artifacts / f"/final.model.npz.{best_model}.npz"
-    decoder_out = artifacts / f"/final.model.npz.{best_model}.npz.decoder.yml"
-
+    model_out = artifacts / f"final.model.npz.{best_model}.npz"
+    decoder_out = artifacts / f"final.model.npz.{best_model}.npz.decoder.yml"
+    
     model_found = False
     for potential_model in potential_models:
         url = f"{url_prefix}/{potential_model}"
-        print("Checking to see if a model exists:", potential_model)
+        logger.info(f"Checking to see if a model exists: {potential_model}")
         if location_exists(url):
+            logger.info(f"Downloading it to: {model_out}")
             stream_download_to_file(url, model_out)
             model_found = True
+            break
     assert model_found
 
     decoder_found = False
     for potential_decoder in potential_decoders:
         url = f"{url_prefix}/{potential_decoder}"
-        print("Checking to see if a decoder.yml exists:", potential_decoder)
+        logger.info(f"Checking to see if a decoder.yml exists: {potential_decoder}")
         if location_exists(url):
+            logger.info(f"Downloading it to: {decoder_out}")
             stream_download_to_file(url, decoder_out)
             decoder_found = True
+            break
     assert decoder_found
 
     # Prefer the vocab near the model.
     if not src_vocab_url or not trg_vocab_url:
         if location_exists(f"{url_prefix}/vocab.spm"):
+            logger.info(f"A single vocab was found: {url_prefix}/vocab.spm")
             src_vocab_url = f"{url_prefix}/vocab.spm"
             trg_vocab_url = f"{url_prefix}/vocab.spm"
         elif location_exists(f"{url_prefix}/vocab.{src_locale}.spm") and location_exists(
             f"{url_prefix}/vocab.{trg_locale}.spm"
         ):
+            logger.info(f"A split vocab was found: {url_prefix}/vocab.[locale].spm")
             src_vocab_url = f"{url_prefix}/vocab.{src_locale}.spm"
             trg_vocab_url = f"{url_prefix}/vocab.{trg_locale}.spm"
         else:
@@ -106,14 +114,11 @@ def main() -> None:
     # TODO - Change to the other "if" branch when split vocab lands:
     # See: https://github.com/mozilla/translations/pull/1051
     if True:
-        src_destination = artifacts / "vocab.spm"
-        trg_destination = artifacts / "vocab.spm"
+        assert src_vocab_url == trg_vocab_url, "Split vocab is not supported yet."
+        stream_download_to_file(src_vocab_url, artifacts / "vocab.spm")
     else:
-        src_destination = artifacts / f"vocab.{src_locale}.spm"
-        trg_destination = artifacts / f"vocab.{trg_locale}.spm"
-
-    stream_download_to_file(src_vocab_url, src_destination)
-    stream_download_to_file(trg_vocab_url, trg_destination)
+        stream_download_to_file(src_vocab_url, f"vocab.{src_locale}.spm")
+        stream_download_to_file(trg_vocab_url, f"vocab.{trg_locale}.spm")
 
 
 if __name__ == "__main__":

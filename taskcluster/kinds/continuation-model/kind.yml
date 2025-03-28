@@ -75,26 +75,20 @@ task-defaults:
                 --artifacts $TASK_WORKDIR/artifacts
 
 tasks:
+    # For now this only supports the "mode: use".
     backwards-{src_locale}-{trg_locale}:
         task-context:
             from-parameters:
-                url_prefix: "training_config.continuation.model.backwards.urls[0]"
+                url_prefix: training_config.continuation.models.backwards.url
             from-object:
                 model: backwards
         attributes:
             cache:
                 from-parameters:
-                    url_prefix: "training_config.continuation.model.backwards.urls[0]"
-                    mode: training_config.continuation.model.backwards.mode
+                    url_prefix: training_config.continuation.models.backwards.url
+                    mode: training_config.continuation.models.backwards.mode
 
-    teacher-{src_locale}-{trg_locale}:
-        task-context:
-            from-parameters:
-                url_prefix: "training_config.continuation.model.teacher.urls[0]"
-            from-object:
-                model: teacher
-        attributes:
-            cache:
-                from-parameters:
-                    url_prefix: "training_config.continuation.model.teacher.urls[0]"
-                    mode: training_config.continuation.model.teacher.mode
+    # Teachers and students can be added here as well.
+    # Teacher ensembles are a bit tricky to support, as the deep_get function
+    # would need to support lists.
+    # See: https://github.com/taskcluster/taskgraph/issues/665
