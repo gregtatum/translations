@@ -1,0 +1,2293 @@
+tracking
+.
+├── pyproject.toml
+├── translations_parser
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-310.pyc
+│   │   ├── data.cpython-310.pyc
+│   │   ├── parser.cpython-310.pyc
+│   │   ├── publishers.cpython-310.pyc
+│   │   ├── utils.cpython-310.pyc
+│   │   └── wandb.cpython-310.pyc
+│   ├── cli
+│   │   ├── __init__.py
+│   │   ├── __pycache__
+│   │   │   ├── __init__.cpython-310.pyc
+│   │   │   ├── experiments.cpython-310.pyc
+│   │   │   └── taskcluster.cpython-310.pyc
+│   │   ├── experiments.py
+│   │   ├── taskcluster.py
+│   │   └── taskcluster_group.py
+│   ├── data.py
+│   ├── parser.py
+│   ├── publishers.py
+│   ├── utils.py
+│   └── wandb.py
+└── translations_parser.egg-info
+    ├── PKG-INFO
+    ├── SOURCES.txt
+    ├── dependency_links.txt
+    ├── entry_points.txt
+    ├── requires.txt
+    └── top_level.txt
+
+6 directories, 26 files
+
+translations_parser/__init__.py
+
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="[tracking %(levelname)s] %(message)s",
+)
+
+
+translations_parser/cli/__init__.py
+
+
+
+translations_parser/cli/experiments.py
+
+#!/usr/bin/env python3
+"""
+Publish multiple experiments to Weight & Biases.
+
+Example:
+    parse_experiment_dir -d ./tests/data/experiments
+"""
+
+import argparse
+import logging
+import os
+from enum import Enum
+from itertools import groupby
+from pathlib import Path
+
+from translations_parser.data import Metric
+from translations_parser.parser import TrainingParser
+from translations_parser.publishers import WandB
+from translations_parser.utils import parse_task_label, parse_gcp_metric
+
+logger = logging.getLogger(__name__)
+
+
+class ExperimentMode(Enum):
+    SNAKEMAKE = "snakemake"
+    TASKCLUSTER = "taskcluster"
+
+
+def get_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Publish multiple experiments to Weight & Biases")
+    parser.add_argument(
+        "--mode",
+        "-m",
+        help="Mode to publish experiments.",
+        type=ExperimentMode,
+        choices=ExperimentMode,
+        metavar=[e.value for e in ExperimentMode],
+        required=True,
+    )
+    parser.add_argument(
+        "--directory",
+        "-d",
+        help="Path to the experiments directory.",
+        type=Path,
+        default=Path(Path(os.getcwd())),
+    )
+    return parser.parse_args()
+
+
+def parse_experiment(
+    *,
+    project: str,
+    group: str,
+    name: str,
+    suffix: str,
+    logs_file: Path,
+    metrics_dir: Path | None = None,
+    mode=ExperimentMode,
+) -> None:
+    """
+    Parse logs from a Taskcluster dump and publish data to W&B.
+    If a metrics directory is set, initially read and publish each `.metrics` values.
+    """
+    metrics = []
+    if metrics_dir:
+        for metrics_file in metrics_dir.glob("*.metrics"):
+            try:
+                metric_attrs = parse_gcp_metric(metrics_file.stem)
+            except ValueError:
+                logger.error(f"Error parsing metric from GCP: {metrics_file.stem}. Skipping.")
+            else:
+                metrics.append(
+                    Metric.from_file(
+                        metrics_file,
+                        importer=metric_attrs.importer,
+                        dataset=metric_attrs.dataset,
+                        augmentation=metric_attrs.augmentation,
+                    )
+                )
+
+    with logs_file.open("r") as f:
+        lines = (line.strip() for line in f.readlines())
+    parser = TrainingParser(
+        lines,
+        metrics=metrics,
+        publishers=[
+            WandB(
+                project=project,
+                group=group,
+                name=name,
+                suffix=suffix,
+            )
+        ],
+    )
+    parser.run()
+
+
+def main() -> None:
+    args = get_args()
+    directory = args.directory
+    mode = args.mode
+
+    # Ignore files with a different name than "train.log"
+    train_files = sorted(directory.glob("**/train.log"))
+
+    logger.info(f"Reading {len(train_files)} train.log data")
+    prefix = os.path.commonprefix([path.parts for path in train_files])
+
+    # Move on top of the main models (Snakemake) or logs (Taskcluster) folder
+    if "models" in prefix:
+        prefix = prefix[: prefix.index("models")]
+    if "logs" in prefix:
+        prefix = prefix[: prefix.index("logs")]
+
+    # First parent folder correspond to the run name, second one is the group
+    groups = groupby(train_files, lambda path: path.parent.parent)
+
+    for path, files in groups:
+        logger.info(f"Parsing folder {path.resolve()}")
+        *_, project, group = path.parts
+        if mode == ExperimentMode.TASKCLUSTER:
+            if len(group) < 22:
+                logger.error(
+                    f"Skip folder {group} as it cannot contain a task group ID (too few caracters)."
+                )
+                continue
+            suffix = f"_{group[-22:-17]}"
+        else:
+            # Use the full experiment name as a suffix for old Snakemake experiments
+            suffix = f"_{group}"
+
+        # Publish a run for each file inside that group
+        published_runs = []
+        for file in files:
+            try:
+                tag = f"train-{file.parent.name}"
+                name = parse_task_label(tag).model
+            except ValueError:
+                logger.error(f"Invalid tag extracted from file @{path}: {tag}")
+                continue
+            logger.info(f"Handling training task {name}")
+
+            # Also publish metric files when available
+            metrics_path = Path(
+                "/".join([*prefix, "models", project, group, "evaluation", file.parent.name])
+            )
+            metrics_dir = metrics_path if metrics_path.is_dir() else None
+            if metrics_dir is None:
+                logger.warning(f"Evaluation metrics files not found for {name}.")
+
+            try:
+                parse_experiment(
+                    project=project,
+                    group=group,
+                    name=name,
+                    suffix=suffix,
+                    logs_file=file,
+                    metrics_dir=metrics_dir,
+                    mode=mode,
+                )
+            except Exception as e:
+                logger.error(f"An exception occured parsing training file {file}: {e}")
+            else:
+                published_runs.append(name)
+
+        # Try to publish related log files to the group on a last run named "group_logs"
+        logger.info(
+            f"Publishing '{project}/{group}' evaluation metrics and files (fake run 'group_logs')"
+        )
+        WandB.publish_group_logs(
+            logs_parent_folder=[*prefix, "logs"],
+            project=project,
+            group=group,
+            suffix=suffix,
+            existing_runs=published_runs,
+            snakemake=(mode == ExperimentMode.SNAKEMAKE.value),
+        )
+
+
+translations_parser/cli/taskcluster.py
+
+#!/usr/bin/env python3
+"""
+Extract information from Marian execution on Taskcluster.
+
+Example with a local file:
+    parse_tc_logs --input-file ./tests/data/taskcluster.log
+
+Example reading logs from a process:
+    ./tests/data/simulate_process.py | parse_tc_logs --from-stream --verbose
+
+Example publishing data to Weight & Biases:
+    parse_tc_logs --input-file ./tests/data/taskcluster.log --wandb-project <project> --wandb-group <group> --wandb-run-name <run>
+"""
+
+import argparse
+import logging
+import os
+import sys
+from collections.abc import Iterator
+from io import TextIOWrapper
+from pathlib import Path
+
+import taskcluster
+from translations_parser.parser import TrainingParser, logger
+from translations_parser.publishers import CSVExport, Publisher
+from translations_parser.utils import (
+    publish_group_logs_from_tasks,
+    suffix_from_group,
+    taskcluster_log_filter,
+)
+from translations_parser.wandb import add_wandb_arguments, get_wandb_publisher
+
+queue = taskcluster.Queue({"rootUrl": "https://firefox-ci-tc.services.mozilla.com"})
+
+
+def get_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Extract information from Marian execution on Task Cluster"
+    )
+    input_group = parser.add_mutually_exclusive_group()
+    input_group.add_argument(
+        "--input-file",
+        "-i",
+        help="Path to the Task Cluster log file.",
+        type=Path,
+        default=None,
+    )
+    input_group.add_argument(
+        "--from-stream",
+        "-s",
+        help="Read lines from stdin stream.",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--output-dir",
+        "-o",
+        help="Output directory to export training and validation data as CSV.",
+        type=Path,
+        default=Path(__file__).parent.parent / "output",
+    )
+    parser.add_argument(
+        "--verbose",
+        "-v",
+        help="Print debug messages.",
+        action="store_const",
+        dest="loglevel",
+        const=logging.DEBUG,
+    )
+    parser.add_argument(
+        "--publish-group-logs",
+        help=(
+            "Enable publishing a group_logs fake run with the experiment configuration."
+            "This option requires W&B publication to be enabled, otherwise it will be ignored."
+        ),
+        action="store_true",
+        default=False,
+    )
+
+    # Extend parser with Weight & Biases CLI args
+    add_wandb_arguments(parser)
+
+    return parser.parse_args()
+
+
+def is_running_in_ci():
+    """
+    Determine if this run is being done in CI.
+    """
+    task_id = os.environ.get("TASK_ID")
+    if not task_id:
+        return False
+
+    logger.info(f'Fetching the experiment for task "{task_id}" to check if this is running in CI.')
+    queue = taskcluster.Queue({"rootUrl": os.environ["TASKCLUSTER_PROXY_URL"]})
+    task = queue.task(task_id)
+    group_id = task["taskGroupId"]
+    task_group = queue.task(group_id)
+    # e.g,. "github-pull-request", "action", "github-push"
+    tasks_for = task_group.get("extra", {}).get("tasks_for")
+    return tasks_for != "action"
+
+
+def boot() -> None:
+    args = get_args()
+
+    if args.loglevel:
+        logger.setLevel(args.loglevel)
+
+    args.output_dir.mkdir(parents=True, exist_ok=True)
+
+    lines: TextIOWrapper | Iterator[str]
+    if args.input_file is None and args.from_stream is False:
+        raise Exception("One of `--input-file` or `--from-stream` must be set.")
+    if args.from_stream:
+        lines = sys.stdin
+    else:
+        with args.input_file.open("r") as f:
+            lines = (line.strip() for line in f.readlines())
+
+    # Build publisher output, CSV is always enabled, Weight & Biases upon operator choice
+    publishers: list[Publisher] = [CSVExport(output_dir=args.output_dir)]
+    wandb_publisher = get_wandb_publisher(
+        project_name=args.wandb_project,
+        group_name=args.wandb_group,
+        run_name=args.wandb_run_name,
+        taskcluster_secret=args.taskcluster_secret,
+        logs_file=args.input_file,
+        artifacts=args.wandb_artifacts,
+        publication=args.wandb_publication,
+    )
+    if wandb_publisher:
+        publishers.append(wandb_publisher)
+    elif args.publish_group_logs:
+        logger.warning(
+            "Ignoring --publish-group-logs option as Weight & Biases publication is disabled."
+        )
+
+    # Publish experiment configuration before parsing the training logs
+    if wandb_publisher and args.publish_group_logs:
+        logger.info("Publishing experiment config to a 'group_logs' fake run.")
+        # Retrieve experiment configuration from the task group
+        task_id = os.environ.get("TASK_ID")
+        if not task_id:
+            raise Exception("Group logs publication can only run in taskcluster")
+        task = queue.task(task_id)
+        group_id = task["taskGroupId"]
+        # Ensure task group is readable
+        queue.getTaskGroup(group_id)
+        task_group = queue.task(group_id)
+        config = task_group.get("extra", {}).get("action", {}).get("context", {}).get("input")
+        publish_group_logs_from_tasks(
+            project=wandb_publisher.project,
+            group=wandb_publisher.group,
+            config=config,
+            suffix=suffix_from_group(group_id),
+        )
+
+    # Use log filtering when using non-stream (for uploading past experiments)
+    log_filter = taskcluster_log_filter if not args.from_stream else None
+    parser = TrainingParser(
+        lines,
+        publishers=publishers,
+        log_filter=log_filter,
+    )
+    parser.run()
+
+
+def main() -> None:
+    """
+    Entry point for the `parse_tc_logs` script.
+    Catch every exception when running in Taskcluster to avoid crashing real training
+    """
+    try:
+        boot()
+    except Exception as exception:
+        if os.environ.get("MOZ_AUTOMATION") is None:
+            logger.exception("Publication failed when running locally.")
+            raise exception
+        elif is_running_in_ci():
+            logger.exception("Publication failed when running in CI.")
+            raise exception
+        else:
+            logger.exception(
+                "Publication failed! The error is ignored to not break training, but it should be fixed."
+            )
+            sys.exit(0)
+
+
+translations_parser/cli/taskcluster_group.py
+
+#!/usr/bin/env python3
+"""
+Track training experiments from a Taskcluster group and publish them to Weight and Biases.
+
+Example:
+    track_tc_group --group-id=<group_id>
+"""
+
+import argparse
+import logging
+import tempfile
+from collections import defaultdict
+from pathlib import Path
+
+import wandb
+
+import taskcluster
+from taskcluster.download import downloadArtifactToBuf
+from translations_parser.data import Metric
+from translations_parser.parser import TrainingParser, logger
+from translations_parser.publishers import WandB
+from translations_parser.utils import (
+    MULTIPLE_TRAIN_SUFFIX,
+    build_task_name,
+    parse_task_label,
+    publish_group_logs_from_tasks,
+    suffix_from_group,
+)
+
+KIND_TAG_TARGET = ("train", "finetune")
+queue = taskcluster.Queue({"rootUrl": "https://firefox-ci-tc.services.mozilla.com"})
+
+
+def get_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Track training experiments from a Taskcluster group"
+    )
+    parser.add_argument(
+        "group_id",
+        help="ID of the Taskcluster training task group.",
+    )
+    parser.add_argument(
+        "--no-recursive-lookup",
+        help="Disable group traversal from provided group_id tasks dependencies.",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--override-runs",
+        help="Override runs on Weight & Biases.",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--verbose",
+        "-v",
+        help="Print debug messages.",
+        action="store_const",
+        dest="loglevel",
+        const=logging.DEBUG,
+    )
+    return parser.parse_args()
+
+
+def get_logs(task: dict) -> list[str]:
+    """Retrieve training logs from Taskcluster"""
+    task_id = task["status"]["taskId"]
+
+    logger.info(f"Downloading logs for task {task_id}")
+    try:
+        log, _ = downloadArtifactToBuf(
+            taskId=task_id,
+            name="public/build/train.log",
+            queueService=queue,
+        )
+    except Exception as e:
+        logger.error(f"Could not retrieve logs: {e}")
+        return []
+    return log.tobytes().decode().split("\n")
+
+
+def publish_task(
+    *, project: str, group: str, name: str, suffix: str, task: dict, metrics: list[Metric]
+) -> None:
+    logs = get_logs(task)
+    if not logs:
+        logger.warning(f"Skipping publication of training task {name}")
+        return
+    parser = TrainingParser(
+        logs,
+        publishers=[
+            WandB(
+                project=project,
+                group=group,
+                name=name,
+                suffix=suffix,
+                tags=["taskcluster-offline"],
+            )
+        ],
+        metrics=metrics,
+    )
+    parser.run()
+
+
+def get_metrics_from_task(task: dict) -> list[Metric]:
+    task_id = task["status"]["taskId"]
+
+    logger.info(f"Retrieving artifacts from evaluation task {task_id}")
+
+    metrics = []
+    for artifact in queue.listLatestArtifacts(task_id)["artifacts"]:
+        if not artifact["name"].endswith(".metrics"):
+            continue
+
+        log, _ = downloadArtifactToBuf(
+            taskId=task_id,
+            name=artifact["name"],
+            queueService=queue,
+        )
+
+        tag = task["task"]["tags"]["label"]
+        # Remove eventual slashes (e.g. <task_tag>-1/2) that cannot be written to the filesystem
+        tag = MULTIPLE_TRAIN_SUFFIX.sub("", tag)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            file = Path(temp_dir) / f"{tag}.txt"
+            with file.open("wb") as log_file:
+                log_file.write(log.tobytes())
+                log_file.flush()
+                metrics.append(Metric.from_file(Path(log_file.name)))
+
+    return metrics
+
+
+def filter_task(task: dict) -> tuple[str, dict] | tuple[None, None]:
+    if task["status"]["state"] == "completed" and "vocab" not in task["task"]["tags"]["kind"]:
+        try:
+            prefix, task["name"] = build_task_name(task["task"])
+        except ValueError:
+            # Task label may be unrelated to training or validation
+            label = task["task"].get("tags", {}).get("label", "unknown")
+            logger.debug(f"Skipping task with label {label}")
+        else:
+            return prefix, task
+
+    return None, None
+
+
+def list_training_tasks(group_id: str, grouped_tasks: dict[str, list[dict]]) -> list[list[dict]]:
+    training_tasks = sum(
+        [tasks for key, tasks in grouped_tasks.items() if key in KIND_TAG_TARGET], start=[]
+    )
+
+    if not training_tasks:
+        logger.warning(f"No completed training task found for group {group_id}")
+    else:
+        logger.info(f"Found {len(training_tasks)} completed training tasks")
+
+    return training_tasks
+
+
+def list_metrics_tasks(group_id: str, grouped_tasks: dict[str, list[dict]]) -> dict[str, dict]:
+    metrics_tasks = {task["status"]["taskId"]: task for task in grouped_tasks["evaluate"]}
+
+    if not metrics_tasks:
+        logger.warning(f"No completed metrics task found for group {group_id}")
+    else:
+        logger.info(f"Found {len(metrics_tasks)} completed metrics tasks")
+
+    return metrics_tasks
+
+
+def list_completed_tasks(group_id: str) -> dict[str, list[dict]]:
+    logger.info(f"Listing completed tasks from group {group_id}")
+
+    response = queue.listTaskGroup(group_id)
+    tasks = response["tasks"]
+    continuation_token = response.get("continuationToken")
+    while continuation_token:
+        # Results may be returned in multiple pages
+        # https://docs.taskcluster.net/docs/reference/platform/queue/api#listTaskGroup
+        response = queue.listTaskGroup(group_id, {"continuationToken": continuation_token})
+        tasks.extend(response["tasks"])
+        continuation_token = response.get("continuationToken")
+
+    # Map tasks by categories
+    grouped_tasks = defaultdict(list)
+    for task in tasks:
+        # Exclude non completed or vocab tasks
+        prefix, filtered_task = filter_task(task)
+        if filtered_task:
+            grouped_tasks[prefix].append(filtered_task)
+
+    return grouped_tasks
+
+
+def publish_task_group(group_id: str, override: bool = False) -> None:
+    logger.info(f"Retrieving task group {group_id}")
+
+    # Ensure task group is readable
+    queue.getTaskGroup(group_id)
+
+    # Read project and experiment name from task group configuration
+    task_group = queue.task(group_id)
+    config = task_group.get("extra", {}).get("action", {}).get("context", {}).get("input")
+
+    # If the task group does not have a training configuration, we can skip its publication
+    if config is None:
+        logger.warning(
+            f"Task group {group_id} cannot be published to WandB: "
+            "configuration missing @ extra/action/context/input"
+        )
+        return
+
+    experiment = config["experiment"]
+    project_name = f'{experiment["src"]}-{experiment["trg"]}'
+    group_name = f'{experiment["name"]}_{group_id}'
+    suffix = suffix_from_group(group_id)
+
+    grouped_tasks = list_completed_tasks(group_id)
+    training_tasks = list_training_tasks(group_id, grouped_tasks)
+    metrics_tasks = list_metrics_tasks(group_id, grouped_tasks)
+
+    if not training_tasks:
+        logger.warning(f"Skipping task group {group_id} as it is empty")
+        return
+
+    logger.info(f"Processing group {group_name}")
+
+    if override:
+        existing_runs = list(wandb.Api().runs(project_name, filters={"group": group_name}))
+        for run in existing_runs:
+            logger.warning(f"Deleting existing run {run.display_name}.")
+            run.delete()
+
+    # Publish training tasks as runs
+    for training_task in training_tasks:
+        # Associate metrics to each runs (evaluate tasks that depends on the training task)
+        dependent_tasks = []
+        for eval_id, eval_task in metrics_tasks.items():
+            eval_label = eval_task["task"]["tags"].get("label", "")
+
+            try:
+                model_name = parse_task_label(eval_label).model
+            except ValueError:
+                continue
+
+            # Evaluation tasks must be a dependency of the run and match its name
+            if (
+                training_task["status"]["taskId"] in eval_task["task"]["dependencies"]
+                and model_name == training_task["name"]
+            ):
+                dependent_tasks.append(eval_id)
+
+        metrics = sum(
+            [
+                get_metrics_from_task(metrics_tasks.pop(dependent_task_id))
+                for dependent_task_id in dependent_tasks
+            ],
+            start=[],
+        )
+
+        publish_task(
+            project=project_name,
+            group=group_name,
+            suffix=suffix,
+            name=training_task["name"],
+            task=training_task,
+            metrics=metrics,
+        )
+
+    # Group and publish remaining metrics tasks via the logs publication
+    publish_group_logs_from_tasks(
+        project=project_name,
+        group=group_name,
+        suffix=suffix,
+        metrics_tasks=metrics_tasks,
+        config=config,
+    )
+
+
+def list_dependent_group_ids(task_id: str, known: set[str]):
+    task = queue.task(task_id)
+
+    # Browse task dependencies
+    for dependent_task_id in task["dependencies"]:
+        dependent_status = queue.status(dependent_task_id)
+
+        group_id = dependent_status["status"]["taskGroupId"]
+        if group_id in known:
+            continue
+
+        yield group_id
+        known.add(group_id)
+
+        # Shared instance of `known` to propagate discovered groups in real time across all recursion branches
+        yield from list_dependent_group_ids(dependent_task_id, known)
+
+
+def main() -> None:
+    args = get_args()
+
+    if args.loglevel:
+        logger.setLevel(args.loglevel)
+
+    groups_ids = {args.group_id}
+    if not args.no_recursive_lookup:
+        logger.info(f"Retrieving related groups from {args.group_id} training tasks dependencies")
+
+        completed_tasks = list_completed_tasks(args.group_id)
+        training_tasks = list_training_tasks(args.group_id, completed_tasks)
+        for training_task in training_tasks:
+            dependent_ids = list_dependent_group_ids(
+                training_task["status"]["taskId"], {*groups_ids}
+            )
+            groups_ids.update(dependent_ids)
+
+        logger.info(
+            f"Found {len(groups_ids) - 1} additional groups to browse for WandB publication"
+        )
+    else:
+        logger.info(
+            "--no-recursive-lookup option is set, only the provided group will be browsed for WandB publication"
+        )
+
+    for group_id in groups_ids:
+        publish_task_group(group_id, override=args.override_runs)
+
+
+translations_parser/data.py
+
+import logging
+import re
+from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
+from typing import List, Sequence
+
+from translations_parser.utils import parse_task_label
+
+logger = logging.getLogger(__name__)
+
+METRIC_LOG_RE = re.compile(
+    r"|".join(
+        [
+            r"\+ tee .+\.metrics",
+            r"\+ tee .+\.en",
+            r"\+ sacrebleu .+",
+            r"\+ .+\/marian-decoder .+",
+            # Ignore potential comments
+            r"^sacreBLEU:",
+        ]
+    )
+)
+TC_PREFIX_RE = re.compile(r"^\[task [0-9\-TZ:\.]+\]")
+
+
+@dataclass
+class TrainingEpoch:
+    epoch: int
+    up: int
+    sen: int
+    cost: float
+    time: float
+    rate: float  # Words per second
+    gnorm: float
+    learning_rate: float | None = None  # Optional
+
+
+@dataclass
+class ValidationEpoch:
+    epoch: int
+    up: int
+    chrf: float
+    ce_mean_words: float
+    bleu_detok: float
+    perplexity: float = None  # optional
+    # Optional stalled validation metrics
+    chrf_stalled: int | None = None
+    ce_mean_words_stalled: int | None = None
+    bleu_detok_stalled: int | None = None
+    perplexity_stalled: float = None  # optional
+
+
+@dataclass
+class Metric:
+    """Data extracted from a `.metrics` file"""
+
+    # Evaluation identifiers
+    importer: str
+    dataset: str
+    augmentation: str | None
+    # Scores
+    chrf: float
+    bleu_detok: float
+    comet: float | None = None  # optional
+
+    @classmethod
+    def from_file(
+        cls,
+        metrics_file: Path,
+        importer: str | None = None,
+        dataset: str | None = None,
+        augmentation: str | None = None,
+    ):
+        """
+        Instanciate a Metric from a `.metrics` file.
+        In case no dataset is set, detects it from the filename.
+        """
+        logger.debug(f"Reading metrics file {metrics_file.name}")
+        values = []
+        try:
+            with metrics_file.open("r") as f:
+                lines = f.readlines()
+            for line in lines:
+                try:
+                    values.append(float(line))
+                except ValueError:
+                    continue
+            assert len(values) in (2, 3), "file must contain 2 or 3 lines with a float value"
+        except Exception as e:
+            raise ValueError(f"Metrics file could not be parsed: {e}")
+        if len(values) == 2:
+            bleu_detok, chrf = values
+            comet = None
+        if len(values) == 3:
+            bleu_detok, chrf, comet = values
+        if importer is None:
+            _, importer, dataset, augmentation = parse_task_label(metrics_file.stem)
+
+        # Multiply metric by 100 to match other metrics percentage style
+        if comet is not None:
+            comet *= 100
+
+        return cls(
+            importer=importer,
+            dataset=dataset,
+            augmentation=augmentation,
+            chrf=chrf,
+            bleu_detok=bleu_detok,
+            comet=comet,
+        )
+
+    @classmethod
+    def from_tc_context(
+        cls, importer: str, dataset: str, lines: Sequence[str], augmentation: str | None = None
+    ):
+        """
+        Try reading a metric from Taskcluster logs, looking for two
+        successive floats after a line maching METRIC_LOG_RE.
+        """
+        for index, line in enumerate(lines):
+            # Remove eventual Taskcluster prefix
+            clean_line = TC_PREFIX_RE.sub("", line).strip()
+            if not METRIC_LOG_RE.match(clean_line):
+                continue
+            try:
+                values = [float(TC_PREFIX_RE.sub("", val)) for val in lines[index + 1 : index + 3]]
+            except ValueError:
+                continue
+            if len(values) != 2:
+                continue
+            bleu_detok, chrf = values
+            return cls(
+                importer=importer,
+                dataset=dataset,
+                augmentation=augmentation,
+                chrf=chrf,
+                bleu_detok=bleu_detok,
+            )
+        raise ValueError("Metrics logs could not be parsed")
+
+
+@dataclass
+class TrainingLog:
+    """Results from the parsing of a training log file"""
+
+    # Runtime configuration
+    configuration: dict
+    training: List[TrainingEpoch]
+    validation: List[ValidationEpoch]
+    logs: List[str]
+    run_date: datetime | None
+
+
+translations_parser/parser.py
+
+import logging
+import os
+import re
+import shlex
+import sys
+from collections import defaultdict
+from collections.abc import Iterable, Iterator, Sequence
+from datetime import datetime
+from itertools import tee
+from pathlib import Path
+from typing import Callable, DefaultDict, List
+
+import yaml
+
+from translations_parser.data import Metric, TrainingEpoch, TrainingLog, ValidationEpoch
+from translations_parser.publishers import Publisher
+from translations_parser.utils import get_lines_count
+
+logger = logging.getLogger(__name__)
+
+HEADER_RE = re.compile(r"(?<=\[)(?P<value>.+?)\] ")
+#                            \[               \]   Match square brackets
+#                        (?<=\[)                   This is a positive lookbehind, that looks for the first "[" in a line.
+#                                                  This line does not actually capture
+#                               (?P<value>.+?)     Non-greedily match the "value" inside of the square brackes.
+VALIDATION_RE = re.compile(
+    r"Ep\.[ :]+(?P<ep>\d+)"
+    r"[ :]+Up\.[ :]+(?P<up>\d+)"
+    r"[ :]+(?P<key>[\w-]+)"
+    r"[ :]+(?P<value>[\d\.]+)"
+    r"([ :]+stalled (?P<stalled>\d+) times)?"
+)
+TRAINING_RE = re.compile(
+    r"Ep\.[ :]+(?P<epoch>\d+)[ :]+"
+    r"Up\.[ :]+(?P<up>\d+)[ :]+"
+    r"Sen\.[ :]+(?P<sen>[\d,]+)[ :]+"
+    r"Cost[ :]+(?P<cost>[\d.]+)[ :]+"
+    r"Time[ :]+(?P<time>[\d\.]+)s[ :]+"
+    r"(?P<rate>[\d\.]+) words\/s[ :]+"
+    r"gNorm[ :]+(?P<gnorm>[\d\.]+)"
+    r"([ :]+L.r. (?P<learning_rate>[\d\.e-]+))?"
+)
+
+# Expected version of Marian for a clean parsing
+SUPPORTED_MARIAN_VERSIONS = [(1, 10), (1, 12)]
+
+MARIAN_ARGS_REGEX = re.compile(r"command line:[\n ]+[\w\/-]+\/marian +(.*)")
+# Last Marian command line argument (not being part of training extra arguments)
+LAST_MARIAN_DECLARED_ARGUMENT = "seed"
+
+
+class TrainingParser:
+    def __init__(
+        self,
+        logs_iter: Iterable[str],
+        publishers: Sequence[Publisher],
+        log_filter: Callable | None = None,
+        skip_marian_context: bool = False,
+        metrics: Sequence[Metric] | None = None,
+    ) -> None:
+        # Iterable reading logs lines
+        self.logs_iter = logs_iter
+        # Function to exclude log lines depending on the headers
+        self.log_filter = log_filter
+        self._current_index = 0
+        self.parsed = False
+        self.config: dict = {}
+        self.parsed_logs: List[str] = []
+        # Optional list of Metric published earlier to the parsing
+        self.metrics = metrics
+        self.training: list[TrainingEpoch] = []
+        self.validation: list[ValidationEpoch] = []
+        # Dict mapping (epoch, up) to values parsed on multiple lines
+        self._validation_entries: DefaultDict[tuple[int, int], dict] = defaultdict(dict)
+        # Option to read logs directly (skip check for Marian context)
+        self.skip_marian_context = skip_marian_context
+        # Marian exection data
+        self.version: str | None = None
+        self.version_hash: str | None = None
+        self.release_date: str | None = None
+        self.run_date: datetime | None = None
+        self.description: str | None = None
+        # Data publication after parsing logs
+        self.publishers = publishers
+
+    def get_headers(self, line: str) -> tuple[list[tuple[str]], int]:
+        """
+        Returns a list of tuples representing all headers of a log line
+        and the position of the last character representing the header.
+        """
+        matches = list(HEADER_RE.finditer(line))
+        if not matches:
+            return ([], 0)
+        return ([tuple(m.group("value").split()) for m in matches], matches[-1].span()[-1])
+
+    def get_timestamp(self, headers: Sequence[Sequence[str]]) -> datetime | None:
+        """
+        Looks for a timestamp in Taskcluster header tags.
+        Returns None in case no timestamp is found.
+        """
+        for values in headers:
+            if len(values) != 2:
+                continue
+            base, timestamp = values
+            # TC adds a timestamp after the task header
+            if base == "task":
+                try:
+                    return datetime.fromisoformat(timestamp.rstrip("Z"))
+                except ValueError as e:
+                    # Taskcluster timestamp should always be a valid date
+                    logger.error(
+                        f"Unreadable taskcluster timestamp line {self._current_index}: {e}"
+                    )
+            # Marian timestamp is composed of two values, one for date and one for hour precision
+            try:
+                return datetime.fromisoformat("T".join(values))
+            except ValueError:
+                continue
+        return None
+
+    def parse_training_log(self, text: str) -> TrainingEpoch | None:
+        match = TRAINING_RE.match(text)
+        if not match:
+            return None
+        # Filter out null values
+        values = {k: v for k, v in match.groupdict().items() if v is not None}
+        # Update sen from 1,234,567 to 1_234_567 that Python can interpret
+        values["sen"] = values["sen"].replace(",", "_")
+        # Cast values to match output types
+        casted_values = {
+            k: (
+                TrainingEpoch.__annotations__[k](v)
+                if callable(TrainingEpoch.__annotations__[k])
+                else float(v)
+            )
+            for k, v in values.items()
+        }
+        training_epoch = TrainingEpoch(**casted_values)
+        self.training.append(training_epoch)
+        for publisher in self.publishers:
+            try:
+                publisher.handle_training(training_epoch)
+            except Exception as e:
+                logger.error(
+                    f"Error publishing training epoch using {publisher.__class__.__name__}: {e}"
+                )
+        return training_epoch
+
+    def parse_validation_log(
+        self, headers: Sequence[Sequence[str]], text: str
+    ) -> ValidationEpoch | None:
+        """Parses a validation entry on multiple lines."""
+        if ("valid",) not in headers or not (match := VALIDATION_RE.match(text)):
+            return None
+        results = match.groupdict()
+        # Replace items keys to match ValidationEpoch dataclass
+        key = results["key"].replace("-", "_")
+        epoch, up = int(results["ep"]), int(results["up"])
+        entry = self._validation_entries[(epoch, up)]
+        # Transform values to match output types
+        entry[key] = ValidationEpoch.__annotations__[key](results["value"])
+        if results["stalled"] is not None:
+            entry[f"{key}_stalled"] = float(results["stalled"])
+        # Build a validation epoch from multiple lines
+        expected_keys = set(
+            key
+            for key in ValidationEpoch.__annotations__.keys()
+            if not (
+                # Stalled data are not necessary present on validation entries
+                key.endswith("_stalled")
+                or key in ("epoch", "up", "perplexity")
+            )
+        )
+        if not (expected_keys - set(entry.keys())):
+            validation_epoch = ValidationEpoch(epoch=epoch, up=up, **entry)
+            self.validation.append(validation_epoch)
+            for publisher in self.publishers:
+                try:
+                    publisher.handle_validation(validation_epoch)
+                except Exception as e:
+                    logger.error(
+                        f"Error publishing validation epoch using {publisher.__class__.__name__}: {e}"
+                    )
+            del self._validation_entries[(epoch, up)]
+            return validation_epoch
+        return None
+
+    def _iter_log_entries(self) -> Iterator[tuple[list[tuple[str]], str]]:
+        """
+        Inner method to iterate on log lines passed to
+        the parser, differentiating headers and text.
+        Automatically set Marian run date when found.
+        """
+        for line in self.logs_iter:
+            # When reading stdin stream, propagate raw lines to stdout
+            # and force flush on stdout to make sure every line gets displayed
+            sys.stdout.buffer.write(line.encode("utf-8"))
+            sys.stdout.buffer.flush()
+
+            self._current_index += 1
+            headers, position = self.get_headers(line)
+            if self.log_filter and not self.log_filter(headers):
+                logger.debug(
+                    f"Skipping line {self._current_index} : Headers does not match the filter"
+                )
+                continue
+            elif self.run_date is None:
+                # Try to fill run date from log headers
+                self.run_date = self.get_timestamp(headers)
+            text = line[position:]
+
+            def _join(seq):
+                if not seq:
+                    return None
+                if isinstance(seq[0], str):
+                    return "_".join([item for item in seq if item is not None])
+                return _join([_join(item) for item in seq if item is not None])
+
+            # Record logs depending on Marian headers
+            tag = None
+            if len(headers) >= 2:
+                # The 2 first headers are ignored (task timestamp, then marian timestamp)
+                _, _, *marian_tags = headers
+                tag = _join(marian_tags)
+            if tag:
+                self.parsed_logs.append(f"[tag] {text}")
+            else:
+                self.parsed_logs.append(text)
+
+            yield headers, text
+
+    def get_extra_marian_config(self) -> dict:
+        """
+        Read extra configuration files (Marian, OpusTrainer, extra CLI arguments).
+        Publication outside of a Taskcluster context (offline mode) cannot access
+        the configuration files, only extra-args will be set in this case.
+        """
+        extra_config = {
+            "arguments": None,
+            "model": None,
+            "training": None,
+            "datasets": None,
+            "opustrainer": None,
+        }
+
+        if (
+            self.description is None
+            or (match := MARIAN_ARGS_REGEX.search(self.description)) is None
+        ):
+            logger.error(self.description)
+            logger.warning(
+                "Invalid Marian description, skipping Marian and OpusTrainer configuration detection."
+            )
+            return extra_config
+
+        logger.info("Reading Marian command line arguments.")
+        (arguments_str,) = match.groups()
+        # Build args from the command line input text
+        args = defaultdict(list)
+        key = None
+        for i in iter(shlex.split(arguments_str)):
+            if i.startswith("-"):
+                key = i.strip("-")
+                continue
+            args[key].append(i)
+
+        # Store arguments used to run Marian, flattening single values
+        def flatten(vals):
+            if not vals:
+                return ""
+            elif len(vals) == 1:
+                return vals[0]
+            return vals
+
+        extra_config["arguments"] = {k: flatten(v) for k, v in args.items()}
+
+        if os.environ.get("TASK_ID") is None:
+            logger.info(
+                "Extra configuration files can only be retrieved in Taskcluster context, skipping."
+            )
+            return extra_config
+
+        # Handle Marian model and training YAML configuration files (called as --config or -c)
+        for path in args.get("config", args["c"]):
+            if path.startswith("configs/training"):
+                key = "training"
+            elif path.startswith("configs/model"):
+                key = "model"
+            else:
+                continue
+            try:
+                with open(path, "r") as f:
+                    extra_config[key] = yaml.safe_load(f.read())
+            except Exception as e:
+                logger.warning(f"Impossible to parse Marian {key} config at {path}: {e}")
+
+        # Handle OpusTrainer configuration
+        (model_path,) = args.get("model", ("./model.npz",))
+        model_dir = Path(model_path).parent
+        train_conf_path = (model_dir / "config.opustrainer.yml").resolve()
+        if not train_conf_path.exists():
+            logger.warning(f"OpusTrainer configuration file does not exists at {train_conf_path}.")
+        else:
+            try:
+                with open(train_conf_path, "r") as f:
+                    extra_config["opustrainer"] = yaml.safe_load(f.read())
+            except Exception as e:
+                logger.warning(f"Impossible to parse OpusTrainer config at {train_conf_path}: {e}")
+            else:
+                logger.info("Reading datasets statistics from OpusTrainer configuration.")
+                try:
+                    dataset_conf = extra_config.get("opustrainer", {}).get("datasets", {})
+                    extra_config["datasets"] = {
+                        key: get_lines_count(path) for key, path in dataset_conf.items()
+                    }
+                except Exception as e:
+                    logger.warning(
+                        f"OpusTrainer configuration could not be read at {train_conf_path}: {e}."
+                    )
+
+        return extra_config
+
+    def parse_marian_context(self, logs_iter: Iterator[tuple[list[tuple[str]], str]]) -> None:
+        """
+        Looks for Marian context in the first logs lines.
+        Returns the first headers and text couple that is not Marian context.
+        """
+        headers: list[tuple[str]] = []
+        # Consume first lines until we get the Marian header
+        while ("marian",) not in headers:
+            try:
+                headers, text = next(logs_iter)
+                logger.debug(f"Marian header not found in: headers={headers} text={text.strip()}")
+            except StopIteration:
+                raise ValueError("Could not find a [marian] entry in the training log.")
+
+        logger.debug(f"Reading Marian version from text={text.strip()}")
+        _, version, self.version_hash, self.release_date, *_ = text.split()
+        version = version.rstrip(";")
+        major, minor = map(int, version.lstrip("v").split(".")[:2])
+        self.version = f"{major}.{minor}"
+        logger.info(f"Detected Marian version {self.version}")
+        if (major, minor) not in SUPPORTED_MARIAN_VERSIONS:
+            versions = ", ".join(f"{major}.{minor}" for major, minor in SUPPORTED_MARIAN_VERSIONS)
+            logger.warning(
+                f"Parsing logs from a non supported Marian version {major}.{minor} "
+                f"(supported versions: {versions})."
+            )
+
+        logger.debug("Reading Marian run description.")
+        desc = []
+        for headers, text in logs_iter:
+            # Marian headers stops when dumping the configuration
+            if ("config",) in headers:
+                break
+            desc.append(text)
+        self.description = " ".join(desc)
+
+        # Try to parse all following config lines as YAML
+        logger.debug("Reading Marian configuration.")
+        config_yaml = ""
+        while ("config",) in headers:
+            # Marian incorrectly logs some messages with [config] prefix.
+            if "Model is being created" in text or "Loaded model has been created" in text:
+                headers, text = next(logs_iter)
+                break
+            config_yaml += f"{text}\n"
+            headers, text = next(logs_iter)
+        try:
+            self.config["marian"] = yaml.safe_load(config_yaml)
+        except Exception as e:
+            logger.error(f"Impossible to parse Marian config YAML: {e}")
+
+        # Try to read required extra configuration files when running online from Taskcluster
+        self.config.update(self.get_extra_marian_config())
+
+    def parse_data(self, logs_iter: Iterator[tuple[list[tuple[str]], str]]) -> None:
+        """
+        Iterates logs until the end to find training or validation
+        data and report incomplete multiline logs.
+        """
+        while True:
+            try:
+                headers, text = next(logs_iter)
+                training = self.parse_training_log(text)
+                if not training:
+                    self.parse_validation_log(headers, text)
+            except StopIteration:
+                break
+        if self._validation_entries.keys():
+            logger.warning(
+                "Some validation data is incomplete with the following epoch/up couples:"
+            )
+            for epoch, up in self._validation_entries.keys():
+                logger.warning(f"* Ep. {epoch}, Up. {up}")
+
+    def parse(self) -> None:
+        """
+        Parses and publishes training logs:
+          1. Optionally reads Marian context (version, configuration)
+          2. Looks for training or validation data among next lines
+        """
+        if self.parsed:
+            raise Exception("The parser already ran.")
+        logs_iter = self._iter_log_entries()
+
+        logger.info("Reading logs stream.")
+        if not self.skip_marian_context:
+            # Copy logs iterable so we avoid reading out of context lines.
+            # This will not affect inner self._current_index, as we stop incrementing after reading the context.
+            logs_iter, copy = tee(logs_iter)
+            self.parse_marian_context(copy)
+
+        for publisher in self.publishers:
+            publisher.open(self)
+
+        # Run training and validation data parser
+        self.parse_data(logs_iter)
+        self.parsed = True
+
+        # Once all data has been parsed, call the final publication API
+        for publisher in self.publishers:
+            try:
+                publisher.publish()
+                # Publish optional metrics
+                if self.metrics:
+                    publisher.handle_metrics(self.metrics)
+            except Exception as e:
+                logger.error(f"Error publishing data using {publisher.__class__.__name__}: {e}")
+
+        for publisher in self.publishers:
+            publisher.close()
+
+    @property
+    def output(self) -> TrainingLog:
+        if not self.parsed:
+            raise Exception("Please run the parser before reading the output")
+        return TrainingLog(
+            run_date=self.run_date,
+            configuration=self.config,
+            training=self.training,
+            validation=list(self.validation),
+            logs=self.parsed_logs,
+        )
+
+    def run(self) -> None:
+        """Parse logs stream."""
+        try:
+            self.parse()
+        except StopIteration:
+            raise ValueError("Not all required lines were found from the log file.")
+
+        count = len(self.parsed_logs)
+        logger.info(f"Successfully parsed {count} lines")
+        logger.info(f"Found {len(self.training)} training entries")
+        logger.info(f"Found {len(self.validation)} validation entries")
+
+
+translations_parser/publishers.py
+
+import csv
+import logging
+import sys
+from abc import ABC
+from collections import defaultdict
+from pathlib import Path
+from typing import Sequence
+
+import wandb
+import yaml
+
+from translations_parser.data import Metric, TrainingEpoch, ValidationEpoch
+from translations_parser.utils import parse_task_label, parse_gcp_metric, patch_model_name
+
+logger = logging.getLogger(__name__)
+
+METRIC_KEYS = sorted(set(Metric.__annotations__.keys()) - {"importer", "dataset", "augmentation"})
+
+
+class Publisher(ABC):
+    """
+    Abstract class used to publish parsed data.
+
+    Either the `handle_*` methods can be overriden for real time
+    publication (introduced later on) or the `publish` method
+    with all results (including parser run date, configuration…).
+    """
+
+    def open(self, parser) -> None:
+        ...
+
+    def handle_training(self, training: TrainingEpoch) -> None:
+        ...
+
+    def handle_validation(self, validation: ValidationEpoch) -> None:
+        ...
+
+    def handle_metrics(self, metrics: Sequence[Metric]) -> None:
+        ...
+
+    def publish(self) -> None:
+        ...
+
+    def close(self) -> None:
+        ...
+
+
+class CSVExport(Publisher):
+    def __init__(self, output_dir: Path) -> None:
+        from translations_parser.parser import TrainingParser
+
+        if not output_dir.is_dir():
+            raise ValueError("Output must be a valid directory for the CSV export")
+        self.output_dir = output_dir
+        self.parser: TrainingParser | None = None
+
+    def open(self, parser=None) -> None:
+        self.parser = parser
+
+    def write_data(
+        self, output: Path, entries: Sequence[TrainingEpoch | ValidationEpoch], dataclass: type
+    ) -> None:
+        if not entries:
+            logger.warning(f"No {dataclass.__name__} entry, skipping.")
+        with open(output, "w") as f:
+            writer = csv.DictWriter(f, fieldnames=dataclass.__annotations__)
+            writer.writeheader()
+            for entry in entries:
+                writer.writerow(vars(entry))
+
+    def publish(self) -> None:
+        assert self.parser is not None, "Parser must be set to run CSV publication."
+        training_log = self.parser.output
+        training_output = self.output_dir / "training.csv"
+        if training_output.exists():
+            logger.warning(f"Training output file {training_output} exists, skipping.")
+        else:
+            self.write_data(training_output, training_log.training, TrainingEpoch)
+
+        validation_output = self.output_dir / "validation.csv"
+        if validation_output.exists():
+            logger.warning(f"Validation output file {validation_output} exists, skipping.")
+        else:
+            self.write_data(validation_output, training_log.validation, ValidationEpoch)
+
+
+class WandB(Publisher):
+    def __init__(
+        self,
+        *,
+        project: str,
+        group: str,
+        name: str,
+        suffix: str = "",
+        # Optional path to a directory containing training artifacts
+        artifacts: Path | None = None,
+        artifacts_name: str = "logs",
+        **extra_kwargs,
+    ):
+        from translations_parser.parser import TrainingParser
+
+        # Set logging of wandb module to WARNING, so we output training logs instead
+        self.wandb_logger = logging.getLogger("wandb")
+        self.wandb_logger.setLevel(logging.ERROR)
+
+        self.project = project
+        self.group = group
+        self.suffix = suffix
+        # Build a unique run identifier based on the passed suffix
+        # This ID is also used as display name on W&B, as the interface expects unique display names among runs
+        self.run = f"{name}{suffix}"
+
+        self.artifacts = artifacts
+        self.artifacts_name = artifacts_name
+        self.extra_kwargs = extra_kwargs
+        self.parser: TrainingParser | None = None
+        self.wandb: wandb.sdk.wandb_run.Run | wandb.sdk.lib.disabled.RunDisabled | None = None
+
+    def close(self) -> None:
+        if self.wandb is None:
+            return
+
+        # Publish artifacts
+        if self.artifacts:
+            artifact = wandb.Artifact(name=self.artifacts_name, type=self.artifacts_name)
+            artifact.add_dir(local_path=str(self.artifacts.resolve()))
+            self.wandb.log_artifact(artifact)
+
+        if self.parser is not None:
+            # Store Marian logs as the main log artifact, instead of W&B client runtime.
+            # This will be overwritten in case an unhandled exception occurs.
+            for line in self.parser.parsed_logs:
+                sys.stdout.write(f"{line}\n")
+
+        self.wandb.finish()
+
+    def open(self, parser=None) -> None:
+        self.parser = parser
+        config = getattr(parser, "config", {}).copy()
+        config.update(self.extra_kwargs.pop("config", {}))
+        # Publish datasets stats directly in the dashboard
+        datasets = config.pop("datasets", None)
+
+        try:
+            self.wandb = wandb.init(
+                project=self.project,
+                group=self.group,
+                name=self.run,
+                id=self.run,
+                config=config,
+                # Since we use unique run names based on group ID (e.g. finetune-student_MjcJG),
+                # we can use "allow" mode for resuming a stopped Taskcluster run in case of preemption.
+                # It will continue logging to the same run if it exists.
+                # Offline publication should handle run deletion separately (use --override-runs).
+                resume="allow",
+                **self.extra_kwargs,
+            )
+            if self.wandb.resumed:
+                logger.info(f"W&B run is being resumed from existing run '{self.run}'.")
+        except Exception as e:
+            logger.error(f"WandB client could not be initialized: {e}. No data will be published.")
+
+        if datasets is not None:
+            # Log dataset sizes as a custom bar chart
+            self.wandb.log(
+                {
+                    "Datasets": wandb.plot.bar(
+                        wandb.Table(
+                            columns=["Name", "Count"],
+                            data=[[key, value] for key, value in datasets.items()],
+                        ),
+                        "Name",
+                        "Count",
+                        title="Datasets",
+                    )
+                }
+            )
+
+    def generic_log(self, data: TrainingEpoch | ValidationEpoch) -> None:
+        if self.wandb is None:
+            return
+        epoch = vars(data)
+        step = epoch.pop("up")
+        for key, val in epoch.items():
+            if val is None:
+                # Do not publish null values (e.g. perplexity in Marian 1.10)
+                continue
+            self.wandb.log(step=step, data={key: val})
+
+    def handle_training(self, training: TrainingEpoch) -> None:
+        self.generic_log(training)
+
+    def handle_validation(self, validation: ValidationEpoch) -> None:
+        self.generic_log(validation)
+
+    def handle_metrics(self, metrics: Sequence[Metric]) -> None:
+        if self.wandb is None:
+            return
+        for metric in metrics:
+            title = metric.importer
+            if metric.augmentation:
+                title = f"{title}_{metric.augmentation}"
+            if metric.dataset:
+                title = f"{title}_{metric.dataset}"
+            # Publish a bar chart (a table with values will also be available from W&B)
+            self.wandb.log(
+                {
+                    title: wandb.plot.bar(
+                        wandb.Table(
+                            columns=["Metric", "Value"],
+                            data=[
+                                [key, getattr(metric, key)]
+                                for key in METRIC_KEYS
+                                if getattr(metric, key) is not None
+                            ],
+                        ),
+                        "Metric",
+                        "Value",
+                        title=title,
+                    )
+                }
+            )
+
+    @classmethod
+    def publish_group_logs(
+        cls,
+        *,
+        logs_parent_folder: list[str],
+        project: str,
+        group: str,
+        suffix: str,
+        existing_runs: list[str] | None = None,
+        snakemake: bool = False,
+    ) -> None:
+        """
+        Publish files within `logs_dir` to W&B artifacts for a specific group.
+        A fake W&B run named `group_logs` is created to publish those artifacts
+        among with all evaluation files (quantized + experiments).
+        If existing run is set, runs found not specified in this list will also
+        be published to W&B.
+        """
+        from translations_parser.parser import TrainingParser
+
+        try:
+            if (
+                len(
+                    wandb.Api().runs(
+                        path=project, filters={"display_name": "group_logs", "group": group}
+                    )
+                )
+                > 0
+            ):
+                logger.warning("Skipping group_logs fake run publication as it already exists")
+                return
+        except ValueError as e:
+            # Project may not exist yet as group_logs is published before the first training task
+            if "could not find project" not in str(e).lower():
+                logger.warning(f"Detection of a previous group_logs run failed: {e}")
+
+        logs_dir = Path("/".join([*logs_parent_folder[:-1], "logs", project, group]))
+        models_dir = Path("/".join([*logs_parent_folder[:-1], "models", project, group]))
+        # Old experiments use `speed` directory for quantized metrics
+        quantized_metrics = sorted(
+            Path(
+                "/".join(
+                    [*logs_parent_folder[:-1], "models", project, group, "evaluation", "speed"]
+                )
+            ).glob("*.metrics")
+        )
+        logs_metrics = sorted((logs_dir / "eval").glob("eval*.log"))
+        direct_metrics = sorted((logs_dir / "metrics").glob("*.metrics"))
+
+        taskcluster_metrics = []
+        # Do not retrieve metrics from models directory for legacy Snakemake experiments
+        if snakemake is False:
+            taskcluster_metrics = sorted((models_dir).glob("**/*.metrics"))
+
+        if quantized_metrics:
+            logger.info(f"Found {len(quantized_metrics)} quantized metrics from speed folder")
+        if logs_metrics:
+            logger.info(f"Found {len(logs_metrics)} metrics from task logs")
+        if direct_metrics:
+            logger.info(f"Found {len(direct_metrics)} Snakemake metrics from .metrics artifacts")
+        if taskcluster_metrics:
+            logger.info(
+                f"Found {len(taskcluster_metrics)} Taskcluster metrics from .metrics artifacts"
+            )
+
+        # Store metrics by run name
+        metrics = defaultdict(list)
+        # Add metrics from the speed folder
+        for file in quantized_metrics:
+            importer, dataset = file.stem.split("_", 1)
+            metrics["quantized"].append(Metric.from_file(file, importer=importer, dataset=dataset))
+        # Add metrics from tasks logs
+        for file in logs_metrics:
+            try:
+                model_name, importer, dataset, aug = parse_task_label(file.stem)
+                with file.open("r") as f:
+                    lines = f.readlines()
+                metrics[model_name].append(
+                    Metric.from_tc_context(
+                        importer=importer, dataset=dataset, lines=lines, augmentation=aug
+                    )
+                )
+            except ValueError as e:
+                logger.error(f"Could not parse metrics from {file.resolve()}: {e}")
+
+        # Add metrics from old SnakeMake .metrics files
+        for file in direct_metrics:
+            model_name, importer, dataset, aug = parse_task_label(file.stem)
+            try:
+                metrics[model_name].append(
+                    Metric.from_file(file, importer=importer, dataset=dataset, augmentation=aug)
+                )
+            except ValueError as e:
+                logger.error(f"Could not parse metrics from {file.resolve()}: {e}")
+
+        # Add metrics from new Taskcluster .metrics files
+        for file in taskcluster_metrics:
+            model_name = patch_model_name(file.parent.name)
+            try:
+                metric_attrs = parse_gcp_metric(file.stem)
+                metrics[model_name].append(
+                    Metric.from_file(
+                        file,
+                        importer=metric_attrs.importer,
+                        dataset=metric_attrs.dataset,
+                        augmentation=metric_attrs.augmentation,
+                    )
+                )
+            except ValueError as e:
+                logger.error(f"Could not parse metrics from {file.resolve()}: {e}")
+
+        # Publish missing runs (runs without training data)
+        missing_run_metrics = {}
+        if existing_runs is not None:
+            missing_run_metrics = {
+                name: metrics for name, metrics in metrics.items() if name not in existing_runs
+            }
+
+        for model_name, model_metrics in missing_run_metrics.items():
+            logger.info(f"Creating missing run {model_name} with associated metrics")
+            publisher = cls(
+                project=project,
+                group=group,
+                name=model_name,
+                suffix=suffix,
+            )
+            publisher.open(TrainingParser(logs_iter=iter([]), publishers=[]))
+            publisher.handle_metrics(model_metrics)
+            publisher.close()
+
+        # Publication of the `group_logs` fake run
+        config = {}
+        config_path = Path(
+            "/".join([*logs_parent_folder[:-1], "experiments", project, group, "config.yml"])
+        )
+        if not config_path.is_file():
+            logger.warning(f"No configuration file at {config_path}, skipping.")
+        else:
+            # Publish the YAML configuration as configuration on the group run
+            with config_path.open("r") as f:
+                data = f.read()
+            try:
+                config.update(yaml.safe_load(data))
+            except Exception as e:
+                logger.error(f"Config could not be read at {config_path}: {e}")
+
+        publisher = cls(
+            project=project,
+            group=group,
+            name="group_logs",
+            suffix=suffix,
+        )
+        publisher.wandb = wandb.init(
+            project=project,
+            group=group,
+            name=publisher.run,
+            id=publisher.run,
+            config=config,
+        )
+
+        if metrics:
+            # Publish all evaluation metrics to a table
+            table = wandb.Table(
+                columns=["Group", "Model", "Importer", "Dataset", "Augmenation", *METRIC_KEYS],
+                data=[
+                    [group, run_name, metric.importer, metric.dataset, metric.augmentation]
+                    + [getattr(metric, attr) for attr in METRIC_KEYS]
+                    for run_name, run_metrics in metrics.items()
+                    for metric in run_metrics
+                ],
+            )
+            publisher.wandb.log({"metrics": table})
+
+        if logs_dir.is_dir():
+            # Publish logs directory content as artifacts
+            artifact = wandb.Artifact(name=group, type="logs")
+            artifact.add_dir(local_path=str(logs_dir.resolve()))
+            publisher.wandb.log_artifact(artifact)
+        publisher.wandb.finish()
+
+
+translations_parser/utils.py
+
+import logging
+import os
+import re
+import tempfile
+from collections.abc import Sequence
+from datetime import datetime
+from pathlib import Path
+from typing import NamedTuple, Optional
+
+import yaml
+
+import taskcluster
+from taskcluster.download import downloadArtifactToFile
+
+logger = logging.getLogger(__name__)
+
+# Keywords used to split eval filenames into model and dataset
+DATASET_KEYWORDS = ["flores", "mtdata", "sacrebleu"]
+
+# Tags usually ends with project (e.g. `en-nl` or `eng-nld`)
+TAG_PROJECT_SUFFIX_REGEX = re.compile(r"((-\w{2}){2}|(-\w{3}){2})$")
+
+MULTIPLE_TRAIN_SUFFIX = re.compile(r"(-\d+)/\d+$")
+
+# This regex needs to work on historic runs as well as the current tasks.
+TRAIN_LABEL_REGEX = re.compile(
+    # The "train-" prefix is optional because of "finetune-student-ru-en".
+    r"^"
+    r"(train-)?"
+    #
+    # Capture what model is being run, for instance:
+    #   train-teacher-ru-en-1
+    #         ^^^^^^^
+    r"(?P<model>"
+    r"(finetuned-student|finetune-student|student-finetuned|teacher-ensemble|teacher|teacher-base|teacher-finetuned"
+    r"|finetune-teacher|teacher-all|teacher-parallel|student|quantized|backwards|backward)"
+    r")"
+    #
+    # Capture some legacy numeric suffixes.
+    r"(-?(?P<suffix>\d+))?"
+    r"[_-]?"
+    #
+    # Match the languages. BCP 47 language tags can be 2 or 3 letters long.
+    #   train-teacher-ru-en-1
+    #                 ^^ ^^
+    r"(?P<lang>[a-z]{2,3}-[a-z]{2,3})?"
+    r"-?"
+    #
+    # Match the task chunking, for instance:
+    #   train-teacher-ru-en-1
+    #                       ^
+    # Legacy pattern:
+    #   train-teacher-ru-en-1/3
+    #                       ^
+    r"-?((?P<task_suffix>\d+)((\/|_)\d+)?)?"
+    #
+    r"$"
+)
+EVAL_REGEX = re.compile(
+    r"^"
+    # Match evaluate steps.
+    r"(evaluate|eval)[-_]"
+    #
+    # Capture what model is being run, for instance:
+    #   evaluate-student-sacrebleu-wmt19-lt-en
+    #            ^^^^^^^
+    r"(?P<model>"
+    r"(finetuned-student|finetune-student|student-finetuned|teacher-ensemble|teacher|teacher-base|teacher-finetuned"
+    r"|finetune-teacher|teacher-all|teacher-parallel|student|quantized|backwards|backward)"
+    r")"
+    #
+    # Capture some legacy numeric suffixes.
+    r"(-?(?P<suffix>\d+))?"
+    r"[_-]"
+    #
+    # Capture which importer is being used.
+    #   evaluate-teacher-flores-flores_aug-title_devtest-lt-en-1_2
+    #                    ^^^^^^
+    r"(?P<importer>flores|mtdata|sacrebleu|url)"
+    r"(?P<extra_importer>-flores|-mtdata|-sacrebleu)?"
+    r"[_-]"
+    #
+    # Capture any augmentations
+    #   evaluate-teacher-flores-flores_aug-title_devtest-lt-en-1_2
+    #                                  ^^^^^^^^^
+    r"(?P<aug>aug-[^_]+)?"
+    #
+    # Capture the dataset.
+    #   evaluate-quantized-mtdata_aug-mix_Neulab-tedtalks_eng-lit-lt-en
+    #                                     ^^^^^^^^^^^^^^^^^^^^^^^
+    r"_?(?P<dataset>[-\w\d_]*?(-[a-z]{3}-[a-z]{3})?)?"
+    #
+    # Match language (project) suffix.
+    # evaluate-teacher-flores-devtest-ru-en-1
+    #                                 ^^^^^
+    #
+    r"-?(?P<lang>[a-z]{2,3}-[a-z]{2,3})?"
+    #
+    # Match the task chunking, for instance:
+    #   evaluate-teacher-flores-flores_dev-en-ca-1/2
+    #                                            ^
+    #   evaluate-teacher-flores-flores_aug-title_devtest-lt-en-1_2
+    #                                                          ^
+    r"(-(?P<task_suffix>\d+)([\/|_]\d+)?)?"
+    #
+    r"$"
+)
+
+queue = taskcluster.Queue({"rootUrl": "https://firefox-ci-tc.services.mozilla.com"})
+
+
+class ParsedTaskLabel(NamedTuple):
+    model: str
+    importer: Optional[str]
+    dataset: Optional[str]
+    augmentation: Optional[str]
+
+
+class ParsedGCPMetric(NamedTuple):
+    importer: str
+    augmentation: Optional[str]
+    dataset: Optional[str]
+
+
+def patch_model_name(model, suffix=None):
+    """Model Naming and suffix may be inconsistent between different sources"""
+    if suffix is None:
+        # Try to autodetect suffix based on name
+        re_match = re.search(r"(?P<end>-?(?P<suffix>\d+))$", model)
+        if re_match:
+            re_match = re_match.groupdict()
+            model = model[: -len(re_match["end"])]
+            suffix = re_match["suffix"]
+
+    model = model.replace("finetuned", "finetune")
+    if model == "backward":
+        model = "backwards"
+
+    if not suffix and model == "teacher":
+        # Keep the index on teacher runs for compatibility with legacy models
+        # https://github.com/mozilla/translations/issues/573
+        suffix = "1"
+    if suffix:
+        model = f"{model}-{suffix}"
+    return model
+
+
+def parse_task_label(task_label: str) -> ParsedTaskLabel:
+    """
+    Parse details out of train-* and evaluate-* task labels.
+    """
+    # First try to parse a simple training label
+    match = TRAIN_LABEL_REGEX.match(task_label)
+    if match is None:
+        # Else try to parse an evaluation label with importer, dataset and auugmentation
+        match = EVAL_REGEX.match(task_label)
+    if not match:
+        raise ValueError(f"Label could not be parsed: {task_label}")
+    groups = match.groupdict()
+    model = patch_model_name(
+        groups["model"], suffix=groups.get("suffix") or groups.get("task_suffix")
+    )
+
+    return ParsedTaskLabel(model, groups.get("importer"), groups.get("dataset"), groups.get("aug"))
+
+
+def taskcluster_log_filter(headers: Sequence[Sequence[str]]) -> bool:
+    """
+    Check TC log contain a valid task header i.e. ('task', <timestamp>)
+    """
+    for values in headers:
+        if not values or len(values) != 2:
+            continue
+        base, timestamp = values
+        if base != "task":
+            continue
+        try:
+            datetime.fromisoformat(timestamp.rstrip("Z"))
+            return True
+        except ValueError:
+            continue
+    return False
+
+
+def build_task_name(task: dict):
+    """
+    Build a simpler task name using a Taskcluster task payload (without status)
+    """
+    prefix = task["tags"]["kind"].split("-")[0]
+    label_value = task.get("tags", {}).get("label", None)
+    if label_value is None:
+        raise ValueError("Task has no label")
+    label = parse_task_label(label_value)
+    return prefix, label.model
+
+
+def metric_from_tc_context(chrf: float, bleu: float, comet: float):
+    """
+    Find the various names needed to build a metric directly from a Taskcluster task
+    """
+    from translations_parser.data import Metric
+
+    task_id = os.environ.get("TASK_ID")
+    if not task_id:
+        raise Exception("Evaluation metric can only be build in taskcluster")
+
+    # CI task groups do not expose any configuration, so we must use default values
+    queue = taskcluster.Queue({"rootUrl": os.environ["TASKCLUSTER_PROXY_URL"]})
+    task = queue.task(task_id)
+    parsed = parse_task_label(task["tags"]["label"])
+
+    # Multiply comet metric by 100 to match other metrics percentage style
+    comet *= 100
+
+    return Metric(
+        importer=parsed.importer,
+        dataset=parsed.dataset,
+        augmentation=parsed.augmentation,
+        chrf=chrf,
+        bleu_detok=bleu,
+        comet=comet,
+    )
+
+
+def publish_group_logs_from_tasks(
+    *,
+    project: str,
+    group: str,
+    suffix: str = "",
+    metrics_tasks: dict[str, dict] = {},
+    config: dict = {},
+):
+    """
+    Publish a fake run, named 'group_logs' to Weight & Biases from a Taskcluster context.
+    In case project or group is left to None, both values will be detected from Taskcluster.
+    `metrics_tasks` optionally contains finished evaluation tasks that will be published as new runs.
+    """
+    from translations_parser.publishers import WandB
+
+    message = "Handling group_logs publication"
+    if metrics_tasks:
+        message += f" with {len(metrics_tasks)} extra evaluation tasks"
+    logger.info(message)
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        logs_folder = Path(temp_dir) / "logs"
+        metrics_folder = logs_folder / project / group / "metrics"
+        metrics_folder.mkdir(parents=True, exist_ok=True)
+
+        # Group and publish remaining metrics tasks via the logs publication
+        for metric_task_id, metrics_task in metrics_tasks.items():
+            filename = metrics_task["task"]["tags"]["label"]
+            if re_match := MULTIPLE_TRAIN_SUFFIX.search(filename):
+                (train_suffix,) = re_match.groups()
+                filename = MULTIPLE_TRAIN_SUFFIX.sub(train_suffix, filename)
+
+            metric_artifact = next(
+                (
+                    artifact["name"]
+                    for artifact in queue.listLatestArtifacts(metric_task_id)["artifacts"]
+                    if artifact["name"].endswith(".metrics")
+                ),
+                None,
+            )
+            if metric_artifact is None:
+                logger.error(f"No .metric artifact found for task {metric_task_id}, skipping.")
+                continue
+
+            with (metrics_folder / f"{filename}.metrics").open("wb") as log_file:
+                downloadArtifactToFile(
+                    log_file,
+                    taskId=metrics_task["status"]["taskId"],
+                    name=metric_artifact,
+                    queueService=queue,
+                )
+
+        # Dump experiment config so it is published on group_logs
+        config_path = Path(temp_dir) / "experiments" / project / group / "config.yml"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with config_path.open("w") as config_file:
+            yaml.dump(config, config_file)
+
+        parents = str(logs_folder.resolve()).strip().split("/")
+        WandB.publish_group_logs(
+            logs_parent_folder=parents,
+            project=project,
+            group=group,
+            suffix=suffix,
+            existing_runs=[],
+        )
+
+
+def suffix_from_group(task_group_id: str) -> str:
+    # Simply return the first 5 characters of the Taskcluster group ID as unique runs suffix
+    assert (
+        len(task_group_id) >= 5
+    ), f"Taskcluster group ID should contain more than 5 characters: {task_group_id}"
+    return f"_{task_group_id[:5]}"
+
+
+def get_lines_count(file_path: str) -> int:
+    with open(file_path, "r") as f:
+        return sum(1 for _ in f)
+
+
+def parse_gcp_metric(filename: str) -> tuple[str, str, str]:
+    importer, *extra_str = filename.split("_", 1)
+    if importer not in DATASET_KEYWORDS:
+        raise ValueError(f"Importer {importer} is not supported")
+
+    extra_args = {"dataset": None}
+    if extra_str:
+        (extra_str,) = extra_str
+        re_match = re.match(
+            r"(?P<augmentation>aug-[^_]+)?_?(?P<dataset>[-\w\d_]+(-[a-z]{3}-[a-z]{3})?)",
+            extra_str,
+        )
+        if not re_match:
+            raise ValueError(f"Could not detect augmentation nor dataset from {extra_str}")
+        extra_args.update(re_match.groupdict())
+
+    return ParsedGCPMetric(importer, **extra_args)
+
+
+translations_parser/wandb.py
+
+import json
+import os
+from pathlib import Path
+from typing import List
+
+import wandb
+
+import taskcluster
+from translations_parser.parser import logger
+from translations_parser.publishers import WandB
+from translations_parser.utils import build_task_name, suffix_from_group
+
+
+def add_wandb_arguments(parser):
+    parser.add_argument(
+        "--wandb-project",
+        help="Publish the training run to a Weight & Biases project.",
+        default=None,
+    )
+    parser.add_argument(
+        "--wandb-artifacts",
+        help="Directory containing training artifacts to publish on Weight & Biases.",
+        type=Path,
+        default=None,
+    )
+    parser.add_argument(
+        "--wandb-group",
+        help="Add the training run to a Weight & Biases group e.g. by language pair or experiment.",
+        default=None,
+    )
+    parser.add_argument(
+        "--wandb-run-name",
+        help="Use a custom name for the Weight & Biases run.",
+        default=None,
+    )
+    parser.add_argument(
+        "--wandb-publication",
+        action="store_true",
+        help="Trigger publication on Weight & Biases. Disabled by default. Can be set though env variable WANDB_PUBLICATION=true|false",
+        default=os.environ.get("WANDB_PUBLICATION", "false").lower() == "true",
+    )
+    parser.add_argument(
+        "--taskcluster-secret",
+        help="Taskcluster secret name used to store the Weight & Biases secret API Key.",
+        type=str,
+        default=os.environ.get("TASKCLUSTER_SECRET"),
+    )
+    parser.add_argument(
+        "--tags",
+        help="List of tags to use on Weight & Biases publication",
+        type=str,
+        default=["taskcluster"],
+        nargs="+",
+    )
+
+
+def get_wandb_token(secret_name):
+    """
+    Retrieve the Weight & Biases token from Taskcluster secret
+    """
+    secrets = taskcluster.Secrets({"rootUrl": os.environ["TASKCLUSTER_PROXY_URL"]})
+
+    try:
+        wandb_secret = secrets.get(secret_name)
+        return wandb_secret["secret"]["token"]
+    except Exception as e:
+        raise Exception(
+            f"Weight & Biases secret API Key retrieved from Taskcluster is malformed: {e}"
+        )
+
+
+def get_wandb_names() -> tuple[str, str, str, str]:
+    """
+    Find the various names needed to publish on Weight & Biases using
+    the taskcluster task & group payloads.
+
+    Returns project, group, run names and the task group ID.
+    """
+    task_id = os.environ.get("TASK_ID")
+    if not task_id:
+        raise Exception("Weight & Biases name detection can only run in taskcluster")
+
+    # Load task & group definition
+    # CI task groups do not expose any configuration, so we must use default values
+    queue = taskcluster.Queue({"rootUrl": os.environ["TASKCLUSTER_PROXY_URL"]})
+    task = queue.task(task_id)
+    _, task_name = build_task_name(task)
+    group_id = task["taskGroupId"]
+    task_group = queue.task(group_id)
+    config = task_group.get("extra", {}).get("action", {}).get("context", {}).get("input")
+    if config is None:
+        logger.warn(
+            f"Experiment configuration missing on {group_id} @ extra/action/context/input, fallback to CI values"
+        )
+        experiment = {
+            "src": "ru",
+            "trg": "en",
+            "name": "ci",
+        }
+    else:
+        experiment = config["experiment"]
+
+    # Publish experiments triggered from the CI to a specific "ci" project
+    if experiment["name"] == "ci":
+        project = "ci"
+    else:
+        project = f'{experiment["src"]}-{experiment["trg"]}'
+
+    return (
+        project,
+        f'{experiment["name"]}_{group_id}',
+        task_name,
+        group_id,
+    )
+
+
+def get_wandb_publisher(
+    project_name=None,
+    group_name=None,
+    run_name=None,
+    taskcluster_secret=None,
+    artifacts=[],
+    tags=[],
+    logs_file=None,
+    publication=False,
+):
+    if not publication:
+        logger.info(
+            "Skip weight & biases publication as requested by operator through WANDB_PUBLICATION"
+        )
+        return
+
+    # Load secret from Taskcluster and auto-configure naming
+    suffix = ""
+    if taskcluster_secret:
+        assert os.environ.get(
+            "TASKCLUSTER_PROXY_URL"
+        ), "When using `--taskcluster-secret`, `TASKCLUSTER_PROXY_URL` environment variable must be set too."
+
+        # Weight and Biases client use environment variable to read the token
+        os.environ.setdefault("WANDB_API_KEY", get_wandb_token(taskcluster_secret))
+
+        project_name, group_name, run_name, task_group_id = get_wandb_names()
+        suffix = suffix_from_group(task_group_id)
+
+    # Enable publication on weight and biases when project is set
+    # But prevent running when explicitly disabled by operator
+    if not project_name:
+        logger.info("Skip weight & biases publication as project name is not set")
+        return
+
+    # Build optional configuration with log file
+    config = {}
+    if logs_file:
+        config["logs_file"] = logs_file
+
+    # Automatically adds experiment owner to the tags
+    if author := os.environ.get("WANDB_AUTHOR"):
+        tags.append(f"author:{author}")
+
+    return WandB(
+        project=project_name,
+        group=group_name,
+        name=run_name,
+        suffix=suffix,
+        artifacts=artifacts,
+        tags=tags,
+        config=config,
+    )
+
+
+def list_existing_group_logs_metrics(
+    wandb_run: wandb.sdk.wandb_run.Run,
+) -> List[List[str | float]]:
+    """Retrieve the data from groups_logs metric table"""
+    if wandb_run.resumed is False:
+        return []
+    logger.info(f"Retrieving existing group logs metrics from group_logs ({wandb_run.id})")
+    api = wandb.Api()
+    run = api.run(f"{wandb_run.project}/{wandb_run.id}")
+    last = next(
+        (
+            artifact
+            for artifact in list(run.files())[::-1]
+            if artifact.name.startswith("media/table/metrics")
+        ),
+        None,
+    )
+    if not last:
+        return []
+    data = json.load(last.download(replace=True))
+    return data.get("data", [])
