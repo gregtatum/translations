@@ -15,8 +15,10 @@ import argparse
 import os
 import random
 import re
+import shutil
 import subprocess
 import sys
+from pathlib import Path
 from typing import Dict, Iterable, List
 
 from opustrainer.modifiers.noise import NoiseModifier
@@ -26,7 +28,7 @@ from opustrainer.modifiers.typos import TypoModifier
 from opustrainer.types import Modifier
 
 from pipeline.common.downloads import compress_file, decompress_file
-from pipeline.data.cjk import handle_chinese_parallel, ChineseType
+from pipeline.data.cjk import ChineseConverter, ChineseType
 
 random.seed(1111)
 
@@ -242,12 +244,23 @@ def run_import(
             [os.path.join(current_dir, "download-corpus.sh"), no_aug_id, output_prefix],
             env={"SRC": src, "TRG": trg},
         )
-        # TODO: convert everything to Chinese simplified for now when Chinese is the source language
+
+        # TODO: convert everything to Chinese simplified for now
         # TODO: https://github.com/mozilla/firefox-translations-training/issues/896
-        if "zh" in (src, trg):
-            handle_chinese_parallel(
-                output_prefix, src=src, trg=trg, variant=ChineseType.simplified
-            )
+        for lang in (src, trg):
+            if lang == "zh":
+                print("Converting the output file to Chinese Simplified")
+                chinese_converter = ChineseConverter()
+                stats = chinese_converter.convert_file(
+                    Path(f"{output_prefix}.{lang}.zst"),
+                    Path(f"{output_prefix}.converted.{lang}.zst"),
+                    ChineseType.simplified,
+                )
+                shutil.move(f"{output_prefix}.converted.{lang}.zst", f"{output_prefix}.{lang}.zst")
+                print(
+                    f"Converted {stats.script_conversion.converted} lines from {stats.script_conversion.visited} to Chinese Simplified"
+                )
+                stats.save_json()
 
         if aug_modifer:
             print("Running augmentation")
