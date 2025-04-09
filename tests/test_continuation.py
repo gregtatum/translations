@@ -195,7 +195,7 @@ test_params: list[TestParams] = [
             "alignments-backtranslated-ru-en",
             "alignments-parallel-ru-en",
             "alignments-student-ru-en",
-            "cefilter-ru-en",
+            "distillation-corpus-keep-best-ru-en",
             "continuation-vocab-ru-en",
             "continuation-model-backwards-ru-en",
             "continuation-corpus-backtranslations-ru-en",
@@ -236,7 +236,7 @@ test_params: list[TestParams] = [
         excluded_task_labels={
             "alignments-backtranslated-ru-en",
             "alignments-parallel-ru-en",
-            "cefilter-ru-en",
+            "distillation-corpus-keep-best-ru-en",
             "continuation-corpus-backtranslations-ru-en",
             "continuation-corpus-original-parallel-ru-en",
             "continuation-model-backwards-ru-en",
@@ -276,7 +276,7 @@ test_params: list[TestParams] = [
                         alignments: https://example.com/original-parallel.aln.zst
         """,
         included_task_labels={
-            "cefilter-ru-en",
+            "distillation-corpus-keep-best-ru-en",
             "continuation-corpus-backtranslations-ru-en",
             "continuation-corpus-original-parallel-ru-en",
             "continuation-model-backwards-ru-en",
@@ -320,7 +320,7 @@ test_params: list[TestParams] = [
             "train-student-ru-en",
         },
         excluded_task_labels={
-            "cefilter-ru-en",
+            "distillation-corpus-keep-best-ru-en",
             "continuation-corpus-backtranslations-ru-en",
             "continuation-corpus-original-parallel-ru-en",
             "continuation-model-backwards-ru-en",

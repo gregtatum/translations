@@ -130,7 +130,7 @@ def apply_continuation(config: TransformConfig, jobs: Iterable[Job]):
     Rewrites dependencies:
         merge-cleaned-parallel -> corpus-original-parallel
         merge-cleaned-mono-trg -> corpus-backtranslations
-        cefilter -> corpus-distillation
+        distillation-corpus-keep-best -> corpus-distillation
     """
     training_config: dict = config.params["training_config"]
     continuation: Continuation = training_config.get("continuation", {})
@@ -223,7 +223,7 @@ def apply_continuation(config: TransformConfig, jobs: Iterable[Job]):
 
         if corpus_student_distillation:
             if stage in {
-                "cefilter",
+                "distillation-corpus-keep-best",
                 "train-teacher",
                 "evaluate-backwards",
                 "evaluate-teacher",
@@ -233,7 +233,7 @@ def apply_continuation(config: TransformConfig, jobs: Iterable[Job]):
                 continue
 
             rewrite_dependencies(
-                job, old_task="cefilter", new_task="continuation-corpus-student-distillation"
+                job, old_task="distillation-corpus-keep-best", new_task="continuation-corpus-student-distillation"
             )
             if corpus_student_distillation.get("alignments"):
                 if stage == "alignments-student":
