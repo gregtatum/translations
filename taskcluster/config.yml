@@ -19,7 +19,7 @@ taskgraph:
 # These get attached to tasks in `kinds`.
 valid-stages:
     - continuation
-    - clean-corpus
+    - clean-parallel
     - clean-mono
     - bicleaner
     - bicleaner-model
