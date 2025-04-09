@@ -158,7 +158,7 @@ def apply_continuation(config: TransformConfig, jobs: Iterable[Job]):
 
     for job in jobs:
         # The stage is often the identifier you want rather than job name, for instance,
-        # "alignments-student" is the stage, while "{src_locale}-{trg_locale}" is the
+        # "alignments-distillation" is the stage, while "{src_locale}-{trg_locale}" is the
         # actual job name at this point in time.
         stage = job.get("attributes", {}).get("stage")
         name = job["name"]
@@ -236,11 +236,11 @@ def apply_continuation(config: TransformConfig, jobs: Iterable[Job]):
                 job, old_task="distillation-corpus-keep-best", new_task="continuation-corpus-student-distillation"
             )
             if corpus_student_distillation.get("alignments"):
-                if stage == "alignments-student":
+                if stage == "alignments-distillation":
                     continue
                 rewrite_dependencies(
                     job,
-                    old_task="alignments-student",
+                    old_task="alignments-distillation",
                     new_task="continuation-corpus-student-distillation",
                 )
 

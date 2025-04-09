@@ -194,7 +194,7 @@ test_params: list[TestParams] = [
         included_task_labels={
             "alignments-backtranslations-ru-en",
             "alignments-parallel-ru-en",
-            "alignments-student-ru-en",
+            "alignments-distillation-ru-en",
             "distillation-corpus-keep-best-ru-en",
             "continuation-vocab-ru-en",
             "continuation-model-backwards-ru-en",
@@ -227,7 +227,7 @@ test_params: list[TestParams] = [
                         trg: https://example.com/student-distillation.en.zst
         """,
         included_task_labels={
-            "alignments-student-ru-en",
+            "alignments-distillation-ru-en",
             "continuation-corpus-student-distillation-ru-en",
             "continuation-vocab-ru-en",
             "merge-devset-ru-en",
@@ -284,7 +284,7 @@ test_params: list[TestParams] = [
             "merge-devset-ru-en",
             "train-student-ru-en",
             "train-teacher-ru-en-1",
-            "alignments-student-ru-en",
+            "alignments-distillation-ru-en",
         },
         excluded_task_labels={
             "alignments-backtranslations-ru-en",
@@ -328,7 +328,7 @@ test_params: list[TestParams] = [
             "merge-cleaned-parallel-ru-en",
             "alignments-backtranslations-ru-en",
             "alignments-parallel-ru-en",
-            "alignments-student-ru-en",
+            "alignments-distillation-ru-en",
             "train-backwards-ru-en",
             "train-teacher-ru-en-1",
             "train-vocab-ru-en",
