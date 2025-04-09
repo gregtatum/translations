@@ -22,10 +22,10 @@ task-defaults:
         file.2.zst, ...) in preparation for the teacher to translate it into the
         distillation data needed for student training.
     attributes:
-        stage: split-mono
+        stage: split-distillation
         src_locale: "{src_locale}"
         cache:
-            type: split-mono
+            stage: split-distillation
             resources:
                 - pipeline/translate/splitter.py
                 - pipeline/translate/requirements/splitter.txt
@@ -77,7 +77,7 @@ task-defaults:
 
 tasks:
     src:
-        label: split-mono-src-{src_locale}
+        label: split-distillation-mono-src-{src_locale}
         attributes:
             dataset-category: mono-src
 
