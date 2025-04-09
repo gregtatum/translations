@@ -18,7 +18,7 @@ kind-dependencies:
     - merge-devset
     - train-vocab
     - alignments-student
-    - shortlist
+    - distillation-corpus-shortlist
     - toolchain
     - continuation-corpus
     - continuation-vocab

@@ -17,7 +17,7 @@ kind-dependencies:
     - finetune-student
     - train-vocab
     - continuation-vocab
-    - shortlist
+    - distillation-corpus-shortlist
     - merge-devset
     - toolchain
 
@@ -91,7 +91,7 @@ tasks:
             merge-devset: merge-devset-{src_locale}-{trg_locale}
             finetune-student: finetune-student-{src_locale}-{trg_locale}
             train-vocab: train-vocab-{src_locale}-{trg_locale}
-            shortlist: shortlist-{src_locale}-{trg_locale}
+            distillation-corpus-shortlist: distillation-corpus-shortlist-{src_locale}-{trg_locale}
 
         fetches:
             toolchain:
@@ -106,5 +106,5 @@ tasks:
             train-vocab:
                 - artifact: vocab.spm
                   extract: false
-            shortlist:
+            distillation-corpus-shortlist:
                 - artifact: lex.s2t.pruned.zst
