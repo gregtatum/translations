@@ -213,11 +213,11 @@ def apply_continuation(config: TransformConfig, jobs: Iterable[Job]):
             )
 
             if corpus_backtranslations.get("alignments"):
-                if stage == "alignments-backtranslated":
+                if stage == "alignments-backtranslations":
                     continue
                 rewrite_dependencies(
                     job,
-                    old_task="alignments-backtranslated",
+                    old_task="alignments-backtranslations",
                     new_task="continuation-corpus-backtranslations",
                 )
 
