@@ -189,7 +189,7 @@ def test_distillation_corpus_shortlist():
     shutil.copyfile("tests/data/vocab.spm", os.path.join(data_dir.path, "vocab.en.spm"))
     shutil.copyfile("tests/data/vocab.spm", os.path.join(data_dir.path, "vocab.ru.spm"))
 
-    data_dir.run_task("distillation-corpus-shortlist-en-ru", env=env)
+    data_dir.run_task("distillation-parallel-shortlist-en-ru", env=env)
 
     shortlist_path = os.path.join(data_dir.path, "artifacts", "lex.s2t.pruned.zst")
     assert os.path.exists(shortlist_path)

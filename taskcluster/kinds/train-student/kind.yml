@@ -17,7 +17,7 @@ kind-dependencies:
     - merge-devset
     - train-vocab
     - alignments-distillation
-    - distillation-corpus-shortlist
+    - distillation-parallel-shortlist
     - toolchain
 
 tasks:

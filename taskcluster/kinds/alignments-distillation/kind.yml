@@ -13,7 +13,7 @@ transforms:
     - taskgraph.transforms.task:transforms
 
 kind-dependencies:
-    - distillation-corpus-keep-best
+    - distillation-parallel-keep-best
     - toolchain
     - alignments-parallel
 
@@ -91,11 +91,11 @@ tasks:
                     --priors_input_path=$MOZ_FETCHES_DIR/corpus.priors
 
         dependencies:
-            distillation-corpus-keep-best: distillation-corpus-keep-best-{src_locale}-{trg_locale}
+            distillation-parallel-keep-best: distillation-parallel-keep-best-{src_locale}-{trg_locale}
             alignments-parallel: alignments-parallel-{src_locale}-{trg_locale}
 
         fetches:
-            distillation-corpus-keep-best:
+            distillation-parallel-keep-best:
                 - artifact: corpus.{src_locale}.zst
                 - artifact: corpus.{trg_locale}.zst
             toolchain:

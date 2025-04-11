@@ -42,11 +42,11 @@ valid-stages:
     - translate-distillation-mono-src
     - collect-backtranslations
     - merge-distillation
-    - distillation-corpus-score
-    - distillation-corpus-keep-best
+    - distillation-parallel-score
+    - distillation-parallel-keep-best
     - alignments-teacher
     - alignments-distillation
-    - distillation-corpus-shortlist
+    - distillation-parallel-shortlist
     - train-student
     - evaluate-student
     - finetune-student

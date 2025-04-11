@@ -861,7 +861,7 @@ def collect_corpora(training_run: TrainingRun, tasks: list[Task]):
     )
     training_run.distillation_corpus = Corpus.from_task(
         training_run,
-        find_latest_task(tasks, match_by_label(r"^distillation-corpus-keep-best-")),
+        find_latest_task(tasks, match_by_label(r"^distillation-parallel-keep-best-")),
     )
 
 
