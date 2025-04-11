@@ -18,48 +18,48 @@ taskgraph:
 # The list of valid stages that can be used with `target-stage and `start-stage`.
 # These get attached to tasks in `kinds`.
 valid-stages:
-    - clean-parallel
-    - clean-mono
-    - bicleaner
-    - bicleaner-model
-    - merge-cleaned-parallel
-    - merge-devset
-    - merge-cleaned-mono
-    - train-vocab
-    - train-backwards
-    - evaluate-backwards
-    - split-distillation-parallel-src
-    - split-backtranslations
-    - split-distillation
-    - translate-backtranslations-mono-trg
-    - collect-distillation-mono
-    - train-teacher
-    - evaluate-teacher
-    - evaluate-finetuned-teacher
-    - translate-distillation-parallel-src
-    - distillation-parallel-src-extract-best
-    - collect-distillation-parallel
-    - translate-distillation-mono-src
-    - collect-backtranslations
-    - merge-distillation
-    - distillation-parallel-score
-    - distillation-parallel-keep-best
-    - alignments-parallel
     - alignments-backtranslations
     - alignments-distillation
-    - distillation-parallel-shortlist
-    - train-student
-    - evaluate-student
-    - finetune-student
-    - evaluate-finetuned-student
-    - quantize-student
-    - evaluate-quantized
-    - export
-    - evaluate-teacher-ensemble
-    - analyze-corpus
-    - analyze-mono
+    - alignments-teacher
     - all-pipeline
     - all-pr-pipeline
+    - analyze-corpus
+    - analyze-mono
+    - bicleaner
+    - bicleaner-model
+    - clean-mono
+    - clean-parallel
+    - collect-backtranslations
+    - collect-distillation-mono
+    - collect-distillation-parallel
+    - distillation-parallel-keep-best
+    - distillation-parallel-score
+    - distillation-parallel-shortlist
+    - distillation-parallel-src-extract-best
+    - evaluate-backwards
+    - evaluate-finetuned-student
+    - evaluate-finetuned-teacher
+    - evaluate-quantized
+    - evaluate-student
+    - evaluate-teacher
+    - evaluate-teacher-ensemble
+    - export
+    - finetune-student
+    - merge-cleaned-mono
+    - merge-cleaned-parallel
+    - merge-devset
+    - merge-distillation
+    - quantize-student
+    - split-backtranslations
+    - split-distillation
+    - split-distillation-parallel-src
+    - train-backwards
+    - train-student
+    - train-teacher
+    - train-vocab
+    - translate-backtranslations-mono-trg
+    - translate-distillation-mono-src
+    - translate-distillation-parallel-src
 
 workers:
     aliases:
