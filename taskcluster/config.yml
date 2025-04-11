@@ -44,7 +44,8 @@ valid-stages:
     - merge-distillation
     - distillation-parallel-score
     - distillation-parallel-keep-best
-    - alignments-teacher
+    - alignments-parallel
+    - alignments-backtranslations
     - alignments-distillation
     - distillation-parallel-shortlist
     - train-student
