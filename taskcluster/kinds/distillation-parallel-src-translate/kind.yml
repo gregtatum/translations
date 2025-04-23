@@ -16,6 +16,7 @@ transforms:
     - taskgraph.transforms.task:transforms
 
 kind-dependencies:
+    - build-vocab
     - distillation-parallel-src-chunk
     - train-teacher-model
     - toolchain
@@ -63,6 +64,7 @@ tasks:
             set-name: null
             unique-kinds: false
             kinds:
+                - build-vocab
                 - train-teacher-model
                 - distillation-parallel-src-chunk
             fetches:
@@ -73,6 +75,7 @@ tasks:
                     - artifact: final.model.npz.best-{best_model}.npz
                       dest: model{this_chunk}
                       extract: false
+                build-vocab:
                     - artifact: vocab.{src_locale}.spm
                       extract: false
                     - artifact: vocab.{trg_locale}.spm

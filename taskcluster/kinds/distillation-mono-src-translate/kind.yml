@@ -17,6 +17,7 @@ transforms:
 
 kind-dependencies:
     - distillation-mono-src-chunk
+    - build-vocab
     - train-teacher-model
     - toolchain
 
@@ -83,6 +84,7 @@ tasks:
             set-name: null
             unique-kinds: false
             kinds:
+                - build-vocab
                 - train-teacher-model
                 - distillation-mono-src-chunk
             fetches:
@@ -93,6 +95,7 @@ tasks:
                     - artifact: final.model.npz.best-{best_model}.npz
                       dest: model{this_chunk}
                       extract: false
+                build-vocab:
                     - artifact: vocab.{src_locale}.spm
                       extract: false
                     - artifact: vocab.{trg_locale}.spm
