@@ -1,15 +1,17 @@
 import os
+from pathlib import Path
 import re
 from shlex import join
 import shlex
 import subprocess
+from typing import Any
 
 
-def _get_indented_command_string(command_parts: list[str]) -> str:
+def _get_indented_command_string(command_parts: list[str | Path]) -> str:
     """
     Print out a command with the flags indented, so that it's easy to read.
     """
-    command = join(command_parts)
+    command = join([str(part) for part in command_parts])
     parts = re.split(r"( --\w)", command)
 
     formatted_command = [parts[0].strip()]
@@ -21,7 +23,7 @@ def _get_indented_command_string(command_parts: list[str]) -> str:
     return "\n".join(formatted_command)
 
 
-def apply_command_args(dict: dict[str, any]):
+def apply_command_args(dict: dict[str, Any]):
     """
     Takes in a dictionary, and applies the keys as command line flags.
 
@@ -95,10 +97,16 @@ def run_command_pipeline(
         return subprocess.check_output(command_string, shell=True).decode("utf-8")
 
     subprocess.check_call(command_string, shell=True)
+    return None
 
 
 def run_command(
-    command: list[str], capture=False, shell=False, logger=None, env=None
+    command: list[Path | str],
+    capture=False,
+    logger=None,
+    env=None,
+    stdout=None,
+    stderr=None,
 ) -> str | None:
     """
     Runs a command and outputs a nice representation of the command to a logger, if supplied.
@@ -127,6 +135,45 @@ def run_command(
             logger.info(line)
 
     if capture:
-        return subprocess.check_output(command).decode("utf-8")
+        assert not stdout, "capture was passed, so stdout shoud not be specified."
+        return subprocess.check_output(command, stderr=stderr).decode("utf-8")
 
-    subprocess.check_call(command, env=env)
+    subprocess.check_call(command, env=env, stdout=stdout, stderr=stderr)
+    return None
+
+
+def run_executable(
+    executable: str | Path,
+    args: dict[str, Any],
+    capture=False,
+    logger=None,
+    env=None,
+    stdout=None,
+    stderr=None,
+) -> str | None:
+    """
+    Runs an executable and passes the args in nicely as `--arg_name`. It also outputs a
+    nice representation of the command to a logger, if supplied.
+
+    Args:
+      executable: The path to the executable
+      args: See `apply_command_args` for the structure.
+      capture: If True, captures and returns the output of the final command in the
+        pipeline. If False, output is printed to stdout.
+      logger: A logger instance used for logging the command execution. If provided,
+        it will log the pipeline commands.
+      env: The environment object.
+
+    Example:
+      directory_listing = run_executable("marian-decoder", {
+        model: "model.npz"
+      })
+    """
+    return run_command(
+        [executable, *apply_command_args(args)],
+        capture=capture,
+        logger=logger,
+        env=env,
+        stdout=stdout,
+        stderr=stderr,
+    )

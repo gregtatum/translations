@@ -33,7 +33,7 @@ tasks:
                 type: distillation-student-model-quantize
                 resources:
                     - pipeline/quantize/requirements/quantize.txt
-                    - pipeline/quantize/quantize.sh
+                    - pipeline/quantize/quantize.py
         task-context:
             from-parameters:
                 best_model: training_config.experiment.best-model
@@ -58,9 +58,6 @@ tasks:
                 - name: public/build
                   path: /builds/worker/artifacts
                   type: volume
-            env:
-                SRC: "{src_locale}"
-                TRG: "{trg_locale}"
             # 128 happens when cloning this repository fails
             retry-exit-status: [128]
 
@@ -73,20 +70,21 @@ tasks:
                 - bash
                 - -c
                 - >-
-                    export BMT_MARIAN=$MOZ_FETCHES_DIR &&
-                    export BIN=$MOZ_FETCHES_DIR &&
-                    export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$MOZ_FETCHES_DIR/cuda-toolkit/lib64" &&
-                    zstd --rm -d $MOZ_FETCHES_DIR/*.zst &&
                     pip install -r $VCS_PATH/pipeline/quantize/requirements/quantize.txt &&
-                    mkdir -p scripts/alphas &&
-                    mv $MOZ_FETCHES_DIR/extract_stats.py scripts/alphas &&
-                    $VCS_PATH/pipeline/quantize/quantize.sh
-                    $MOZ_FETCHES_DIR/final.model.npz.best-{best_model}.npz
-                    $MOZ_FETCHES_DIR/vocab.{src_locale}.spm
-                    $MOZ_FETCHES_DIR/vocab.{trg_locale}.spm
-                    $MOZ_FETCHES_DIR/lex.s2t.pruned
-                    $MOZ_FETCHES_DIR/devset.{src_locale}
-                    $TASK_WORKDIR/artifacts
+                    export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$MOZ_FETCHES_DIR/cuda-toolkit/lib64" &&
+                    python3 pipeline/quantize/quantize.py
+                    --finetuned_model $MOZ_FETCHES_DIR/final.model.npz.best-{best_model}.npz
+                    --shortlist_path $MOZ_FETCHES_DIR/lex.s2t.pruned
+                    --shortlist_first_number {shortlist_first_number}
+                    --shortlist_best_number {shortlist_best_number}
+                    --shortlist_threshold {shortlist_threshold}
+                    --devtest $MOZ_FETCHES_DIR/devset.{src_locale}
+                    --artifacts $TASK_WORKDIR/artifacts
+                    --bmt_marian $MOZ_FETCHES_DIR
+                    --src_locale {src_locale}
+                    --trg_locale {trg_locale}
+                    --vocab_src $MOZ_FETCHES_DIR/vocab.{src_locale}.spm
+                    --vocab_trg $MOZ_FETCHES_DIR/vocab.{trg_locale}.spm
 
         dependencies:
             corpus-merge-devset: corpus-merge-devset-{src_locale}-{trg_locale}
@@ -100,7 +98,7 @@ tasks:
                 - cuda-toolkit
             corpus-merge-devset:
                 - artifact: devset.{src_locale}.zst
-                  extract: false
+                  extract: true
             distillation-student-model-finetune:
                 - artifact: final.model.npz.best-{best_model}.npz
                   extract: false

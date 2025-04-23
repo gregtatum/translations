@@ -75,6 +75,19 @@ experiment:
     total: 200_000_000
     per-dataset: 100_000_000
 
+  # Determine how to build the shortlist. A shortlist is a dynamically generated reduced
+  # vocab. For instance if you go from a vocab of 32,000 to only 1,000 the decoding speed
+  # can be greatly increased, but at at the potential cost of quality.
+  shortlist:
+    # Include the N most common trg tokens in the shortlist.
+    first-number: 50
+    # Include up to N of the best aligned trg tokens, where the "best" alignment is given
+    # by the probability p(trg|src).
+    best-number: 50
+    # Out of the aligned tokens given a src token, only keep the trg tokens that are
+    # above the probability threshold where the probability is p(trg|src).
+    threshold: 0.0
+
   # HPLT provides a document score in the dataset, and we can filter based on it.
   # 0 is worse and 10 is better.
   # HPLT 2.0 "clean" is already filtered by the score >5
