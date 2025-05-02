@@ -6,6 +6,7 @@ import argparse
 import filecmp
 from contextlib import ExitStack
 from enum import Enum
+import json
 import os
 from pathlib import Path
 import random
@@ -13,10 +14,13 @@ import shutil
 import tempfile
 from typing import Any, Generator, Optional
 
+import yaml
+
 from pipeline.common.downloads import read_lines, write_lines
 from pipeline.common.logging import get_logger
 from pipeline.common.command_runner import apply_command_args, run_command_pipeline
 from pipeline.common.marian import assert_gpus_available
+from pipeline.data.lang_script import get_script_info, is_script_phonemic
 
 logger = get_logger(__file__)
 train_dir = Path(__file__).parent
@@ -265,32 +269,64 @@ class TrainCLI:
         options.
         """
 
-        config_suffix = "cjk.yml" if self.src in CJK_LANGS or self.trg in CJK_LANGS else "yml"
+        src_script = get_script_info(self.src)
+        trg_script = get_script_info(self.trg)
 
+        assert src_script, "The script info must exist for the src language."
+        assert trg_script, "The script info must exist for the trg language."
+
+        logger.info("src_script " + repr(src_script))
+        logger.info("trg_script " + repr(trg_script))
+
+        config_input = train_dir / f"configs/opustrainer/{self.model_type.value}.yml"
+        with open(config_input, "rt", encoding="utf-8") as file:
+            config_text = file.read()
+
+        logger.info("Applying OpusTrainer config variables:")
+        for key, value in self.config_variables.items():
+            logger.info(f" - {key}: {value}")
+        config_text = config_text.format(**self.config_variables)
+
+        config_yaml = yaml.safe_load(config_text)
+
+        # Apply the modifiers based on the properties of the language's script.
+        modifier_sections = config_yaml.pop("modifiers", None)
+        if modifier_sections:
+            # The common modifiers are always applied.
+            modifiers: list[dict[str, str]] = modifier_sections.get("common", [])
+
+            # Bicameral scripts can have their casing augmented.
+            if src_script["bicameral"]:
+                modifiers.extend((modifier_sections.get("bicameral_src", [])))
+
+            # Phonemic languages can be misspelled.
+            if is_script_phonemic(src_script["type"]):
+                modifiers.extend(modifier_sections.get("phonemic_src", []))
+
+            logger.info("Modifiers:\n" + json.dumps(modifiers, indent=2))
+
+        # Apply the teacher's curriculum.
+        curriculum = config_yaml.pop("curriculum", None)
         if self.model_type == ModelType.teacher:
             teacher_mode = self.teacher_mode.value
             if teacher_mode == TeacherMode.none.value:
                 raise ValueError("Teacher mode was not properly set, as it was set to none")
+            assert curriculum, "The curriculum must be found."
 
-            config_input = (
-                train_dir
-                / f"configs/opustrainer/{self.model_type.value}.{teacher_mode}.{config_suffix}"
-            )
-        else:
-            config_input = (
-                train_dir / f"configs/opustrainer/{self.model_type.value}.{config_suffix}"
-            )
+            # Apply the curriculum.
+            if teacher_mode not in curriculum:
+                raise ValueError(
+                    f'Could not find the teacher mode "{teacher_mode}" in the curriculum config\n'
+                    + json.dumps(curriculum, indent=2)
+                )
 
-        with open(config_input, "rt", encoding="utf-8") as file:
-            config_text = file.read()
+            config_yaml.update(curriculum[teacher_mode])
 
-        logger.info(f"Applying OpusTrainer config variables: {config_input}")
-        for key, value in self.config_variables.items():
-            logger.info(f" - {key}: {value}")
+            logger.info("Curriculum: " + json.dumps(curriculum[teacher_mode], indent=2))
 
+        logger.info(f"Writing out OpusTrainer config: {self.opustrainer_config}")
         with self.opustrainer_config.open("wt", encoding="utf-8") as file:
-            config_text = config_text.format(**self.config_variables)
-            file.write(config_text)
+            yaml.safe_dump(config_yaml, file)
 
     def get_opustrainer_cmd(self):
         return [

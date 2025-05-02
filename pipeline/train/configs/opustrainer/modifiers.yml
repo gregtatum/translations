@@ -1,0 +1,33 @@
+common:
+  # Insert new sentences composed form Unicode noise
+  - Noise: 0.0005
+    min_word_length: 2 # Minimum word length for each word in the noisy sentence
+    max_word_length: 5 # Maximum word length for each word in the noisy sentence
+    max_words: 6 # Maximum number of words in each noisy sentence
+
+  # generates inline noise (emojis etc.) matching positions in source and target sentences using alignments
+  # no spm_vocab argument -> alignments will be removed from Marian input
+  # we don't use alignments for teacher training
+  # Tags modifier has to be the last one to remove the alignments
+  - Tags: 0.005
+    custom_detok_src: "icu:{src}"
+    custom_detok_trg: "icu:{trg}"
+    augment: 1
+    tag: 0
+
+# The casing modifiers work on both the src and trg sentence. However, we only want to
+# apply the casing modifiers if the src language's script supports casing. This is
+# because the model would be confused on arbitrary trg casing when the src side gives
+# no indication that the casing should be different.
+bicameral_src:
+  # boost upper case a little as we see that the models underperform on upper case dataset on evaluation
+  - UpperCase: 0.07 # Apply randomly to 7% of sentences
+  - TitleCase: 0.05
+
+
+# A Phonemic is one that doesn't use logographic features such as ideographs. Hangul
+# is excluded here due to it's featural nature of generating characters from features,
+# which won't play nicely with the way typos are actually introduced into the language.
+phonemic_src:
+  # Introduce artificial typos in the source text.
+  - Typos: 0.05
