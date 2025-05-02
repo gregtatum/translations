@@ -27,8 +27,12 @@ from opustrainer.types import Modifier
 
 from pipeline.common.downloads import compress_file, decompress_file
 from pipeline.data.cjk import handle_chinese_parallel, ChineseType
+from pipeline.common.logging import get_logger
 
 random.seed(1111)
+
+
+logger = get_logger(__file__)
 
 
 class CompositeModifier:
@@ -85,6 +89,13 @@ modifier_map = {
             PlaceholderTagModifier(NOISE_MIX_PROB, augment=1),
         ]
     ),
+    "aug-mix-nocase": lambda: CompositeModifier(
+        [
+            TypoModifier(MIX_PROB, **get_typos_probs()),
+            NoiseModifier(MIX_PROB),
+            PlaceholderTagModifier(NOISE_MIX_PROB, augment=1),
+        ]
+    ),
 }
 
 
@@ -114,6 +125,8 @@ def run_cmd(cmd: List[str], env: Dict[str, str]):
 def add_alignments(corpus: List[str]) -> List[str]:
     from simalign import SentenceAligner
 
+    logger.info("Adding the alignments")
+
     # We use unsupervised aligner here because statistical tools like fast_align require a large corpus to train on
     # This is slow without a GPU and is meant to operate only on small evaluation datasets
 
@@ -135,12 +148,12 @@ def add_alignments(corpus: List[str]) -> List[str]:
 
 
 # we plan to use it only for small evaluation datasets
-def augment(output_prefix: str, aug_modifer: str, src: str, trg: str):
+def augment(output_prefix: str, aug_modifier: str, src: str, trg: str):
     """
     Augment corpus on disk using the OpusTrainer modifier
     """
-    if aug_modifer not in modifier_map:
-        raise ValueError(f"Invalid modifier {aug_modifer}. Allowed values: {modifier_map.keys()}")
+    if aug_modifier not in modifier_map:
+        raise ValueError(f"Invalid modifier {aug_modifier}. Allowed values: {modifier_map.keys()}")
 
     # file paths for compressed and uncompressed corpus
     uncompressed_src = f"{output_prefix}.{src}"
@@ -150,7 +163,7 @@ def augment(output_prefix: str, aug_modifer: str, src: str, trg: str):
 
     corpus = read_corpus_tsv(compressed_src, compressed_trg, uncompressed_src, uncompressed_trg)
 
-    if aug_modifer in ("aug-mix", "aug-inline-noise", "aug-mix-cjk"):
+    if aug_modifier in ("aug-mix", "aug-inline-noise", "aug-mix-cjk", "aug-mix-nocase"):
         # add alignments for inline noise
         # Tags modifier will remove them after processing
         corpus = add_alignments(corpus)
@@ -158,7 +171,7 @@ def augment(output_prefix: str, aug_modifer: str, src: str, trg: str):
     modified = []
     for line in corpus:
         # recreate modifier for each line to apply randomization (for typos)
-        modifier = modifier_map[aug_modifer]()
+        modifier = modifier_map[aug_modifier]()
         modified += modifier([line])
     write_modified(modified, uncompressed_src, uncompressed_trg)
 
@@ -237,7 +250,7 @@ def run_import(
 
         no_aug_id = f"{importer}_{name}"
 
-        print("Downloading parallel dataset")
+        logger.info("Downloading parallel dataset")
         run_cmd(
             [os.path.join(current_dir, "download-corpus.sh"), no_aug_id, output_prefix],
             env={"SRC": src, "TRG": trg},
@@ -250,7 +263,7 @@ def run_import(
             )
 
         if aug_modifer:
-            print("Running augmentation")
+            logger.info("Running augmentation")
             augment(output_prefix, aug_modifer, src=src, trg=trg)
 
     elif type == "mono":
@@ -260,7 +273,7 @@ def run_import(
 
 
 def main() -> None:
-    print(f"Running with arguments: {sys.argv}")
+    logger.info(f"Running with arguments: {sys.argv}")
     parser = argparse.ArgumentParser(
         description=__doc__,
         # Preserves whitespace in the help text.
@@ -294,9 +307,9 @@ def main() -> None:
     )
 
     args = parser.parse_args()
-    print("Starting dataset import and augmentation.")
+    logger.info("Starting dataset import and augmentation.")
     run_import(args.type, args.dataset, args.output_prefix, args.src, args.trg)
-    print("Finished dataset import and augmentation.")
+    logger.info("Finished dataset import and augmentation.")
 
 
 if __name__ == "__main__":
