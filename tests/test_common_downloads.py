@@ -4,12 +4,20 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from threading import Thread
 from typing import Literal
+from itertools import product
 
 import pytest
 import zstandard
 from fixtures import DataDir
 
-from pipeline.common.downloads import compress_file, decompress_file, read_lines, write_lines
+from pipeline.common.downloads import (
+    compress_file,
+    decompress_file,
+    read_lines,
+    write_lines,
+    multiprocess_mono_lines,
+    split_on_line_aligned_chunks,
+)
 
 # Content to serve
 line_fixtures = [
@@ -211,3 +219,59 @@ def test_decompress_file(compression: str, keep_original: bool):
     data_dir.print_tree()
     assert Path(compressed_file).exists() == keep_original
     assert_matches_test_content(text_file)
+
+
+@pytest.fixture
+def alphabet_lines() -> str:
+    # Make a file with the lines aaaaaaaaaa, aaaaaaaaab, aaaaaaaaac....
+    return (
+        "\n".join(
+            [
+                "".join(letters)
+                for _, letters in zip(
+                    range(10_000), product("abcdefghijklmnopqrstuvwxyz", repeat=10)
+                )
+            ]
+        )
+        + "\n"
+    )
+
+
+def test_split_on_line_aligned_chunks(alphabet_lines: str):
+    data_dir = DataDir("test_split_on_line_aligned_chunks")
+    lines_zst = data_dir.create_zst("lines.zst", alphabet_lines)
+    chunked_lines = []
+    for bytes in split_on_line_aligned_chunks(lines_zst, chunk_bytes=1024):
+        string = bytes.decode("utf-8")
+        assert string[-1] == "\n"
+        chunked_lines.extend(string.split("\n"))
+    print("!!! chunked_lines", chunked_lines)
+    # assert chunked_lines == alphabet_lines.split("\n")
+
+
+def test_multiprocess_lines(alphabet_lines):
+    data_dir = DataDir("test_multiprocess_lines")
+    lines_zst = data_dir.create_zst("lines.zst", alphabet_lines)
+
+    # Accumulator for processed results
+    final_lines = []
+
+    # Capitalize and return lines in this chunk
+    def on_chunk(line_iter):
+        return None
+        # return [line.strip().upper() for line in line_iter]
+
+    # Collect all results
+    def on_chunk_done(result):
+        return None
+        # print("Chunk is done")
+        # final_lines.extend(result)
+
+    # Run the multiprocessing pipeline
+    multiprocess_mono_lines(
+        file=lines_zst, on_chunk=on_chunk, on_chunk_done=on_chunk_done, chunk_bytes=1024
+    )
+
+    assert len(final_lines) == 10_000
+    assert all(line.isupper() for line in final_lines)
+    assert final_lines == sorted(final_lines)

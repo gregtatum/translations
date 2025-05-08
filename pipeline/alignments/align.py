@@ -36,7 +36,12 @@ from tqdm import tqdm
 from pipeline.alignments.tokenizer import tokenize, TokenizerType
 from pipeline.common.datasets import decompress
 from pipeline.common.logging import get_logger
-from pipeline.common.downloads import compress_file
+from pipeline.common.downloads import (
+    compress_file,
+    split_on_parallel_line_aligned_chunks,
+    read_lines,
+)
+
 
 logger = get_logger("alignments")
 
@@ -52,7 +57,6 @@ def run(
     corpus_trg: str,
     output_path: str,
     tokenization: Tokenization,
-    chunk_lines: int,
     output_tokenized: bool,
     priors_input_path: Optional[str],
     priors_output_path: Optional[str],
@@ -93,15 +97,15 @@ def run(
             raise ValueError(f"Unrecognized tokenization type {tokenization}")
         # C++ tokenizer can process 100k sentences per second on a single core,
         # so the chunks to parallelize things should be large enough to increase throughput
-        tokenize(corpus_src, tokenized_src, src, sentences_per_chunk=500000, tokenizer=tokenizer)
-        tokenize(corpus_trg, tokenized_trg, trg, sentences_per_chunk=500000, tokenizer=tokenizer)
+        tokenize(corpus_src, tokenized_src, src, sentences_per_chunk=500_000, tokenizer=tokenizer)
+        tokenize(corpus_trg, tokenized_trg, trg, sentences_per_chunk=500_000, tokenizer=tokenizer)
 
     fwd_path, rev_path = align(
         corpus_src=tokenized_src,
         corpus_trg=tokenized_trg,
         priors_input_path=priors_input_path,
         tmp_dir=tmp_dir,
-        chunk_lines=chunk_lines,
+        chunk_bytes=10_000_000,
     )
     symmetrize(bin=bin, fwd_path=fwd_path, rev_path=rev_path, output_path=output_aln)
 
@@ -149,28 +153,33 @@ def maybe_decompress(file_path: str):
     return file_path, False
 
 
+def apply_chunk(chunk: Path, destination: Path):
+    logger.info(f"Applying {chunk.name} to {destination.name}")
+    with chunk.open("rb") as chunk_file, destination.open("ab") as destination_file:
+        while bytes := chunk_file.read(8192):
+            destination_file.write(bytes)
+    chunk.unlink()
+
+
 def align(
     corpus_src: str,
     corpus_trg: str,
     tmp_dir: str,
-    chunk_lines: int,
+    chunk_bytes: int,
     priors_input_path: Optional[str],
 ):
     # eflomal is available via pip install only, so isn't type checked.
     import eflomal  # type: ignore[reportMissingImports]
 
-    logger.info("Splitting corpus into parts")
-    # align in chunks to prevent OOM
-    # produces chunks of files, like "corpus.en.aa", "corpus.en.ab", "corpus.en.ac" etc.
-    subprocess.check_call(["split", "--lines", str(chunk_lines), corpus_src, corpus_src + "."])
-    subprocess.check_call(["split", "--lines", str(chunk_lines), corpus_trg, corpus_trg + "."])
+    fwd_path = Path(tmp_dir) / "aln.fwd"
+    rev_path = Path(tmp_dir) / "aln.rev"
+    fwd_path_chunk = Path(tmp_dir) / "aln.fwd.chunk"
+    rev_path_chunk = Path(tmp_dir) / "aln.rev.chunk"
 
-    fwd_path = os.path.join(tmp_dir, "aln.fwd")
-    rev_path = os.path.join(tmp_dir, "aln.rev")
-
-    for src_part in sorted(glob(f"{corpus_src}.*")):
-        suffix = src_part.split(".")[-1]
-        logger.info(f"Processing part {suffix}")
+    for i, (src_bytes, trg_bytes) in enumerate(
+        split_on_parallel_line_aligned_chunks(corpus_src, corpus_trg, chunk_bytes=chunk_bytes)
+    ):
+        logger.info(f"Processing corpus part {i}")
 
         with ExitStack() as stack:
             if priors_input_path:
@@ -179,42 +188,29 @@ def align(
             else:
                 priors_input = None
 
-            src_input = stack.enter_context(open(f"{corpus_src}.{suffix}", "r", encoding="utf-8"))
-            trg_input = stack.enter_context(open(f"{corpus_trg}.{suffix}", "r", encoding="utf-8"))
-
             logger.info("Calculating alignments...")
             # We use eflomal aligner.
             # It is less memory intensive than fast_align.
             # fast_align failed with OOM in a large white-space tokenized corpus
             aligner = eflomal.Aligner()
             aligner.align(
-                src_input,
-                trg_input,
-                links_filename_fwd=f"{fwd_path}.{suffix}",
-                links_filename_rev=f"{rev_path}.{suffix}",
+                src_bytes,
+                trg_bytes,
+                links_filename_fwd=f"{fwd_path_chunk}",
+                links_filename_rev=f"{rev_path_chunk}",
                 priors_input=priors_input,
                 quiet=False,
                 use_gdb=False,
             )
 
-        # Clean up the chunks.
-        Path(f"{corpus_src}.{suffix}").unlink()
-        Path(f"{corpus_trg}.{suffix}").unlink()
-
-    # Merge alignments parts into one file
-    with open(fwd_path, "w") as fwd_out:
-        fwd_parts = sorted(glob(f"{fwd_path}.*"))
-        logger.info(f"Merging alignments: {fwd_parts}")
-        subprocess.check_call(["cat"] + fwd_parts, stdout=fwd_out)
-    with open(rev_path, "w") as rev_out:
-        rev_parts = sorted(glob(f"{rev_path}.*"))
-        logger.info(f"Merging alignments: {rev_parts}")
-        subprocess.check_call(["cat"] + rev_parts, stdout=rev_out)
+            # Merge alignments parts into one file
+            apply_chunk(fwd_path_chunk, fwd_path)
+            apply_chunk(rev_path_chunk, rev_path)
 
     return fwd_path, rev_path
 
 
-def symmetrize(bin: str, fwd_path: str, rev_path: str, output_path: str) -> None:
+def symmetrize(bin: str, fwd_path: Path, rev_path: Path, output_path: str) -> None:
     """
     Symmetrize the forward and reverse alignments of the corpus.
 
@@ -259,23 +255,24 @@ def symmetrize(bin: str, fwd_path: str, rev_path: str, output_path: str) -> None
 
 
 def write_priors(
-    corpus_src: str,
-    corpus_trg: str,
-    fwd_path: str,
-    rev_path: str,
-    priors_output_path: str,
+    corpus_src: Path,
+    corpus_trg: Path,
+    fwd_path: Path,
+    rev_path: Path,
+    priors_output_path: Path,
 ) -> None:
     import eflomal  # type: ignore[reportMissingImports]
 
     logger.info("Calculating priors...")
     with ExitStack() as stack:
-        src_input = stack.enter_context(open(corpus_src, "r", encoding="utf-8"))
-        trg_input = stack.enter_context(open(corpus_trg, "r", encoding="utf-8"))
-        fwd_f = stack.enter_context(open(fwd_path, "r", encoding="utf-8"))
-        rev_f = stack.enter_context(open(rev_path, "r", encoding="utf-8"))
+        src_input = stack.enter_context(read_lines(corpus_src))
+        trg_input = stack.enter_context(read_lines(corpus_trg))
+        fwd_f = stack.enter_context(read_lines(fwd_path))
+        rev_f = stack.enter_context(read_lines(rev_path))
         priors_tuple = eflomal.calculate_priors(src_input, trg_input, fwd_f, rev_f)
+
+    with priors_output_path.open("w", encoding="utf-8") as priors_output:
         logger.info(f"Writing priors to {priors_output_path}...")
-        priors_output = stack.enter_context(open(priors_output_path, "w", encoding="utf-8"))
         eflomal.write_priors(priors_output, *priors_tuple)
 
 
@@ -427,15 +424,6 @@ def main() -> None:
         action=argparse.BooleanOptionalAction,
         help="Output tokenized corpus and do not remap alignments to whitespace based tokenization",
     )
-    parser.add_argument(
-        "--chunk_lines",
-        metavar="CHUNK_LINES",
-        type=int,
-        # use env to override from tests
-        default=int(os.getenv("ALN_CHUNK_LINES", "50000000")),
-        help="Split corpus to chunks of N lines to calculate alignments on them separately. "
-        "This helps with reducing the memory footprint. 100M by default.",
-    )
     args = parser.parse_args()
     logger.info("Starting generating alignments.")
 
@@ -450,7 +438,6 @@ def main() -> None:
         corpus_trg=args.corpus_trg,
         output_path=args.output_path,
         tokenization=args.tokenization,
-        chunk_lines=args.chunk_lines,
         output_tokenized=args.output_tokenized,
         priors_input_path=priors_input_path,
         priors_output_path=args.priors_output_path,

@@ -1,13 +1,16 @@
 import gzip
 import io
 import json
+import multiprocessing
 import os
 import shutil
+import subprocess
+import threading
 import time
 from contextlib import ExitStack, contextmanager
 from io import BufferedReader
 from pathlib import Path
-from typing import Any, Callable, Generator, Literal, Optional, Union
+from typing import Any, Callable, Generator, Generic, Iterable, Literal, Optional, TypeVar, Union
 from zipfile import ZipFile
 
 import requests
@@ -648,3 +651,249 @@ def decompress_file(
         path.unlink()
 
     return decompressed_path
+
+
+# def split_on_line_aligned_chunks(
+#     file_path: Path | str, chunk_bytes: int
+# ) -> Generator[bytes, None, None]:
+#     """
+#     Yields bytes that span chunks of the original file, aligned to line boundaries of at
+#     least chunk_bytes in size.
+#     """
+#     file_path = Path(file_path)
+#     with ExitStack() as stack:
+#         base_file = stack.enter_context(file_path.open("rb"))
+#         if file_path.suffix == ".zst":
+#             base_file = stack.enter_context(ZstdDecompressor().stream_reader(base_file))
+#         start = 0
+
+#         while True:
+#             base_file.seek(start + chunk_bytes)
+#             extra = base_file.readline()
+
+#             if not extra:
+#                 # The readline returned empty, we've reached the end of the file.
+#                 # Seek to end of file to determine final byte offset
+#                 base_file.seek(0, 2)
+#                 end = base_file.tell()
+#                 if start < end:
+#                     f = stack.enter_context(file_path.open("rb"))
+#                     f.seek(start)
+#                     yield f.read(end - start)
+#                 break
+
+#             end = base_file.tell()
+#             f = stack.enter_context(file_path.open("rb"))
+#             f.seek(start)
+#             yield f.read(end - start)
+#             start = end
+
+
+def split_on_line_aligned_chunks(
+    file_path: Path | str, chunk_bytes: int
+) -> Generator[bytes, None, None]:
+    """
+    Yields slices of a preallocated byte buffer containing line-aligned chunks
+    of at least `chunk_bytes` in size. Supports .zst files via streaming.
+    """
+    file_path = Path(file_path)
+    with ExitStack() as stack:
+        raw_file = stack.enter_context(file_path.open("rb"))
+        if file_path.suffix == ".zst":
+            # Wrap the zst stream in a buffered reader to perform "readline" on it.
+            stream = stack.enter_context(
+                io.BufferedReader(
+                    ZstdDecompressor().stream_reader(raw_file)  # type: ignore[reportArgumentType]
+                )
+            )
+        else:
+            stream = raw_file
+
+        buffer = bytearray(chunk_bytes)
+        offset = 0
+
+        while True:
+            line = stream.readline()
+            if not line:
+                # The readline returned empty, we've reached the end of the file.
+                if offset > 0:
+                    # There is a final text string to yield.
+                    yield bytes(buffer[:offset])
+                break
+
+            line_len = len(line)
+
+            if offset + line_len > chunk_bytes:
+                # Buffer is full, copy out a slice of the buffer and yield it.
+                yield bytes(buffer[:offset])
+                offset = 0
+
+            assert (
+                line_len <= chunk_bytes
+            ), "A line was found that was too large for the chunking buffer."
+
+            # Store the line in the buffer.
+            buffer[offset : offset + line_len] = line
+            offset += line_len
+
+
+def split_on_parallel_line_aligned_chunks(
+    src_path: Path | str, trg_path: Path | str, chunk_bytes: int
+) -> Generator[tuple[bytes, bytes], None, None]:
+    """
+    Yields byte chunks for the source and target corpora. The byte chunks will both
+    contain the same number of sentences. Each chunk will be at least `chunk_bytes`
+    in the source stream. Chunks are aligned by line and end on line boundaries.
+    """
+    src_path = Path(src_path)
+    trg_path = Path(trg_path)
+
+    with ExitStack() as stack:
+        src_raw = stack.enter_context(src_path.open("rb"))
+        trg_raw = stack.enter_context(trg_path.open("rb"))
+
+        if src_path.suffix == ".zst":
+            src_stream = stack.enter_context(ZstdDecompressor().stream_reader(src_raw))
+        else:
+            src_stream = src_raw
+
+        if trg_path.suffix == ".zst":
+            trg_stream = stack.enter_context(ZstdDecompressor().stream_reader(trg_raw))
+        else:
+            trg_stream = trg_raw
+
+        src_buffer = bytearray(chunk_bytes)
+        trg_buffer = bytearray(chunk_bytes)
+        src_offset = 0
+        trg_offset = 0
+        line_count = 0
+
+        while True:
+            src_line = src_stream.readline()
+            trg_line = trg_stream.readline()
+
+            if not src_line and not trg_line:
+                if src_offset > 0:
+                    yield bytes(src_buffer[:src_offset]), bytes(trg_buffer[:trg_offset])
+                break
+
+            assert src_line and trg_line, "Source and target files are misaligned."
+
+            src_len = len(src_line)
+            trg_len = len(trg_line)
+
+            assert src_len <= chunk_bytes, "The source line is too long for buffer."
+            assert trg_len <= chunk_bytes, "The target line is too long for buffer."
+
+            if src_offset + src_len > chunk_bytes:
+                yield bytes(src_buffer[:src_offset]), bytes(trg_buffer[:trg_offset])
+                src_offset = 0
+                trg_offset = 0
+
+            src_buffer[src_offset : src_offset + src_len] = src_line
+            trg_buffer[trg_offset : trg_offset + trg_len] = trg_line
+            src_offset += src_len
+            trg_offset += trg_len
+            line_count += 1
+
+
+T = TypeVar("T")
+
+
+def bytes_to_lines(buf: bytes) -> Generator[str, None, None]:
+    """
+    Converts a bytes object into a generator of UTF-8 decoded lines.
+    """
+    stream = io.BytesIO(buf)
+    for line in stream:
+        yield line.decode("utf-8")
+
+
+def multiprocess_mono_lines(
+    file: Path | str,
+    on_chunk: Callable[[Generator[str, None, None]], T],
+    on_chunk_done: Callable[[T], None],
+    chunk_bytes: int = 10_000_000,
+    processes: int = multiprocessing.cpu_count(),
+):
+    """
+    Splits a large text or .zst-compressed file into line-aligned byte chunks,
+    processes them in parallel using multiple processes, and handles results in
+    submission order.
+    """
+    file = Path(file)
+    chunk_gen = split_on_line_aligned_chunks(file, chunk_bytes)
+
+    with multiprocessing.Pool(processes=processes) as pool:
+
+        def chunk_wrapper(chunk: bytes, on_chunk: Callable[[Generator[str, None, None]], T]) -> T:
+            return on_chunk(bytes_to_lines(chunk))
+
+        results = pool.imap(lambda c: chunk_wrapper(c, on_chunk), chunk_gen)
+        for result in results:
+            if on_chunk_done:
+                on_chunk_done(result)
+
+
+def multiprocess_parallel_lines(
+    src_file: Path | str,
+    trg_file: Path | str,
+    on_chunk: Callable[[Generator[str, None, None], Generator[str, None, None]], T],
+    on_chunk_done: Callable[[T], None],
+    chunk_bytes: int = 10_000_000,
+    processes: int = multiprocessing.cpu_count(),
+):
+    """
+    Splits two aligned source and target text or .zst-compressed files into parallel
+    line-aligned byte chunks, processes them in parallel using multiple processes,
+    and handles results in submission order.
+    """
+
+    src_file = Path(src_file)
+    trg_file = Path(trg_file)
+    chunk_gen = split_on_parallel_line_aligned_chunks(src_file, trg_file, chunk_bytes)
+
+    def chunk_wrapper(pair: tuple[bytes, bytes]) -> T:
+        src_chunk, trg_chunk = pair
+        return on_chunk(bytes_to_lines(src_chunk), bytes_to_lines(trg_chunk))
+
+    with multiprocessing.Pool(processes=processes) as pool:
+        results = pool.imap(chunk_wrapper, chunk_gen)
+        for result in results:
+            if on_chunk_done:
+                on_chunk_done(result)
+
+
+def stream_input(command: list[str], lines: Iterable[str]) -> list[str]:
+    """
+    Runs a subprocess by streaming input and handling the output in a separate thread.
+    This handles issues with backpressure when the upstream task is faster than the
+    downstream task.
+    """
+    proc = subprocess.Popen(
+        command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1
+    )
+
+    assert proc.stdin is not None
+    assert proc.stdout is not None
+
+    # Read from stdout in a separate thread to not block, and to avoid back pressure.
+    results: list[str] = []
+
+    def reader():
+        assert proc.stdout is not None
+        for line in proc.stdout:
+            results.append(line)
+
+    thread = threading.Thread(target=reader)
+    thread.start()
+
+    for line in lines:
+        proc.stdin.write(line)
+
+    proc.stdin.close()
+    thread.join()
+    proc.stdout.close()
+    proc.wait()
+
+    return results

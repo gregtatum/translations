@@ -26,6 +26,7 @@ from typing import List
 from tqdm import tqdm
 
 from pipeline.common.logging import get_logger
+from pipeline.common.downloads import split_on_line_aligned_chunks
 
 logger = get_logger("tokenizer")
 
@@ -153,6 +154,12 @@ def _tokenize_lines(params) -> List[str]:
     return tokenized
 
 
+def tokenize_chunk(pair: tuple[bytes, bytes]) -> str:
+    src_chunk, trg_chunk = pair
+    # Do something with the chunk
+    return f"{len(src_chunk)} bytes source, {len(trg_chunk)} bytes target"
+
+
 def tokenize(
     input_path: str,
     output_path: str,
@@ -161,6 +168,12 @@ def tokenize(
     sentences_per_chunk: int = 100000,
 ) -> None:
     logger.info(f"Tokenizing {input_path} with Moses tokenizer")
+
+    chunk_gen = split_on_line_aligned_chunks(input_path, chunk_bytes=sentences_per_chunk * 150)
+
+    with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
+        for result in pool.imap(tokenize_chunk, chunk_gen):
+            print(result)
 
     with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
         with open(output_path, "w") as output_file:
