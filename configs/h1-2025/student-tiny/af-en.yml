@@ -85,11 +85,6 @@ continuation:
       url: https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/Ak8gmfFiSuWLNM60HfBHZw/runs/0/artifacts/public/build/
       mode: use
       type: default
-    teacher:
-      urls:
-        - https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/UG8z-hiWTfORPktJdbh58w/runs/1/artifacts/public/build/
-      mode: use
-      type: default
   corpora:
     backtranslations:
       src: https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/LB9g5RhVSYW0ytjMcwQJEA/artifacts/public/build/mono.af.zst
