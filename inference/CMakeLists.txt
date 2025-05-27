@@ -190,26 +190,26 @@ if(COMPILE_PYTHON)
 endif(COMPILE_PYTHON)
 
 
-# inference/marian is tested elsewhere in both paths, turning off here.
+# inference/marian-fork is tested elsewhere in both paths, turning off here.
 set(COMPILE_TESTS OFF)
 
-# Configure the marian compilation.
-add_subdirectory(marian)
+# Configure the marian-fork compilation.
+add_subdirectory(marian-fork)
 
 # Include Marian directories
-get_property(INCDIRS DIRECTORY marian/src PROPERTY INCLUDE_DIRECTORIES)
+get_property(INCDIRS DIRECTORY marian-fork/src PROPERTY INCLUDE_DIRECTORIES)
 target_include_directories(marian PUBLIC ${INCDIRS})
 
 # Set compilation definitions and options for Marian
-get_property(COMPILE_DEFINITIONS DIRECTORY marian PROPERTY COMPILE_DEFINITIONS)
+get_property(COMPILE_DEFINITIONS DIRECTORY marian-fork PROPERTY COMPILE_DEFINITIONS)
 target_compile_definitions(marian PUBLIC ${COMPILE_DEFINITIONS})
 
-get_property(COMPILE_OPTIONS DIRECTORY marian PROPERTY COMPILE_OPTIONS)
+get_property(COMPILE_OPTIONS DIRECTORY marian-fork PROPERTY COMPILE_OPTIONS)
 target_compile_options(marian PUBLIC ${COMPILE_OPTIONS})
 
 # Propagate CMake flags
-get_directory_property(CMAKE_C_FLAGS DIRECTORY marian DEFINITION CMAKE_C_FLAGS)
-get_directory_property(CMAKE_CXX_FLAGS DIRECTORY marian DEFINITION CMAKE_CXX_FLAGS)
+get_directory_property(CMAKE_C_FLAGS DIRECTORY marian-fork DEFINITION CMAKE_C_FLAGS)
+get_directory_property(CMAKE_CXX_FLAGS DIRECTORY marian-fork DEFINITION CMAKE_CXX_FLAGS)
 set(CMAKE_C_FLAGS ${CMAKE_C_FLAGS} PARENT_SCOPE)
 set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} PARENT_SCOPE)
 
