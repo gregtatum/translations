@@ -110,7 +110,7 @@ def main(args_list: Optional[list[str]] = None) -> None:
     parser.add_argument(
         "--quantized",
         action="store_true",
-        help="Use a quantized model. This requires the browsermt fork of Marian",
+        help="Use a quantized model. This requires our marian-fork which contains the --int8shiftAlphaAll support",
     )
     parser.add_argument(
         "--models",

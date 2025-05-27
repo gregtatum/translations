@@ -17,6 +17,7 @@ kind-dependencies:
     - distillation-corpus-build-shortlist
     - build-vocab
     - toolchain
+    - inference-build
 
 tasks:
     "{src_locale}-{trg_locale}":
@@ -88,11 +89,16 @@ tasks:
             build-vocab: build-vocab-{src_locale}-{trg_locale}
             distillation-student-model-quantize: distillation-student-model-quantize-{src_locale}-{trg_locale}
             distillation-corpus-build-shortlist: distillation-corpus-build-shortlist-{src_locale}-{trg_locale}
+            inference-build-gpu: inference-build-gpu
 
         fetches:
             toolchain:
-                - browsermt-marian
                 - cuda-toolkit
+            inference-build-gpu:
+                # Quantized models require --int8shiftAlphaAll support, which is only
+                # available in the Marian fork.
+                - artifact: marian-fork.tar.zst
+                  extract: true
             distillation-student-model-quantize:
                 - artifact: model.intgemm.alphas.bin
             build-vocab:

@@ -1,0 +1,78 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+---
+
+loader: taskgraph.loader.transform:loader
+
+transforms:
+    - translations_taskgraph.transforms.skip_unless_inference_changed
+    - translations_taskgraph.transforms.worker_selection
+    - taskgraph.transforms.task_context
+    - taskgraph.transforms.run:transforms
+    - translations_taskgraph.transforms.cached_tasks:transforms
+    - taskgraph.transforms.task:transforms
+
+kind-dependencies:
+    - toolchain
+
+task-defaults:
+  attributes:
+    stage: inference-build
+    cache:
+      type: inference
+      resources:
+        - inference/marian-fork/VERSION
+  run-on-tasks-for: []
+  run:
+    using: run-task
+    cwd: '{checkout}'
+  task-context:
+    from-parameters:
+      base_rev: base_rev
+    substitution-fields:
+      - run.command
+  worker-type: b-cpu
+  worker:
+    max-run-time: 3600
+    docker-image: {"in-tree": "train"}
+    # 128 happens when cloning this repository fails
+    retry-exit-status: [128]
+    volumes:
+        - /builds/worker/artifacts
+    artifacts:
+        - name: public/build
+          path: /builds/worker/artifacts
+          type: volume
+
+tasks:
+  cpu:
+    description: |
+      Build the inference engine natively with CPU support. This will build the
+      marian-fork that includes the --int8shiftAlphaAll quantization that our production
+      models use.
+    run:
+      command:
+        - bash
+        - -c
+        - >-
+            task inference-build --
+            --archive $TASK_WORKDIR/artifacts/marian-fork.tar.zst
+
+
+  gpu:
+    description: |
+      Build the inference engine natively with GPU support. This will build the
+      marian-fork that includes the --int8shiftAlphaAll quantization that our production
+      models use.
+    run:
+      command:
+        - bash
+        - -c
+        - >-
+            task inference-build --
+            --cuda_toolkit $MOZ_FETCHES_DIR/cuda-toolkit
+            --archive $TASK_WORKDIR/artifacts/marian-fork.tar.zst
+    fetches:
+      toolchain:
+        - cuda-toolkit

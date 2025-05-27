@@ -18,12 +18,13 @@ kind-dependencies:
     - distillation-corpus-build-shortlist
     - corpus-merge-devset
     - toolchain
+    - inference-build
 
 tasks:
     "{src_locale}-{trg_locale}":
         description: >
             Convert the finetuned student model into the final quantized version. This
-            uses the browser-mt Marian fork: https://github.com/browsermt/marian-dev
+            uses the marian-fork with --int8ShiftAlphaAll support.
         attributes:
             dataset-category: train
             stage: distillation-student-model-quantize
@@ -69,6 +70,7 @@ tasks:
 
         run:
             using: run-task
+            cwd: '{checkout}'
             command:
                 - bash
                 - -c
@@ -93,11 +95,16 @@ tasks:
             distillation-student-model-finetune: distillation-student-model-finetune-{src_locale}-{trg_locale}
             build-vocab: build-vocab-{src_locale}-{trg_locale}
             distillation-corpus-build-shortlist: distillation-corpus-build-shortlist-{src_locale}-{trg_locale}
+            inference-build-gpu: inference-build-gpu
 
         fetches:
             toolchain:
-                - browsermt-marian
                 - cuda-toolkit
+            inference-build-gpu:
+                # Quantized models require --int8shiftAlphaAll support, which is only
+                # available in the Marian fork.
+                - artifact: marian-fork.tar.zst
+                  extract: true
             corpus-merge-devset:
                 - artifact: devset.{src_locale}.zst
                   extract: false

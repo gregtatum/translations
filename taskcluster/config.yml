@@ -58,6 +58,8 @@ valid-stages:
     - evaluate-teacher
     - evaluate-teacher-ensemble
     - export
+    - inference
+    - inference-build
     - train-teacher-model
 
 workers:
