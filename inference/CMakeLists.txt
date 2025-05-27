@@ -24,8 +24,13 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Note that with CMake MSVC build, the option CMAKE_BUILD_TYPE is automatically derived from the key
 # 'configurationType' in CMakeSettings.json configurations
 if(NOT CMAKE_BUILD_TYPE)
-  message(WARNING "CMAKE_BUILD_TYPE not set; setting to Release")
-  set(CMAKE_BUILD_TYPE "Release")
+  if(COMPILE_WASM)
+    message(INFO "CMAKE_BUILD_TYPE not set; setting to Release for Wasm builds")
+    set(CMAKE_BUILD_TYPE "Release")
+  else()
+    message(INFO "CMAKE_BUILD_TYPE not set; setting to RelWithDebInfo")
+    set(CMAKE_BUILD_TYPE "RelWithDebInfo")
+  endif(COMPILE_WASM)
 endif()
 
 if(NOT COMPILE_WASM)
