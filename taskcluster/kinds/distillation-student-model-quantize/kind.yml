@@ -93,11 +93,16 @@ tasks:
             distillation-student-model-finetune: distillation-student-model-finetune-{src_locale}-{trg_locale}
             build-vocab: build-vocab-{src_locale}-{trg_locale}
             distillation-corpus-build-shortlist: distillation-corpus-build-shortlist-{src_locale}-{trg_locale}
+            inference-build: inference-build
 
         fetches:
             toolchain:
-                - browsermt-marian
                 - cuda-toolkit
+            inference-build:
+                # Quantized models require --int8shiftAlphaAll support, which is only
+                # available in the Marian fork.
+                - artifact: marian-fork.tar.zst
+                  extract: true
             corpus-merge-devset:
                 - artifact: devset.{src_locale}.zst
                   extract: false

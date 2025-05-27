@@ -116,6 +116,8 @@ tasks:
             build-vocab: build-vocab-{src_locale}-{trg_locale}
             distillation-student-model-quantize: distillation-student-model-quantize-{src_locale}-{trg_locale}
             distillation-corpus-build-shortlist: distillation-corpus-build-shortlist-{src_locale}-{trg_locale}
+            inference-build: inference-build
+
         fetches:
             dataset:
                 - artifact: "{dataset_sanitized}.{src_locale}.zst"
@@ -131,8 +133,11 @@ tasks:
                 - artifact: model.intgemm.alphas.bin
             distillation-corpus-build-shortlist:
                 - artifact: lex.s2t.pruned.zst
+            inference-build:
+                # Quantized models require --int8shiftAlphaAll support, which is only
+                # available in the Marian fork.
+                - artifact: marian-fork.tar.zst
+                  extract: true
+
             toolchain:
-                # Quantized models are only supported via the browsermt fork of Marian.
-                # https://github.com/browsermt/marian-dev
-                - browsermt-marian
                 - cuda-toolkit
