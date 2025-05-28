@@ -44,7 +44,7 @@ test -s "${output_dir}/quantmults" ||
 
 echo "### Quantizing"
 test -s "${output_dir}/model.alphas.npz" ||
-  python3 extract_stats.py \
+  python3 pipeline/quantize/extract_stats.py \
     "${output_dir}/quantmults" \
     "${model}" \
     "${output_dir}/model.alphas.npz"
