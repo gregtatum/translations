@@ -101,7 +101,9 @@ void TranslationModel::loadBackend(size_t idx) {
     }
   }
 
+  printf("!!! Running the graph forward\n");
   graph->forward();
+  printf("!!! Clearing the model memory\n");
 
   // At this point the ExpressionGraph has consumed the `std::vector<marian::io::Item>`
   // and converted them to `Tensor`s. This happens the first time that

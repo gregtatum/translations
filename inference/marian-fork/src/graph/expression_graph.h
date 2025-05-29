@@ -523,13 +523,15 @@ public:
   }
 
   void load(const std::string& name, bool markReloaded = true) {
-    LOG(info, "Loading model from {}", name);
+    std::cout << "!!! ExpressionGraph::load(name) - Loading model from " << name << std::endl;
     auto items = io::loadItems(name);
     load(items, markReloaded);
   }
 
   void load(const void* ptr, bool markReloaded = true) {
-    LOG(info, "Loading model from buffer at {}", ptr);
+    std::cout << "!!! ExpressionGraph::load(ptr) - Loading model from buffer at " << ptr
+              << std::endl;
+
     auto items = io::loadItems(ptr);
     load(items, markReloaded);
   }

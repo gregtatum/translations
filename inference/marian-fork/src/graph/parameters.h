@@ -82,7 +82,7 @@ public:
     grads_ = New<TensorAllocator>(backend, device);
   }
 
-  virtual void allocateForward() {
+  __attribute__((noinline)) virtual void allocateForward() {
     if(!params_.empty() && vals_->size() == 0) {
       vals_->reserveExact(totalCapacity(vals_));
 

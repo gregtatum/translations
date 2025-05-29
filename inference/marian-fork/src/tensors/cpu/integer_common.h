@@ -108,6 +108,7 @@ template <> struct intgemm_<Type::int16> {using width = fakeGemm::Int16;
 // For loading architecture agnostic models. We do PrepareAndTranpose, because we already transposed
 // in our binary format. Then we copy the quantizationMultiplier information at the end
 template<Type vtype>
+__attribute__((noinline))
 void prepareAndTransposeB(io::Item& item, const char * input) {
 #ifdef COMPILE_CPU
     typedef typename intgemm_<vtype>::type Integer;

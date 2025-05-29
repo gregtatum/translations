@@ -73,6 +73,7 @@ void addMetaToItems(const std::string& meta,
                     std::vector<io::Item>& items) {
   Item item;
   item.name = varName;
+  printf("!!! addMetaToItems - Construct item\n");
 
   // increase size by 1 to add \0
   item.shape = Shape({(int)meta.size() + 1});
@@ -102,6 +103,7 @@ void loadItemsFromNpz(const std::string& fileName, std::vector<Item>& items) {
     }
 
     Item item;
+    printf("!!! loadItemsFromNpz - Construct item\n");
     item.name = it.first;
     item.shape = shape;
     item.bytes = std::make_shared<std::vector<char>>(std::move(it.second->bytes));

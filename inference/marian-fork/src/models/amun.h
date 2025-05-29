@@ -178,6 +178,7 @@ public:
     }
     // add a dummy matrix 'decoder_c_tt' required for Amun and Nematus
     ioItems.emplace_back();
+    printf("!!! save - Construct item\n");
     ioItems.back().name = "decoder_c_tt";
     ioItems.back().shape = Shape({1, 0});
     ioItems.back().bytes->emplace_back((char)0);

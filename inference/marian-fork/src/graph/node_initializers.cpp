@@ -202,8 +202,12 @@ Ptr<NodeInitializer> fromItem(const io::Item& item) {
     });
   } else {
     return fromLambda(
-      [item](Tensor tensor) { tensor->set(item); },
-      item.type);
+        [item](Tensor tensor) {
+          printf("!!! Setting tensor (item %s %p %ld)",
+                 item.name.c_str(), item.bytes.get(), item.bytes->size());
+          tensor->set(item);
+        },
+        item.type);
   }
 }
 

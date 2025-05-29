@@ -28,7 +28,24 @@ struct Item {
         mapped(other.mapped),
         name(other.name),
         shape(other.shape),
-        type(other.type) {}
+        type(other.type) {
+    printf("!!! Item copy constructor %s (count %ld) %p\n",
+           name.c_str(),
+           other.bytes.use_count(),
+           other.bytes.get());
+
+    // clang-format off
+    EM_ASM({
+      const name = UTF8ToString($0);
+      const size = $1;
+      const pointer = $2;
+      ChromeUtils.addProfilerMarker(
+        `Item() "${name}" ${size} 0x${pointer.toString(16)}`,
+        { captureStack: true }
+      );
+    }, name.c_str(), bytes->size(), reinterpret_cast<size_t>(bytes.get()));
+    // clang-format on
+  }
 
   // Copy assignment operator
   Item& operator=(const Item& other) {
@@ -39,6 +56,7 @@ struct Item {
       name = other.name;
       shape = other.shape;
       type = other.type;
+      printf("!!! copy assignment operator %s\n", name.c_str());
     }
     return *this;
   }
@@ -53,6 +71,7 @@ struct Item {
         type(other.type) {
     other.ptr = nullptr;
     other.mapped = false;
+    printf("!!! move constructor %s\n", name.c_str());
   }
 
   // Move assignment operator
@@ -67,6 +86,8 @@ struct Item {
 
       other.ptr = nullptr;
       other.mapped = false;
+
+      printf("!!! Move assignment operator %s\n", name.c_str());
     }
     return *this;
   }

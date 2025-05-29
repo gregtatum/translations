@@ -96,6 +96,7 @@ std::vector<Ptr<Scorer>> createScorers(Ptr<Options> options) {
   std::vector<std::vector<io::Item>> model_items;
   auto models = options->get<std::vector<std::string>>("models");
   for(auto model : models) {
+    std::cout << "!!! createScorers(options) - loadItems" << std::endl;
     auto items = io::loadItems(model);
     model_items.push_back(std::move(items));
   }
@@ -104,6 +105,7 @@ std::vector<Ptr<Scorer>> createScorers(Ptr<Options> options) {
 }
 
 std::vector<Ptr<Scorer>> createScorers(Ptr<Options> options, const std::vector<const void*>& ptrs) {
+  std::cout << "!!! createScorers(options, void ptrs) - loadItems" << std::endl;
   std::vector<Ptr<Scorer>> scorers;
 
   std::vector<float> weights(ptrs.size(), 1.f);
@@ -112,6 +114,7 @@ std::vector<Ptr<Scorer>> createScorers(Ptr<Options> options, const std::vector<c
 
   size_t i = 0;
   for(auto ptr : ptrs) {
+    std::cout << "!!! loading items from createScorers" << std::endl;
     auto items = io::loadItems(ptr);
     std::string fname = "F" + std::to_string(i);
 

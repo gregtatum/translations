@@ -1,5 +1,6 @@
 #pragma once
 
+#include <emscripten.h>
 #include <cstdint>
 #include <deque>
 #include <memory>
@@ -94,8 +95,17 @@ private:
     add = alignedSize(add);
     uint8_t* oldData = device_->data();
     size_t oldSize = device_->size();
+    size_t newSize = oldSize + add;
 
-    device_->reserve(oldSize + add);
+    // clang-format off
+    EM_ASM({
+      const message = `!!! Growing allocator by ${$0} to ${$1}`;
+      console.trace(message);
+      ChromeUtils.addProfilerMarker(message, { captureStack: true });
+    }, add, newSize);
+    // clang-format on
+
+    device_->reserve(newSize);
 
     std::set<Gap> oldGaps;
     gaps_.swap(oldGaps);

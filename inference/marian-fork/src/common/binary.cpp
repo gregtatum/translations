@@ -28,6 +28,7 @@ const T* get(const void*& current, uint64_t num = 1) {
 }
 
 void loadItems(const void* current, std::vector<io::Item>& items, bool mapped) {
+  printf("!!! void loadItems\n");
   uint64_t totalBytesLoaded = 0;  // Track total bytes loaded
 
   uint64_t binaryFileVersion = *get<uint64_t>(current);
@@ -137,12 +138,14 @@ void loadItems(const std::string& fileName, std::vector<io::Item>& items) {
   in.read(buf.data(), buf.size());
 #endif
 
+  printf("!!! calling loadItems filename\n");
   // Load items from buffer without mapping
   loadItems(buf.data(), items, false);
 }
 
 io::Item getItem(const void* current, const std::string& varName) {
   std::vector<io::Item> items;
+  printf("!!! calling loadItems from getItem (void* current)\n");
   loadItems(current, items);
 
   for(auto& item : items)
