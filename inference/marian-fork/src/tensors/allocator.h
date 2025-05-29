@@ -1,5 +1,6 @@
 #pragma once
 
+#include <emscripten.h>
 #include <cstdint>
 #include <deque>
 #include <memory>
@@ -21,8 +22,8 @@ private:
 
 public:
   AllocationException(size_t available, size_t asked) {
-    std::string mstr = "Attempted allocation of " + std::to_string(asked)
-                       + ", but only " + std::to_string(available) + " free";
+    std::string mstr = "Attempted allocation of " + std::to_string(asked) + ", but only "
+                       + std::to_string(available) + " free";
 
     message_ = new char[mstr.size() + 1];
     std::copy(mstr.begin(), mstr.end(), message_);
@@ -94,8 +95,17 @@ private:
     add = alignedSize(add);
     uint8_t* oldData = device_->data();
     size_t oldSize = device_->size();
+    size_t newSize = oldSize + add;
 
-    device_->reserve(oldSize + add);
+    // clang-format off
+    EM_ASM({
+      const message = `!!! Growing allocator by ${$0} to ${$1}`;
+      console.trace(message);
+      ChromeUtils.addProfilerMarker(message, { captureStack: true });
+    }, add, newSize);
+    // clang-format on
+
+    device_->reserve(newSize);
 
     std::set<Gap> oldGaps;
     gaps_.swap(oldGaps);

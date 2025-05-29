@@ -3,13 +3,14 @@
 #include "common/shape.h"
 #include "common/types.h"
 
+#include <emscripten.h>
 #include <string>
 
 namespace marian {
 namespace io {
 
 struct Item {
-  std::vector<char> bytes;
+  std::shared_ptr<std::vector<char>> bytes;
   const char* ptr{0};
   bool mapped{false};
 
@@ -17,11 +18,85 @@ struct Item {
   Shape shape;
   Type type{Type::float32};
 
+  // Default constructor
+  Item() : bytes(std::make_shared<std::vector<char>>()) {}
+
+  // Copy constructor
+  Item(const Item& other)
+      : bytes(other.bytes),
+        ptr(other.ptr),
+        mapped(other.mapped),
+        name(other.name),
+        shape(other.shape),
+        type(other.type) {
+    printf("!!! Item copy constructor %s (count %ld) %p\n",
+           name.c_str(),
+           other.bytes.use_count(),
+           other.bytes.get());
+
+    // clang-format off
+    EM_ASM({
+      const name = UTF8ToString($0);
+      const size = $1;
+      const pointer = $2;
+      ChromeUtils.addProfilerMarker(
+        `Item() "${name}" ${size} 0x${pointer.toString(16)}`,
+        { captureStack: true }
+      );
+    }, name.c_str(), bytes->size(), reinterpret_cast<size_t>(bytes.get()));
+    // clang-format on
+  }
+
+  // Copy assignment operator
+  Item& operator=(const Item& other) {
+    if(this != &other) {
+      bytes = other.bytes;
+      ptr = other.ptr;
+      mapped = other.mapped;
+      name = other.name;
+      shape = other.shape;
+      type = other.type;
+      printf("!!! copy assignment operator %s\n", name.c_str());
+    }
+    return *this;
+  }
+
+  // Move constructor
+  Item(Item&& other) noexcept
+      : bytes(std::move(other.bytes)),
+        ptr(other.ptr),
+        mapped(other.mapped),
+        name(std::move(other.name)),
+        shape(std::move(other.shape)),
+        type(other.type) {
+    other.ptr = nullptr;
+    other.mapped = false;
+    printf("!!! move constructor %s\n", name.c_str());
+  }
+
+  // Move assignment operator
+  Item& operator=(Item&& other) noexcept {
+    if(this != &other) {
+      bytes = std::move(other.bytes);
+      ptr = other.ptr;
+      mapped = other.mapped;
+      name = std::move(other.name);
+      shape = std::move(other.shape);
+      type = other.type;
+
+      other.ptr = nullptr;
+      other.mapped = false;
+
+      printf("!!! Move assignment operator %s\n", name.c_str());
+    }
+    return *this;
+  }
+
   const char* data() const {
     if(mapped)
       return ptr;
     else
-      return bytes.data();
+      return bytes->data();
   }
 
   size_t size() const { // @TODO: review this again for 256-bytes boundary alignment
@@ -40,30 +115,30 @@ struct Item {
 
     // cut to size (get rid of padding if any) to make append operation work correctly
     size_t bytesWithoutPadding = shape.elements() * sizeOf(type);
-    bytes.resize(bytesWithoutPadding);
+    bytes->resize(bytesWithoutPadding);
 
     shape.set(-1, shape.elements() + other.shape.elements());
 
     size_t addbytesWithoutPadding = other.shape.elements() * sizeOf(other.type); // ignore padding if any
-    bytes.insert(bytes.end(), other.bytes.begin(), other.bytes.begin() + addbytesWithoutPadding);
+    bytes->insert(bytes->end(), other.bytes->begin(), other.bytes->begin() + addbytesWithoutPadding);
 
     // grow to align to 256 bytes boundary (will be undone when more pieces are appended)
-    size_t multiplier = (size_t)ceil((float)bytes.size() / (float)256);
-    bytes.resize(multiplier * 256);
+    size_t multiplier = (size_t)ceil((float)bytes->size() / (float)256);
+    bytes->resize(multiplier * 256);
   }
 
   template <typename From, typename To>
   void convertFromTo() {
     size_t elements = size() / sizeof(From);
     size_t newSize = elements * sizeof(To);
-    std::vector<char> newBytes(newSize);
+    auto newBytes = std::make_shared<std::vector<char>>(newSize);
 
-    From* in = (From*)bytes.data();
-    To* out = (To*)newBytes.data();
+    From* in = (From*)bytes->data();
+    To* out = (To*)newBytes->data();
     for(int i = 0; i < elements; ++i)
       out[i] = (To)in[i];
 
-    bytes.swap(newBytes);
+    bytes->swap(*newBytes);
   }
 
   template <typename T>

@@ -45,6 +45,7 @@ public:
     // This is currently safe as the translator is either created stand-alone or
     // or config is created anew from Options in the validator
 
+    std::cout << "!!! Translate()" << std::endl;
     options_->set("inference", true,
                   "shuffle", "none");
 
@@ -71,8 +72,10 @@ public:
     numDevices_ = devices.size();
 
 #if USE_PTHREADS
+    std::cout << "!!! pthreads" << std::endl;
     ThreadPool threadPool(numDevices_, numDevices_);
 #endif
+    std::cout << "!!! after pthreads" << std::endl;
     scorers_.resize(numDevices_);
     graphs_.resize(numDevices_);
 
@@ -85,6 +88,7 @@ public:
     }
     else {
       for(auto model : models) {
+        std::cout << "!!! Loading model in Translate \"" << model << "\"" << std::endl;
         auto items = io::loadItems(model);
         model_items_.push_back(std::move(items));
       }
@@ -103,9 +107,11 @@ public:
 
         std::vector<Ptr<Scorer>> scorers;
         if(options_->get<bool>("model-mmap", false)) {
+          printf("!!! translator.h - scorers = createScorers(options_, model_mmaps_);");
           scorers = createScorers(options_, model_mmaps_);
         }
         else {
+          printf("!!! translator.h - scorers = createScorers(options_, model_items_);");
           scorers = createScorers(options_, model_items_);
         }
 
@@ -259,6 +265,7 @@ public:
     std::vector<std::vector<io::Item>> model_items_;
     auto models = options->get<std::vector<std::string>>("models");
     for(auto model : models) {
+      std::cout << "!!! Loading model in TranslateService \"" << model << "\"" << std::endl;
       auto items = io::loadItems(model);
       model_items_.push_back(std::move(items));
     }
@@ -274,6 +281,7 @@ public:
       graph->reserveWorkspaceMB(options_->get<size_t>("workspace"));
       graphs_.push_back(graph);
 
+      printf("!!! TranslateService - auto scorers = createScorers(options_, model_items_)\n");
       auto scorers = createScorers(options_, model_items_);
       for(auto scorer : scorers) {
         scorer->init(graph);

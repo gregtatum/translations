@@ -89,8 +89,8 @@ def main() -> None:
             "--name", container_name,
             "--volume", f"{os.getcwd()}:/builds/worker/checkouts",
             "--workdir", "/builds/worker/checkouts",
-            "--publish", "8000:8000",
-            "--publish", "8080:8080"
+            # "--publish", "8000:8000",
+            # "--publish", "8080:8080"
         ]  # fmt: skip
 
         # Export the host operating system as an environment variable within the container.
