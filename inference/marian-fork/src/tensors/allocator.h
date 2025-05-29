@@ -21,8 +21,8 @@ private:
 
 public:
   AllocationException(size_t available, size_t asked) {
-    std::string mstr = "Attempted allocation of " + std::to_string(asked)
-                       + ", but only " + std::to_string(available) + " free";
+    std::string mstr = "Attempted allocation of " + std::to_string(asked) + ", but only "
+                       + std::to_string(available) + " free";
 
     message_ = new char[mstr.size() + 1];
     std::copy(mstr.begin(), mstr.end(), message_);
