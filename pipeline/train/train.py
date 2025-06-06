@@ -11,9 +11,11 @@ import os
 from pathlib import Path
 import random
 import shutil
+import sys
 import tempfile
 from typing import Any, Generator, Optional
 
+import requests
 import yaml
 
 from pipeline.common.downloads import read_lines, write_lines
@@ -21,6 +23,9 @@ from pipeline.common.logging import get_logger
 from pipeline.common.command_runner import apply_command_args, run_command_pipeline
 from pipeline.common.marian import assert_gpus_available
 from pipeline.data.lang_script import get_script_info, is_script_phonemic
+
+# If a tempfail is triggered then the task can be attempted to restarted.
+TEMPFAIL_ERROR_CODE = 75
 
 logger = get_logger(__file__)
 train_dir = Path(__file__).parent
@@ -53,6 +58,18 @@ class TeacherMode(Enum):
     two_stage = "two-stage"
 
 
+class PretrainedModelMode(Enum):
+    # Continue training an existing model.
+    resume = "resume"
+    # Initialize a new model.
+    init = "init"
+    # Do not do any training, just re-export the model.
+    use = "use"
+
+    # Value provided by Taskcluster if Nothing is set, the same as "init" mode.
+    none = "None"
+
+
 class BestModelMetric(Enum):
     chrf = "chrf"
     ce_mean_words = "ce-mean-words"
@@ -64,6 +81,31 @@ class BestModelMetric(Enum):
     #   translation = "translation"
     #   bleu = "bleu"
     #   bleu_segmented = "bleu-segmented"
+
+
+CONTINUATION_ARTIFACTS = {
+    "config.opustrainer.yml",
+    "config.opustrainer.yml.state",
+    "devset.out",
+    "model.npz",
+    "model.npz.best-bleu-detok.npz",
+    "model.npz.best-bleu-detok.npz.decoder.yml",
+    "model.npz.best-ce-mean-words.npz",
+    "model.npz.best-ce-mean-words.npz.decoder.yml",
+    "model.npz.best-chrf.npz",
+    "model.npz.best-chrf.npz.decoder.yml",
+    "model.npz.decoder.yml",
+    "model.npz.optimizer.npz",
+    "model.npz.progress.yml",
+    "model.npz.yml",
+    "opustrainer.log",
+    "train.log",
+    "valid.log",
+    # + vocab*.spm artifacts which are determined dynamically
+}
+
+ARTIFACTS_URL = "{root_url}/api/queue/v1/task/{task_id}/runs/{run_id}/artifacts"
+ARTIFACT_URL = "{root_url}/api/queue/v1/task/{task_id}/runs/{run_id}/artifacts/{artifact_name}"
 
 
 def build_dataset_tsv(
@@ -174,6 +216,7 @@ class TrainCLI:
         self.student_model: StudentModel = args.student_model
         self.teacher_mode: TeacherMode = args.teacher_mode
         self.training_type: TrainingType = args.training_type
+        self.pretrained_model_mode: PretrainedModelMode = args.pretrained_model_mode
         self.best_model_metric: BestModelMetric = args.best_model_metric
         self.extra_marian_args: list[str] = args.extra_marian_args
         self.marian_bin = args.marian_dir / "marian"
@@ -441,6 +484,98 @@ class TrainCLI:
             / f"final.model.npz.best-{self.best_model_metric.value}.npz.decoder.yml",
         )
 
+    def handle_taskcluster_task_restarts(self) -> None:
+        """
+        If we're running in Taskcluster, handle task restarts. This can happen if a task
+        is preempted. We'll resume from a previous training run.
+        """
+        task_id = os.environ.get("TASK_ID")
+        run_id_str = os.environ.get("RUN_ID")
+        root_url = os.environ.get("TASKCLUSTER_ROOT_URL")
+
+        if not task_id or not run_id_str or not root_url:
+            logger.info("Skipping task restarts as this is not running in TaskCluster")
+            return
+
+        run_id = int(run_id_str)
+        if run_id > 0:
+            logger.info("run_id > 0, attempting to resume training from an earlier run...")
+            prev_run_id = run_id - 1
+
+            while prev_run_id >= 0:
+                resumable = True
+
+                artifacts = get_run_artifacts(root_url, task_id, prev_run_id)
+                artifact_filenames = set([os.path.basename(a["name"]) for a in artifacts])
+
+                if artifact_filenames.issuperset(
+                    CONTINUATION_ARTIFACTS.union(
+                        {f"vocab.{self.src}.spm", f"vocab.{self.trg}.spm"}
+                    )
+                ) or artifact_filenames.issuperset(CONTINUATION_ARTIFACTS.union({"vocab.spm"})):
+                    logger.info(
+                        f"Run {prev_run_id} appears to have the artifacts we need! Downloading them..."
+                    )
+                else:
+                    logger.info(f"Run {prev_run_id} is missing some necessary artifacts...")
+                    resumable = False
+
+                if resumable:
+                    for artifact in artifacts:
+                        artifact_name: str = artifact["name"]
+                        # Do not include logs from previous runs.
+                        if artifact_name.startswith("public/log"):
+                            continue
+                        out_name = os.path.basename(artifact_name)
+                        logger.info(f"Fetching {artifact['name']}...")
+
+                        r = requests.get(
+                            ARTIFACT_URL.format(
+                                root_url=root_url,
+                                task_id=task_id,
+                                run_id=prev_run_id,
+                                artifact_name=artifact["name"],
+                            ),
+                            stream=True,
+                        )
+                        if 400 <= r.status_code <= 500:
+                            logger.exception(
+                                f"Got 4xx error for {artifact['name']}, run {run_id} is not resumable..."
+                            )
+                            resumable = False
+                            break
+                        elif r.status_code >= 500:
+                            logger.exception(
+                                "Caught exception while downloading an artifact, exiting with TEMPFAIL (75)..."
+                            )
+                            sys.exit(TEMPFAIL_ERROR_CODE)
+
+                        with (self.artifacts / out_name).open("wb+") as fd:
+                            for chunk in r.iter_content(chunk_size=8192):
+                                fd.write(chunk)
+
+                if resumable:
+                    # We successfully downloaded all the artifacts from a previous run. Override
+                    # the pretrained model mode and we're done!
+                    self.training_mode = TrainingMode.continue_
+                    break
+                else:
+                    # We weren't able to get all of the necessary artifacts; try the next previous run
+                    prev_run_id -= 1
+
+
+def get_run_artifacts(root_url: str, task_id: str, run_id: int):
+    try:
+        response = requests.get(
+            ARTIFACTS_URL.format(root_url=root_url, task_id=task_id, run_id=run_id)
+        )
+        response.raise_for_status()
+    except Exception:
+        logger.exception("Caught exception, exiting with TEMPFAIL (75)")
+        sys.exit(TEMPFAIL_ERROR_CODE)
+
+    return response.json()["artifacts"]
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -455,6 +590,13 @@ def main() -> None:
         choices=ModelType,
         required=True,
         help="The type of model to train",
+    )
+    parser.add_argument(
+        "--pretrained_model_mode",
+        type=PretrainedModelMode,
+        choices=PretrainedModelMode,
+        default=PretrainedModelMode.init,
+        help="The mode for continuing, initializing, or just using a pretrained model",
     )
     parser.add_argument(
         "--student_model",
@@ -526,6 +668,7 @@ def main() -> None:
 
     with tempfile.TemporaryDirectory() as temp_dir:
         train_cli = TrainCLI(parser.parse_args(), Path(temp_dir))
+        train_cli.handle_taskcluster_task_restarts()
         train_cli.log_config()
         train_cli.validate_args()
         train_cli.build_datasets()

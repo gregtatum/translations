@@ -134,24 +134,27 @@ tasks:
                     pip3 install -r $VCS_PATH/pipeline/train/requirements/train.txt &&
                     pip3 install $VCS_PATH/tracking &&
                     export PATH="$HOME/.local/bin:$PATH" &&
-                    export MARIAN=$MOZ_FETCHES_DIR &&
                     export PYTHONPATH=$PYTHONPATH:$VCS_PATH &&
-                    $VCS_PATH/taskcluster/scripts/pipeline/train_taskcluster.py
-                    teacher
-                    train
-                    {src_locale}
-                    {trg_locale}
-                    $MOZ_FETCHES_DIR/corpus.tok-icu,$MOZ_FETCHES_DIR/mono.tok-icu
-                    $MOZ_FETCHES_DIR/devset
-                    $TASK_WORKDIR/artifacts
-                    {best_model}
-                    $MOZ_FETCHES_DIR/corpus.aln.zst,$MOZ_FETCHES_DIR/mono.aln.zst
-                    {{this_chunk}}
-                    {teacher_mode}
-                    None
-                    {pretrained_teacher_mode}
-                    {pretrained_teacher_type}
-                    {marian_args}
+                    pipeline/train/train.py
+                    --src {src_locale}
+                    --trg {trg_locale}
+                    --model_type teacher
+                    --training_type {pretrained_teacher_type}
+                    --training_mode {pretrained_teacher_mode}
+                    --teacher_mode {teacher_mode}
+                    --train_set_prefixes    "$MOZ_FETCHES_DIR/corpus.tok-icu,$MOZ_FETCHES_DIR/mono.tok-icu"
+                    --alignments            "$MOZ_FETCHES_DIR/corpus.aln.zst,$MOZ_FETCHES_DIR/mono.aln.zst"
+                    --validation_set_prefix "$MOZ_FETCHES_DIR/devset"
+                    --marian_dir            "$MOZ_FETCHES_DIR"
+                    --artifacts             "$TASK_WORKDIR/artifacts"
+                    --seed {{this_chunk}}
+                    --gpus "$GPUS"
+                    --workspace "$WORKSPACE"
+                    --src_vocab "$TASK_WORKDIR/artifacts/vocab.{src_locale}.spm"
+                    --trg_vocab "$TASK_WORKDIR/artifacts/vocab.{trg_locale}.spm"
+                    --best_model_metric {best_model}
+                    -- {marian_args}
+
 
         dependencies:
             build-vocab: build-vocab-{src_locale}-{trg_locale}
