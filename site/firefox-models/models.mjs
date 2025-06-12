@@ -635,32 +635,32 @@ function getAttachmentsByKey(records) {
  * @param {ModelRecord[]} releasedModels
  */
 function countModels(allModels, releasedModels) {
-  const fromProd = new Set();
-  const fromAll = new Set();
-  const toProd = new Set();
-  const toAll = new Set();
+  const xxenProd = new Set();
+  const xxenAll = new Set();
+  const enxxProd = new Set();
+  const enxxAll = new Set();
 
   for (const model of releasedModels) {
     if (model.fromLang == "en") {
-      toProd.add(model.toLang);
+      enxxProd.add(model.toLang);
     } else {
-      fromProd.add(model.fromLang);
+      xxenProd.add(model.fromLang);
     }
   }
 
   for (const model of allModels) {
     if (model.fromLang == "en") {
-      toAll.add(model.toLang);
+      enxxAll.add(model.toLang);
     } else {
-      fromAll.add(model.fromLang);
+      xxenAll.add(model.fromLang);
     }
   }
 
-  const toNightly = toAll.difference(toProd);
-  const fromNightly = fromAll.difference(fromProd);
+  const enxxNightly = enxxAll.difference(enxxProd);
+  const xxenNightly = xxenAll.difference(xxenProd);
 
-  getElement("fromProd").innerText = String(fromProd.size);
-  getElement("toProd").innerText = String(toProd.size);
-  getElement("fromNightly").innerText = String(toNightly.size);
-  getElement("toNightly").innerText = String(fromNightly.size);
+  getElement("xxenProd").innerText = String(xxenProd.size);
+  getElement("enxxProd").innerText = String(enxxProd.size);
+  getElement("enxxNightly").innerText = String(enxxNightly.size);
+  getElement("xxenNightly").innerText = String(xxenNightly.size);
 }
