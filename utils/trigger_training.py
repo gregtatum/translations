@@ -28,6 +28,10 @@ from translations_taskgraph.transforms.training_continuation import location_exi
 from pipeline.continuation.model import get_model_urls, get_vocab_urls
 
 ROOT_URL = "https://firefox-ci-tc.services.mozilla.com"
+REPO_URL = "https://github.com/mozilla/translations.git"
+ROOT_DIR = (Path(__file__).parent / "..").resolve()
+CACHE_PATH = ROOT_DIR / "data/decision_task_cache.json"
+
 queue = Queue({"rootUrl": ROOT_URL})
 
 
@@ -46,15 +50,9 @@ def check_if_pushed(branch: str) -> bool:
         return False
 
 
-def get_decision_task_push(branch: str):
-    g = Github()
-    repo_name = "mozilla/translations"
-    print(f'Looking up "{repo_name}"')
-    repo = g.get_repo(repo_name)
-    ref = f"heads/{branch}"
-
+def get_decision_task_push(branch: str, repo):
     print('Finding the "Decision Task (push)"')
-    checks = repo.get_commit(ref).get_check_runs()
+    checks = repo.get_commit(f"heads/{branch}").get_check_runs()
     decision_task = None
     for check in checks:
         if check.name == "Decision Task (push)":
@@ -443,9 +441,10 @@ def main() -> None:
         validate_urls(config)
         print_resolved_tasks(args.config, config)
 
+    repo = Github().get_repo("mozilla/translations")
     timeout = 20
     while True:
-        decision_task = get_decision_task_push(branch)
+        decision_task = get_decision_task_push(branch, repo)
 
         if decision_task:
             if decision_task.status == "completed" and decision_task.conclusion == "success":
