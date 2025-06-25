@@ -1,0 +1,3912 @@
+[
+  {
+    "translation": {
+      "src": "\"\"\"আমাদের এখন ৪-মাস-বয়সী ডায়াবেটিস রোগ ছাড়া ইদুর আছে যেগুলোর আগে ডায়াবেটিস রোগ ছিল,\"\" তিনি যোগ করলেন।\"",
+      "trg": "\"We now have four-month-old reds without diabetes that had diabetes before,\" he added.",
+      "ref": "\"We now have 4-month-old mice that are non-diabetic that used to be diabetic,\" he added."
+    },
+    "scores": {
+      "adequacy": [
+        3,
+        "Translation introduces confusion by referring to 'reds' instead of 'mice' and 'without diabetes' is unclear."
+      ],
+      "fluency": [
+        4,
+        "Overall fluent, but the structure is slightly awkward."
+      ],
+      "terminology": [
+        3,
+        "Use of 'reds' is a poor term choice for 'mice'."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        4,
+        "The comma placement is incorrect, separating two clauses unnecessarily."
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "হেলিফ্যাক্সে ডালহৌসি বিশ্ববিদ্যালয়ের মেডিসিন বিভাগের প্রফেসর ডঃ ইহুড আর, নোভা স্কটিয়া এবং কানাডিয়ান ডায়াবেটিস এসোসিয়েশনের ক্লিনিক্যাল ও বৈজ্ঞানিক বিভাগের চেয়ার, আগে থেকেই সতর্ক করে দিয়েছিলেন যে গবেষণা এখনও তার শুরুর দিকে রয়েছে।",
+      "trg": "Dr. Ehood R, Professor, Department of Medicine at the University of Dalhousie at Helfax, chaired the Clinical and Scientific Department of the Canadian Diabetes Association, warned in advance that the study was still in its early stages.",
+      "ref": "Dr. Ehud Ur, professor of medicine at Dalhousie University in Halifax, Nova Scotia and chair of the clinical and scientific division of the Canadian Diabetes Association cautioned that the research is still in its early days."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "Translation captures main ideas but fails to convey Dr. Ehud Ur's full name accurately."
+      ],
+      "fluency": [
+        4,
+        "Minor grammatical issues present, mostly clear."
+      ],
+      "terminology": [
+        4,
+        "Inconsistency in the name (Ehood vs. Ehud) affects clarity."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        4,
+        "Punctuation is mostly correct, but could be improved."
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "বহুমূত্র নিরাময়যোগ্য কিনা তা নিয়ে অন্যান্য বিশেষজ্ঞদের মতো তিনিও সংশয়ে আছেন। এমন লোক যাদের আগে থেকেই টাইপ 1 বহুমূত্র রোগ আছে, তাদের সাথে এই আবিস্কারের কোনও সম্পর্ক নেই।",
+      "trg": "Like other experts, he is skeptical about whether polymorphy is curable. This discovery has nothing to do with people who already have Type 1 polymorethic disease.",
+      "ref": "Like some other experts, he is skeptical about whether diabetes can be cured, noting that these findings have no relevance to people who already have Type 1 diabetes."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "Mixes terms; 'polymorphy' is inaccurately translated instead of 'diabetes'."
+      ],
+      "fluency": [
+        3,
+        "Awkward wording makes it harder to read."
+      ],
+      "terminology": [
+        2,
+        "Use of 'polymorphy' is incorrect and misleading."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "সোমবার, সুইডেনের সেভিরস রেডিওতে একটি অনুষ্ঠানের সময় সুইডিশ অ্যাকাডেমিতে সাহিত্যের নোবেল কমিটির স্থায়ী সচিব, সারা ডানিয়াস,  প্রকাশ্যে ঘোষণা করেছিলেন যে কমিটি, ২০১৬ সালে সাহিত্যে নোবেল পুরস্কার পাওয়ার বিষয়ে বব ডিলানের সঙ্গে সরাসরি যোগাযোগ করতে না পেরে, তাঁর কাছে পৌঁছানোর প্রচেষ্টা ত্যাগ করেছিল।",
+      "trg": "On Monday, during an event on Severus Radio in Sweden, the standing secretary of the Nobel Committee for Literature at the Swedish Academy, Sara Danius, publicly announced that the committee, had left her effort to reach out to Bob Dylan, unable to communicate directly with Bob Dylan on the award for the Nobel Prize in Literature in 2016.",
+      "ref": "On Monday, Sara Danius, permanent secretary of the Nobel Committee for Literature at the Swedish Academy, publicly announced during a radio program on Sveriges Radio in Sweden the committee, unable to reach Bob Dylan directly about winning the 2016 Nobel Prize in Literature, had abandoned its efforts to reach him."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "Some details are lost, particularly the description of the award process."
+      ],
+      "fluency": [
+        3,
+        "Some grammatical errors lead to awkward phrasing."
+      ],
+      "terminology": [
+        4,
+        "Minor issues with terminology regarding the roles."
+      ],
+      "hallucination": [
+        2,
+        "Inferred intent and structure are slightly off."
+      ],
+      "punctuation": [
+        3,
+        "Punctuation issues, such as misplaced commas and quotation placements."
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "\"\"\"দানিয়াস বলেছিলেন, \"\"\"\"এখন আমরা কিছু করছি না। আমি তার নিকটতম সহযোগীকে কল করেছি এবং ইমেল পাঠিয়েছি এবং খুব বন্ধুত্বপূর্ণ জবাব পেয়েছি। আপাতত, এটি নিশ্চই যথেষ্ট।\"\"\"\" \"\"\"",
+      "trg": "“Now we are not doing anything. I called his closest associate and sent emails and received a very friendly reply. For now, it must be enough.”””",
+      "ref": "Danius said, \"Right now we are doing nothing. I have called and sent emails to his closest collaborator and received very friendly replies. For now, that is certainly enough.\""
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "Translation conveys the main idea but misphrases the quote slightly."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        2,
+        "Quotation marks are misplaced and inconsistent."
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "পূর্বে, রিং এর সিইও, জেমি সিমিনোফ মন্তব্য করেছিলেন যে প্রতিষ্ঠানটি শুরু হয়েছিল যখন তার গ্যারেজের দোকান থেকে তাঁর ডোরবেল শোনা যেত না।",
+      "trg": "Previously, Ring's CEO, Jamie Siminof remarked that the company started when his doorbell could not be heard from his garage store.",
+      "ref": "Previously, Ring's CEO, Jamie Siminoff, remarked the company started when his doorbell wasn't audible from his shop in his garage."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "Clarifies message but misrepresents the context of where he couldn't hear the doorbell."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        4,
+        " 'Garage store' is awkward; 'garage' is more appropriate."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "তিনি জানান যে তিনি একটি ওয়াই-ফাই ডোর বেল তৈরি করেছিলেন।",
+      "trg": "He said he had created a Wi-Fi door bell.",
+      "ref": "He built a WiFi door bell, he said."
+    },
+    "scores": {
+      "adequacy": [
+        5,
+        ""
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        4,
+        "Hyphen in 'door bell' is missing and should be 'doorbell'."
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "সিমিনোফ বলেছিলেন যে 2013 সালে শার্ক ট্যাঙ্কের একটি এপিসোডে যাওয়ার পর থেকে তাঁর বিক্রয় বেড়েছে, যেখানে শো-প্যানেল শুরুতে তার স্টার্টআপে লগ্নি করতে অস্বীকার করেছিল।",
+      "trg": "Siminof said his sales have grown since Shark Tank went to an episode in 2013, where the show-panel initially refused to invest in his startup.",
+      "ref": "Siminoff said sales boosted after his 2013 appearance in a Shark Tank episode where the show panel declined funding the startup."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "Misplaces terms slightly; would be clearer if simplified."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        4,
+        "The phrase could be improved for clarity."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "2017 এর শেষের দিকে, সিমিনফ-কে শপিং টেলিভিশন চ্যানেল QVC-তে দেখা গিয়েছিল।",
+      "trg": "In late 2017, Siminf was spotted on the shopping television channel QVC.",
+      "ref": "In late 2017, Siminoff appeared on shopping television channel QVC."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "Loses some detail regarding how he was spotted."
+      ],
+      "fluency": [
+        4,
+        "Minor issues in sentence structure affect flow."
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "প্রতিযোগী সুরক্ষা সংস্থা, ADT কর্পোরেশন এর সাথে রিং তার মামলা নিষ্পত্তিও করেছিল।",
+      "trg": "The competing security firm, the ring with the ADT Corporation, also settled his case.",
+      "ref": "Ring also settled a lawsuit with competing security company, the ADT Corporation."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The structure is awkward, and it mixes the subject."
+      ],
+      "fluency": [
+        3,
+        "Translation feels clunky in phrasing."
+      ],
+      "terminology": [
+        3,
+        "Terminology regarding 'the ring' is vague."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "যদিও এখনও পর্যন্ত পরীক্ষামূলক ভাবে একটি ভ্যাকসিন ইবোলা মৃত্যুর হার হ্রাস করতে সক্ষম হয়েছে, তবে উপস্থিত সংক্রমণের চিকিৎসার জন্য উপযুক্ত কোন ওষুধ ভালোভাবে প্রকাশ হয়নি।",
+      "trg": "Although a vaccine has so far been able to reduce the Ebola death rate, no suitable drugs have been released to treat the infection present.",
+      "ref": "While one experimental vaccine appears able to reduce Ebola mortality, up until now, no drugs have been clearly demonstrated suitable for treating existing infection."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "ZMapp নামে একটি অ্যান্টিবডি মিশ্রণ, প্রথমে এক্ষেত্রে প্রতিশ্রুতি দেখিয়েছিল, তবে  গবেষণায় ইঙ্গিত পাওয়া গেছে যে, এটি মৃত্যু রোধ করার চেয়ে কম উপকারী।",
+      "trg": "An antibody mixture called ZMapp, at first, showed a promise in this regard, but studies have indicated that it is less beneficial than preventing death.",
+      "ref": "One antibody cocktail, ZMapp, initially showed promise in the field, but formal studies indicated it had less benefit than sought in preventing death."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "PALM পরীক্ষায় ZMapp একটি নিয়ন্ত্রক হিসাবে কাজ করেছিল, যার মানে হলো বিজ্ঞানীরা একে মূল ভিত্তি হিসেবে ব্যবহার করেছিলেন এবং এর সাথে অন্য তিনটি চিকিৎসার তুলনা করেছিলেন।",
+      "trg": "ZMapp worked as a regulator in the PALM experiment, which means that scientists used it as the main foundation and compared the other three treatments.",
+      "ref": "In the PALM trial, ZMapp served as a control, meaning scientists used it as a baseline and compared the three other treatments to it."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "ইউএসএ জিমন্যাস্টিকস মার্কিন যুক্তরাষ্ট্রের অলিম্পিক কমিটির চিঠিকে সমর্থন করে এবং আমাদের সকল অ্যাথলিটদের ক্ষেত্রে নিরাপদ পরিবেশকে আরও বাড়িয়ে তুলতে অলিম্পিক পরিবারের প্রকৃত প্রয়োজনীয়তার কথা স্বীকার করে।",
+      "trg": "USA Gymnastics supports the letter from the United States Olympic Committee and recognizes the real need of the Olympic family to enhance the safe environment for all of our athletes.",
+      "ref": "USA Gymnastics supports the United States Olympic Committee's letter and accepts the absolute need of the Olympic family to promote a safe environment for all of our athletes."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "আমরা মার্কিন যুক্তরাষ্ট্রের অলিম্পিক কমিটির এই বক্তব্যের সাথে একমত যে আমাদের ক্রীড়াবিদ ও ক্লাব এবং তাদের খেলাধূলার স্বার্থে, ডি সার্টিফিকেশনের পরিবর্তে আমাদের সংস্থার মধ্যে অর্থবহ পরিবর্তনের সাথে এগোলে বিষয়টিতে আরও ভালভাবে সাহায্য হতে পারে।",
+      "trg": "We agree with the statement of the United States Olympic Committee that in the interest of our athletes and clubs and their sports, in the interest of D certification, can be better help in the matter if it goes forward with meaningful changes within our organization.",
+      "ref": "We agree with the USOC's statement that the interests of our athletes and clubs, and their sport, may be better served by moving forward with meaningful change within our organization, rather than decertification."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "মার্কিন শারীরক্রীড়াঙ্গন একটি স্বতন্ত্র তদন্তের সমর্থন করে যেটা আলোকপাত করতে পারে কিভাবে ল্যারী নাসার এর উত্তরজীবীরা বিভিন্ন অংশের অপব্যবহারকে নির্ভীকভাবে বর্ণনা করেছিলেন যেটা দীর্ঘ সময়ের জন্য ধরা পড়েনি এবং যথাযথ ও উপযুক্ত পরিবর্তনকে স্বেচ্ছায় গ্রহণ করে।",
+      "trg": "The U.S. physical anticipator supports a distinct investigation that could shed light on how Larry Nasser's descendants fearlessly described the abuse of different parts that had not been captured for a long time and took voluntary adoption of appropriate and appropriate changes.",
+      "ref": "USA Gymnastics supports an independent investigation that may shine light on how abuse of the proportion described so courageously by the survivors of Larry Nassar could have gone undetected for so long and embraces any necessary and appropriate changes."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "ইউএসএ  জিমন্যাসটিক্স এবং ইউএসওসি-র একই লক্ষ্য- জিমন্যাসটিক্স, এবং অন্যান্য খেলাগুলিকে, ক্রীড়াবিদদের জন্য যতটা সম্ভব নিরাপদ করা যাতে তারা একটি নিরাপদ, নিশ্চিত এবং ক্ষমতাশীল পরিবেশে তাদের স্বপ্ন অনুসরণ করতে পারে।",
+      "trg": "The same goal of USA Gymnastics and USOC-Gymnastics, and other sports, as much as possible for athletes so that they can pursue their dreams in a safe, ensured, and powerful environment.",
+      "ref": "USA Gymnastics and the USOC have the same goal — making the sport of gymnastics, and others, as safe as possible for athletes to follow their dreams in a safe, positive and empowered environment."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "1960 সাল জুড়ে, ব্রজেজিনস্কি জন এফ. কেনেডির জন্য উপদেষ্টা হিসেবে কাজ করেছিলেন এবং পরবর্তীতে লিন্ডন বি. জনসন প্রশাশন এর সাথে।",
+      "trg": "Throughout 1960, Brzezinsky worked as an advisor for John F. Kennedy and later with Lindon B. Johnson Administration.",
+      "ref": "Throughout 1960s, Brzezinski worked for John F. Kennedy as his advisor and then the Lyndon B. Johnson administration."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "1976 এর নির্বাচনের সময় তিনি পররাষ্ট্র নীতি নিয়ে কার্টার কে পরামর্শ দিয়েছিলেন, তারপর  1977 থেকে 1981 পর্যন্ত জাতীয় নিরাপত্তা উপদেষ্টা হিসাবে ( এনএসএ ) কাজ করেছিলেন, হেনরি কিসিঞ্জার এর উত্তরসূরী হিসেবে।",
+      "trg": "During the 1976 election he advised Carter on foreign policy, then working as a national security adviser (NSA) from 1977 to 1981, as a successor to Henry Kissinger.",
+      "ref": "During the 1976 selections he advised Carter on foreign policy, then served as National Security Advisor (NSA) from 1977 to 1981, succeeding Henry Kissinger."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "NSA হিসাবে তিনি কার্টরকে কূটনৈতিকভাবে বৈশ্বিক বিষয় পরিচালনার ক্ষেত্রে সহায়তা করেছিলেন যেমন ক্যাম্প ডেভিড চুক্তি, 1978; মার্কিন যুক্তরাষ্ট্র-চীন সম্পর্ককে স্বাভাবিক করার বিষয়টি 1970; ইরান বিপ্লব, যা ইরানকে জিম্মি সংকটের দিকে পরিচালিত করে, 1979; এবং আফগানিস্তানে সোভিয়েত আক্রমণ, 1979।",
+      "trg": "As the NSA, he helped Carter into the management of global affairs diplomatically such as the Camp David Accord, 1978; the normalization of the United States-China relations in 1970; the Iran Revolution, which led to the hostage crisis in Iran, 1979; and the Soviet invasion of Afghanistan, 1979.",
+      "ref": "As NSA, he assisted Carter in diplomatically handling world affairs, such as the Camp David Accords, 1978; normalizing US–China relations thought the late 1970s; the Iranian Revolution, which led to the Iran hostage crisis, 1979; and the Soviet invasion in Afghanistan, 1979."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "রায়ান গসলিং এবং এমা স্টোন অভিনীত ছবিটি সকল বড় বড় বিভাগে মনোনয়ন পেয়েছে।",
+      "trg": "The film, starring Ryan Gosling and Emma Stone, has been nominated in all major categories.",
+      "ref": "The movie, featuring Ryan Gosling and Emma Stone, received nominations in all major categories."
+    },
+    "scores": {
+      "adequacy": [
+        5,
+        ""
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "গোসলিং এবং স্টোন যথাক্রমে সেরা অভিনেতা ও অভিনেত্রীর জন্য মনোনয়ন পেয়েছিলেন।",
+      "trg": "Bhamling and Stone were nominated for Best Actor and Actress respectively.",
+      "ref": "Gosling and Stone received nominations for Best Actor and Actress respectively."
+    },
+    "scores": {
+      "adequacy": [
+        2,
+        "The name 'Bhamling' is incorrect and causes confusion; it should be 'Gosling'."
+      ],
+      "fluency": [
+        4,
+        "Minor grammatical issues, particularly with the phrasing."
+      ],
+      "terminology": [
+        2,
+        "Terminology issues with the incorrect translation of 'Gosling'."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        4,
+        "Lacks proper capitalization in translation for 'Best Actor and Actress'."
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "অন্যান্য মনোনয়নের মধ্যে রয়েছে সেরা ছবি, পরিচালক, সিনেমাটোগ্রাফি, কস্টিউম ডিজাইন, চলচ্চিত্র-সম্পাদনা, অরিজিনাল স্কোর, প্রোডাকশন ডিজাইন, শব্দ সম্পাদনা, সাউন্ড মিক্সিং এবং মূল চিত্রনাট্য।",
+      "trg": "Other nominations include best films, directors, cinematography, costume design, film-editing, original scores, production design, sound mixing, and original screenplay.",
+      "ref": "The other nominations include Best Picture, Director, Cinematography, Costume Design, Film-editing, Original Score, Production Design, Sound Editing, Sound Mixing and Original Screenplay."
+    },
+    "scores": {
+      "adequacy": [
+        3,
+        "Minor details omitted, such as 'The other nominations include'."
+      ],
+      "fluency": [
+        4,
+        "Overall understandable but with awkward phrasing."
+      ],
+      "terminology": [
+        3,
+        "Some terms like 'best films' are not accurately translated."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        3,
+        "Some punctuation errors affecting clarity."
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "মুভিটির দুটি গান অডিশন (দ্য ফুলস হু ড্রিম) এবং সিটি অফ স্টার্স সর্বশ্রেষ্ঠ আসল গানের জন্য মনোনয়ন পেয়েছে। লায়ন্সগেট স্টুডিও 26 টি মনোনয়ন পেয়েছিল -যা অন্য যে কোনও স্টুডিওর থেকে বেশি।",
+      "trg": "Two of the songs of the movie have received nominations for Audition (The Fulls Who Dream) and the City of Stars are the greatest original original songs. The Lionsgate Studio received 26 nominations - which is more than any other studio.",
+      "ref": "Two songs from the movie, Audition (The Fools Who Dream) and City of Stars, received nominations for best original song. Lionsgate studio received 26 nominations — more than any other studio."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The meaning is mostly preserved, but less formal language is used."
+      ],
+      "fluency": [
+        4,
+        "The sentence structure is a bit awkward."
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        4,
+        "Missing a transition that would improve clarity."
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "রবিবার বেলা নাগাদ, মার্কিন প্রেসিডেন্ট ডোনাল্ড ট্রাম্প, প্রেস সেক্রেটারি মারফৎ একটি বক্তব্যে জানান, মার্কিন সেনাবাহিনী সিরিয়া ছেড়ে বেরিয়ে আসবে।",
+      "trg": "By Sunday afternoon, US President Donald Trump, Press Secretary Marfat, said in a speech that the U.S. military would leave Syria.",
+      "ref": "Late on Sunday, the United States President Donald Trump, in a statement delivered via the press secretary, announced US troops would be leaving Syria."
+    },
+    "scores": {
+      "adequacy": [
+        5,
+        ""
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "ফোনে তুরস্কের রাষ্ট্রপতি রেসেপ তাইয়েপ Erdoğan-এর সাথে ট্রাম্পের কথোপকথনের পরে এই ঘোষণাটি করা হয়েছিল।",
+      "trg": "The announcement was made after Trump's conversation with Turkish President Recep Tayyip Erdoğan over the phone.",
+      "ref": "The announcement was made after Trump had a phone conversation with Turkish President Recep Tayyip Erdoğan."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "Minor difference in phrasing; 'would also take over' creates a slight nuance."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "বিবৃতিটি জানিয়েছে ধৃত আইসিস যোদ্ধাদের প্রহরা দেওয়ার দায়িত্ব নিয়েছে তুরস্ক। ইউরোপীয় দেশগুলো  নিজ দেশে তাদের ফিরিয়ে নিতে অস্বীকৃতি জানিয়েছে।",
+      "trg": "Turkey has taken responsibility for the guards of the seized ISIS fighters. European countries have refused to take back them to their home countries.",
+      "ref": "Turkey would also take over guarding captured ISIS fighters which, the statement said, European nations have refused to repatriate."
+    },
+    "scores": {
+      "adequacy": [
+        3,
+        "The translation lacks clarity about responsibility and does not capture the structure of the original."
+      ],
+      "fluency": [
+        3,
+        "The translation is somewhat awkward."
+      ],
+      "terminology": [
+        3,
+        "Some terms do not match the appropriate context."
+      ],
+      "hallucination": [
+        3,
+        "Introduces some nuance not found in source."
+      ],
+      "punctuation": [
+        3,
+        "Punctuation issues affect the readability."
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "এটি শুধুমাত্র কমপক্ষে কিছু ডাইনোসরের পালক ছিল তা নিশ্চিতই  করে না, বরঞ্চ একটি তত্ত্ব ব্যাপকতা লাভ করেছে, কিন্তু ফসিলগুলো থেকে বিশদভাবে তথ্য দেয়া সম্ভব হচ্ছে না, যেমন রঙ এবং ত্রি-মাত্রিক বিন্যাস।",
+      "trg": "Not only did it make sure that there were at least some dinosaur feathers, but rather a theory has widened, but it is not possible to give details from the fossils, such as the color and three-dimensional format.",
+      "ref": "This not only confirms that at least some dinosaurs had feathers, a theory already widespread, but provides details fossils generally cannot, such as color and three-dimensional arrangement."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "Primarily maintains meaning, but misses some specific terms like 'chestnut-brown'."
+      ],
+      "fluency": [
+        4,
+        "There are minor grammatical issues."
+      ],
+      "terminology": [
+        3,
+        "Terminology is somewhat incorrect, the word 'carotenoids' is vague."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "বিজ্ঞানীরা বলেছেন এই প্রাণীটির পালকের উপরের অংশ ছিল বাদামী বর্ণের এবং ভিতরের রঙ ফ্যাকাশে বা ক্যারোটিনের মতো।",
+      "trg": "Scientists say the upper part of the animal's feathers was brown in color and the inner color was pale or like a carotene.",
+      "ref": ". Scientists say this animal's plumage was chestnut-brown on top with a pale or carotenoid-colored underside."
+    },
+    "scores": {
+      "adequacy": [
+        5,
+        ""
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "অনুসন্ধানটি পাখির পালকের বিবর্তনের  বিষয়েও পরিজ্ঞান দেয়",
+      "trg": "The search also gives a sense of the evolution of bird feathers",
+      "ref": "The find also grants insight into the evolution of feathers in birds."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "কারণ ডায়নোসরের পালকগুলোর সুগঠিত দণ্ড ছিল না, যেগুলোকে রেচিস বলে, তবে পালকগুলোর আরেকটি বৈশিষ্ট্য ছিল- কাঁটা ও সূক্ষ্ম কাঁটা - গবেষকরা অনুমান করছেন যে খুব সম্ভবত বিবর্তনের উন্নতি সাধনের ফলে পরবর্তীতে যেসব বৈশিষ্ট্য প্রকাশ পায় রেচিস তার একটি।",
+      "trg": "Because dinosaur feathers did not have well-formed barrages, called rechis, but another characteristic of feathers - the fork and fine fork - researchers speculated that the rechis were one of the most likely characteristics that emerged as a result of the improvement of evolution.",
+      "ref": "Because the dinosaur feathers do not have a well-developed shaft, called a rachis, but do have other features of feathers — barbs and barbules — the researchers inferred the rachis was likely a later evolutionary development that these other features."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "পালকের কাঠামো ধারণা দেয় যে এগুলি উড়ার জন্য ব্যবহার করা হয়নি বরং তাপমাত্রা নিয়ন্ত্রণ বা প্রদর্শনীর জন্য ব্যবহার করা হয়েছিল। গবেষকরা মতামত দিয়েছিলেন, এটি একটি অল্পবয়সী ডায়নোসরের লেজ হলেও, নমুনাটি পূর্ণবয়স্কের পালক দেখায় এবং অল্পবয়স্কের নিচের অংশ দেখায় না।",
+      "trg": "The structure of the feathers gives the impression that they were not used for flying but rather used for temperature control or display. The researchers suggested, although it is the tail of a young dinosaur, the sample shows the adult feather and does not show the lower part of the young.",
+      "ref": "The feathers' structure suggests that they were not used in flight but rather for temperature regulation or display. The researchers suggested that, even though this is the tail of a young dinosaur, the sample shows adult plumage and not a chick's down."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "গবেষকদের মতামত অনুযায়ী, এটি একটি অল্প বয়সি ডায়নোসরের লেজ হলেও, নমুনায় ছোট পাখি নয় বরং প্রাপ্তবয়স্কদের পালকই দেখা গিয়েছে।",
+      "trg": "According to the researchers, although it is a young dinosaur tail, the sample shows not small birds but also the feathers of an adult.",
+      "ref": "The researchers suggested that, even though this is the tail of a young dinosaur, the sample shows adult plumage and not a chick's down."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "তুরস্কের গাজিয়ানটপ পুলিশ সদর দপ্তরে একটি গাড়ি বোমা বিস্ফোরন হয়েছে গতকাল সকালে যার কারণে দু'জন পুলিশ কর্মকর্তা নিহত এবং আরও বিশ জন আহত হয়।",
+      "trg": "A car bomb exploded at Turkey's Gaziantep police headquarters yesterday morning, causing two police officers to be killed and twenty others injured.",
+      "ref": "A car bomb detonated at police headquarters in Gaziantep, Turkey yesterday morning killed two police officers and injured more than twenty other people."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "গভর্নর অফিস থেকে জানানো হয়েছে যে আহতদের মধ্যে উনিশজন পুলিশ অফিসার ছিল।",
+      "trg": "The governor's office said nineteen police officers were among the injured.",
+      "ref": "The governor's office said nineteen of the injured were police officers."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "পুলিশ জানিয়েছে যে তারা হামলার জন্য অভিযুক্ত দায়েশ (ISIL) জঙ্গিকে সন্দেহ করেছে।",
+      "trg": "Police said they suspect Daesh (ISIL) militant to be charged with the attack.",
+      "ref": "Police said they suspect an alleged Daesh (ISIL) militant of responsibility for the attack."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "তারা অন্যান্য নক্ষত্রের মতো সূর্যের ক্ষেত্রেও একই কার্যকারিতা লক্ষ্য করেছিল: সিস্টেমের সমস্ত নক্ষত্রগুলির কার্যকারিতা তাদের উজ্জ্বলতা, তাদের ঘূর্ণন দ্বারা পরিচালিত হয় আর অন্য কিছু দ্বারা নয়।",
+      "trg": "They also noticed the same functionality in the Sun, like other stars: the performance of all the stars in the system is guided by their brightness, their rotation, and not by anything else.",
+      "ref": "They found the Sun operated on the same basic principles as other stars: The activity of all stars in the system was found to be driven by their luminosity, their rotation, and nothing else."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "আলোকরশ্বি এবং ঘূর্ণন একসাথে ব্যবহৃত হয় তারার রসবি নাম্বার নির্ধারণ করতে, যা প্লাজমা প্রবাহের সাথে সম্পর্কিত।",
+      "trg": "Light and rotation are used together to determine the rossib number of the star, which is related to the plasma flow.",
+      "ref": "The luminosity and rotation are used together to determine a star's Rossby number, which is related to plasma flow."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "রসবি সংখ্যা যত ছোট হবে, চৌম্বকীয় বিপরীতমুখীতার সাপেক্ষে নক্ষত্রটি তত কম সক্রিয় হবে।",
+      "trg": "The smaller the number of russes, the less active the star will be with the magnetic reversal.",
+      "ref": "The smaller the Rossby number, the less active the star with respect to magnetic reversals."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "ইভাশাকি তাঁর ভ্রমণকালে অনেক সময় অনেক সমস্যার মধ্যে পড়েছিলেন।",
+      "trg": "Ivasaki had a lot of trouble during his visit.",
+      "ref": "During his trip, Iwasaki ran into trouble on many occasions."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "জলদস্যুরা তার থেকে লুট করেছিল, তিব্বতে হিংস্র কুকুর আক্রমণ করেছিল, নেপালে বিয়ে থেকে পালিয়েছিল এবং ভারতে এসে তাকে গ্রেপ্তার করা হয়েছিল।",
+      "trg": "The pirates looted him, attacked a fierce dog in Tibet, fled from a marriage in Nepal and was arrested when he came to India.",
+      "ref": "He was robbed by pirates, attacked in Tibet by a rabid dog, escaped marriage in Nepal and was arrested in India."
+    },
+    "scores": {
+      "adequacy": [
+        3,
+        "The translation loses details on who was looted, and 'fierce dog' is less accurate than 'rabid dog'."
+      ],
+      "fluency": [
+        4,
+        "Some awkward phrasing, particularly in the structure and flow."
+      ],
+      "terminology": [
+        4,
+        "Terminology is mostly correct, but 'fierce dog' is less precise than in the reference."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "৮০২.১১এন স্ট্যান্ডার্ডটি ২.৪ গিগাহার্জ এবং ৫.০ গিগাহার্জ কম্পাঙ্ক দুইটির উপরই কার্যকর।",
+      "trg": "The 802.11N standard is effective on both 2.4 GHz and 5.0 GHz frequency.",
+      "ref": "The 802.11n standard operates on both the 2.4Ghz and 5.0Ghz frequencies."
+    },
+    "scores": {
+      "adequacy": [
+        5,
+        ""
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "বেস স্টেশনটিতে ডুয়াল রেডিও থাকায়, এটি  802.11a, 802.11b and 802.11g এর সাথে ব্যাকওয়ার্ড কম্পেটিবল হিসেবে কাজ করবে।",
+      "trg": "With dual radio on the base station, it will act as a backward competible with 802.11a, 802.11b and 802.11g.",
+      "ref": "This will allow it to be backwards compatible with 802.11a, 802.11b and 802.11g, provided that the base station has dual radios."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "Translation partially captures the idea but is missing clarity, particularly the sentence structure."
+      ],
+      "fluency": [
+        3,
+        "The phrase 'backward competible' is awkward and incorrectly spelled."
+      ],
+      "terminology": [
+        3,
+        "Minor terminology issues with 'competible' instead of 'compatible'."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "সর্বাধিক 600এমবিট / সেকেন্ডের তাত্ত্বিক থ্রুপুটের সাথে 802.11এন এর গতি তার পূর্ব সংস্করণের তুলনায়  যথেষ্ট দ্রুত।",
+      "trg": "The speed of 802.11N with a maximum of 600MB/s of the theoretical throughput is considerably faster than its previous version.",
+      "ref": "The speeds of 802.11n are substantially faster than that of its predecessors with a maximum theoretical throughput of 600Mbit/s."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The translation specifies 'maximum of 600MB/s' rather than '600Mbit/s', slightly changing the technical detail."
+      ],
+      "fluency": [
+        4,
+        "The sentence structure is somewhat awkward."
+      ],
+      "terminology": [
+        4,
+        "Minor inconsistency with the units used (MB/s vs Mbit/s)."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "ডুভাল, যে কি না দুই সন্তানসহ বিবাহ করেছিলেন, মিলারের উপর খুব বড় কোন ছাপ ফেলতে পারেনি, যার সাথে এই গল্পের সংশ্লিষ্টতা ছিল।",
+      "trg": "Duval, who married with two children, did not make a big impression on Miller, which was associated with the story.",
+      "ref": "Duvall, who is married with two adult children, did not leave a big impression on Miller, to whom the story was related."
+    },
+    "scores": {
+      "adequacy": [
+        3,
+        "The translation inaccurately portrays the relationship and detail about children and impression which alters meaning."
+      ],
+      "fluency": [
+        4,
+        "Some grammatical awkwardness present in the sentence."
+      ],
+      "terminology": [
+        3,
+        "Inconsistencies with naming (Duval vs Duvall)."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "\"মন্তব্যের জন্য জিজ্ঞাসা করা হলে, মিলার বলেন, \"\"শুনানি চলাকালীন সময়ে মাইক অনেক কথা বলে... আমি প্রস্তুত হচ্ছিলাম তাই সে কি বলছে তা আমি শুনতে পাচ্ছিলাম না\"\"।\"",
+      "trg": "\"When asked for comment, Miller said, \"Mic spoke a lot during the hearing... I was getting ready so I couldn't hear what he was saying.\"",
+      "ref": "When asked for comment, Miller said, \"Mike talks a lot during the hearing...I was getting ready so I wasn't really hearing what he was saying.\""
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "Translation changes 'Mike' to 'Mic', altering name and details."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        4,
+        "The name change introduces inconsistency with informal speech."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        4,
+        "Missing space before the quotation mark in the second sentence."
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "\"হু  বললো , \"\"আমরা প্রতি ইউনিট মোট দেশজ উৎপাদনে কার্বন ডাই অক্সাইড নির্গমন ২০০৫ সালের পর্যায় থেকে ২০২০ সালের মধ্যে একটি উল্লেখযোগ্য মাত্রায় কমানোর চেষ্টা করব।\"\"\"",
+      "trg": "\"We will try to reduce carbon dioxide emissions per unit of domestic production from the stage of 2005 to a significant extent between the 2005s,\" he said.",
+      "ref": "\"We will endeavour to cut carbon dioxide emissions per unit of GDP by a notable margin by 2020 from the 2005 level,\" Hu said."
+    },
+    "scores": {
+      "adequacy": [
+        3,
+        "The translation does not accurately reflect the timeframe and intent regarding emissions reductions."
+      ],
+      "fluency": [
+        4,
+        "Structure is somewhat convoluted, affecting clarity."
+      ],
+      "terminology": [
+        4,
+        "Terminology is mostly correct; however, 'stage' isn't the best choice in this context."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        4,
+        "Inconsistent placement of commas."
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "তিনি এই কমানোর জন্য কোনও পরিমাণ স্থাপন করেননি, বলেছিলেন যেগুলিচীনের অর্থনৈতিক আয়ের ভিত্তিতে তৈরি করা হবে।",
+      "trg": "He did not set any amount to this reduction, saying that it would be made on the basis of China's economic income.",
+      "ref": "He did not set a figure for the cuts, saying they will be made based on China's economic output."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "Translation provides a related but less precise interpretation of the context and intent."
+      ],
+      "fluency": [
+        4,
+        "Phrasing is somewhat awkward, affecting the flow."
+      ],
+      "terminology": [
+        4,
+        "Minor inconsistency in the phrasing of obligations, compared to reference."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "\"হু উন্নয়নশীল দেশগুলিকে অনুপ্রেরণা দিয়েছিল, \"\"প্রথমে দূষণের পুরোনো কার্জক্রমগুলিকে পরিহার করা এবং তারপরে পরিষ্কার করা।\"\"\"",
+      "trg": "“Hu inspired developing countries, “First, to avoid old contractions of pollution and then clean up.”",
+      "ref": "Hu encouraged developing countries \"to avoid the old path of polluting first and cleaning up later.\""
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The translation maintains meaning but alters the expression of obligations."
+      ],
+      "fluency": [
+        4,
+        "Sentence structure could improve for clarity."
+      ],
+      "terminology": [
+        4,
+        "Terminology is mostly consistent, but 'exceeds' may lose some nuance compared to 'go beyond'."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "\"তিনি আরো যোগ করেন \"\"যা তাদের উন্নয়নের স্তর, দায়িত্ব,  এবং সক্ষমতার সীমা ছাড়িয়ে যায় সেইসব বিষয়ে তাদের বাধ্য করা উচিৎ না।\"\"\"",
+      "trg": "\"They should not be forced to do what exceeds the level of development, responsibility, and capacity limit,\" he added.",
+      "ref": "He added that \"they should not, however, be asked to take on obligations that go beyond their development stage, responsibility and capabilities.\""
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "ইরাক স্টাডি গ্রুপ আজ ১২.৩০ জিএমটি তে তার প্রতিবেদন উপস্থাপন করেছে।",
+      "trg": "The Iraq Study Group presented its report at 12.30 GMT today.",
+      "ref": "The Iraq Study Group presented its report at 12.00 GMT today."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The model translation has a minor discrepancy in the time (12.30 vs. 12.00) which alters the meaning slightly."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "এটি সতর্ক করে যে এই মুহুর্তে ইরাকে নেওয়া কোনো পদক্ষেপ যে সাম্প্রদায়িক দাঙ্গা, ক্রমবর্ধমান হিংস্রতা বা বিশৃঙ্খলার দিকে অগ্রসর হওয়াকে আটকাবে তার গ্যারান্টি কেউ দিতে পারে না।",
+      "trg": "It warns that no one can guarantee any action taken in Iraq at the moment that prevents communal riots, rising violence or the move on to chaos.",
+      "ref": "It warns No one can guarantee that any course of action in Iraq at this point will stop sectarian warfare, growing violence, or a slide toward chaos."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The phrase 'communal riots' does not align well with 'sectarian warfare', representing a minor issue in meaning."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "এই রিপোর্ট মুক্ত বিতর্ক এবং মধ্যপ্রাচ্য নীতি বিষয়ে যুক্তরাষ্টের ঐক্যমত্য গঠনের অনুরোধ প্রকাশ করে।",
+      "trg": "The report called for a free debate and the United States' consensus on Middle East policy.",
+      "ref": "The Report opens with plea for open debate and the formation of a consensus in the United States about the policy towards the Middle East."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The phrase 'plea for open debate' slightly changes the nuance of 'request for open debate'."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "ইরাক নিয়ে কার্যকর্তাদের বর্তমান নীতির প্রায় সবদিক থেকেই কড়া সমালোচনা করেছে ওই রিপোর্ট। সেইসঙ্গে অবিলম্বে দিক বদলের কথা বলেছে।",
+      "trg": "The report has sharply criticized the current policies of the rulers of Iraq, and said of an immediate change.",
+      "ref": "The Report is highly critical of almost every aspect of the present policy of the Executive towards Iraq and it urges an immediate change of direction."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "Minor loss of meaning by omitting 'the Executive' which adds clarity to who is being criticized."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "78 টি সুপারিশের মধ্যে প্রথমটি হল এই বছর শেষ হওয়ার আগেই বৈদেশিক হস্তক্ষেপের বিরুদ্ধে ইরাকের সীমানা সুরক্ষিত করতে একটি নতুন কূটনৈতিক উদ্যোগ নেওয়া এবং তার প্রতিবেশীদের সাথে কূটনৈতিক সম্পর্ক পুনঃপ্রতিষ্ঠা করা।",
+      "trg": "The first of 78 recommendations is to take a new diplomatic initiative to secure Iraq's borders against foreign interference before the end of this year and restoring diplomatic relations with its neighbours.",
+      "ref": "First among its 78 recommendations is that a new diplomatic initiative should be taken before the end of this year to secure Iraq’s borders against hostile interventions and to re-establish diplomatic relations with its neighbors."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The model translation changes 'hostile interventions' to 'foreign interference' which is a slight misrepresentation."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        4,
+        "Used 'restoring' instead of 're-establish' which is less precise."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "গতকাল সন্ধ্যায় বুয়েনস আইরেস থেকে 50 কিলোমিটার (31 মাইল) দূরের একটি শহর লা প্লাটাতে বর্তমান সিনেটর এবং আর্জেন্টিনার ফার্স্ট লেডি ক্রিস্টিনা ফার্নান্দেজ ডি কির্চনার তার রাষ্ট্রপতি পদপ্রার্থী হওয়ার দাবী ঘোষণা করেছিলেন।",
+      "trg": "Yesterday evening, the current senator and Argentine First Lady Christina Fernández de Kirchner in a city of La Plata, 50 kilometers (31 miles) from Buenos Aires, announced her demand for her presidential candidate.",
+      "ref": "Current senator and Argentine First Lady Cristina Fernandez de Kirchner announced her presidential candidacy yesterday evening in La Plata, a city 50 kilometers (31 miles) away from Buenos Aires."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "Misrepresentation of 'intention' as 'demand' alters the meaning slightly."
+      ],
+      "fluency": [
+        3,
+        "The sentence structure is awkward, impacting overall clarity."
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "মিসেস কার্চনার প্রেসিডেন্ট প্রার্থী হিসেবে লড়ার ইচ্ছা প্রকাশ করে ঘোষণা দিয়েছেন আর্জেন্টাইন থিয়েটারে, একই জায়গায় যেখান থেকে সে ২০০৫ সালে বুয়েন্স আইরেস প্রদেশের সিনেট প্রতিনিধি দলের সভ্য হওয়ার প্রচারণা শুরু করেছিলেন।",
+      "trg": "Ms. Carchana's desire to run as a presidential candidate announced in the Argentine theatre, where she began campaigning for civilized by the Senate delegation from Buenos Aires in 2005.",
+      "ref": "Mrs. Kirchner announced her intention to run for president at the Argentine Theatre, the same location she used to start her 2005 campaign for the Senate as member of the Buenos Aires province delegation."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The model translation uses 'Busher' instead of 'Bush', slightly distorting the intended meaning."
+      ],
+      "fluency": [
+        3,
+        "The sentence structure is awkward, especially regarding the placement of 'which'."
+      ],
+      "terminology": [
+        4,
+        "Term 'money-related conservatives' feels awkward and inconsistent."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "\"এই বিতর্কটি হারিকেন ক্যাটরিনার সময় ত্রাণ ও পুনর্নির্মাণের উপর ব্যয়কে কেন্দ্র করে বেশি ছড়িয়েছিল; যেটাকে কিছু অর্থ সংশ্লিষ্ট রক্ষণশীলরা হাস্যকরভাবে \"\"বুশের নিউ অরলিন্স চুক্তি\"\" বলে অবহিত করেছিল।\"",
+      "trg": "\"The debate was more focused on the cost of relief and rebuilding during the hurricane Katrina's time, which some money-related conservatives ironically reported \"Busher's New Orleans Agreement.\"",
+      "ref": "The debate was sparked by controversy over spending on relief and reconstruction in the wake Hurricane Katrina; which some fiscal conservatives have humorously labeled \"Bush's New Orleans Deal.\""
+    },
+    "scores": {
+      "adequacy": [
+        5,
+        ""
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "পুনর্নির্মাণের চেষ্টা সম্পর্কে উদার সমালোচনা ওয়াশিংটন অভ্যন্তরীণদের পুনর্নির্মাণ চুক্তিগুলি অনুধাবনের দিকে লক্ষ্যস্থির করেছে।",
+      "trg": "Generous criticism of the attempt to rebuild Washington has targeted the interiors of understanding the reconstruction agreements.",
+      "ref": "Liberal criticism of the reconstruction effort has focused on the awarding of reconstruction contracts to perceived Washington insiders."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "শবযাত্রাতে অংশ নিতে চার মিলিয়নেরও বেশি লোক রোমে গিয়েছিল।",
+      "trg": "More than four million people went to Rome to attend the funeral.",
+      "ref": "Over four million people went to Rome to attend the funeral."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "উপস্থিত লোকজনের সংখ্যা এতো বেশি ছিল যে সেন্ট পিটার্স স্কোয়ারে আয়োজিত শেষকৃত্যের অনুষ্ঠান সকলে একসাথে প্রবেশ করে দেখতে পাইনি।",
+      "trg": "The number of people present was so high that not everyone could see the funeral ceremony held in St. Peter's Square together.",
+      "ref": "The number of people present was so large that it was not possible for everybody to gain access to the funeral in St. Peter's Square."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "রোমের বিভিন্ন জায়গায় একাধিক বড় টেলিভিশন স্ক্রিন স্থাপন করা হয়েছিল যাতে জনগন অনুষ্ঠানটি দেখতে পায়।",
+      "trg": "Several large television screens were installed in different parts of Rome to watch the show.",
+      "ref": "Several large television screens were installed in various places in Rome to let the people watch the ceremony."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "ইতালির এবং বাকি পৃথিবীর আরও অনেক শহরে, বিশেষ করে পোল্যান্ডে, একই ধরণের স্থাপনা তৈরি করা হয়েছিল যেগুলো ব্যাপক সংখ্যক লোকেরা দেখেছিল।",
+      "trg": "In Italy and many other cities in the rest of the world, especially in Poland, similar installations were built that were seen by a large number of people.",
+      "ref": "In many other cities of Italy and in the rest of the world, particularly in Poland, similar setups were made, which were viewed by a great number of people."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "ইতিহাসবিদরা এজেন্সীর সফলতার হার বাড়ানোর চেষ্টায় যেসকল মামলাগুলো সহজেই সমাধান করা যায় সেগুলোতে, বিশেষ করে গাড়ি চুরির মামলাগুলোতে বেশি সম্পদ বরাদ্ধ করার এফবিআই এর পূর্বের নীতিসমূহের সমালোচনা করেছেন।",
+      "trg": "Historians have criticized the FBI's previous policies for inciting more resources in cases that can be easily resolved in an attempt to increase the success rate of the agency.",
+      "ref": "Historians have criticized past FBI policies for focusing resources on cases which are easy to solve, especially stolen car cases, with the intent of boosting the agency's success rate."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "কংগ্রেস ২০০৫-এর অর্থবছরে অশ্লীল উদ্যোগকে অর্থ জোগান দেয়া শুরু করে এবং নির্দিষ্ট করে দেয় যে, এফবিআই-কে অবশ্যই প্রাপ্তবয়স্কদের পর্নোগ্রাফিতে 10 জন এজেন্টদের নিযুক্ত করতে হবে।",
+      "trg": "The Congress began funding the porn initiative in the 2005 fiscal year and specified that the FBI must appoint 10 agents in adult pornography.",
+      "ref": "Congress began funding the obscenity initiative in fiscal 2005 and specified that the FBI must devote 10 agents to adult pornography."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "রবিন উথাপ্পা ৪১ বলে ৭০ রানের সর্বোচ্চ ইনিংস খেলেছিলেন যেখানে তিনি  ১১ টি চার এবং ২ টি ছক্কা মেরেছিলেন।",
+      "trg": "Robin Uthappa played the highest 70-run innings with 41 balls in which he hit 11 fours and two sixes.",
+      "ref": "Robin Uthappa made the innings highest score, 70 runs in just 41 balls by hitting 11 fours and 2 sixes."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "মিডল অর্ডার ব্যাটসম্যান, শচীন টেন্ডুলকার এবং রাহুল দ্রাভিদ ভালো খেলেছিল এবং একটি শতরানের পার্টনারশিপ করেছিল।",
+      "trg": "Middle-order batsmen, Sachin Tendulkar and Rahul Dravid played well and made a century partnership.",
+      "ref": "Middle order batsmen, Sachin Tendulkar and Rahul Dravid, performed well and made a hundred-run partnership."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "কিন্তু, অধিনায়কের উইকেট হারানোর পরে ভারত মাত্র ৩৬ রান করতে ৭ উইকেট হারিয়ে ফেললে ইনিংস শেষ হয়ে যায়।",
+      "trg": "But after losing the captain's wicket, India lost seven wickets to score just 36 runs.",
+      "ref": "But, after losing the captain's wicket India only made 36 runs loosing 7 wickets to end the innings."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "এক সপ্তাহব্যাপী এশিয়া সফরের সূচনায় মার্কিন প্রেসিডেন্ট জর্জ ডবলিউ বুশ ১৬ নভেম্বর সকালে সিঙ্গাপুরে পৌঁছন।",
+      "trg": "U.S. President George Dwüw Bush arrived in Singapore on the morning of November 16th.",
+      "ref": "U.S. President George W. Bush arrived in Singapore the morning of November 16, beginning a week-long tour of Asia."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "সিঙ্গাপুরের উপ-প্রধানমন্ত্রী ওয়াং কান সেং তাকে স্বাগত জানিয়েছিলেন এবং তিনি সিঙ্গাপুরের প্রধানমন্ত্রী লি হিসিয়েন লুং-এর সাথে বাণিজ্য ও সন্ত্রাসবাদের বিষয়ে আলোচনা করেছেন।",
+      "trg": "He was welcomed by Singapore's Deputy Prime Minister Wang Kan Seng and he discussed trade and terrorism with Singapore Prime Minister Lee Hisien Loong.",
+      "ref": "He was greeted by Singapore's Deputy Prime Minister Wong Kan Seng and discussed trade and terrorism issues with the Singapore Prime Minister Lee Hsien Loong."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "মিড টার্ম নির্বাচনে হারের এক সপ্তাহ পরে বুশ এশিয়াতে বাণিজ্য সম্প্রসারণের কথা বলেন।",
+      "trg": "A week after the mid-term election, Bush spoke of expanding trade in Asia.",
+      "ref": "After a week of losses in the midterm election, Bush told an audience about the expansion of trade in Asia."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The translation slightly alters the original meaning by omitting 'After a week of losses' which changes the context."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "গত মঙ্গলবার পিএমও'তে এনডিপি নেতা জ্যাক লেটনের সাথে ২৫ মিনিট বৈঠকের পরে দ্বিতীয়বার পাঠের আগে প্রধানমন্ত্রী স্টিফেন হার্পার সরকারের 'মুক্ত বায়ু আইন'কে পর্যালোচনার জন্য সকল দলীয় সভার কাছে পাঠাতে সম্মত হয়েছেন।",
+      "trg": "Prime Minister Stephen Harper agreed to send the government's 'free air law' to all party meetings to review the \"free air law\" before a second read for the second time with NDP leader Jack Letton in the PMO on Tuesday.",
+      "ref": "Prime Minister Stephen Harper has agreed to send the government's 'Clean Air Act' to an all-party committee for review, before its second reading, after Tuesday's 25 minute meeting with NDP leader Jack Layton at the PMO."
+    },
+    "scores": {
+      "adequacy": [
+        3,
+        "The term 'Clean Air Act' is a specific legislation, and using 'free air law' is incorrect."
+      ],
+      "fluency": [
+        4,
+        "Some awkward phrasing makes it less smooth."
+      ],
+      "terminology": [
+        2,
+        "Incorrect terminology used for the legislation."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "\"প্রধানমন্ত্রীর সাথে সাখ্যাৎকালে লেটন কনজারভেটিভ পার্টির পরিবেশ বিলের \"\"পুঙ্খানুপুঙ্খ ও সম্পূর্ণ পুনর্লিখন\"\" করার জন্য কনজারভেটিভ পরিবেশ বিলে পরিবর্তন করার জন্য বলেছিলেন।\"",
+      "trg": "\"In recognition of the Prime Minister, Letton asked the Conservative Party to change the environment bill to \"rewrite and fully rewrite\" the Conservative Party's environmental bill.\"",
+      "ref": "Layton had asked for changes to the conservatives' environmental bill during the meeting with the PM, asking for a \"thorough and complete rewriting\" of the Conservative party's environmental bill."
+    },
+    "scores": {
+      "adequacy": [
+        3,
+        "The translation inaccurately conveys the request, stating 'in recognition of the Prime Minister' instead of reflecting the original context."
+      ],
+      "fluency": [
+        4,
+        "Some awkwardness in phrasing."
+      ],
+      "terminology": [
+        4,
+        "Terminology is mostly correct but lacks consistency."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "যখন থেকে যুক্তরাষ্ট্রীয় সরকার তাসমানিয়ার ডেভনপোর্টের মের্সেয় হাসপাতালের তহবিল গ্রহণের পদক্ষেপ নিয়েছে, রাজ্য সরকার এবং কিছু যুক্তরাষ্ট্রীয় মন্ত্রী এটিকে নভেম্বরের যুক্তরাষ্ট্রীয় নির্বাচনেকে সামনে রেখে লোক দেখানো কর্মপ্রচেষ্টা হিসেবে এটির সমালোচনা করেছেন।",
+      "trg": "Since the federal government has taken steps to fund hospitals in Mersey, Devonport, Tasmania, the state government and some federal ministers have criticised it as a public-showing effort ahead of the November federal election.",
+      "ref": "Ever since the Federal Government stepped in to take over funding of the Mersey hospital in Devonport, Tasmania, the state government and some federal MPs have criticised this act as a stunt in the prelude to the federal election to be called by November."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The translation alters the tone slightly by using 'public-showing' rather than 'stunt'."
+      ],
+      "fluency": [
+        4,
+        "Some complexity in sentence structure affects fluency."
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        4,
+        "Missing some minor punctuation also affects readability."
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "তবে প্রধানমন্ত্রী জন হাওয়ার্ড বলেছিলেন যে এই আইনটি কেবলমাত্র তাসমানিয়ান সরকার প্রদত্ত অতিরিক্ত 45 মিলিয়ন অস্ট্রেলিয়ান ডলার ব্যয় করে হাসপাতালের সুবিধাগুলি হ্রাস হয়ে যাওয়া থেকে রক্ষা করার জন্য।",
+      "trg": "But Prime Minister John Howard said the law was only to spend an additional $45 million in Australian dollars offered by the Tasmanian government to protect hospital facilities from being reduced.",
+      "ref": "But Prime Minister John Howard has said the act was only to safeguard the facilities of the hospital from being downgraded by the Tasmanian government, in giving an extra AUD$45 million."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The translation is correct but changes 'downgraded' to 'reduced', which alters meaning slightly."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        4,
+        "Usage of 'law' rather than 'act' is inconsistent."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "সর্বশেষ বুলেটিন অনুসারে, সমুদ্রের জলের পরিমাপ থেকে বোঝা যায় যে সুনামি হয়েছিল। পাগো পাগো এবং নিউয়ে এর কাছে  সুনামির টের পাওয়া গেছে।",
+      "trg": "According to the latest bulletin, seawater measurements suggest that the tsunami occurred. The tsunami was found near Pago Pago and Neway.",
+      "ref": "According to the latest bulletin, sea level readings indicated a tsunami was generated. There was some definite tsunami activity recorded near Pago Pago and Niue."
+    },
+    "scores": {
+      "adequacy": [
+        3,
+        "The translation introduces confusion with terms like 'seawater measurements' and 'the tsunami was found', losing some meaning."
+      ],
+      "fluency": [
+        4,
+        "Fluency is somewhat affected by structural choices."
+      ],
+      "terminology": [
+        3,
+        "Terminology is inconsistent with standard phrases."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        4,
+        "The use of punctuation could be improved for clarity."
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "টোংগাতে কোনো বড়্ররকমের ক্ষয়ক্ষতির খবর তেমন ভাবে পাওয়া যায়নি, শুধু এলাকার বিদ্যুৎ সংযোগ অস্থায়ী ভাবে বিচ্ছিন্ন হয়ে গিয়েছিল। এর ফলে, পিটিডবলিউসি যে সুনামির সতর্কবার্তা জারি করেছিল, তা টোংগান কর্তৃপক্ষের কাছে পৌছয়নি বলে জানা গিয়েছে।",
+      "trg": "No major damage was reported in Tonga, only the power supply in the area was temporarily cut off. As a result, the tsunami warning issued by the PTBWC did not reach the Tongan authorities.",
+      "ref": "No major damage or injuries have been reported in Tonga, but power was temporarily lost, which reportedly prevented Tongan authorities from receiving the tsunami warning issued by the PTWC."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The translation is mostly accurate but lacks clarity around the reason for the tsunami warning not reaching authorities."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        4,
+        "Terminology is mostly correct but 'PTBWC' should correctly be 'PTWC'."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "সতর্কতা তুলে নেওয়া সত্ত্বেও উপকূল তীরবর্তী বা তার কাছাকাছি অবস্থিত হাওয়াইয়ের চৌদ্দটি স্কুল বুধবার সম্পূর্ণ বন্ধ ছিল।",
+      "trg": "Fourteen schools in Hawaii, located on or near the coast, remained completely closed on Wednesday, despite the lifting of the warning.",
+      "ref": "Fourteen schools in Hawaii located on or near coastlines were closed all of Wednesday despite the warnings being lifted."
+    },
+    "scores": {
+      "adequacy": [
+        5,
+        ""
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "মার্কিন রাষ্ট্রপতি জর্জ ডব্লিউ. বুশ এই ঘোষণাকে স্বাগত জানিয়েছেন।",
+      "trg": "US President George W. Bush welcomed the announcement.",
+      "ref": "U.S. President George W. Bush welcomed the announcement."
+    },
+    "scores": {
+      "adequacy": [
+        5,
+        ""
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "\"বুশের মুখপাত্র গর্ডন জনড্রো উত্তর কোরিয়ার এই প্রতিশ্রুতিকে \"\"কোরিয়ান উপদ্বীপে যাচাইযোগ্য পারমাণবিক নিরস্ত্রীকরণ অর্জনের লক্ষ্যে একটি বড় পদক্ষেপ\"\" বলে অভিহিত করেছেন।\"",
+      "trg": "\"Bush's spokesman, Gordon Johndro, called North Korea's commitment \"a major step towards achieving verifiable nuclear disarmament on the Korean Peninsula.\"",
+      "ref": "Bush spokesman Gordon Johndroe called North Korea's pledge \"a major step towards the goal of achieving the verifiable denuclearization of the Korean peninsula.\""
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "মৌসুমের দশম নামের ঝড় আটলান্টিক হারিকেন , সাবট্রপিকাল স্টর্ম জেরি আজ আটলান্টিক মহাসাগরে গঠিত হয়েছিল।",
+      "trg": "The 10th season's storm Atlantic Hurricane, the subtropical storm Jerry, was formed in the Atlantic Ocean today.",
+      "ref": "The tenth named storm of the Atlantic Hurricane season, Subtropical Storm Jerry, formed in the Atlantic Ocean today."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "ন্যাশনাল হ্যারিকেন সেন্টার (NHC) বলছে যে জেরি নিয়ে এই মুহূর্তে ভূভাগে কোন সতর্কতা নেই।",
+      "trg": "The National Hurricane Center (NHC) says there is no warning about Jerry.",
+      "ref": "The National Hurricane Center (NHC) says that at this point Jerry poses no threat to land."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "যুক্তরাষ্ট্রের প্রকৌশলীদের বিভাগ অনুমান করেছিল যে ৬ ইঞ্চি বৃষ্টিপাত আগে থেকে ক্ষতিগ্রস্থ  বাঁধগুলো ভেঙ্গে ফেলতে পারতো।",
+      "trg": "The U.S. Department of Engineers estimates that six inches of rain could have broken down the previously damaged dams.",
+      "ref": "The U.S. Corps of Engineers estimated that 6 inches of rainfall could breach the previously damaged levees."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "ক্যাটরিনা নামক হারিকেনটির সময় নবম ওয়ার্ডটি প্রায় 20 ফুট উঁচুতে বন্যায় ভেসে যেতে দেখা গিয়েছিল, কাছের বাঁধটি ছাপিয়ে যাওয়ায় বর্তমানে কোমর-উঁচু জলে রয়েছে।",
+      "trg": "During the hurricane, Katrina, the ninth ward was seen swept away by floods about 20 feet high, with waist-high waters currently overtaking the nearby dam.",
+      "ref": "The Ninth Ward, which saw flooding as high as 20 feet during Hurricane Katrina, is currently in waist-high water as the nearby levee was overtopped."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "বাঁধের উপর 100 ফুট চওড়া একটি জায়গা থেকে জল ছিটকে বেরোচ্ছে।",
+      "trg": "Water is pouring out of a place 100 feet wide above the dam.",
+      "ref": "Water is spilling over the levee in a section 100 feet wide."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "কমন্স অ্যাডমিনিস্ট্রেটর অ্যাডাম কুয়ারডেন গত মাসে উইকিনিউজের সাথে কথা বলে প্রতিবন্ধতা দূরীকরণ নিয়ে হতাশা প্রকাশ করেছিলেন।",
+      "trg": "Commons Administrator Adam Cuarden spoke to Wikinews last month expressing his disappointment over the eradication of the sufficion.",
+      "ref": "Commons Administrator Adam Cuerden expressed his frustration over the deletions when he spoke to Wikinews last month."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "\"\"\"তিনি [ওয়েলস] মূলত আমাদের শুরু থেকেই মিথ্যা বলেছেন। তার শিল্প মুছে ফেলা পর্যন্ত  তিনি প্রথমে, অভিনয় করে যে এটি আইনি কারণে। দ্বিতীয়ত, আমাদের শোনার ভান করে।\"\"\"",
+      "trg": "“He [Wells] basically lied to us from the beginning. Until his art was erased, he first, acting that it was for legal reasons. Second, pretending to listen to us.”",
+      "ref": "\"He [Wales] basically lied to us from the start. First, by acting as if this was for legal reasons. Second, by pretending he was listening to us, right up to his art deletion.\""
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "জনগোষ্ঠীর বিরক্তিতে লক্ষ লক্ষ সাইটের জন্য ওপেনলি-লাইসেন্সপ্রাপ্ত মিডিয়া যা যৌন কন্টেন্ট হোস্ট করে এর একটি নীতিমালার খসড়া বর্তমানে প্রচেষ্টাধীন রয়েছে।",
+      "trg": "Openly-licensed media for millions of sites that host sex content is currently under effort.",
+      "ref": "The community irritation led to current efforts to draft a policy regarding sexual content for the site which hosts millions of openly-licensed media."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "সম্পন্ন কাজটির বেশিরভাগই ছিল তাত্ত্বিক, তবে  কর্মসূচিটি সাগিটারিয়াস ছায়াপথের পর্যবেক্ষণগুলি অনুকরণ করার জন্য রচিত হয়েছিল।",
+      "trg": "Most of the work done was theoretical, but the program was written to simulate the observations of the Sagittarius galaxy.",
+      "ref": "The work done was mostly theoretical, but the program was written to simulate observations made of the Sagittarius galaxy."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "দলটি যে প্রভাবটি খুজছিল সেটি ছায়াপথটির কৃষ্ণ বস্তু এবং মিল্কি ওয়ের কৃষ্ণবস্তুর মধ্যাকার শক্তি প্রবাহের মাধ্যমে ঘটেছিল।",
+      "trg": "The effect of the group was looking for was caused by the black object of the galaxy and the energy flow between the black object of the Milky Way.",
+      "ref": "The effect the team was looking for would be caused by tidal forces between the galaxy's dark matter and the Milky Way's dark matter."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "চাঁদ যেমন পৃথিবীতে একটি টান প্রয়োগ করে যার ফলে জোয়ারের সৃষ্টি হয়, তেমনি আকাশগঙ্গাও সাগিটারিয়াস ছায়াপথের উপরে একটি চাপ প্রয়োগ করে।",
+      "trg": "Just as the moon exerts a tension on the earth, the sky also exerts a pressure on the Sagitarius galaxy.",
+      "ref": "Just like the moon exerts a pull on the earth, causing tides, so does the Milky Way exert a force on the Sagittarius galaxy."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The translation loses the cause-effect relationship implied in 'causing tides'."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        4,
+        "The term 'tension' is not as precise as 'pull'."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "বিজ্ঞানীরা এই সিদ্ধান্তে উপনীত হতে পেরেছিলেন যে, যেভাবে সাধারণ পদার্থগুলো একটি অপরটিকে প্রভাবিত করে, ঠিক তেমনই ভাবে, কৃষ্ণ পদার্থ বা ডার্ক ম্যাটার অপর একটি ডার্ক ম্যাটারকে প্রভাবিত করে।",
+      "trg": "Scientists were able to conclude that in the same way that ordinary substances affect each other, in the same way that black matter or dark matter affects another dark matter.",
+      "ref": "The scientists were able to conclude that the dark matter affect other dark matter in the same way regular matter does."
+    },
+    "scores": {
+      "adequacy": [
+        3,
+        "The translation is partially accurate but repeats 'in the same way' unnecessarily."
+      ],
+      "fluency": [
+        4,
+        "The structure is awkward due to repetition."
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "এই তত্ত্ব মতে একটি ছায়াপথের চারপাশের ডার্ক ম্যাটার ছায়াপথের চারপাশে এক ধরণের বর্ণবলয় হয়ে অবস্থান করে এবং যা অসংখ্য ছোট ছোট কণা দিয়ে গঠিত।",
+      "trg": "According to this theory, the dark matter around a galaxy is a kind of color that surrounds the galaxy and is made up of numerous small particles.",
+      "ref": "This theory says that most dark matter around a galaxy is located around a galaxy in a kind of halo, and is made of lots of small particles."
+    },
+    "scores": {
+      "adequacy": [
+        3,
+        "The phrase 'a kind of color' misrepresents 'halo'."
+      ],
+      "fluency": [
+        4,
+        "The sentence structure is somewhat awkward."
+      ],
+      "terminology": [
+        3,
+        "Incorrect terminology used for 'halo'."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "টেলিভিশনের প্রতিবেদনগুলিতে উদ্ভিদ থেকে সাদা ধোঁয়া আসতে দেখা যায়।",
+      "trg": "White smoke can be seen coming from the plant in television reports.",
+      "ref": "Television reports show white smoke coming from the plant."
+    },
+    "scores": {
+      "adequacy": [
+        5,
+        ""
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "স্থানীয় কর্তৃপক্ষ গাছের আশেপাশে থাকা বাসিন্দাদের বাড়ির ভিতরে থাকার জন্য, শীতাতপ নিয়ন্ত্রণ ব্যবস্থা বন্ধ রাখার জন্য এবং নলের জল না খাওয়ার জন্য সতর্ক করছে।",
+      "trg": "Local authorities are warning residents living in the vicinity of the trees to stay indoors, to keep the air-conditioning system off and not drinking tap water.",
+      "ref": "Local authorities are warning residents in the vicinity of the plant to stay indoors, turn off air-conditioners and not to drink tap water."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "Translation omits 'turn off' which impacts action clarity."
+      ],
+      "fluency": [
+        4,
+        "The phrase 'not drinking tap water' is awkward."
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "জাপানের পারমানবিক সংস্থার সূত্রে জানা গিয়েছে, প্ল্যান্টটিতে তেজস্ক্রিয় সিজিয়াম এবং আয়োডিন চিহ্নিত করা হয়েছে।",
+      "trg": "According to Japan's nuclear agency, the plant has identified radioactive scissium and iodine.",
+      "ref": "According to Japan's nuclear agency, radioactive caesium and iodine has been identified at the plant."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The term 'scissium' is a mistranslation of 'caesium'."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        3,
+        "Terminology for 'caesium' is incorrect."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "কর্তৃপক্ষের মনে হয়েছে যে তাদের অনুমান দ্বারা এটাই বোঝা যাচ্ছে সেই স্থলে ইউরেনিয়াম জ্বালানি থাকা পাত্রগুলি হয়তো ভেঙে গিয়েছে এবং ফুটো তৈরি হয়েছে।",
+      "trg": "Authorities believe that their assumptions indicate that the uranium fuel containers may have been broken and leakage have been formed.",
+      "ref": "Authorities speculate that this indicates that containers holding uranium fuel at the site may have ruptured and are leaking."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "Translation is reasonable but 'speculate' is better than 'believe'."
+      ],
+      "fluency": [
+        4,
+        "The sentence feels slightly convoluted."
+      ],
+      "terminology": [
+        4,
+        "Terminology for 'ruptured' is more precise."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "ডক্টর টনি মোল দক্ষিণ আফ্রিকার কোয়াজুলু-ন্যাটাল অঞ্চলে চরম ড্রাগ প্রতিরোধকারী যক্ষ্মা (XDR-TB) আবিষ্কার করেছিলেন।",
+      "trg": "Dr. Tony Mole discovered extreme drug-resistant tuberculosis (XDR-TB) in the KwaZulu-Natal region of South Africa.",
+      "ref": "Dr. Tony Moll discovered the Extremely Drug Resistant Tuberculosis (XDR-TB) in the South African region KwaZulu-Natal."
+    },
+    "scores": {
+      "adequacy": [
+        5,
+        ""
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        4,
+        "The name is slightly misspelled as 'Moll'."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "\"একটি সাক্ষাৎকারে তিনি বলেন যে এই নতুন বৈচিত্র্যটি \"\"উচ্চ মৃত্যুর হারের কারণে অত্যন্ত উদ্বেগজনক এবং ভীতিকর।\"",
+      "trg": "\"In an interview, he said that this new variety is \"extremely worrying and scary due to the high death rate.\"",
+      "ref": "In an interview, he said the new variant was \"very highly troubling and alarming because of the very high fatality rate.\""
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The word 'very' alters the phrasing from the reference."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        4,
+        "The phrase 'high death rate' could be more accurately represented."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "ডাঃ মোল মনে করছেন হাসপাতালের রোগীদের মধ্যে যারা পোকায় সংক্রামিত হয়েছেন তাদের মধ্যে অন্তত দু'জন হাসপাতাল কর্মী।",
+      "trg": "Dr. Mole believes that at least two hospital staff among the patients who have been infected with insects in the hospital.",
+      "ref": "Some patients might have contracted the bug in the hospital, Dr. Moll thinks, and at least two were hospital health workers."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The translation is unclear about which patients are affected."
+      ],
+      "fluency": [
+        4,
+        "The sentence structure is awkward."
+      ],
+      "terminology": [
+        4,
+        "Terminology around 'bug' isn’t clear."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "এক বছরের মধ্যে, একজন আক্রান্ত ব্যক্তি তার সংস্পর্শে আসা ১০ থেকে ১৫ জন ব্যাক্তিকে আক্রান্ত করতে পারে।",
+      "trg": "Within a year, an infected person can infect 10 to 15 people who come in contact with him.",
+      "ref": "In one year's time, an infected person may infect 10 to 15 close contacts."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The model translation alters the phrasing slightly, changing 'may' to 'can', which introduces a minor nuance in meaning."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "তবে, যক্ষায় আক্রান্ত সমগ্র জনগোষ্ঠীর মধ্যে এক্স-ডি-আর-যক্ষায় আক্রান্তের অনুপাত এখনো পর্যন্ত কম বলেই মনে হচ্ছে; যেটি দক্ষিণ আফ্রিকায় যে কোনো মুহুর্তে মোট ৩৩০,০০০ আক্রান্তের মধ্যে ৬০০০ জন।",
+      "trg": "However, the proportion of X-D-R tuberculosis cases in the entire population of tuberculosis seems to be low so far, which is a total of 33,000 cases in South Africa at any moment.",
+      "ref": "However, the percentage of XDR-TB in the entire group of people with tuberculosis still seems to be low; 6,000 of the total 330,000 people infected at any particular moment in South Africa."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The term 'percentage' is used instead of 'proportion', which slightly alters the connotation."
+      ],
+      "fluency": [
+        4,
+        "The overall fluency is good, but 'seems to be low so far' can be phrased more naturally."
+      ],
+      "terminology": [
+        4,
+        "The abbreviation 'X-D-R' is not standard; it should be 'XDR'."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "এই স্যাটেলাইটগুলি যাদের উভয়ের ওজন 1,000 পাউন্ডের বেশি, এবং প্রতি ঘন্টায় প্রায় 17,500 মাইল বেগে ভ্রমণ করেছিল, পৃথিবীপৃষ্ঠ থেকে 491 মাইল উপরে সংঘর্ষপ্রাপ্ত হয়েছিল।",
+      "trg": "These satellites both weighed more than 1,000 pounds, and traveled at a speed of about 17,500 miles per hour, collided over 491 miles above the Earth's surface.",
+      "ref": "The satellites, both of which weighed in excess of 1,000 pounds, and traveling at approximately 17,500 miles per hour, collided 491 miles above the Earth."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The model translation omits 'of which' which affects the clarity of subject reference."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "বিজ্ঞানীরা জানাচ্ছেন সংঘর্ষের ফলে সৃষ্ট বিস্ফোরণ ছিল বিপুল।",
+      "trg": "Scientists say the explosion caused by the collision was huge.",
+      "ref": "Scientists say the explosion caused by the collision was massive."
+    },
+    "scores": {
+      "adequacy": [
+        5,
+        ""
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "তারা এখনও এটি নির্ধারণের চেষ্টা করছেন যে সংঘর্ষটি কতটা বড় ছিল এবং এতে পৃথিবী কিভাবে প্রভাবিত হবে।",
+      "trg": "They are still trying to determine how big the conflict was and how the world would be affected.",
+      "ref": "They are still trying to determine just how large the crash was and how the Earth will be affected."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The model translates 'how big the crash was' instead of the more specific 'how big the collision was', introducing some vagueness."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        4,
+        "The term 'conflict' is incorrect in this context; it should refer to 'collision' but is used inconsistently."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "মার্কিন প্রতিরক্ষা বিভাগের ইউনাইটেড স্টেটস স্ট্র্যাটেজিক কমান্ড ধ্বংসাবশেষ পর্যবেক্ষণ করছে।",
+      "trg": "The U.S. Department of Defense's United States Strategic Command is monitoring the debris.",
+      "ref": "The United States Strategic Command of the U.S. Department of Defense office is tracking the debris."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The model translates 'monitoring' instead of 'tracking', which is a minor nuance but still retains meaning."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        4,
+        "The phrase 'United States Strategic Command of the U.S. Department of Defense office' is less concise and clear."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "চক্রান্ত বিশ্লেষণ করে ফলাফল একটি পাবলিক ওয়েবসাইটে পোস্ট করা হবে।",
+      "trg": "The results will be posted on a public website by analyzing the plot.",
+      "ref": "The result of plotting analysis will be posted to a public website."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The model translation changes the phrasing which slightly alters the nuance of the analysis."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "ওহিও এর কর্তৃপক্ষ বলে, একজন চিকিৎসক যিনি পেনসিল্ভেনিয়ার পিটসবার্গ শিশু হাসপাতালে কাজ করতেন, তার মাকে বুধবারে তার গাড়ির ট্রাঙ্কে মৃত অবস্থায় পাওয়া যাওয়ায়, তিনি উত্তেজিত অবস্থায় খুন করার অভিযোগে অভিযুক্ত হবেন।",
+      "trg": "Ohio's authorities say a doctor who worked at the Pittsburgh Children's Hospital in Pennsylvania, will be charged with murdering his mother on Wednesday after her mother was found dead in the trunk of her car on Wednesday.",
+      "ref": "A doctor who worked at Children's Hospital of Pittsburgh, Pennsylvania will be charged with aggravated murder after her mother was found dead in the trunk of her car Wednesday, authorities in Ohio say."
+    },
+    "scores": {
+      "adequacy": [
+        3,
+        "The model introduces ambiguity by incorrectly repeating 'mother' instead of clearly referring to the doctor."
+      ],
+      "fluency": [
+        4,
+        "The structure is somewhat awkward and includes repeated phrases, affecting flow."
+      ],
+      "terminology": [
+        4,
+        "The term 'aggravated murder' is not directly referenced from the source and may not be the correct legal term."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "29 বছর বয়সী ডঃ মালার বালাসুব্রামানিয়ানকে, সিনসিনাটির থেকে প্রায় 15 মাইল উত্তরে ওহাইওর ব্লু অ্যাশের একটি শহরতলিতে টি-শার্ট এবং অন্তর্বাস পরিহিত অবস্থায় এবং খুবই খারাপ ভাবে রাস্তার পাশে মাটিতে পড়ে থাকা অবস্থায় পাওয়া গিয়েছিল।",
+      "trg": "Dr. Malar Balasubramanian, a 29-year-old, was found dressed in t-shirts and underwear in a suburb of Blue Ash in Ohio, about 15 miles north of Cinsinati, while wearing t-shirts and underwear on the side of the road.",
+      "ref": "Dr. Malar Balasubramanian, 29, was found in Blue Ash, Ohio, a suburb approximately 15 miles north of Cincinnati lying on the ground beside the road in a T-shirt and underwear in an apparently heavily medicated state."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The model translates 'lying on the ground beside the road' less clearly, altering the context of where the doctor is found."
+      ],
+      "fluency": [
+        3,
+        "Excess repetition affects fluidity, making it a bit awkward."
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "তিনি তাঁর আধিকারিকদের 500 ‌ফুট দূরে দাঁড়ানো ওল্ডসমোবাইল ইনট্রিগের দিকে নির্দেশ করলেন।",
+      "trg": "He pointed to his officers standing 500 feet away from the Oldsmobile Intrig.",
+      "ref": "She directed officers to her black Oldsmobile Intrigue which was 500 feet away."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The model uses 'pointed to' instead of 'directed', which is a minor shift in meaning."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "সেখানে তারা রক্তের দাগ ভরা, কম্বলে মোড়া 53 বছর বয়সী সরোজা বালাসুব্রামানিয়ানের মরদেহ পেয়েছিল।",
+      "trg": "There they found the body of Saroza Balasubramanian, a 53-year-old wrapped in blankets.",
+      "ref": "There, they found the body of Saroja Balasubramanian, 53, covered with blood-stained blankets."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The translation omits the important detail about blood stains, which affects the context and overall meaning."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "পুলিশ বলেছিল যে প্রায় একদিন ধরে দেহটি সেখানে দেখা গিয়েছিল।",
+      "trg": "Police said the body had been found there for a day.",
+      "ref": "Police said that the body appeared to have been there for about a day."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The phrase 'appeared to have been there' is more accurate than 'had been found there', causing a mild meaning shift."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "চলতি মরসুমে এই রোগের প্রথম রোগীর কথা জানতে পারা যায় জুলাইয়ের শেষ দিকে।",
+      "trg": "The first case of the disease was reported in late July.",
+      "ref": "The first cases of the disease this season were reported in late July."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The translation generalizes 'cases' to 'case', losing the plural nuance of the source."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "এই রোগটি শূকরের দ্বারা বাহিত, যা পরে মশার মাধ্যমে মানুষের দেহে স্থানান্তরিত হয়।",
+      "trg": "This disease is carried out by pigs, which is later transferred to the human body through mosquitoes.",
+      "ref": "The disease is carried by pigs, which then migrates to humans through mosquitos."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The translation uses 'carried out' instead of just 'carried', which alters the meaning."
+      ],
+      "fluency": [
+        4,
+        "Awkward phrasing with 'transferred to the human body through mosquitoes'."
+      ],
+      "terminology": [
+        4,
+        "Small inconsistency with 'mosquitos', which is less common than 'mosquitoes'."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "এই প্রাদুর্ভাবটি ভারত সরকারকে গুরুতরভাবে ক্ষতিগ্রস্থ অঞ্চলগুলিতে শূকর শিকারিদের স্থাপনে, হাজার হাজার মশার বিনষ্ট করতে এবং কীটনাশক স্প্রে করার মতো বিভিন্ন পদক্ষেপ গ্রহণে বাধ্য করেছে।",
+      "trg": "The outbreak has forced the Government of India to take various steps, such as setting up pig predators in severely affected areas, destroying thousands of mosquitoes and spraying pesticides.",
+      "ref": "The outbreak has prompted the Indian government to undertake such measures as deployment of pig catchers in seriously affected areas, distributing thousands of mosquito curtains and spraying pesticides."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The phrase 'setting up pig predators' is not the best translation for the intended meaning."
+      ],
+      "fluency": [
+        4,
+        "Minor awkwardness in structure."
+      ],
+      "terminology": [
+        4,
+        "Terminology like 'pig predators' could lead to confusion; 'pig catchers' would be clearer."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "সরকার লক্ষাধিক এনসেফ্যালাইটিস টিকাপূর্ণ শিশি প্রদানের প্রতিশ্রুতি দিয়েছে যা স্বাস্থ্য সচেতন সংস্থাগুলিকে আগামী বছরের জন্য প্রস্তুত হতে সাহায্য করবে।",
+      "trg": "The government has promised to provide millions of encephalitis vaccine vials that will help health-conscious bodies prepare for next year.",
+      "ref": "Several million vials of encephalitis vaccine have also been promised by the government, which will help prepare health agencies for next year."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "Minor changes in phrasing affect clarity; 'health-conscious bodies' is less clear than 'health agencies'."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        4,
+        "Terminology use is somewhat inconsistent."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "তহবিলের অভাব ও অন্যান্য রোগের তুলনায় কম অগ্রাধিকারের কারণে ঐতিহাসিকভাবে এ বছর সবচেয়ে বেশি ক্ষতিগ্রস্থ অঞ্চলে ভ্যাকসিন সরবরাহের পরিকল্পনাতে দেরি হয়েছিল।",
+      "trg": "Due to the lack of funds and low priority than other diseases, the plan to supply vaccines to the most affected areas historically this year was delayed.",
+      "ref": "Plans for vaccines to be delivered to the historically most affected areas this year were delayed due to lack of funds and low prioritisation relative to other diseases."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The original meaning about the delay being due to historical context is somewhat lost."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        4,
+        "Terminology around 'vaccines' is okay but lacks a bit of precision."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "1956 সালে স্লানিয়া সুইডেনে চলে যান, যেখানে তিন বছর পরে তিনি সুইডিশ পোস্ট অফিসের জন্য কাজ শুরু করেন এবং তাদের প্রধান খোদাইকার হন।",
+      "trg": "In 1956, Slania moved to Sweden, where three years later she began working for the Swedish post office and became their chief engraver.",
+      "ref": "In 1956 Słania moved to Sweden, where three years later he began work for the Swedish Post Office and became their chief engraver."
+    },
+    "scores": {
+      "adequacy": [
+        5,
+        ""
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "তিনি সুইডেন এবং অন্যান্য ২৮টি দেশের জন্য হাজারটির বেশী স্ট্যাম্প উৎপাদন করেছিলেন।",
+      "trg": "He produced more than a thousand stamps for Sweden and twenty-eight other countries.",
+      "ref": "He produced over 1,000 stamps for Sweden and 28 other countries."
+    },
+    "scores": {
+      "adequacy": [
+        5,
+        ""
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "\"তাঁর কাজ এতটাই স্বীকৃত গুণমানের এবং বিশদে যে সে হচ্ছে \"\"ঘরে ঘরে নাম করা\"\" ডাকটিকিট সংগ্রহকারীদের মধ্যে একজন। কেউ কেউ শুধুমাত্র তাঁর কাজ সংগ্রহে বিশেষজ্ঞ ।\"",
+      "trg": "\"His work is so computed quality and details that he is one of the postage stamp collectors \"renamed in the house\". Some only specialize in his collection of work.\"",
+      "ref": "His work is of such recognized quality and detail that he is one of the very few \"household names\" among philatelists. Some specialize in collecting his work alone."
+    },
+    "scores": {
+      "adequacy": [
+        2,
+        "The meaning shifts greatly due to the erroneous translation of quality and details."
+      ],
+      "fluency": [
+        2,
+        "The phrasing is awkward and convoluted, making it difficult to understand."
+      ],
+      "terminology": [
+        2,
+        "Terminology is mostly incorrect, especially in the context of 'household names'."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "\"তার 1,000 তম স্ট্যাম্পটি ছিল 2000 সালে ডেভিড ক্ল্যাকার এহরেনস্ট্রহল রচিত \"\"গ্রেট ডিডস বাই সুইডিশ কিং\"\", যা গিনেস বুক অফ ওয়ার্ল্ড রেকর্ডসে তালিকাভুক্ত আছে।\"",
+      "trg": "\"His 1,000th stamp was written by David Clacker Ehrenstrohel in 2000, \"Great Deds by the Swedish King\"\", which is listed in the Guinness Book of World Records.\"",
+      "ref": "His 1,000th stamp was the magnificent \"Great Deeds by Swedish Kings\" by David Klöcker Ehrenstrahl in 2000, which is listed in the Guinness Book of World Records."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "তিনি অনেক দেশের জন্য নোট নকশা করার কাজে নিযুক্ত ছিলেন, সাম্প্রতিক কাজগুলির উদাহরণের মধ্যে নতুন কানাডিয়ান $5 এবং $100  নোটগুলির উপর প্রধানমন্ত্রীর প্রতিকৃতি।",
+      "trg": "He was engaged in designing notes for many countries, portraits of the Prime Minister on new Canadian $5 and $100 notes, among the examples of recent work.",
+      "ref": "He was also engaged in engraving banknotes for many countries, recent examples of his work including the Prime Ministerial portraits on the front of the new Canadian $5 and $100 bills."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "দুর্ঘটনার পরে, গিবসনকে একটি হাসপাতালে স্থানান্তরিত করা হয়েছিল, তবে কিছুক্ষণ পরেই সে মারা গিয়েছিল।",
+      "trg": "After the accident, Gibson was shifted to a hospital, but he died shortly after.",
+      "ref": "After the accident occurred, Gibson was transported to a hospital but died shortly afterwards."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "ট্রাক ড্রাইভার, যার বয়স ৬৪, দুর্ঘটনায় অক্ষত ছিল।",
+      "trg": "The truck driver, who was 64, was unharmed in the accident.",
+      "ref": "The truck driver, who is aged 64, was not injured in the crash."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "একই দিনে আনুমানিক ১২:০০ জিএমটি সময়ে যানটিকেই দুর্ঘটনার স্থান থেকে সরিয়ে ফেলা হয়েছিল।",
+      "trg": "The vehicle was removed from the site of the accident at approximately 12:00 GMT on the same day.",
+      "ref": "The vehicle itself was taken away from the scene of the accident at approximately 1200 GMT on the same day."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "\"গ্যারাজের কাছাকাছি দুর্ঘটনাস্থলে কর্মরত এক ব্যক্তি বলেছিলেন: \"\"সেখানে শিশুরা রাস্তা পার হওয়ার জন্য অপেক্ষা করছিল এবং তারা সবাই চিৎকার করছিল ও কাঁদছিল।\"\" \"",
+      "trg": "\"A man working at the accident site near Garaz said: \"There children were waiting to cross the road and they were all screaming and crying.\"",
+      "ref": "A person working in a garage near where the accident occurred said: \"There were children waiting to cross the road and they were all screaming and crying.\""
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "দুর্ঘটনাস্থল থেকে তারা সবাই ফিরে এসেছিল।",
+      "trg": "They all came back from the accident.",
+      "ref": "They all ran back from where the accident had happened."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "বালির আলোচ্যসূচিতে অন্যান্য বিষয়ের মধ্যে ছিল বিশ্বের পড়ে থাকা বনগুলিকে বাঁচানো এবং উন্নয়নশীল দেশগুলিকে এগিয়ে চলার জন্য কম দূষণ রয়েছে এরকম বিভিন্ন প্রযুক্তি ভাগ করে নেওয়া।",
+      "trg": "Other aspects to the Bali agenda included sharing technology that is scarce for the world to save the world's fallen forests and share the technology that has less pollution to move forward.",
+      "ref": "Other subjects on the agenda in Bali include saving the world's remaining forests, and sharing technologies to help developing nations grow in less-polluting ways."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "জাতিসংঘ বৈশ্বিক উষ্ণতা দ্বারা আক্রান্ত দেশগুলোকে এর প্রভাব মোকাবেলা করতে সাহায্য করার জন্য তহবিল চূড়ান্ত করার ব্যাপারেও আশা করে ।",
+      "trg": "The United Nations also hopes to finalize funding to help countries affected by global warming.",
+      "ref": "The U.N. also hopes to finalize a fund to help countries affected by global warming to cope with the impacts."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "এই অর্থ বন্যা-প্রতিরোধী ব্যবস্থায় যেতে পারে, উন্নত জল-ব্যবস্থাপনা এবং ফসলের বৈচিত্র্যের দিকে যেতে পারে।",
+      "trg": "This money can go to flood-resistant systems, leading to improved water-management and crop diversity.",
+      "ref": "The money could go toward flood-proof houses, better water management, and crop diversification."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "ফ্লুক লিখেছিলেন যে মহিলাদের স্বাস্থ্যের বিষয়ে কথা বলার প্রচেষ্টাকে ডুবিয়ে দেয়ার জন্য কিছু লোকের প্রচেষ্টাগুলো ব্যর্থ হয়েছিল।",
+      "trg": "Fluke wrote that some people's efforts to plunge women's efforts to speak about health failed.",
+      "ref": "Fluke wrote that the efforts by some to drown out women from speaking out about women’s health were unsuccessful."
+    },
+    "scores": {
+      "adequacy": [
+        3,
+        "The translation misses the nuance of 'drown out' and uses 'plunge' incorrectly."
+      ],
+      "fluency": [
+        4,
+        "The sentence structure is somewhat awkward, making it less fluent."
+      ],
+      "terminology": [
+        3,
+        "The term 'plunge' is incorrectly used in this context."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "তিনি এই সিদ্ধান্তে উপনীত হয়েছেন কারণ ইতিবাচক মন্তব্য এবং উৎসাহ পাঠানো তাকে  নারী এবং পুরুষ উভয় ব্যক্তির দ্বারা। তিনি অনুরোধ করেছেন যে গর্ভনিরোধক ওষুধকে চিকিৎসা বিজ্ঞানের প্রয়োজনীয়তা হিসেবে বিবেচনা করা হোক।",
+      "trg": "He came to the conclusion because of sending positive comments and encouragement to both men and women. He requested that contraceptive drugs be considered as a requirement of medical science.",
+      "ref": "She came to this conclusion due to the multitude of positive comments and encouragement sent to her by both female and male individuals urging that contraception medication be considered a medical necessity."
+    },
+    "scores": {
+      "adequacy": [
+        2,
+        "The subject pronoun is wrong; it translates 'he' instead of 'she', altering meaning significantly."
+      ],
+      "fluency": [
+        3,
+        "The structure is understandable but somewhat awkward."
+      ],
+      "terminology": [
+        4,
+        "The term 'contraceptive drugs' is correct, but 'requirement of medical science' is a bit off."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "আহতদের হাসপাতালে পাঠানোর পরে যখন লড়াই বন্ধ হয়েছিল, প্রায় ৪০ জন বাকি অন্যান্য বন্দীরা উঠোনে থেকে গেছিল এবং তাঁরা তাদের নিজের কুঠুরিতে ফিরে যেতে রাজি হয়নি।",
+      "trg": "When the fight was stopped after the injured were sent to the hospital, about forty other prisoners remained in the courtyard and they refused to return to their own hut.",
+      "ref": "When the fighting ceased after the wounded were transported to the hospital, about 40 of the other remaining inmates stayed in the yard and refused to return to their cells."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The translation misses the word 'wounded' instead of 'injured', which slightly alters meaning."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        4,
+        "The term 'hut' could be better translated as 'cell' for accuracy."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "আলাপালোচনকারীরা পরিস্থিতি সংশোধনের চেষ্টা করছেন, কিন্তু বন্দীদের দাবিগুলো পরিষ্কার নয়।",
+      "trg": "The protesters are trying to correct the situation, but the demands of the prisoners are not clear.",
+      "ref": "Negotiators tried to rectify the situation, but the prisoners' demands are not clear."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The word 'negotiators' is replaced with 'protesters', changing the subject significantly."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        4,
+        "The word 'rectify' captures some meaning but 'correct' is more straightforward."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "MDT সময় রাত 10:00-11:00 এর মধ্যে, আগুনের সূত্রপাত বন্দীদের দ্বারা শুরু হয়েছিল।",
+      "trg": "Between 10:00-11:00 MDT time, the fire started by the prisoners.",
+      "ref": "Between 10:00-11:00 pm MDT, a fire was started by the inmates in the yard."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The translation lacks the definitive article 'a' before 'fire', which is important."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        3,
+        "The term 'inmates' is more accurate than 'prisoners' in this context."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "শীঘ্রই দাঙ্গা সরঞ্জাম নিয়ে কর্মকর্তারা চত্বরে প্রবেশ করলেন এবং বন্দীদেরকেকাদানি গ্যাস দিয়ে কোণঠাসা করলেন।",
+      "trg": "Soon, the officers took the riot equipment and cornered the captives with cash gas.",
+      "ref": "Soon, officers equipped with riot gear entered the yard and cornered the inmates with tear gas."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The phrase 'by' is used instead of 'between' which alters meaning slightly."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "অগ্নি উদ্ধারকারী দল শেষ পর্যন্ত রাত 11:35 এর মধ্যে আগুন নেভায়।",
+      "trg": "The firefighters finally extinguished the fire by 11:35 a.m.",
+      "ref": "Fire rescue crews eventually doused the fire by 11:35 pm."
+    },
+    "scores": {
+      "adequacy": [
+        3,
+        "The phrase 'this subjection' is not clear, which alters the intended meaning."
+      ],
+      "fluency": [
+        3,
+        "The sentence is awkward and confusing."
+      ],
+      "terminology": [
+        3,
+        "The translation of 'habitat' is not clear in context."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "1963 সালে বাঁধটি নির্মিত হওয়ার পর, মৌসুমী বন্যার কারণে নদী জুড়ে পলি ছড়িয়ে পড়া থামানো গিয়েছিল।",
+      "trg": "After the dam was built in 1963, the sediment spread across the river was stopped due to the seasonal floods.",
+      "ref": "After the dam was built in 1963, the seasonal floods that would spread sediment throughout the river were halted."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The translation shifts 'have become extinct' from 'have disappeared', losing some nuance."
+      ],
+      "fluency": [
+        4,
+        "The sentence is understandable, but slightly awkward."
+      ],
+      "terminology": [
+        4,
+        "The term 'humpback chub' is correct but lacks clarity due to phrasing."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "বালুচর এবং সমুদ্রসৈকত তৈরি করার জন্য এই অধঃক্ষেপের প্রয়োজন ছিল, যা বন্যজীবনের বাসস্থান হিসাবে কাজ করে।",
+      "trg": "This was the need for this subjection to create shelf and beach, which serves as the habitat of wildlife.",
+      "ref": "This sediment was necessary for creating sandbars and beaches, which served as wildlife habitats."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "এর ফলে, দুই প্রজাতির মাছ লুপ্ত হয়ে গেছে এবং আরও দুটি প্রজাতি বিপন্ন। এরমধ্যে হাম্পব্যাক চাবও আছে।",
+      "trg": "As a result, two species of fish have disappeared and two other species are endangered.",
+      "ref": "As a result, two fish species have become extinct, and two others have become endangered, including the humpback chub."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "যদিও বন্যার পরে জলের স্তর মাত্র কয়েক ফুট বাড়বে, কর্মকর্তারা আশা করছেন এটি ভাটির দিকে ক্ষয়প্রাপ্ত বালুতটগুলি পুনরুদ্ধার করার জন্য যথেষ্ট হবে।",
+      "trg": "Although the water level will rise only a few feet after the floods, officials expect it to be enough to restore the decaying sands towards the kiln.",
+      "ref": "Although the water level will only rise a few feet after the flood, officials are hoping it will be enough to restore eroded sandbars downstream."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The term 'kiln' is not accurate in context, which alters meaning slightly."
+      ],
+      "fluency": [
+        4,
+        "The structure is somewhat awkward and could be smoother."
+      ],
+      "terminology": [
+        4,
+        "The use of 'kiln' is incorrect."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "কোন সুনামি সতর্কতা জারি করা হয়নি, এবং জাকার্তা জিওফিজিকস এজেন্সি অনুযায়ী, কোন সুনামি সতর্কতা জারি করা হবে না কারণ ভূমিকম্পটি ৬.৫ মাত্রার প্রয়োজন পূরণ করেনি।",
+      "trg": "No tsunami warning has been issued, and no tsunami warning will be issued, according to the Jakarta Geophysics Agency.",
+      "ref": "No tsunami warning has been issued, and according to the Jakarta geophysics agency, no tsunami warning will be issued because the quake did not meet the magnitude 6.5 requirement."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The omission of the reason for the tsunami warning not being issued slightly alters the meaning."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "সুনামির কোনও সতর্কতা না থাকা সত্ত্বেও, বাসিন্দারা আতঙ্কিত হয়ে পরেছিল এবং তাদের ব্যবসা এবং ঘরবাড়ি ছেড়ে যেতে শুরু করেছিল।",
+      "trg": "Despite the absence of any tsunami warnings, residents panicked and began to leave their businesses and homes.",
+      "ref": "Despite there being no tsunami threat, residents started to panic and began to leave their businesses and homes."
+    },
+    "scores": {
+      "adequacy": [
+        5,
+        ""
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "যদিও  উইনফ্রে তার শেষ বিদায়ে আবেগ আপ্লুত ছিল,  সে তার ভক্তদের নিকট পরিস্কার করেছিল যে ফিরে আসবে।",
+      "trg": "Although Winfrey was overwhelmed with emotion in his last farewell, he made it clear to his fans that he would return.",
+      "ref": "Although Winfrey was tearful in her farewell, she made it clear to her fans she will be back."
+    },
+    "scores": {
+      "adequacy": [
+        3,
+        "The translation incorrectly uses 'he' instead of 'she', altering the meaning."
+      ],
+      "fluency": [
+        4,
+        "The sentence is generally clear but could flow better."
+      ],
+      "terminology": [
+        4,
+        "The use of pronouns is inconsistent with the source."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "\"\"\"এটা বিদায় হতে যাচ্ছে না। এটা কেবল এক অধ্যায়ের শেষ, এবং আরেক অধ্যায়ের শুরু।\"\"\"",
+      "trg": "\"It's not going to be goodbye. It's just the end of one chapter, and the beginning of another chapter.\"",
+      "ref": "\"This is not going to be goodbye. This is the closing of one chapter and the opening of a new one.\""
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The phrase 'this is not going to be goodbye' was altered, resulting in a slight change of tone."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "নামিবিয়ার রাষ্ট্রপতি ও সংসদ নির্বাচনের চূড়ান্ত ফলাফল ইঙ্গিত দেয় যে বর্তমান রাষ্ট্রপতি হিফিকেপুনিয়ে পোহাম্বা বড় ব্যবধানে পুনঃনির্বাচিত হয়েছেন।",
+      "trg": "The final results of the presidential and parliamentary elections in Namibia indicate that the current president, Hifikekepuye Pohamba, has been re-elected by a large margin.",
+      "ref": "Final results from Namibian presidential and parliamentary elections have indicated that the incumbent president, Hifikepunye Pohamba, has been reelected by a large margin."
+    },
+    "scores": {
+      "adequacy": [
+        5,
+        ""
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        4,
+        "The organization name 'People's Organization' should have 'Organisation' instead."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "ক্ষমতাসীন দল, সাউথ-ওয়েস্ট আফ্রিকা পিপলস অর্গানাইজেশন (SWAPO) সংসদ নির্বাচনেও সংখ্যাগরিষ্ঠতা ধরে রেখেছে।",
+      "trg": "The South-West African People's Organization (SWAPO) also retained a majority in parliamentary elections.",
+      "ref": "The ruling party, South West Africa People's Organisation (SWAPO), also retained a majority in the parliamentary elections."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The phrasing 'joint forces aircraft' differs from 'other coalition aircraft', which affects clarity."
+      ],
+      "fluency": [
+        4,
+        "Overall structure is clear but could be more concise."
+      ],
+      "terminology": [
+        4,
+        "The term 'joint forces' could be more specific."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "যৌথ বাহিনী এবং আফগান সেনারা জায়গাটি নিরাপদ করার জন্য সেখানে গিয়েছিল এবং তাদের সাহায্যের জন্য যৌথ বাহিনীর বিমান পাঠানো হয়েছিল।",
+      "trg": "The joint forces and Afghan troops went there to secure the place and joint forces aircraft were sent to help them.",
+      "ref": "Coalition and Afghan troops moved into the area to secure the site and other coalition aircraft have been sent to assist."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The translation lacks the nuance of 'crash' instead of 'accident', leading to minor meaning loss."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        4,
+        "The term 'enemy' instead of 'hostile' may not capture the same context."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "দুর্ঘটনাটি উঁচু পাহাড়ী অঞ্চলে ঘটেছিল এবং বিশ্বাস করা হয় শত্রুদের গুলির ফলস্বরূপ এটি ঘটে।",
+      "trg": "The accident occurred in the high mountainous region and is believed to have been a result of the enemy firing.",
+      "ref": "The crash occurred high up in mountainous terrain, and is believed to have been the result of hostile fire."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The phrasing does not capture the ongoing nature of the search efforts."
+      ],
+      "fluency": [
+        4,
+        "The sentence structure is somewhat clunky."
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "দুর্ঘটনাস্থল অনুসন্ধানের চেষ্টার সময় খারাপ আবহাওয়া এবং খারাপ ভূখণ্ডের সম্মুখীন হতে হয়।",
+      "trg": "The accident site is experiencing bad weather and bad terrain during the attempt.",
+      "ref": "Efforts to search for the crash site are being met by bad weather and harsh terrain."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "মেডিকেল চ্যারিটি ম্যাঙ্গোলা, মেডিসিনস সানস ফ্রন্টিয়ার এবং বিশ্ব স্বাস্থ্য সংস্থা অনুযায়ী এটি দেশে নথিভুক্ত সবচেয়ে ভয়ঙ্কর প্রাদুর্ভাব।",
+      "trg": "According to Medical Charity Mangola, Medicines Sans Frontier and the World Health Organization, it is the most terrifying outbreak recorded in the country.",
+      "ref": "The medical charity Mangola, Medecines Sans Frontieres and the World Health Organisation say it is the worst outbreak recorded in the country."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The translation loses the tone of 'worst' by using 'most terrifying', which alters the meaning slightly."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        4,
+        "The term 'Medicines Sans Frontier' has an inconsistency with the reference wording."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "\"মেডেসিনস স্যানস ফ্রন্টিয়ের-এর মুখপাত্র রিচার্ড ভীরম্যান বলেছেনঃ “ অ্যাঙ্গোলা এখন সবচেয়ে খারাপ দুর্যোগের দিকে চলেছে এবং অ্যাঙ্গোলার পরিস্থিতি খুবই খারাপ।\"\"\"",
+      "trg": "“Angola is now heading towards the worst disaster and the situation in Angola is very bad,” said Richard Virman, a spokesman for the Medisons Sans Frontier.",
+      "ref": "Spokesman for Medecines Sans Frontiere Richard Veerman said: \"Angola is heading for its worst ever outbreak and the situation remains very bad in Angola,\" he said."
+    },
+    "scores": {
+      "adequacy": [
+        3,
+        "Omits 'worst ever outbreak', which significantly changes the severity context."
+      ],
+      "fluency": [
+        4,
+        "There are minor awkward phrasings like 'spokesman for the Medisons Sans Frontier'."
+      ],
+      "terminology": [
+        3,
+        "Incorrect spelling of 'Medecines' and 'Virman' instead of 'Veerman'."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "খেলাটি দুর্দান্ত আবহাওয়ার সাথে সকাল ১০:০০ টায় শুরু হয়েছিল এবং  মধ্য সকালের দ্রুত পরিষ্কার হয়ে যাওয়া হালকা বৃষ্টিপাত ছাড়া, এটি সপ্তম রাগবির জন্য একটি উপযুক্ত দিন ছিল।",
+      "trg": "The game started at 10:00 a.m. with great weather and without the mild rain that was quickly cleared in the middle morning, it was a perfect day for the seventh rugby.",
+      "ref": "The games kicked off at 10:00am with great weather and apart from mid morning drizzle which quickly cleared up, it was a perfect day for 7's rugby."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The phrase 'kicked off' is more specific in the reference, whereas 'started' is less engaging."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        4,
+        "The translation uses 'seventh rugby', which is less common than '7's rugby'."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "টুর্নামেন্টের শীর্ষ বাছাই দক্ষিণ আফ্রিকা তাদের যাত্রা শুরু করেছিল একদম ঠিকভাবে। খুব সহজেই তারা পঞ্চম বাছাই জাম্বিয়াকে 26-00 ব্যবধানে হারায়।",
+      "trg": "South Africa, the top pick of the tournament, began their journey in a very proper way. They easily lost the fifth qualifier Zambia by a 26-00 margin.",
+      "ref": "Tournament top seeds South Africa started on the right note when they had a comfortable 26 - 00 win against 5th seeded Zambia."
+    },
+    "scores": {
+      "adequacy": [
+        3,
+        "The phrase 'began their journey in a very proper way' alters the intended meaning."
+      ],
+      "fluency": [
+        4,
+        "Awkward phrasing makes it slightly less fluent."
+      ],
+      "terminology": [
+        4,
+        "Use of 'top pick' instead of 'top seeds' creates inconsistency."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "দক্ষিণ আফ্রিকা তাদের দক্ষিণী বোনদের বিরুদ্ধে নিশ্চিতভাবে হতাশার সাথে খেললেও, টুর্নামেন্ট এগিয়ে যাওয়ার সাথে সাথে ধারাবাহিকভাবে উন্নতি করেছে।",
+      "trg": "While South Africa played desperately against their South sisters for sure, the tournament has improved consistently as the tournament progresses.",
+      "ref": "Looking decidedly rusty in the game against their southern sisters, South Africa however steadily improved as the tournament progressed."
+    },
+    "scores": {
+      "adequacy": [
+        3,
+        "Translation changes 'looking decidedly rusty' to 'played desperately', shifting context."
+      ],
+      "fluency": [
+        4,
+        "Some awkwardness, notably in 'for sure'."
+      ],
+      "terminology": [
+        4,
+        "Use of 'South sisters' misrepresents the reference's context."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "তাদের শৃঙ্খলাবদ্ধ প্রতিরক্ষা, বল নিয়ন্ত্রণ করার দক্ষতা এবং দুর্দান্ত দলবদ্ধতা তাদেরকে ব্যতিক্রমী করে তোলে এবং এটি স্পষ্ট হয়ে যায় এটিই সেই দল যারা পরাজিত করতে পারে।",
+      "trg": "Their disciplined defense, the ability to control the ball and great teamwork make them exceptional, and it becomes clear that is the team that can be defeated.",
+      "ref": "Their disciplined defence, ball handling skills and excellent team work made them stand out and it was clear that this was the team to beat."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The phrase 'this was the team to beat' conveys a sense of prominence, while 'can be defeated' does not."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "অ্যামস্টারডাম শহর এবং অ্যান ফ্রাংক যাদুঘরের প্রধানরা বলেন যে গাছটি ফাঙ্গাস দ্বারা আক্রান্ত এবং জনসাধারণের স্বাস্থ্যঝুকির কারণ হতে পারে কেননা তারা তর্ক করেছিল যে এটি উপড়ে পড়ার বিপদ থাকতে পারে।",
+      "trg": "Heads of the city of Amsterdam and the An Frank Museum said the tree was attacked by fungus and could cause public health risks because they argued that it could have a danger of uprooting.",
+      "ref": "Officials for the city of Amsterdam and the Anne Frank Museum state that the tree is infected with a fungus and poses a public health hazard as they argue that it was in imminent danger of falling over."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The reference's 'imminent danger' is more specific compared to 'could have a danger'."
+      ],
+      "fluency": [
+        4,
+        "Some awkward phrasing affects fluency."
+      ],
+      "terminology": [
+        4,
+        "Inaccurate 'attacked by fungus' instead of 'infected'."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "এটিকে মঙ্গলবার কেটে ফেলার কথা ছিল, তবে আদালতের জরুরী রায় আসার পরে এটি বাঁচানো হয়।",
+      "trg": "It was supposed to be cut off on Tuesday, but it was saved after the court's emergency verdict came in.",
+      "ref": "It had been scheduled to be cut down on Tuesday, but was saved after an emergency court ruling."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The expression 'it was saved after' lacks the prior scheduled context."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "\"গুহার সমস্ত প্রবেশপথগুলি যা \"\"দ্য সেভেন সিস্টার্স\"\" নামে পরিচিত তাদের সবকটির ব্যস কমপক্ষে 100 থেকে 250 মিটার (328 থেকে 820 ফুট)।\"",
+      "trg": "\"All entrances to the caves, known as “The Seven Sisters”, are at least 100 to 250 meters (328 to 820 feet).”",
+      "ref": "All of the cave entrances, which were named \"The Seven Sisters\", are at least 100 to 250 meters (328 to 820 feet) in diameter."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The translation omits clarification of 'diameter' in describing the entrances."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        4,
+        "Reference uses 'entrances' whereas translation uses a more generic term."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "ইনফ্রারেড চিত্রগুলি দেখায় যে, রাতে ও দিনে তাপমাত্রার বৈচিত্র্য  রয়েছে তা দেখতে গুহার মতো।",
+      "trg": "Infrared images show that there is a variety of temperatures at night and day, it looks like a cave.",
+      "ref": "Infrared images show that the temperature variations from night and day show that they are likely caves."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The reference specifies 'likely caves', which adds information not reflected in the translation."
+      ],
+      "fluency": [
+        4,
+        "Some awkward structure affects the fluency a bit."
+      ],
+      "terminology": [
+        3,
+        "The phrase 'looks like a cave' lacks specificity."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "\"\"\"এগুলো পার্শ্ববর্তী পৃষ্ঠের চেয়ে দিনের বেলায় শীতল এবং রাতের বেলায় গরম হয়।\"",
+      "trg": "\"They are colder during the day than the surrounding surface and heating at night.\"",
+      "ref": "\"They are cooler than the surrounding surface in the day and warmer at night."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "\"মার্কিন যুক্তরাষ্ট্রের জিওলজিকাল সার্ভের (USGS) জ্যোতির্বিজ্ঞান দল এবং আরিজোনার ফ্ল্যাংস্ট্যাফে অবস্থিত উত্তর অ্যারিজোনা বিশ্ববিদ্যালয়ের গ্লেন কুশিং বলেছেন \"\"তাদের তাপীয় আচরণ পৃথিবীর বৃহত্তর গুহাগুলির মতো স্থির নয় যা প্রায়শই স্থির তাপমাত্রা বজায় রাখে, কিন্তু এটি স্থলভাগের গভীর গর্তের সাথে সামঞ্জস্যপূর্ণ\"\"। \"",
+      "trg": "“Glen Kushing, of the Astronomy team of the Geological Survey of the United States (USGS) and the University of North Arizona, located in Flangstaf, Arizona, said, “Their thermal behavior is not as static as the Earth’s larger caves that often maintains constant temperatures, but it is consistent with the deep hole of the ground”.”",
+      "ref": "Their thermal behavior is not as steady as large caves on Earth that often maintain a fairly constant temperature, but it is consistent with these being deep holes in the ground,\" said Glen Cushing of the United States Geological Survey (USGS) Astrogeology Team and of Northern Arizona University located in Flagstaff, Arizona."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "ফ্রান্সে, ঐতিহ্যগতভাবে ভোটদান একটি স্বল্প প্রযুক্তির অভিজ্ঞতা: ভোটাররা একটি বুথে নিজেদেরকে আলাদা করে, আগে থেকে ছাপানো একটি কাগজে তাদের পছন্দের প্রার্থীকে চিহ্নিত করে একটি খামে রাখে।",
+      "trg": "In France, casting traditionally is a short-tech experience: voters separate themselves in a booth, pre-printed paper and put in an envelope by identifying the candidate of their choice.",
+      "ref": "In France, voting has traditionally been a low-tech experience: voters isolate themselves in a booth, put a pre-printed sheet of paper indicating their candidate of choice into an envelope."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "কর্মকর্তারা ভোটারের পরিচয় যাচাই করার পর, ভোটার খামটি ব্যালট বাক্সে ফেলে এবং ভোটদানের তালিকায় স্বাক্ষর করে।",
+      "trg": "After officers verified the voter's identity, the voter threw the envelope into the ballot box and signed the voter list.",
+      "ref": "After officials verify the voter's identity, the voter drops the envelope into the ballot box and signs the voting roll."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "ফ্রান্সের নির্বাচনী আইন বরং কঠোরভাবে কার্যনির্বাহীকরণ করে।",
+      "trg": "France's electoral law is strictly enforced.",
+      "ref": "French electoral law rather strictly codifies the proceedings."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "১৯৮৮ সাল থেকে, ব্যালট বাক্সগুলোকে অবশ্যই স্বচ্ছ হতে হবে যাতে ভোটার এবং প্রতক্ষদর্শীরা দেখে যে ভোটের শুরুতে কোন খাম থাকে না এবং যথাযথভাবে গোনা এবং স্বীকৃত ভোটার ছাড়া কোন খাম যোগ করা হয় না।",
+      "trg": "Since 1988, ballot boxes must be transparent so that voters and witnesses see that there is no envelope at the beginning of the vote and that no envelopes are properly counted and no envelopes are added without properly counted and recognized voters.",
+      "ref": "Since 1988, ballot boxes must be transparent so that voters and observers can witness that no envelopes are present at the start of the vote and that no envelopes are added except those of the duly counted and authorized voters."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "প্রার্থীরা প্রক্রিয়াটির প্রতিটি অংশ দেখার জন্য প্রতিনিধিদের পাঠাতে পারেন। সন্ধ্যায়, ভারী তত্ত্বাবধানের অধীনে, বিশেষ প্রক্রিয়া অনুসরণ করে স্বেচ্ছাসেবীদের দ্বারা ভোট গণনা করা হয়।",
+      "trg": "Candidates can send delegates to visit each part of the process. In the evening, under heavy supervision, votes are counted by volunteers following the special process.",
+      "ref": "Candidates can send representatives to witness every part of the process. In the evening, votes are counted by volunteers under heavy supervision, following specific procedures."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "কিছুদিন আগে সুলভ অথচ কার্যক্ষম পিসি হিসাবে আসুস ই পিসি বিশ্বজুড়ে লঞ্চ করা হয়েছিল। 2007 সালে আইটি মাসে এটি তাইপেইতে একটি আলোচনার বিষয় হয়ে ওঠে।",
+      "trg": "A few days ago, Asus E PC was launched around the world as a cheap yet working PC. In 2007, it became a topic of discussion in Taipei in IT month.",
+      "ref": "ASUS Eee PC, earlier launched world-wide for cost-saving and functionality factors, became a hot topic in 2007 Taipei IT Month."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "ASUS, 2007 সালে চীন প্রজাতন্ত্রের এক্সিকিউটিভ ইউয়ান দ্বারা তাইওয়ান সাসটেইনেবল অ্যাওয়ার্ডে ভূষিত হওয়ার পরে ল্যাপটপ কম্পিউটারের বিক্রয়ের বাজারে মূলত বৈচিত্রময় এবং পরিবর্তিত হবে।",
+      "trg": "ASUS, after the Taiwan Sustainable Award by Executive Yuan of the Republic of China in 2007 will largely vary and vary in the sales market of laptop computers.",
+      "ref": "But the consumer market on laptop computer will be radically varied and changed after ASUS was awarded in the 2007 Taiwan Sustainable Award by Executive Yuan of the Republic of China."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "\"স্টেশনের ওয়েবসাইট অনুষ্ঠানটিকে \"\"একটি নতুন এবং মজাদার স্পিনের সাথে পুরানো স্কুল রেডিও থিয়েটার\"\" হিসাবে বর্ণনা করেছে! \"",
+      "trg": "\"The website of the station describes the show as “old school radio theater with a new and fun spin”!”",
+      "ref": "The station's web site describes the show as \"old school radio theater with a new and outrageous geeky spin!\""
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "আগেকার দিনে এই শো দীর্ঘসময় ধরে চলা ইন্টারনেট রেডিও স্টেশন টগিনেটরেডিওতে প্রচারিত হত, যা মূলত আলাপ রেডিও হিসেবেই পরিচিত ছিল।",
+      "trg": "In the past, the show was aired on a long-running internet radio station ToginerateDeo, mainly known as talk radio.",
+      "ref": "In its early days, the show was featured solely at the long-running internet radio site TogiNet Radio, a site focused on talk radio."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "2015-র শেষের দিকে টগিনেট পরিপূরক হিসাবে অ্যাস্ট্রোনেট রেডিও স্থাপন করেছিল।",
+      "trg": "At the end of 2015, Toginate set up Astronet Radio as a supplement.",
+      "ref": "In late 2015, TogiNet established AstroNet Radio as a subsidiary station."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "এই শো'য়ে প্রকৃতপক্ষে স্থানীয় পূর্ব টেক্সাসের অপেশাদার স্বর অভিনেতাদের স্বর যোগ করা হয়েছে।",
+      "trg": "The show actually adds to the voices of the amateur tone actors from the local East Texas.",
+      "ref": "The show originally featured amateur voice actors, local to East Texas."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "রাতজুড়ে ব্যাপক লুণ্ঠন চলছে কারণ বিশকেক'স স্ট্রিট এ আইন প্রয়োগকারী কর্মকর্তারা উপস্থিত ছিলেন না।",
+      "trg": "There was widespread plunder throughout the night as law enforcement officials were not present at Bishkek's Street.",
+      "ref": "Widespread looting reportedly continued overnight, as law enforcement officers were not present on Bishkek's streets."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "\"একজন পর্যবেক্ষকের দ্বারা বিশকেক বলতে বোঝানো হয়েছিল \"\"অরাজকতা\"\", কারন একদল লোক রাস্তায় ঘুরে বেড়াত এবং ভোগ্যপন্যের জিনিসপত্র লুঠ করত।\"",
+      "trg": "\"Bishkek was meant by an observer to say \"anarchy\", because a group of people used to roam the streets and loot consumer goods.\"",
+      "ref": "Bishkek was described as sinking into a state of \"anarchy\" by one observer, as gangs of people roamed the streets and plundered stores of consumer goods."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "বিশকেকের বেশ কিছু বাসিন্দা আইনশৃঙ্খলার ঘাটতির জন্য দক্ষিনের প্রতিবাদকারীদের দোষ দিয়েছেন।",
+      "trg": "Several residents of Bishkek have blamed the South's protesters for the lack of law and order.",
+      "ref": "Several Bishkek residents blamed protesters from the south for the lawlessness."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "দক্ষিণ আফ্রিকার রুস্টেনবার্গের রয়্যাল বাফোকেং স্টেডিয়ামে রাগবি ইউনিয়ন ট্রাই নেশনস ম্যাচে অল ব্ল্যাকসকে (নিউজিল্যান্ড) পরাজিত করেছে দক্ষিণ আফ্রিকা।",
+      "trg": "South Africa defeated All Blacks (New Zealand) in the Rugby Union Tri Nations match at the Royal Buffoceng Stadium in Rustenburg, South Africa.",
+      "ref": "South Africa have defeated the All Blacks (New Zealand) in a rugby union Tri Nations match at the Royal Bafokeng Stadium in Rustenburg, South Africa."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "চূড়ান্ত স্কোরটি ছিল এক পয়েন্টের জয়, 21 থেকে 20, যা অল ব্ল্যাকদের 15 টি গেম জয়ের ধারাবাহিকতার সমাপ্তি ঘটায়।",
+      "trg": "The final score was a one-point win, 21 to 20, which ended the all-Blacks winning 15 games.",
+      "ref": "The final score was a one-point victory, 21 to 20, ending the All Blacks' 15 game winning streak."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "স্প্রিংবকদের জন্য, এটা শেষ হয় একটা 5 ম্যাচ হারানোর স্ট্রিক নিয়ে।",
+      "trg": "For the springbucks, it ends with a 5-match loss strick.",
+      "ref": "For the Springboks, it ended a five-match losing streak."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "এটি অল ব্ল্যাকদের জন্য চূড়ান্ত ম্যাচ ছিল, যারা দুই সপ্তাহ আগেই ট্রফি জিতেছিল।",
+      "trg": "It was the final match for the All Blacks, who won the trophy two weeks ago.",
+      "ref": "It was the final match for the All Blacks, who had already won the trophy two weeks ago."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "যখন স্প্রিংবক্স অস্ট্রেলিয়া খেলবে, সিরিজের শেষ ম্যাচটি পরের সপ্তাহে জোহানেসবার্গের এলিস পার্কে হবে।",
+      "trg": "When Springbox Australia play, the last match of the series will be played at Ellis Park in Johannesburg next week.",
+      "ref": "The final match of the series will take place at Ellis Park in Johannesburg next week, when the Springboks play Australia."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "সোমবার রাত ১০ টা ৮ মিনিটে পশ্চিম মন্টানায় একটি মাঝারি মাপের ভূমিকম্প অনুভূত হয়।",
+      "trg": "A medium-sized earthquake was felt in West Montana at 10 p.m. on Monday.",
+      "ref": "A moderate earthquake shook western Montana at 10:08 p.m. on Monday."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "ইউনাইটেড স্টেটস জিওলজিকাল সার্ভে (USGS) এবং এর জাতীয় ভূমিকম্প তথ্য কেন্দ্রের দ্বারা ক্ষয়ক্ষতির কোনও প্রত্যক্ষ খবর পাওয়া যায়নি।",
+      "trg": "No direct reports of damage were reported by the United States Geological Survey (USGS) and its National Earthquake Information Center.",
+      "ref": "No immediate reports of damage have been received by the United States Geological Survey (USGS) and its National Earthquake Information Center."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "ভূমিকম্পের কেন্দ্র ছিল ডিলন থেকে ২০ কিমি (১৫মাইল) উত্তর-উত্তর পূর্ব দিকে, এবং বুটের ৬৫ কিমি (৪০মাইল) দক্ষিণে।",
+      "trg": "The epicentre of the earthquake was 20 km (15 miles) north-northeast from Dillon, and 65 km (40 miles south of the boot).",
+      "ref": "The earthquake was centered about 20 km (15 miles) north-northeast of Dillon, and about 65 km (40 miles) south of Butte."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "বার্ড ফ্লুর H5N1 স্ট্রেন মানুষের পক্ষে প্রাণঘাতী। পূর্ব ফ্রান্সের লিওনের কাছে একটি জলাজমিতে সোমবার একটি মৃত বন্য় হাঁস উদ্ধার হয়। হাঁসটি H5N1 এ সংক্রমিত বলে নিশ্চিত ভাবে জানানো হয়েছে।ে",
+      "trg": "A dead wild duck was found dead in a rest of testage near Leon, eastern France, on Monday. The duck is confirmed to have been infected with H5N1.",
+      "ref": "The strain of bird flu lethal to humans, H5N1, has been confirmed to have infected a dead wild duck, found on Monday, in marshland near Lyon in the east of France."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "অষ্ট্রিয়া, জার্মানি, স্লোভেনিয়া, বুলগেরিয়া, গ্রীস এবং ইতালির পর ফ্রান্স ইউরোপীয় ইউনিয়নের সপ্তম দেশ যা এই ভাইরাসে আক্রান্ত।",
+      "trg": "France is the seventh European Union after Austria, Germany, Slovenia, Bulgaria, Greece and Italy to be infected with the virus.",
+      "ref": "France is the seventh country in the European Union to suffer this virus; following Austria, Germany, Slovenia, Bulgaria, Greece and Italy."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "ক্রোয়েশিয়া এবং ডেনমার্কে এইচ৫এন১ এর সন্দেহভাজন ঘটনাগুলি অনিশ্চিত থাকে।",
+      "trg": "The H5N1 cases in Croatia and Denmark remain uncertain.",
+      "ref": "Suspected cases of H5N1 in Croatia and Denmark remain unconfirmed."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "\"চেম্বারস \"\"পৃথিবীর লক্ষ লক্ষ কোটি কোটি মানুষের ব্যাপক মৃত্যু, ধ্বংস এবং সন্ত্রাসের\"\" জন্য ঈশ্বরের বিরুদ্ধে মামলা করেছে।\"",
+      "trg": "\"Chambers have filed a lawsuit against God for the widespread death, destruction and terror of millions of millions of people on earth.\"",
+      "ref": "Chambers had sued God for \"widespread death, destruction and terrorization of millions upon millions of the Earth's inhabitants.\""
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "\"\"\"চেম্বারস, একটি অজ্ঞাবাদী, যুক্তি প্রদান করে যে তার মামলা \"\"\"\"মূর্খতাপূর্ণ\"\"\"\" এবং \"\"\"\"যে কেউ যে কারো বিরুদ্ধে মামলা করতে পারে।\"\"\"\" \"\"\"",
+      "trg": "“Chembers, an unancedist, argue that his case is “stupid” and “”, “can sue anyone.””.",
+      "ref": "Chambers, an agnostic, argues that his lawsuit is \"frivolous\" and \"anybody can sue anybody.\""
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "\"ক্যামিলি সেন্ট-সেন্স এক ফরাসি অপেরায় একজন শিল্পীর এই গল্প, \"\"হুজ লাইফ ইজ ডিকটেডেড বাই লাভ ফর ড্রাগস অ্যান্ড জাপান\"\" উপস্থাপিত করেছিলেন।\"",
+      "trg": "\"Camily Saint-Sense presented an artist's story, \"Huz Life is Dicted by Love for Drugs and Japan\".",
+      "ref": "The story presented in the French opera, by Camille Saint-Saens, is of an artist \"whose life is dictated by a love for drugs and Japan.\""
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "ফলস্বরূপ, শিল্পীরা মঞ্চে মাদক জয়েন্ট নিয়ে ধূমপান করে এবং এক্ষেত্রে থিয়েটার নিজেই দর্শকদের যোগ দিতে উৎসাহিত করে।",
+      "trg": "As a result, artists smoke drugs on stage and in this case the theater itself encourages the audience to join.",
+      "ref": "As a result, the performers smoke cannabis joints on stage, and the theatre itself is encouraging the audience to join in."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The translation omits 'cannabis' and uses 'drugs', which changes the specific meaning."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        4,
+        "The use of 'drugs' instead of 'cannabis joints' is a minor terminology inconsistency."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "সাবেক হাউস স্পিকার নিউট গিংরিচ, টেক্সাসের গভর্নর রিক পেরি, এবং কংগ্রেসওম্যান মিশেল বখম্যান যথাক্রমে চতুর্থ, পঞ্চম এবং ষষ্ঠ স্থানে রয়েছেন।",
+      "trg": "Former House Speaker Newt Gingrich, Texas Governor Rick Perry, and Congresswoman Michelle Bachman are in fourth, fifth and sixth place respectively.",
+      "ref": "Former House Speaker Newt Gingrich, Texas governor Rick Perry, and Congresswoman Michele Bachmann finished in fourth, fifth, and sixth place, respectively."
+    },
+    "scores": {
+      "adequacy": [
+        5,
+        ""
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "ফলাফল প্রকাশের পরে গিংরিচ জনসমক্ষে স্যান্টোরামের প্রশংসা করেছিল। তবে রমনি, যার পক্ষ থেকে লোয়াতে গিংরিচের বিরুদ্ধে নেতিবাচক বিজ্ঞাপন ক্যাম্পেন চলেছিল তার কড়া সমালোচনা হয়েছিল।",
+      "trg": "After the results were published, Gingrich praised Santorum in public. However, Ramney, on the side of which he was running a negative advertising campaign against Gingrich in Loa, was heavily criticised.",
+      "ref": "After the results came in, Gingrich lauded Santorum, but had tough words for Romney, on whose behalf negative campaign advertisements were aired in Iowa against Gingrich."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The phrase 'had tough words' is not captured accurately."
+      ],
+      "fluency": [
+        4,
+        "The structure is slightly awkward, particularly with 'the side of which he was running'. In addition, 'Loa' should be 'Iowa'."
+      ],
+      "terminology": [
+        4,
+        "'Loa' is a clear error where 'Iowa' was intended."
+      ],
+      "hallucination": [
+        4,
+        "The phrase 'which he was running' seems out of context."
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "\"\"\"পেরি বলেছিলেন যে, \"\"\"\"আজ রাতের সভার ফলাফল আন্দাজ করতে এবংএখানকার প্রতিযোগিতায় আদৌ টিকতে পারবো কি না, তা বুঝতে টেক্সাসে ফিরে আসবো\"\"\"\", তবে পরে বলেছিলেন যে, তিনি এই প্রতিযোগিতায় থাকবেন  এবং ২১ জানুয়ারি দক্ষিণ ক্যারোলাইনার প্রাথমিক প্রতিযোগিতায় প্রতিদ্বন্দ্বিতা করবেন।\"\"\"",
+      "trg": "“Perey said, “I’ll be back in Texas to predict the outcome of tonight’s meeting and to understand if we can survive the competition at all,” but later said he would stay in the competition and compete in the South Carolina primary competition on January 21.”",
+      "ref": "Perry stated that he would \"return to Texas to assess the results of tonight's caucus, determine whether there is a path forward for myself in this race\", but later said that he would remain in the race and compete in the January 21 South Carolina primary."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The translation incorrectly refers to 'the backman' instead of 'Bachmann'."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        4,
+        "'Backman' is an incorrect term for 'Bachmann', although the context is somewhat clear."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "ব্যাকমেন যিনি আগস্ট মাসে আমস স্ট্রো পোল জিতেছিলেন তিনি তার অভিযান শেষ করার সিদ্ধান্ত নিয়েছিলেন।",
+      "trg": "The backman who won the Aams Straw Poll in August decided to end his campaign.",
+      "ref": "Bachmann, who won the Ames Straw Poll in August, decided to end her campaign."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The translation implies 'photographer Ronald Reagan' instead of 'the photographer was transported to Ronald Reagan UCLA Medical Center'."
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        4,
+        "It's unclear whether the photographer is Ronald Reagan or another person."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "আলোকচিত্রকার রোনাল্ড রিগানকে ইউসিএলএ মেডিক্যাল সেন্টারে নিয়ে যাওয়া হয়, এবং এরপর সেখানে তিনি মারা যান।",
+      "trg": "Photographer Ronald Reagan was taken to the UCLA Medical Center, where he died.",
+      "ref": "The photographer was transported to Ronald Reagan UCLA Medical Center, where he subsequently died."
+    },
+    "scores": {
+      "adequacy": [
+        3,
+        "The phrase structure leads to confusion, especially around 'twenty-two decades'."
+      ],
+      "fluency": [
+        3,
+        "The phrasing is awkward, particularly 'in his twenty-two decades'."
+      ],
+      "terminology": [
+        3,
+        "Minor terminological inaccuracies exist."
+      ],
+      "hallucination": [
+        3,
+        "There's a slight alteration of the original content."
+      ],
+      "punctuation": [
+        4,
+        "The quote punctuation is inconsistent."
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "\"তিনি তার তার কুড়ি দশকে ছিলেন বলে রিপোর্ট করা হয়। কটি বিবৃতিতে বিবার বলেছিলেন, \"\"আমি এই মর্মান্তিক দুর্ঘটনার সময় উপস্থিত ছিলাম না, সরাসরি জড়িত ছিলাম না, আমার চিন্তা এবং প্রার্থনাগুলি ক্ষতিগ্রস্থ পরিবারের সাথে রয়েছে।\"\"\"",
+      "trg": "“He was reported to have been in his twenty-two decades. In a statement, Bieber said, “I was not present at the time of this tragic accident, not directly involved, my thoughts and prayers are with the families of the victims.”",
+      "ref": "He was reportedly aged in his 20s. In a statement, Bieber said \"[w]hile I was not present nor directly involved with this tragic accident, my thoughts and prayers are with the family of the victim.\""
+    },
+    "scores": {
+      "adequacy": [
+        5,
+        ""
+      ],
+      "fluency": [
+        5,
+        ""
+      ],
+      "terminology": [
+        5,
+        ""
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "বিনোদন সম্পর্কিত নিউজ ওয়েবসাইট TMZ বুঝতে পেরেছে যে চিত্রসাংবাদিক তার গাড়িটি সেপুলভেদা বুলেভার্ডের অন্যপ্রান্তে থামিয়ে রাস্তা পেরিয়ে পুলিশ স্টপ এর ফটো তুলতে গেলে এবং অবিরত থাকলে, ক্যালিফোর্নিয়া হাইওয়ে প্যাট্রোল পুলিশ আধিকারিক যানবাহন নিয়ন্ত্রণের সময় তাকে দুইবার ফেরত পাঠানোর নির্দেশ দিয়েছিলেন।",
+      "trg": "Entertainment news website TMZ realized that the photojournalist stopped his car on the other side of Sepulevada Boulevard and took a photo of the police stop on the road and continued, the California Highway Patrol Police Officer ordered him to be sent back twice during vehicle control.",
+      "ref": "Entertainment news website TMZ understands the photographer stopped his vehicle on the other side of Sepulveda Boulevard and attempted to take pictures of the police stop before crossing the road and continuing, prompting the California Highway Patrol police officer conducting the traffic stop to order him back across, twice."
+    },
+    "scores": {
+      "adequacy": [
+        4,
+        "The phrase 'make a medal' deviates from the intended meaning."
+      ],
+      "fluency": [
+        4,
+        "The construction is slightly awkward."
+      ],
+      "terminology": [
+        4,
+        "The use of 'make a medal' is an odd choice."
+      ],
+      "hallucination": [
+        5,
+        ""
+      ],
+      "punctuation": [
+        5,
+        ""
+      ]
+    }
+  },
+  {
+    "translation": {
+      "src": "পুলিশ জানায়, ফটোগ্রাফারকে আঘাত করা গাড়ির চালকের বিরুদ্ধে অপরাধমূলক অভিযোগ আনার সম্ভাবনা নেই।",
+      "trg": "Police said there was no possibility of criminal charges against the driver of the car who was hitting the photographer.",
+      "ref": "According to police, the driver of the vehicle that hit the photographer is unlikely to face criminal charges."
+    },
+    "scores": null
+  },
+  {
+    "translation": {
+      "src": "একদিনে শুধুমাত্র আঠারটি পদক পাওয়া গেলেও, অসংখ্য দেশ পদকটির মঁচ বানাতে ব্যর্থ হয়েছে।",
+      "trg": "Although only eighteen medals were received in one day, many countries failed to make a medal.",
+      "ref": "With only eighteen medals available a day, a number of countries have failed to make the medal podium."
+    },
+    "scores": null
+  }
+]

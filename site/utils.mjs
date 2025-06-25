@@ -281,10 +281,14 @@ export function createElement(tagName, options) {
     }
     if (typeof children === "string") {
       element.innerText = children;
+    } else if (typeof children === "number") {
+      element.innerText = String(children);
     } else if (Array.isArray(children)) {
       for (const child of children) {
         if (typeof child === "string") {
           element.appendChild(new Text(child));
+        } else if (typeof child === "number") {
+          element.appendChild(new Text(String(child)));
         } else {
           element.appendChild(child);
         }
@@ -329,6 +333,7 @@ const tagNames = [
   /** @type {const} */ ("a"),
   /** @type {const} */ ("br"),
   /** @type {const} */ ("button"),
+  /** @type {const} */ ("canvas"),
   /** @type {const} */ ("div"),
   /** @type {const} */ ("h1"),
   /** @type {const} */ ("h2"),

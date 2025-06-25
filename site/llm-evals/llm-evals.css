@@ -1,0 +1,58 @@
+.evaluation-results {
+  margin: 20px 0;
+}
+
+#error {
+  display: none;
+}
+
+.histogram {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 150px;
+  width: 400px;
+  border: 1px solid #e0e0e0;
+  margin-bottom: 26px;
+  background: #fff;
+}
+
+.histogramBucket {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.histogramCount {
+  position: relative;
+  height: 0;
+  top: -18px;
+  font-size: 12px;
+}
+
+.histogramBar {
+  width: 100%;
+  background: #4285f4;
+}
+
+.histogramBucketNumber {
+  position: relative;
+  font-size: 12px;
+  height: 0;
+  top: 6px;
+}
+
+.criteraDescription {
+  max-width: 300px;
+}
+
+/* This needs to override the specificity to disable the striped colored rows. */
+table tr {
+  &:nth-child(2n) {
+    background: transparent;
+  }
+  &:hover {
+    background-color: #d9f1ff;
+  }
+}
