@@ -1,5 +1,5 @@
 /**
- * @import { Evaluation, Scores, Analysis, ScoreNumbers, Terminology } from "./llm-evals"
+ * @import { Evaluation, ScoreType, Analysis, ScoreNumbers, Summary } from "./llm-evals"
  */
 
 import { getElement, exposeAsGlobal, create } from "../utils.mjs";
@@ -29,13 +29,25 @@ document.addEventListener("DOMContentLoaded", async () => {
     console.error(error);
     return;
   }
+  /** @type {Summary} */
+  let summary;
+  try {
+    summary = await getSummary();
+  } catch (error) {
+    showError(
+      "Failed to get the summary. See the console for more information."
+    );
+    console.error(error);
+    return;
+  }
+
   elements.loading.style.display = "none";
 
   exposeAsGlobal("evals", evals);
   const analysis = analyzeEvals(evals);
   exposeAsGlobal("analysis", analysis);
 
-  renderSummary(analysis);
+  renderAnalysis(analysis, summary);
 });
 
 /**
@@ -47,13 +59,21 @@ async function getEvals() {
 }
 
 /**
+ * @returns {Promise<Summary>}
+ */
+async function getSummary() {
+  const response = await fetch("summary.json");
+  return response.json();
+}
+
+/**
  * Compute mean, median, and histogram for evaluation scores.
  *
  * @param {Evaluation[]} evals
- * @returns {Record<keyof Scores, Analysis>}
+ * @returns {Record<ScoreType, Analysis>}
  */
 function analyzeEvals(evals) {
-  /** @type {Record<keyof Scores, ScoreNumbers[]>} */
+  /** @type {Record<ScoreType, ScoreNumbers[]>} */
   const scoresByType = {
     adequacy: [],
     fluency: [],
@@ -67,7 +87,7 @@ function analyzeEvals(evals) {
     if (!evaluation.scores) {
       continue;
     }
-    for (const key of /** @type {(keyof Scores)[]} */ (
+    for (const key of /** @type {(ScoreType)[]} */ (
       Object.keys(evaluation.scores)
     )) {
       const [score] = evaluation.scores[key];
@@ -76,7 +96,7 @@ function analyzeEvals(evals) {
   }
 
   /**
-   * @type {Record<keyof Scores, Analysis>}
+   * @type {Record<ScoreType, Analysis>}
    */
   return {
     adequacy: summarize(scoresByType.adequacy),
@@ -112,14 +132,12 @@ function summarize(values) {
 }
 
 /**
- * @param {Record<keyof import('./llm-evals.js').Scores, {
- *   mean: number,
- *   median: number,
- *   histogram: Record<number, number>
- * }>} summary
+ * @param {Record<ScoreType, Analysis>} analysis
+ * @param {Summary} summary
  */
-function renderSummary(summary) {
-  for (const [scoreType, data] of Object.entries(summary)) {
+function renderAnalysis(analysis, summary) {
+  for (const [scoreTypeStr, data] of Object.entries(analysis)) {
+    const scoreType = /** @type {ScoreType} */ (scoreTypeStr);
     const { description, scales } = terminology[scoreType];
     create.tr({
       parent: elements.tbody,
@@ -135,7 +153,9 @@ function renderSummary(summary) {
             }),
           ],
         }),
-        create.td({ children: `${data.mean.toFixed(2)}` }),
+        create.td({
+          children: `${data.mean.toFixed(2)} – ${summary[scoreType]}`,
+        }),
         create.td({
           children: [
             //

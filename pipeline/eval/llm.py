@@ -117,63 +117,93 @@ def run_eval_batch_prompt(
     instructions: str,
     batch_index: int,
 ):
-
     start = time.time()
-    logger.info(
-        f"Querying {config.model} with batch {batch_index} containing {len(translations)} translations."
-    )
     input = translations_batch_to_text(translations)
-    response = client.responses.create(
-        model=config.model,
-        instructions=instructions,
-        input=input,
-        temperature=0.0,
-    )
-    call_time = time.time() - start
-    output_text = response.output_text.strip()
-    output_text_raw = output_text
-
-    # Do any string cleanup for LLM output that doesn't quite match our specification.
-    if output_text.startswith("```json\n"):
-        start = len("```json\n")
-        end = len("\n```")
-        output_text = output_text[start:end]
+    retry_count = 5
 
     # Attempt to pares the JSON evaluations.
     eval_batch: dict | None = None
-    scores_len = 0
-    try:
-        # Parse with json5 as the content can have trailing commas which will not parse
-        # using the built-in json module.
-        eval_batch_any: Any = json5.loads(output_text)
-        eval_batch = eval_batch_any
-        if eval_batch:
-            scores_len = len(eval_batch["scores"])
-    except Exception as err:
-        # When we can't parse the output write out a debug file.
-        debug_file = f"eval-error.{batch_index}.txt"
-        print(err)
-        logger.error(f"Failed to decode the scores for batch. See {debug_file}")
-        # Include a byte order mark for the text file so that Taskcluster correctly
-        # displays it as UTF-8.
-        with (config.artifacts / debug_file).open("w", encoding="utf-8-sig") as file:
-            file.write("=== Instructions ============================================\n")
-            file.write(instructions)
-            file.write("=== Input ===================================================\n")
-            file.write(input)
-            file.write("=== Output Raw ==============================================\n")
-            file.write(output_text_raw)
-            file.write("=== Output Cleaned ==========================================\n")
-            file.write(output_text)
+    output_text = ""
+    output_text_raw = ""
 
-    usage = response.usage
-    if usage:
-        logger.info(f" ├─ Input tokens: {usage.input_tokens}")
-        logger.info(f" ├─ Output tokens: {usage.output_tokens}")
-    logger.info(f" ├─ Scores returned: {scores_len}")
-    logger.info(f" └─ Query took {call_time:.2f} seconds")
+    usages = []
 
-    return eval_batch, usage
+    for attempt in range(retry_count):
+        if attempt == 0:
+            # Start with a stable temperature to have consistent results.
+            temperature = 0.0
+            logger.info(
+                f"Querying {config.model} with batch {batch_index} containing {len(translations)} translations."
+            )
+        else:
+            # Increase the temperature so that the results will be varied on the second
+            # attempt.
+            temperature = 0.5
+            logger.info(f"Retry {attempt+1}/{retry_count}: The last query failed to parse.")
+
+        response = client.responses.create(
+            model=config.model,
+            instructions=instructions,
+            input=input,
+            temperature=temperature,
+        )
+
+        call_time = time.time() - start
+
+        usage = response.usage
+        if usage:
+            usages.append(usage)
+            logger.info(f" ├─ Input tokens: {usage.input_tokens}")
+            logger.info(f" ├─ Output tokens: {usage.output_tokens}")
+        logger.info(f" └─ Query took {call_time:.2f} seconds")
+
+        output_text = response.output_text.strip()
+        output_text_raw = output_text
+
+        # Do any string cleanup for LLM output that doesn't quite match our specification.
+        if output_text.startswith("```json\n"):
+            start = len("```json\n")
+            end = len("\n```")
+            output_text = output_text[start:end]
+
+        try:
+            # Parse with json5 as the content can have trailing commas which will not parse
+            # using the built-in json module.
+            eval_batch_any: Any = json5.loads(output_text)
+            eval_batch = eval_batch_any
+            assert eval_batch, "There is an eval batch."
+
+            translations_len = len(translations)
+            scores_returned = len(eval_batch["scores"])
+            assert scores_returned == translations_len, (
+                "The correct number of results was returned, "
+                f"translations: {translations_len} scores: {scores_returned}"
+            )
+            break
+        except Exception as err:
+            # When we can't parse the output write out a debug file.
+            print("Exception:", err)
+            debug_file = config.artifacts / f"eval-error.{batch_index}.{attempt}.txt"
+            logger.error("Failed to decode the scores for batch.")
+            logger.error(f"See {debug_file}")
+
+            # Include a byte order mark for the text file so that Taskcluster correctly
+            # displays it as UTF-8.
+            with debug_file.open("w", encoding="utf-8-sig") as file:
+                file.write("=== Instructions ============================================\n")
+                file.write(instructions)
+                file.write("=== Input ===================================================\n")
+                file.write(input)
+                file.write("=== Output Raw ==============================================\n")
+                file.write(output_text_raw)
+                file.write("=== Output Cleaned ==========================================\n")
+                file.write(output_text)
+                if eval_batch:
+                    file.write("=== Eval Batch ==========================================\n")
+                    json.dump(eval_batch, file, indent=2)
+            eval_batch = None
+
+    return eval_batch, usages
 
 
 def run_eval_final_summary(
@@ -246,11 +276,11 @@ def main() -> None:
     input_tokens = 0
     output_tokens = 0
     for batch_index, translations in enumerate(yield_batched_translations(config)):
-        eval_batch, usage = run_eval_batch_prompt(
+        eval_batch, usages = run_eval_batch_prompt(
             client, translations, config, eval_batch_instructions, batch_index
         )
 
-        if usage:
+        for usage in usages:
             input_tokens += usage.input_tokens
             output_tokens += usage.output_tokens
 

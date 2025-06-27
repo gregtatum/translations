@@ -1,5 +1,11 @@
 export type ScoreNumbers = 1 | 2 | 3 | 4 | 5
 export type Score = [ScoreNumbers, string]
+export type ScoreType =
+  | "adequacy"
+  | "fluency"
+  | "terminology"
+  | "hallucination"
+  | "punctuation"
 
 export interface Evaluation {
   translation: Translation,
@@ -12,13 +18,7 @@ export interface Translation {
   ref: string,
 }
 
-export interface Scores {
-  adequacy: Score,
-  fluency: Score,
-  terminology: Score,
-  hallucination: Score,
-  punctuation: Score
-}
+export type Scores = Record<ScoreType, Score>;
 
 export interface Analysis {
   mean: number,
@@ -34,10 +34,6 @@ interface Term {
   scales: Record<ScoreNumbers, string>
 }
 
-export interface Terminology {
-  adequacy: Term,
-  fluency: Term,
-  terminology: Term,
-  hallucination: Term,
-  punctuation: Term
-}
+export type Terminology = Record<ScoreType, Term>;
+
+export type Summary = Record<ScoreType, string>

@@ -47,12 +47,22 @@
   max-width: 300px;
 }
 
-/* This needs to override the specificity to disable the striped colored rows. */
+/* This needs to override the speci ficity to disable the striped colored rows. */
 table tr {
   &:nth-child(2n) {
     background: transparent;
   }
   &:hover {
     background-color: #d9f1ff;
+  }
+}
+
+.evaluation-results {
+  & td {
+    vertical-align: top;
+
+    & h3:first-child {
+      margin-top: 0;
+    }
   }
 }
