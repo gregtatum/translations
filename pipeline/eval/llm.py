@@ -96,10 +96,12 @@ def yield_batched_translations(config: Config):
 
 def translations_batch_to_text(translations: list[dict[str, str]]) -> str:
     input = ""
-    for translation in translations:
+    for i, translation in enumerate(translations):
         input += "\n".join(
             [
-                "{",
+                # For batching of evaluations, the LLM requires an index, or else it
+                # gets lost and doesn't produce the correct number of results.
+                f"example {i} {{",
                 f"\tsrc: {translation['src']}",
                 f"\ttrg: {translation['trg']}",
                 f"\tref: {translation['ref']}",

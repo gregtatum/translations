@@ -9,6 +9,7 @@ const elements = {
   loading: getElement("loading"),
   error: getElement("error"),
   tbody: getElement("tbody"),
+  table: getElement("table"),
 };
 
 /**
@@ -17,6 +18,7 @@ const elements = {
 function showError(message) {
   elements.error.style.display = "block";
   elements.error.innerText = message;
+  elements.loading.style.display = "none";
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -42,6 +44,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   elements.loading.style.display = "none";
+  elements.table.style.display = "table";
 
   exposeAsGlobal("evals", evals);
   const analysis = analyzeEvals(evals);
@@ -54,7 +57,7 @@ document.addEventListener("DOMContentLoaded", async () => {
  * @returns {Promise<Evaluation[]>}
  */
 async function getEvals() {
-  const response = await fetch("llm-eval.json");
+  const response = await fetch("scores.json");
   return response.json();
 }
 

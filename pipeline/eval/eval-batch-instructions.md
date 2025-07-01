@@ -12,12 +12,12 @@ You will receive an array of translation examples. Each example is an object wit
 ## Example domain specific input for en-es (English to Spanish):
 
 <input>
-example {{
+example 0 {{
 	src: Hello!
 	trg: "Hola
 	ref: ¡Hola!
 }}
-example {{
+example 1 {{
 	src: Goodbye!
 	trg: "¡Hasta luego!
 	ref: ¡Adiós!
@@ -38,14 +38,17 @@ Each field must be a tuple:
 - The second element is a short explanation of **why** that score was given (not a restatement of the rating scale). Use an empty string when the score is 5.
 
 Respond with a JSON array of these objects—one per input example.
-Respond with valid JSON only. Do not include comments, ```json, or prose.
-Include a final summary at the end for each scoring criteria. This summary should be fairly short and not restate the numerical scores.
+Respond with valid json5 ("//" comments and trailing commas are fine).
+Do not include markdown code blocks or prose.
+Include a final summary of the entire batch the end for each scoring criteria.
+This summary should be fairly short and not restate the numerical scores.
 
 ## Example output
 
 <output>
 {{
 	"scores": [
+		// 0
 	 	{{
 			"adequacy": [5, ""],
 			"fluency": [5, ""],
@@ -53,6 +56,7 @@ Include a final summary at the end for each scoring criteria. This summary shoul
 			"hallucination": [5, ""],
 			"punctuation": [4, "Missing opening exclamation mark used in the reference"]
 		}},
+		// 1
 		{{
 			"adequacy": [4, "The phrase 'goodbye' is translated informally as 'see you later', which slightly alters tone"],
 			"fluency": [5, ""],

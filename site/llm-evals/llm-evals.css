@@ -66,3 +66,14 @@ table tr {
     }
   }
 }
+
+#table {
+  display: none;
+}
+
+#error {
+  background: #be0000;
+  padding: 1rem;
+  border-radius: 10px;
+  color: #fff;
+}
