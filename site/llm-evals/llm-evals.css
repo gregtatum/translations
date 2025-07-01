@@ -22,6 +22,20 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  border: none;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+
+  & .histogramBar {
+    width: 100%;
+    background: #4285f4;
+  }
+
+  &:hover .histogramBar {
+    background: #0f6bff;
+  }
+
 }
 
 .histogramCount {
@@ -29,11 +43,6 @@
   height: 0;
   top: -18px;
   font-size: 12px;
-}
-
-.histogramBar {
-  width: 100%;
-  background: #4285f4;
 }
 
 .histogramBucketNumber {
@@ -76,4 +85,68 @@ table tr {
   padding: 1rem;
   border-radius: 10px;
   color: #fff;
+}
+
+.examplesRow {
+  display: none;
+  background: #fff !important;
+  & td {
+    padding: 0;
+  }
+}
+
+.example {
+  margin: 1em 0;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 1em;
+
+  & span {
+    background: #fff;
+    display: inline-block;
+    padding: 0.1em 0.5em;
+    margin: -0.1em 0;
+    border-radius: 0.2em;
+    margin-inline-end: 0.4em;
+  }
+  & .exampleDescription span {
+    background: #ddd;
+  }
+}
+
+.exampleSentences {
+  display: flex;
+}
+
+.exampleSentences > * {
+  flex: 1;
+}
+
+.exampleDescription {
+  padding: 0.5em;
+  background-color: #fff;
+  margin: 1.2em 0;
+  border-radius: 0.3em;
+}
+
+.exampleSentences {
+  gap: 2rem;
+}
+
+.exampleTrg {
+  margin-bottom: 1rem;
+}
+
+.examples {
+  max-height: 90vh;
+  overflow-y: scroll;
+  position: relative;
+  padding: 1em;
+  background: #eee;
+}
+
+.examplesHeader {
+  background: #ddd;
+  padding: 0.6em;
+  text-align: right;
+  border-bottom: 2px solid #9a9a9a;
 }

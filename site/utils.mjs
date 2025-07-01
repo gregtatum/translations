@@ -267,10 +267,17 @@ export function isNever(never) {}
 export function createElement(tagName, options) {
   const element = document.createElement(tagName);
   if (options) {
-    const { style, parent, children, href, className, title, onClick } =
+    const { style, parent, children, href, className, title, attrs, onClick } =
       options;
     if (style) {
       Object.assign(element.style, style);
+    }
+    if (attrs) {
+      for (const [key, value] of Object.entries(attrs)) {
+        if (value) {
+          element.setAttribute(key, String(value));
+        }
+      }
     }
     if (href !== undefined) {
       if (element instanceof HTMLAnchorElement) {
@@ -392,4 +399,24 @@ for (const tagName of tagNames) {
    * @type {(options?: Partial<CreateElementOptions>) => any}
    */
   create[tagName] = (options) => createElement(tagName, options);
+}
+
+/**
+ * Ensure some T exists when the type systems knows it can be null or undefined.
+ *
+ * @template T
+ * @param {T | null | undefined} item
+ * @param {string} [message]
+ * @returns {T}
+ */
+export function ensureExists(item, message = "an item") {
+  if (item === null) {
+    throw new Error(message || "Expected ${name} to exist, and it was null.");
+  }
+  if (item === undefined) {
+    throw new Error(
+      message || "Expected ${name} to exist, and it was undefined."
+    );
+  }
+  return item;
 }

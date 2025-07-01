@@ -50,7 +50,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const analysis = analyzeEvals(evals);
   exposeAsGlobal("analysis", analysis);
 
-  renderAnalysis(analysis, summary);
+  renderAnalysis(evals, analysis, summary);
 });
 
 /**
@@ -135,13 +135,17 @@ function summarize(values) {
 }
 
 /**
+ * @param {Evaluation[]} evals
  * @param {Record<ScoreType, Analysis>} analysis
  * @param {Summary} summary
  */
-function renderAnalysis(analysis, summary) {
+function renderAnalysis(evals, analysis, summary) {
   for (const [scoreTypeStr, data] of Object.entries(analysis)) {
     const scoreType = /** @type {ScoreType} */ (scoreTypeStr);
     const { description, scales } = terminology[scoreType];
+    const examplesRow = create.tr({
+      className: "examplesRow",
+    });
     create.tr({
       parent: elements.tbody,
       className: "criteria",
@@ -167,21 +171,40 @@ function renderAnalysis(analysis, summary) {
             scales[data.median],
           ],
         }),
-        create.td({ children: createHistogram(data.histogram, scales) }),
+        create.td({
+          children: createHistogram(
+            evals,
+            scoreType,
+            data.histogram,
+            scales,
+            examplesRow
+          ),
+        }),
       ],
     });
+
+    elements.tbody.appendChild(examplesRow);
   }
 }
 
 /**
+ * @param {Evaluation[]} evals
+ * @param {ScoreType} scoreType
  * @param {Record<number, number>} histogram
  * @param {Record<ScoreNumbers, string>} scales - The description of the scales.
+ * @param {HTMLTableRowElement} examplesRow
  */
 
-function createHistogram(histogram, scales) {
+function createHistogram(evals, scoreType, histogram, scales, examplesRow) {
   const labels = [1, 2, 3, 4, 5];
   const values = labels.map((k) => histogram[k]);
   const total = values.reduce((sum, v) => sum + v, 0);
+
+  const clearRow = () => {
+    while (examplesRow.firstChild) {
+      examplesRow.firstChild.remove();
+    }
+  };
 
   return create.div({
     className: "histogram",
@@ -191,8 +214,91 @@ function createHistogram(histogram, scales) {
       const score = /** @type {ScoreNumbers} */ (index + 1);
       const scoreDocumentation = scales[score];
 
-      return create.div({
+      return create.button({
         className: "histogramBucket",
+        onClick() {
+          clearRow();
+
+          // Programatically determine the colspan of the previous row.
+          const previousTR = /** @type {HTMLElement} */ (
+            examplesRow.previousElementSibling
+          );
+          const colspan = [...previousTR.querySelectorAll("td")].length;
+
+          create.td({
+            parent: examplesRow,
+            attrs: { colspan },
+            children: [
+              create.div({
+                className: "examplesHeader",
+                children: create.button({
+                  attrs: { type: "button" },
+                  children: "Close",
+                  onClick() {
+                    clearRow();
+                  },
+                }),
+              }),
+              create.div({
+                className: "examples",
+                children: evals
+                  .filter(({ scores }) => scores[scoreType][0] === label)
+                  .map(({ translation, scores }) => {
+                    const { src, trg, ref } = translation;
+                    const [_value, description] = scores[scoreType];
+                    return create.div({
+                      className: "example",
+                      children: [
+                        create.div({
+                          className: "exampleDescription",
+                          children: [
+                            create.span({ children: "llm: " }),
+                            description,
+                          ],
+                        }),
+                        create.div({
+                          className: "exampleSentences",
+                          children: [
+                            create.div({
+                              children: [
+                                create.div({
+                                  className: "exampleSrc",
+                                  children: [
+                                    create.span({ children: "src: " }),
+                                    src,
+                                  ],
+                                }),
+                              ],
+                            }),
+                            create.div({
+                              children: [
+                                create.div({
+                                  className: "exampleTrg",
+                                  children: [
+                                    create.span({ children: "trg: " }),
+                                    trg,
+                                  ],
+                                }),
+                                create.div({
+                                  className: "exampleRef",
+                                  children: [
+                                    create.span({ children: "ref: " }),
+                                    ref,
+                                  ],
+                                }),
+                              ],
+                            }),
+                          ],
+                        }),
+                      ],
+                    });
+                  }),
+              }),
+            ],
+          });
+
+          examplesRow.style.display = "table-row";
+        },
         title: `${score} – ${scoreDocumentation}`,
         children: [
           create.div({

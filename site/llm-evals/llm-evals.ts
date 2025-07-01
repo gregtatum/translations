@@ -9,7 +9,7 @@ export type ScoreType =
 
 export interface Evaluation {
   translation: Translation,
-  scores: Scores | null,
+  scores: Scores,
 }
 
 export interface Translation {
