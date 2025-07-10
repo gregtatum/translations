@@ -28,51 +28,59 @@ fi
 cd "$(dirname "${0}")"
 
 mkdir -p "${output_dir}"
-dir="${output_dir}/tmp_shortlist"
-mkdir -p "${dir}"
+tmp_dir="${output_dir}/tmp_shortlist"
+mkdir -p "${tmp_dir}"
 
 corpus_src="${corpus_prefix}.${SRC}.zst"
 corpus_trg="${corpus_prefix}.${TRG}.zst"
 
 
-echo "### Subword segmentation with SentencePiece"
+echo "### Tokenize the source and target corpus with with SentencePiece"
 zstdmt -dc "${corpus_src}" |
   parallel --no-notice --pipe -k -j "${threads}" --block 50M "${MARIAN}/spm_encode" --model "${vocab_src}" \
-   >"${dir}/corpus.spm.${SRC}"
+   >"${tmp_dir}/corpus.spm.${SRC}"
 
 zstdmt -dc "${corpus_trg}" |
   parallel --no-notice --pipe -k -j "${threads}" --block 50M "${MARIAN}/spm_encode" --model "${vocab_trg}" \
-   >"${dir}/corpus.spm.${TRG}"
+   >"${tmp_dir}/corpus.spm.${TRG}"
 
+echo "### Generate the corpus.aln alignments"
 python3 align.py \
-  --corpus_src="${dir}/corpus.spm.${SRC}" \
-  --corpus_trg="${dir}/corpus.spm.${TRG}" \
+  --corpus_src="${tmp_dir}/corpus.spm.${SRC}" \
+  --corpus_trg="${tmp_dir}/corpus.spm.${TRG}" \
   --output_path="${output_dir}/corpus.aln"
 
-echo "### Creating shortlist"
+echo "### Extract the source-target and target-source lexicon from the corpus"
+# https://github.com/marian-nmt/extract-lex
+# This step takes the SentencePiece tokenized corpus witih aligments and extracts
+# the statistical distribution of the source token to the target token, and vice versa.
+# Both source->target and target->source are generated, but we only need source->target.
+#
+# The output format is:
+#   <target_word> <source_word> <probability>
 "${BIN}/extract_lex" \
-  "${dir}/corpus.spm.${TRG}" \
-  "${dir}/corpus.spm.${SRC}" \
+  "${tmp_dir}/corpus.spm.${TRG}" \
+  "${tmp_dir}/corpus.spm.${SRC}" \
   "${output_dir}/corpus.aln" \
-  "${dir}/lex.s2t" \
-  "${dir}/lex.t2s"
+  "${tmp_dir}/lex.s2t" \
+  "${tmp_dir}/lex.t2s"
 
-if [ -f "${dir}/lex.s2t" ]; then
-  zstdmt "${dir}/lex.s2t"
-fi
-
-rm "${dir}/corpus.spm.${TRG}"
-rm "${dir}/corpus.spm.${SRC}"
+# Remove files that are no longer needed.
+rm "${tmp_dir}lex.t2s" # The target to source probabilities are not needed.
+rm "${tmp_dir}/corpus.spm.${TRG}"
+rm "${tmp_dir}/corpus.spm.${SRC}"
 rm "${output_dir}/corpus.aln"
 
-echo "### Shortlist pruning"
-"${MARIAN}/spm_export_vocab" --model="${vocab_trg}" --output="${dir}/vocab.txt"
-zstdmt -dc "${dir}/lex.s2t.zst" |
-  grep -v NULL |
-  python3 "prune_shortlist.py" 100 "${dir}/vocab.txt" |
+echo "### Convert the vocab to the text format"
+"${MARIAN}/spm_export_vocab" --model="${vocab_trg}" --output="${tmp_dir}/vocab.txt"
+
+echo "### Build the shortlist by pruning the source to target lexicon to $max_words"
+max_words=100
+cat "${tmp_dir}/lex.s2t" |
+  python3 "prune_shortlist.py" ${max_words} "${tmp_dir}/vocab.txt" |
   zstdmt >"${output_dir}/lex.s2t.pruned.zst"
 
-echo "### Deleting tmp dir"
-rm -rf "${dir}"
+echo "### Delete ${tmp_dir}"
+rm -rf "${tmp_dir}"
 
 echo "###### Done: Generating alignments and shortlist"

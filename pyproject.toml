@@ -140,6 +140,7 @@ include = [
   "pipeline/alignments/align.py",
   "pipeline/data/parallel_downloaders.py",
   "pipeline/data/parallel_importer.py",
+  "pipeline/alignments/prune_shortlist.py",
   "inference/scripts/**/*",
 ]
 exclude = [
