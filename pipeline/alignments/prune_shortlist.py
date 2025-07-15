@@ -26,59 +26,88 @@ Notes:
   - All input and output tokens are assumed to be SentencePiece tokenized.
 """
 
+from pathlib import Path
 import sys
+import argparse
 from typing import cast
 
-max_words = int(sys.argv[1])
-vocab_txt_file = sys.argv[2]
 
-top_vocab = []
-
-with open(vocab_txt_file, "r") as f:
-    for line in f:
-        top_vocab.append(line.strip().split()[0])
-
-top_vocab = top_vocab[: max_words + 2]
-
-vocab_src: set[str] = set()
-# A mapping of the src->trg probabilities:
-# pairs[src][trg] = probability
-pairs: dict[str, dict[str, float]] = {}
-
-for line in sys.stdin:
-    try:
-        trg, src, probability_str = cast(tuple[str, str, str], line.strip().split())
-    except ValueError:
-        # some lines include empty items for zh-en, 63 from ~400k
-        continue
-
-    # If a token can't be found in SentencePiece then NULL is used by extract-lex.
-    # Skip these entries. https://github.com/marian-nmt/extract-lex/blob/42fa605b53f32eaf6c6e0b5677255c21c91b3d49/src/extract-lex-main.cpp#L175C33-L175C49
-    if trg == "NULL" or src == "NULL":
-        continue
-
-    vocab_src.add(src)
-
-    probability = float(probability_str)
-    if src in pairs:
-        pairs[src][trg] = probability
-    else:
-        pairs[src] = {trg: probability}
-
-for src in vocab_src:
-    trg_probabilities = pairs[src]
-
-    l = {"a": 0}
-
-    # Only retain up to the top probabilities.
-    top_trg_tokens = sorted(
-        trg_probabilities,
-        key=lambda key: trg_probabilities[key],
-        reverse=True,
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        # Preserves whitespace in the help text.
+        formatter_class=argparse.RawTextHelpFormatter,
     )
-    top_trg_tokens = top_trg_tokens[:max_words]
 
-    for trg in set(top_trg_tokens + top_vocab):
-        if trg in trg_probabilities:
-            probability = trg_probabilities[trg]
-            print("{} {} {:.8f}".format(trg, src, probability))
+    parser.add_argument(
+        "--max_words",
+        type=int,
+        help="Maximum number of top target candidates to retain per source token.",
+    )
+    parser.add_argument(
+        "--vocab_txt_file",
+        type=Path,
+        help=(
+            "text-formatted vocabulary list of frequent target tokens (one per line), "
+            "exported from SentencePiece via `spm_export_vocab`."
+        ),
+    )
+
+    args = parser.parse_args()
+
+    max_words: int = args.max_words
+    vocab_txt_file: Path = args.vocab_txt_file
+
+    top_vocab = []
+    with vocab_txt_file.open() as f:
+        for line in f:
+            top_vocab.append(line.strip().split()[0])
+
+    top_vocab = top_vocab[: max_words + 2]
+
+    vocab_src: set[str] = set()
+    # A mapping of the src->trg probabilities:
+    # e.g. pairs[src][trg] = probability
+    pairs: dict[str, dict[str, float]] = {}
+
+    for line in sys.stdin:
+        try:
+            trg, src, probability_str = cast(tuple[str, str, str], line.strip().split())
+        except ValueError:
+            # some lines include empty items for zh-en, 63 from ~400k
+            continue
+
+        # If a token can't be found in SentencePiece then NULL is used by extract-lex.
+        # Skip these entries. https://github.com/marian-nmt/extract-lex/blob/42fa605b53f32eaf6c6e0b5677255c21c91b3d49/src/extract-lex-main.cpp#L175C33-L175C49
+        if trg == "NULL" or src == "NULL":
+            continue
+
+        vocab_src.add(src)
+
+        probability = float(probability_str)
+        if src in pairs:
+            pairs[src][trg] = probability
+        else:
+            pairs[src] = {trg: probability}
+
+    for src in vocab_src:
+        trg_probabilities = pairs[src]
+
+        l = {"a": 0}
+
+        # Only retain up to the top probabilities.
+        top_trg_tokens = sorted(
+            trg_probabilities,
+            key=lambda key: trg_probabilities[key],
+            reverse=True,
+        )
+        top_trg_tokens = top_trg_tokens[:max_words]
+
+        for trg in set(top_trg_tokens + top_vocab):
+            if trg in trg_probabilities:
+                probability = trg_probabilities[trg]
+                print("{} {} {:.8f}".format(trg, src, probability))
+
+
+if __name__ == "__main__":
+    main()
