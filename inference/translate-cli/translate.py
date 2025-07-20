@@ -63,29 +63,6 @@ def request_model_records(langpair_arg: str | None) -> list[ModelRecord] | Path:
         logger.info("That language pair was not, try again.")
 
 
-def generate_config():
-    config = {
-        "relative-paths": True,
-        "models": ["model.intgemm.alphas.bin"],
-        "vocabs": ["vocab.deen.spm", "vocab.deen.spm"],
-        "beam-size": "1",
-        "normalize": "1.0",
-        "word-penalty": "0",
-        "max-length-break": "128",
-        "mini-batch-words": "1024",
-        "workspace": "128",
-        "max-length-factor": "2.0",
-        "skip-cost": True,
-        "cpu-threads": "0",
-        "quiet": "true",
-        "quiet-translation": "true",
-        "gemm-precision": "int8shiftAlphaAll",
-        "alignment": "soft",
-    }
-    with Path("cli-config.yml").open("w") as outfile:
-        yaml.safe_dump(config, outfile)
-
-
 def get_downloaded_model_config(langpair: str) -> Path | None:
     """
     Look for a config that has already been downloaded.
@@ -150,13 +127,18 @@ def download_records(records: list[ModelRecord]) -> Path:
         }
         json.dump(data, outfile, indent=2, sort_keys=True)
 
+    config_vocabs = [vocab.name for vocab in vocabs]
+    if len(config_vocabs) == 1:
+        # Two vocabs are still required when it's shared.
+        config_vocabs.append(config_vocabs[0])
+
     # The config is what actually is used for translating.
     # https://marian-nmt.github.io/docs/cmd/marian-decoder/
     config = {
         # Paths are relative to this config.
         "relative-paths": True,
         "models": [model.name],
-        "vocabs": [vocab.name for vocab in vocabs],
+        "vocabs": config_vocabs,
         "beam-size": 1,
         "normalize": 1.0,
         "word-penalty": 0,
@@ -199,7 +181,13 @@ class Translator:
         )
 
         self.proc = subprocess.Popen(
-            [str(binary), "--model-config-paths", str(self.config_path)],
+            [
+                str(binary),
+                "--model-config-paths",
+                str(self.config_path),
+                "--log-level",
+                "trace",
+            ],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,  # Output marian logging.

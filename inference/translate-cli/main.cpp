@@ -5,40 +5,46 @@
 #include "translator/service.h"
 #include "translator/utils.h"
 
+#include <execinfo.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
 int main(int argc, char *argv[]) {
   using namespace marian::bergamot;
-  printf("In the cli.\n");
-  ConfigParser<AsyncService> configParser("Translate CLI", /*multiOpMode=*/false);
+  
+  ConfigParser<BlockingService> configParser("Translate CLI", /*multiOpMode=*/false);
   configParser.parseArgs(argc, argv);
   auto &config = configParser.getConfig();
   printf("Config received.\n");
 
-  AsyncService service(config.serviceConfig);
-  printf("Async service started.\n");
+  BlockingService service(config.serviceConfig);
+  LOG(info, "Single threaded CPU service created");
 
   // Construct a model.
-  auto options = parseOptionsFromFilePath(config.modelConfigPaths.front());
+  auto options = parseOptionsFromFilePath(
+    config.modelConfigPaths.front(), true /* validate */);
 
-  std::shared_ptr<TranslationModel> model = service.createCompatibleModel(options);
+  LOG(info, "The model options are built.");
+  
+  marian::Ptr<TranslationModel> model = marian::New<TranslationModel>(options);
 
-  ResponseOptions responseOptions;
-  std::string input = readFromStdin();
+  LOG(info, "TranslationModel created.");
 
-  // Create a barrier using future/promise.
-  std::promise<Response> promise;
-  std::future<Response> future = promise.get_future();
-  auto callback = [&promise](Response &&response) {
-    // Fulfill promise.
-    promise.set_value(std::move(response));
-  };
+  std::vector<std::string> inputs {};
+  std::vector<ResponseOptions> responseOptions {};
+  
+  inputs.push_back(readFromStdin());
+  responseOptions.push_back(ResponseOptions {});
+  
+  LOG(info, "Preparing to translate.");
+  std::vector<Response> responses = service.translateMultiple(model, std::move(inputs), responseOptions);
 
-  service.translate(model, std::move(input), callback, responseOptions);
-
-  // Wait until promise sets the response.
-  Response response = future.get();
-
-  // Print (only) translated text.
-  std::cout << response.target.text;
+  LOG(info, "Translation complete");
+  for (const auto& response : responses) {
+    std::cout << response.target.text;
+  }
 
   return 0;
 }
