@@ -1,0 +1,5 @@
+RUN apt-get update -qq \
+    && apt-get install -y \
+       gdb \
+       valgrind \
+    && apt-get clean

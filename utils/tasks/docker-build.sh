@@ -5,19 +5,33 @@ set -x
 
 source utils/tasks/docker-setup.sh
 
-DOCKER_BASE_PATH=taskcluster/docker/base
-DOCKER_TEST_PATH=taskcluster/docker/test
+VARIANT="$1"
+if [[ "$VARIANT" != "test" && "$VARIANT" != "inference" ]]; then
+  echo "Error: First argument must be 'test' or 'inference'"
+  exit 1
+fi
 
 docker build \
-  --file "$DOCKER_BASE_PATH/Dockerfile" \
-  --tag translations-base $DOCKER_BASE_PATH
+  --file "taskcluster/docker/base/Dockerfile" \
+  --tag translations-tc-base \
+  taskcluster/docker/base # build context
 
 docker build \
   --build-arg DOCKER_IMAGE_PARENT=translations-base \
-  --file "$DOCKER_TEST_PATH/Dockerfile" \
-  --tag translations-test $DOCKER_TEST_PATH
+  --file "$TC_DOCKER_TEST_PATH/Dockerfile" \
+  --tag translations-tc-test \
+  taskcluster/docker/test # build context
 
+# Build the local images
 docker build \
-  --build-arg DOCKER_IMAGE_PARENT=translations-test \
-  --file "docker/Dockerfile" \
-  --tag translations-local .
+  --build-arg DOCKER_IMAGE_PARENT=translations-local \
+  --file "docker/Dockerfile.local" \
+  --tag translations-local \
+  . # build context
+
+# Build either translations-local-test or translations-local-inference
+docker build \
+  --build-arg DOCKER_IMAGE_PARENT=translations-local-$VARIANT \
+  --file "docker/Dockerfile.$VARIANT" \
+  --tag translations-local-$VARIANT \
+  . # build context
