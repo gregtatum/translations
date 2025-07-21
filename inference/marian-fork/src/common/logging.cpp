@@ -82,7 +82,7 @@ std::vector<Logger> createLoggers(const marian::Config* config) {
   if(config && config->has("valid-log") && !config->get<std::string>("valid-log").empty()) {
     validLogs.push_back(config->get<std::string>("valid-log"));
   }
-
+  
   bool quiet = config && config->get<bool>("quiet");
   Logger general{createStderrLogger("general", "[%Y-%m-%d %T] %v", generalLogs, quiet)};
   loggers.push_back(general);

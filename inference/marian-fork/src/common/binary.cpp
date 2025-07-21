@@ -27,98 +27,118 @@ const T* get(const void*& current, uint64_t num = 1) {
   return ptr;
 }
 
-void loadItems(const void* current, std::vector<io::Item>& items, bool mapped) {
-  uint64_t totalBytesLoaded = 0;  // Track total bytes loaded
+void loadItems(const void* ptrIntoModel, std::vector<io::Item>& items, bool mapped) {
+  // Track total bytes loaded
+  uint64_t totalBytesLoaded = 0;
 
-  uint64_t binaryFileVersion = *get<uint64_t>(current);
+  // Extract the binary file version.
+  uint64_t binaryFileVersion = *get<uint64_t>(ptrIntoModel);
   ABORT_IF(binaryFileVersion != BINARY_FILE_VERSION,
            "Binary file versions do not match: {} (file) != {} (expected)",
            binaryFileVersion,
            BINARY_FILE_VERSION);
+  totalBytesLoaded += sizeof(uint64_t);
 
-  totalBytesLoaded += sizeof(uint64_t);  // Account for binaryFileVersion
-
-  uint64_t numHeaders = *get<uint64_t>(current);  // number of item headers that follow
-  totalBytesLoaded += sizeof(uint64_t);           // Account for numHeaders
-
-  const Header* headers = get<Header>(current, numHeaders);  // read that many headers
-  totalBytesLoaded += sizeof(Header) * numHeaders;           // Account for headers
+  // Extract the number of headers.
+  uint64_t numHeaders = *get<uint64_t>(ptrIntoModel);  
+  totalBytesLoaded += sizeof(uint64_t);
 
   if(items.size() == numHeaders) {
-    // These items are already loaded.
+    // The items have already been loaded, do not load them again.
     return;
   }
 
-  // prepopulate items with meta data from headers
+  // Extract the headers.
+  const Header* headers = get<Header>(ptrIntoModel, numHeaders);
+  totalBytesLoaded += sizeof(Header) * numHeaders;
+
+  // Use the headers to initialize the std::vector<io::Item> items. This first loop will move
+  // the model pointer forward as as it reads the names.
   items.resize(numHeaders);
   for(int i = 0; i < numHeaders; ++i) {
-    items[i].type = (Type)headers[i].type;
-    items[i].name = get<char>(current, headers[i].nameLength);
-    totalBytesLoaded += headers[i].nameLength;  // Account for item name bytes
     items[i].mapped = mapped;
+    items[i].type = (Type)headers[i].type;
+    items[i].name = get<char>(ptrIntoModel, headers[i].nameLength);
+    totalBytesLoaded += headers[i].nameLength;
   }
 
-  // read in actual shape and data
+  // Extract the shapes, which will be copied to the tiems.
   for(int i = 0; i < numHeaders; ++i) {
     uint64_t len = headers[i].shapeLength;
     items[i].shape.resize(len);
-    const int* arr = get<int>(current, len);            // read shape
-    totalBytesLoaded += len * sizeof(int);              // Account for shape bytes
-    std::copy(arr, arr + len, items[i].shape.begin());  // copy to Item::shape
+    const int* shape = get<int>(ptrIntoModel, len);
+    totalBytesLoaded += len * sizeof(int);
+    std::copy(shape, shape + len, items[i].shape.begin());
   }
 
-  // move by offset bytes, aligned to 256-bytes boundary
-  uint64_t offset = *get<uint64_t>(current);
+  // The model data is aligned to a 256 byte boundary. Move the model pointer forward.
+  uint64_t offset = *get<uint64_t>(ptrIntoModel);
   totalBytesLoaded += sizeof(uint64_t);  // Account for offset metadata
-  get<char>(current, offset);
+  get<char>(ptrIntoModel, offset);
   totalBytesLoaded += offset;  // Account for offset bytes
 
+  // Now load in the data for the items.
   for(int i = 0; i < numHeaders; ++i) {
-    //if(items[i].mapped && !isIntgemm(items[i].type)) { // memory-mapped, hence only set pointer. At the moment it intgemm matrices can't be used without processing
-    //  items[i].ptr = get<char>(current, headers[i].dataLength);
-    //} else { // reading into item data
-    items[i].mapped = false;  // Completely disable MMAP support for any models. We do not use it in bergamot and we hijack this codepath for binary model loading.
-                              // If this is not set, we trigger node_initializers.cpp:186. This one just assigns the memory ptr to the tensor if set to true, but at the moment
-                              // We are preparing some things on demand (the bottom portion of this code). Once we stop doing that, we can use the full mmap codepath
-                              // Also when using the full mmap codepath, we need to uncomment expression_graph.h:582
-
-    auto resize = [&](uint64_t len) {
-      items[i].bytes->resize(len);
-      totalBytesLoaded += len;
-    };
-    const char* ptr = get<char>(current, headers[i].dataLength);
-
-    if(matchType<intgemm8>(items[i].type)) {
-      if(items[i].name.find("Wemb") != std::string::npos) {  // Since Wemb need to be dequantised,
-                                                             // we have a special case for them
-        items[i].type = Type::float32;
-        resize(items[i].shape.elements()
-               * sizeof(float));  // We should have an extra float at the back but that requires a
-                                  // different format, due to allocator work
-        cpu::integer::unquantizeWemb<Type::int8>(items[i], ptr);
-      } else {
-        resize(headers[i].dataLength);
-        cpu::integer::prepareAndTransposeB<Type::int8>(items[i], ptr);
-      }
-    } else if(matchType<intgemm16>(items[i].type)) {
-      if(items[i].name.find("Wemb") != std::string::npos) {  // Since Wemb need to be dequantised,
-                                                             // we have a special case for them
-        items[i].type = Type::float32;
-        resize(items[i].shape.elements()
-               * sizeof(float));  // We should have an extra float at the back but that requires a
-                                  // different format, due to allocator work
-        cpu::integer::unquantizeWemb<Type::int16>(items[i], ptr);
-      } else {
-        resize(headers[i].dataLength);
-        cpu::integer::prepareAndTransposeB<Type::int16>(items[i], ptr);
+    if (
+      // Completely disable MMAP support for any models. We do not use it
+      // in bergamot and we hijack this codepath for binary model loading.
+      // If this is not set, we trigger node_initializers.cpp:186. This one
+      // just assigns the memory ptr to the tensor if set to true, but at the moment
+      // We are preparing some things on demand (the bottom portion of this code).
+      // Once we stop doing that, we can use the full mmap codepath Also
+      // when using the full mmap codepath, we need to uncomment expression_graph.h:582
+      false
+    ) {
+      if(items[i].mapped && !isIntgemm(items[i].type)) {
+        // memory-mapped, hence only set pointer. At the moment it intgemm matrices can't
+        // be used without processing
+        items[i].ptr = get<char>(ptrIntoModel, headers[i].dataLength);
       }
     } else {
-      resize(headers[i].dataLength);
-      std::copy(ptr, ptr + headers[i].dataLength, items[i].bytes->begin());
+      items[i].mapped = mapped;
+    
+      // Resize the item's owned data, and track how many bytes were loaded.
+      auto resize = [&](uint64_t len) {
+        items[i].bytes->resize(len);
+        totalBytesLoaded += len;
+      };
+      
+      const char* data = get<char>(ptrIntoModel, headers[i].dataLength);
+
+      if(matchType<intgemm8>(items[i].type)) {
+        if(items[i].name.find("Wemb") != std::string::npos) {
+          // Dequantize the embedding weights from int8 to float32. This will allocate the
+          // appropriate bytes on the io::Item's data vector.
+          items[i].type = Type::float32;
+          // We should have an extra float at the back but that requires a
+          // different format, due to allocator work
+          resize(items[i].shape.elements() * sizeof(float));  
+          cpu::integer::unquantizeWemb<Type::int8>(items[i], data);
+        } else {
+          resize(headers[i].dataLength);
+          cpu::integer::prepareAndTransposeB<Type::int8>(items[i], data);
+        }
+      } else if(matchType<intgemm16>(items[i].type)) {
+        if(items[i].name.find("Wemb") != std::string::npos) {
+          // Dequantize the embedding weights from int8 to float32. This will allocate the
+          // appropriate bytes on the io::Item's data vector.
+          items[i].type = Type::float32;
+          // We should have an extra float at the back but that requires a
+          // different format, due to allocator work
+          resize(items[i].shape.elements() * sizeof(float));
+          cpu::integer::unquantizeWemb<Type::int16>(items[i], data);
+        } else {
+          resize(headers[i].dataLength);
+          cpu::integer::prepareAndTransposeB<Type::int16>(items[i], data);
+        }
+      } else {
+        resize(headers[i].dataLength);
+        std::copy(data, data + headers[i].dataLength, items[i].bytes->begin());
+      }
     }
   }
 
-  LOG(info, "[memory] Model data loaded in: {}", totalBytesLoaded);
+  LOG(info, "[memory] Model data loaded in: {} bytes", totalBytesLoaded);
 }
 
 void loadItems(const std::string& fileName, std::vector<io::Item>& items) {
@@ -138,12 +158,13 @@ void loadItems(const std::string& fileName, std::vector<io::Item>& items) {
 #endif
 
   // Load items from buffer without mapping
+  LOG(info, "Loading model from file: {}", fileName);
   loadItems(buf.data(), items, false);
 }
 
-io::Item getItem(const void* current, const std::string& varName) {
+io::Item getItem(const void* modelPtr, const std::string& varName) {
   std::vector<io::Item> items;
-  loadItems(current, items);
+  loadItems(modelPtr, items);
 
   for(auto& item : items)
     if(item.name == varName)

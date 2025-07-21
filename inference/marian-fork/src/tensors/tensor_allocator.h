@@ -11,15 +11,17 @@ namespace marian {
 
 class TensorAllocator {
 private:
-  const size_t CHUNK = 128;
-  const size_t MBYTE = 1024 * 1024;
-#if defined(WASM)
+
+#if defined(WASM) || defined(WASM_COMPATIBLE_SOURCE)
   // Drastically reduce the size of allocation leaps as Wasm is a heavily memory
   // constrained environment.
-  const size_t GROW = MBYTE;
+  const size_t CHUNK = 1;
 #else
-  const size_t GROW = CHUNK * MBYTE;
+  const size_t CHUNK = 128;
 #endif
+
+  const size_t MBYTE = 1024 * 1024;
+  const size_t GROW = CHUNK * MBYTE;
   const size_t ALIGN = 256;
 
   Ptr<Backend> backend_;
@@ -43,7 +45,8 @@ public:
   void reserve(size_t bytes = 0) {
     auto mult = bytes / GROW + 1;
     LOG(info,
-        "[memory] Extending reserved space to {} MB (device {})",
+        "[memory] {} bytes needed, extending reserved space to {} MiB (device {})",
+        bytes,
         mult * CHUNK,
         allocator_->getDeviceId());
 
