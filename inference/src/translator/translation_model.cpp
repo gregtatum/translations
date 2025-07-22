@@ -63,7 +63,7 @@ void TranslationModel::loadBackend(size_t idx) {
   graph->setDefaultElementType(typeFromString(prec[0]));
   graph->setDevice(device_);
   graph->getBackend()->configureDevice(options_);
-  graph->reserveWorkspaceMB(5);
+  // graph->reserveWorkspaceMB(0);
 
   // if memory_.models is populated, then all models were of binary format
   if (memory_.models.size() >= 1) {
@@ -101,6 +101,7 @@ void TranslationModel::loadBackend(size_t idx) {
     }
   }
 
+  LOG(info, "Running forward on the graph once while loading backend.");
   graph->forward();
 
   // At this point the ExpressionGraph has consumed the `std::vector<marian::io::Item>`
@@ -109,12 +110,13 @@ void TranslationModel::loadBackend(size_t idx) {
   // by the scorer since they will not practically be used again. This will free up memory
   // in the memory-constrained environment of the browser.
   for (auto scorer : scorerEnsemble) {
-    // scorer->clearItems();
+    scorer->clearItems();
   }
 
   // Similarly to the scorers, there is an extra copy of the model in the MemoryBundle. Since
   // the ExpressionGraph is loaded, it is relatively safe to clear this memory.
-  // memory_.models.clear();
+  memory_.models.clear();
+  memory_.vocabs.clear();
 }
 
 // Make request process is shared between Async and Blocking workflow of translating.

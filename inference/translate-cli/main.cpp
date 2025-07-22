@@ -39,11 +39,18 @@ int main(int argc, char *argv[]) {
   responseOptions.push_back(ResponseOptions {});
   
   LOG(info, "Preparing to translate.");
-  std::vector<Response> responses = service.translateMultiple(model, std::move(inputs), responseOptions);
-
-  LOG(info, "Translation complete");
-  for (const auto& response : responses) {
-    std::cout << response.target.text;
+  for (size_t i = 0; i < 10; i++) {
+    std::vector<std::string> inputsIn {inputs};
+    std::vector<Response> responses = service.translateMultiple(model, std::move(inputsIn), responseOptions);
+    if (i == 9) {
+      LOG(info, "Intentional crash");
+      std::abort(); 
+    }
+  
+    LOG(info, "Translation complete");
+    for (const auto& response : responses) {
+      std::cout << response.target.text;
+    }
   }
 
   return 0;

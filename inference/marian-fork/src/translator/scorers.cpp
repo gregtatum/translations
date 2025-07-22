@@ -112,7 +112,7 @@ std::vector<Ptr<Scorer>> createScorers(Ptr<Options> options, const std::vector<c
 
   size_t i = 0;
   for(auto modelPtr : modelPointers) {
-    auto items = io::mmapItems(modelPtr);
+    auto items = io::loadItems(modelPtr);
     std::string fname = "F" + std::to_string(i);
 
     // load options specific for the scorer

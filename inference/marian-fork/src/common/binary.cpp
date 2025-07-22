@@ -95,7 +95,6 @@ void loadItems(const void* ptrIntoModel, std::vector<io::Item>& items, bool mapp
         items[i].ptr = get<char>(ptrIntoModel, headers[i].dataLength);
       }
     } else {
-      items[i].mapped = mapped;
     
       // Resize the item's owned data, and track how many bytes were loaded.
       auto resize = [&](uint64_t len) {
@@ -114,7 +113,9 @@ void loadItems(const void* ptrIntoModel, std::vector<io::Item>& items, bool mapp
           // different format, due to allocator work
           resize(items[i].shape.elements() * sizeof(float));  
           cpu::integer::unquantizeWemb<Type::int8>(items[i], data);
+          LOG(info, "unquantizeWemb {}, {}", items[i].name, headers[i].dataLength);
         } else {
+          LOG(info, "prepareAndTransposeB {}, {}", items[i].name, headers[i].dataLength);
           resize(headers[i].dataLength);
           cpu::integer::prepareAndTransposeB<Type::int8>(items[i], data);
         }
@@ -131,7 +132,11 @@ void loadItems(const void* ptrIntoModel, std::vector<io::Item>& items, bool mapp
           resize(headers[i].dataLength);
           cpu::integer::prepareAndTransposeB<Type::int16>(items[i], data);
         }
+      // } else if (mapped) {
+      //   // No processing is needed for this data, and memory mapping was requested.
+      //   items[i].ptr = data;
       } else {
+        // No processing is needed for this data, copy it over to the item.
         resize(headers[i].dataLength);
         std::copy(data, data + headers[i].dataLength, items[i].bytes->begin());
       }
