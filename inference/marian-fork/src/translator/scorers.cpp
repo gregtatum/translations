@@ -103,16 +103,16 @@ std::vector<Ptr<Scorer>> createScorers(Ptr<Options> options) {
   return createScorers(options, model_items);
 }
 
-std::vector<Ptr<Scorer>> createScorers(Ptr<Options> options, const std::vector<const void*>& ptrs) {
+std::vector<Ptr<Scorer>> createScorers(Ptr<Options> options, const std::vector<const void*>& modelPointers) {
   std::vector<Ptr<Scorer>> scorers;
 
-  std::vector<float> weights(ptrs.size(), 1.f);
+  std::vector<float> weights(modelPointers.size(), 1.f);
   if(options->hasAndNotEmpty("weights"))
     weights = options->get<std::vector<float>>("weights");
 
   size_t i = 0;
-  for(auto ptr : ptrs) {
-    auto items = io::loadItems(ptr);
+  for(auto modelPtr : modelPointers) {
+    auto items = io::loadItems(modelPtr);
     std::string fname = "F" + std::to_string(i);
 
     // load options specific for the scorer

@@ -197,7 +197,7 @@ Ptr<NodeInitializer> fromItem(const io::Item& item) {
                "Tensor shape ({}) and shape of mapped item ({}) do not match",
                tensor->shape(),
                item.shape);
-      auto mp = MemoryPiece::New((uint8_t*)item.ptr, item.size()); // @TODO: this is not properly aligned now
+      auto mp = MemoryPiece::New((uint8_t*)item.data(), item.size()); // @TODO: this is not properly aligned now
       tensor->reset(mp);
     });
   } else {

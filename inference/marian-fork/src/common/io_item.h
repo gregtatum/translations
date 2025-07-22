@@ -71,7 +71,7 @@ struct Item {
   }
 
   const char* data() const {
-    if(mapped)
+    if(mapped && bytes->empty())
       return ptr;
     else
       return bytes->data();

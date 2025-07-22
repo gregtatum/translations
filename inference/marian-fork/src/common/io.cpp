@@ -124,15 +124,15 @@ std::vector<Item> loadItems(const std::string& fileName) {
   return items;
 }
 
-std::vector<Item> loadItems(const void* ptr) {
+std::vector<Item> loadItems(const void* modelPtr) {
   std::vector<Item> items;
-  binary::loadItems(ptr, items, false);
+  binary::loadItems(modelPtr, items, false);
   return items;
 }
 
-std::vector<Item> mmapItems(const void* ptr) {
+std::vector<Item> mmapItems(const void* modelPtr) {
   std::vector<Item> items;
-  binary::loadItems(ptr, items, true);
+  binary::loadItems(modelPtr, items, true);
   return items;
 }
 

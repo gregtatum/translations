@@ -63,11 +63,11 @@ void TranslationModel::loadBackend(size_t idx) {
   graph->setDefaultElementType(typeFromString(prec[0]));
   graph->setDevice(device_);
   graph->getBackend()->configureDevice(options_);
-  graph->reserveWorkspaceMB(5);
+  // graph->reserveWorkspaceMB(0);
 
   // if memory_.models is populated, then all models were of binary format
   if (memory_.models.size() >= 1) {
-    const std::vector<const void *> container = std::invoke([&]() {
+    const std::vector<const void *> modelPointers = std::invoke([&]() {
       std::vector<const void *> model_ptrs(memory_.models.size());
       for (size_t i = 0; i < memory_.models.size(); ++i) {
         const AlignedMemory &model = memory_.models[i];
@@ -87,7 +87,7 @@ void TranslationModel::loadBackend(size_t idx) {
       return model_ptrs;
     });
 
-    scorerEnsemble = createScorers(options_, container);
+    scorerEnsemble = createScorers(options_, modelPointers);
   } else {
     // load npz format models, or a mixture of binary/npz formats
     scorerEnsemble = createScorers(options_);
@@ -101,6 +101,7 @@ void TranslationModel::loadBackend(size_t idx) {
     }
   }
 
+  LOG(info, "Running forward on the graph once while loading backend.");
   graph->forward();
 
   // At this point the ExpressionGraph has consumed the `std::vector<marian::io::Item>`
@@ -115,6 +116,7 @@ void TranslationModel::loadBackend(size_t idx) {
   // Similarly to the scorers, there is an extra copy of the model in the MemoryBundle. Since
   // the ExpressionGraph is loaded, it is relatively safe to clear this memory.
   memory_.models.clear();
+  memory_.vocabs.clear();
 }
 
 // Make request process is shared between Async and Blocking workflow of translating.

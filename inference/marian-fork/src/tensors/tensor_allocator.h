@@ -45,7 +45,8 @@ public:
   void reserve(size_t bytes = 0) {
     auto mult = bytes / GROW + 1;
     LOG(info,
-        "[memory] Extending reserved space to {} MB (device {})",
+        "[memory] {} bytes needed, extending reserved space to {} MiB (device {})",
+        bytes,
         mult * CHUNK,
         allocator_->getDeviceId());
 
