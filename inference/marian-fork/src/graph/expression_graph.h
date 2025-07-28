@@ -251,28 +251,8 @@ public:
 
   void backward(bool reset = true, float clipValue = 0.f);
 
-  std::string graphviz() {
-    std::stringstream ss;
-    ss << "digraph ExpressionGraph {" << std::endl;
-    // ss << "graph[splines=ortho]" << std::endl;
-    ss << "rankdir=LR" << std::endl;
-
-    auto it = nodesForward_.rbegin();
-    while(it != nodesForward_.rend()) {
-      auto v = *it;
-      ss << v->graphviz();
-      it++;
-    }
-
-    ss << "}" << std::endl;
-    return ss.str();
-  }
-
-  void graphviz(const std::string& filename) {
-    std::ofstream dot(filename);
-    dot << graphviz();
-    dot.close();
-  }
+  std::string graphviz();
+  void graphviz(const std::string& filename);
 
 private:
 
@@ -508,6 +488,7 @@ public:
     setReloaded(false);
     for(auto& item : ioItems) {
       std::string pName = item.name;
+      std::cout << "!!! item: " << pName << std::endl;
       // skip over special parameters starting with "special:"
       if(pName.substr(0, 8) == "special:")
         continue;

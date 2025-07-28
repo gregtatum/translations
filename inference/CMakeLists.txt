@@ -196,6 +196,7 @@ endif(COMPILE_WASM)
 
 if(BUILD_TRANSLATE_CLI)
   add_subdirectory(translate-cli)
+  add_subdirectory(graphviz-cli)
 endif(BUILD_TRANSLATE_CLI)
 
 option(COMPILE_PYTHON "Compile python bindings. Intended to be activated with setup.py" OFF)

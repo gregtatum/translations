@@ -118,6 +118,9 @@ public:
       // transduce context to new context
       context = rnnUni.construct(graph)->transduce(context);
     }
+    
+    std::cout << "!!! graphviz:\n" << context->graphviz() << std::endl;
+    
     return context;
   }
 

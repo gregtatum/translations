@@ -27,24 +27,23 @@ Expr ExpressionGraph::add(Expr node) {
   auto found = tensors_->findOrRemember(node);
   if(found) {
     return found;
-  } else {
-    node->setId(count_++);
-
-    // record in foward graph
-    nodesForward_.push_back(node);
-
-    // record in backward graph if training, and keep track of roots
-    if(!inferenceOnly_ && node->trainable()) {
-      nodesBackward_.push_back(node);
-      topNodes_.insert(node); // opportunistically record all new nodes as roots (gets removed once consumed)
-    }
-
-    if(topNodes_.count(node)) // only erase children of nodes with are themselves in the topNodes list
-      for(auto child : node->children())
-        topNodes_.erase(child); // this child is consumed and therefore not a root
-
-    return node;
   }
+  node->setId(count_++);
+
+  // record in foward graph
+  nodesForward_.push_back(node);
+
+  // record in backward graph if training, and keep track of roots
+  if(!inferenceOnly_ && node->trainable()) {
+    nodesBackward_.push_back(node);
+    topNodes_.insert(node); // opportunistically record all new nodes as roots (gets removed once consumed)
+  }
+
+  if(topNodes_.count(node)) // only erase children of nodes with are themselves in the topNodes list
+    for(auto child : node->children())
+      topNodes_.erase(child); // this child is consumed and therefore not a root
+
+  return node;
 }
 
 // Call on every checkpoint in backwards order
@@ -262,6 +261,35 @@ void ExpressionGraph::save(std::vector<io::Item>& ioItems, Type saveElementType)
       ioItems.emplace_back(std::move(item));
     }
   }
+}
+
+std::string ExpressionGraph::graphviz() {
+  for(auto kvParams : paramsByElementType_) {
+    kvParams.second->allocateForward();
+  }
+
+  std::cout << "!!! ExpressionGraph::graphviz nodesForward_ size " << nodesForward_.size() << std::endl;
+
+  std::stringstream ss;
+  ss << "digraph ExpressionGraph {" << std::endl;
+  // ss << "graph[splines=ortho]" << std::endl;
+  ss << "rankdir=LR" << std::endl;
+
+  auto it = nodesForward_.rbegin();
+  while(it != nodesForward_.rend()) {
+    auto v = *it;
+    ss << v->graphviz();
+    it++;
+  }
+
+  ss << "}" << std::endl;
+  return ss.str();
+}
+
+void ExpressionGraph::graphviz(const std::string& filename) {
+  std::ofstream dot(filename);
+  dot << graphviz();
+  dot.close();
 }
 
 }  // namespace marian

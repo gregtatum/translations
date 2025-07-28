@@ -68,6 +68,7 @@ public:
       cell->setLazyInputs(inputs_);
       return cell;
     } else if(type == "ssru") {
+      std::abort();
       auto cell = New<SSRU>(graph, options_);
       cell->setLazyInputs(inputs_);
       return cell;

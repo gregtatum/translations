@@ -28,22 +28,33 @@ namespace marian {
 namespace models {
 
 Ptr<EncoderBase> EncoderFactory::construct(Ptr<ExpressionGraph> graph) {
-  if(options_->get<std::string>("type") == "s2s")
+  std::cout << "!!! EncoderFactory::construct" << std::endl;
+  if(options_->get<std::string>("type") == "s2s") {
+    std::cout << "!!! New<EncoderS2S>" << std::endl;
     return New<EncoderS2S>(graph, options_);
+  }
   
-  if(options_->get<std::string>("type") == "laser" || options_->get<std::string>("type") == "laser-sim")
+  if(options_->get<std::string>("type") == "laser" || options_->get<std::string>("type") == "laser-sim") {
+    std::cout << "!!! New<EncoderLaser>" << std::endl;
     return New<EncoderLaser>(graph, options_);
+  }
 
 #ifdef CUDNN
-  if(options_->get<std::string>("type") == "char-s2s")
+  if(options_->get<std::string>("type") == "char-s2s") {
+    std::cout << "!!! New<CharS2SEncoder>" << std::endl;
     return New<CharS2SEncoder>(graph, options_);
+  }
 #endif
 
-  if(options_->get<std::string>("type") == "transformer")
+  if(options_->get<std::string>("type") == "transformer") {
+    std::cout << "!!! NewEncoderTransformer" << std::endl;
     return NewEncoderTransformer(graph, options_);
+  }
 
-  if(options_->get<std::string>("type") == "bert-encoder")
+  if(options_->get<std::string>("type") == "bert-encoder") {
+    std::cout << "!!! New<BertEncoder>" << std::endl;
     return New<BertEncoder>(graph, options_);
+  }
 
   ABORT("Unknown encoder type");
 }
