@@ -1,3 +1,10 @@
+bucket: development
+corpus_ref: baz
+corpus_src: foo
+corpus_trg: bar
+src_locale: ru
+trg_locale: en
+
 src: en
 trg: ms
 
