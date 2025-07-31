@@ -77,6 +77,17 @@ if(MSVC)
   set(CMAKE_STATIC_LINKER_FLAGS      "${CMAKE_STATIC_LINKER_FLAGS} /LTCG:incremental")
 endif(MSVC)
 
+if(APPLE AND CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
+  set(BUILD_ARCH "x86-64" CACHE STRING "Target architecture")
+  set(CMAKE_OSX_ARCHITECTURES "x86_64" CACHE STRING "Build as x86_64 on Apple Silicon")
+  set(COMPILE_CPU ON CACHE BOOL "Enable CPU compilation")
+  set(COMPILE_AVX OFF CACHE BOOL "Disable AVX")
+  set(COMPILE_AVX2 OFF CACHE BOOL "Disable AVX2")
+  set(COMPILE_AVX512 OFF CACHE BOOL "Disable AVX512")
+  set(USE_APPLE_ACCELERATE ON CACHE BOOL "Use Apple Accelerate framework")
+  set(USE_SSE2 OFF CACHE BOOL "Do not use SSE2")
+endif()
+
 include(CMakeDependentOption)
 
 # Project specific cmake options

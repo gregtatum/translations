@@ -107,7 +107,7 @@ if (USE_WASM_COMPATIBLE_SOURCE)
   set(SPM_BUILD_LIBRARY_ONLY ON CACHE BOOL "Build only sentencepiece library (skip building executables)")
   add_compile_definitions(WASM_COMPATIBLE_SOURCE)
   # Setting USE_SSE2 definition to enable SSE2 specific code in "3rd_party/sse_mathfun.h" for wasm builds
-  add_compile_definitions(USE_SSE2)
+  # add_compile_definitions(USE_SSE2)
 endif()
 
 if (COMPILE_WASM)
