@@ -1,0 +1,7 @@
+{
+  "adequacy": "Most translations conveyed the main ideas but often missed nuances or specific terms, leading to partial meaning loss in several cases. Some translations had notable inaccuracies or misrepresentations that affected clarity.",
+  "fluency": "Fluency varied, with many translations being clear and natural, while others exhibited awkward phrasing or convoluted structures that impacted readability.",
+  "terminology": "Terminology was mostly accurate but frequently inconsistent, with several instances of incorrect or vague terms that could confuse readers.",
+  "hallucination": "Hallucinations were rare, with the model generally staying true to the source content, though a few translations introduced minor inaccuracies.",
+  "punctuation": "Punctuation was mostly correct, though minor issues were noted, particularly with quotation marks and commas, affecting clarity in some instances."
+}

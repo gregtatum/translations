@@ -276,10 +276,17 @@ export function isNever(never) {}
 export function createElement(tagName, options) {
   const element = document.createElement(tagName);
   if (options) {
-    const { style, parent, children, href, className, title, onClick } =
+    const { style, parent, children, href, className, title, attrs, onClick } =
       options;
     if (style) {
       Object.assign(element.style, style);
+    }
+    if (attrs) {
+      for (const [key, value] of Object.entries(attrs)) {
+        if (value) {
+          element.setAttribute(key, String(value));
+        }
+      }
     }
     if (href !== undefined) {
       if (element instanceof HTMLAnchorElement) {
@@ -290,10 +297,14 @@ export function createElement(tagName, options) {
     }
     if (typeof children === "string") {
       element.innerText = children;
+    } else if (typeof children === "number") {
+      element.innerText = String(children);
     } else if (Array.isArray(children)) {
       for (const child of children) {
         if (typeof child === "string") {
           element.appendChild(new Text(child));
+        } else if (typeof child === "number") {
+          element.appendChild(new Text(String(child)));
         } else {
           element.appendChild(child);
         }
@@ -338,6 +349,7 @@ const tagNames = [
   /** @type {const} */ ("a"),
   /** @type {const} */ ("br"),
   /** @type {const} */ ("button"),
+  /** @type {const} */ ("canvas"),
   /** @type {const} */ ("div"),
   /** @type {const} */ ("h1"),
   /** @type {const} */ ("h2"),
@@ -396,4 +408,24 @@ for (const tagName of tagNames) {
    * @type {(options?: Partial<CreateElementOptions>) => any}
    */
   create[tagName] = (options) => createElement(tagName, options);
+}
+
+/**
+ * Ensure some T exists when the type systems knows it can be null or undefined.
+ *
+ * @template T
+ * @param {T | null | undefined} item
+ * @param {string} [message]
+ * @returns {T}
+ */
+export function ensureExists(item, message = "an item") {
+  if (item === null) {
+    throw new Error(message || "Expected ${name} to exist, and it was null.");
+  }
+  if (item === undefined) {
+    throw new Error(
+      message || "Expected ${name} to exist, and it was undefined."
+    );
+  }
+  return item;
 }
