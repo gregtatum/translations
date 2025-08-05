@@ -40,8 +40,6 @@ def train_action(
 
     parameters: dict[str, Any] = dict(parameters)
 
-    print("!!! input", input)
-
     # the target tasks method to be used by `taskgraph_decision`.
     # this function is registered in `target_tasks.py`, and is used
     # to select which generated tasks should actually be created

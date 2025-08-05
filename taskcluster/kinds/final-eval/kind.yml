@@ -19,16 +19,16 @@ tasks:
       Run the final evaluations of a model using an LLM.
     attributes:
       stage: final-eval
-      src_locale: "{src_locale}"
-      trg_locale: "{trg_locale}"
+      src: "{src}"
+      trg: "{trg}"
       corpus_src: "{corpus_src}"
       corpus_trg: "{corpus_trg}"
       corpus_ref: "{corpus_ref}"
 
     task-context:
       from-parameters:
-        src_locale: eval_config.src_locale
-        trg_locale: eval_config.trg_locale
+        src: eval_config.src
+        trg: eval_config.trg
         corpus_src: eval_config.corpus_src
         corpus_trg: eval_config.corpus_trg
         corpus_ref: eval_config.corpus_ref
@@ -63,8 +63,8 @@ tasks:
         - bash
         - -c
         - >-
-          echo "src_locale: {src_locale}" &&
-          echo "trg_locale: {trg_locale}" &&
+          echo "src: {src}" &&
+          echo "trg: {trg}" &&
           echo "corpus_src: {corpus_src}" &&
           echo "corpus_trg: {corpus_trg}" &&
           echo "corpus_ref: {corpus_ref}" &&
