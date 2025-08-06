@@ -77,3 +77,4 @@ tasks:
           --src {src}
           --trg {trg}
           --mini
+          --max_count 20
