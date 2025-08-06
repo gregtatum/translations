@@ -91,9 +91,9 @@ tasks:
                 # https://firefox-source-docs.mozilla.org/taskcluster/taskgraph.html#task-parameterization
                 "*.log":
                     - {
-                        "task-reference": "logs/{src}-{trg}/{model_name}_<decision>/final_eval/{model_service}_{model_architecture}/{step_dir}/"
+                        "task-reference": "logs/{src}-{trg}/{model_name}_<decision>/final_eval/{model_service}_{model_architecture}/{name}/"
                       }
                 "*":
                     - {
-                        "task-reference": "models/{src}-{trg}/{model_name}_<decision>/final_eval/{model_service}_{model_architecture}/{step_dir}/"
+                        "task-reference": "models/{src}-{trg}/{model_name}_<decision>/final_eval/{model_service}_{model_architecture}/{name}/"
                       }
