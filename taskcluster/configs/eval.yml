@@ -1,13 +1,17 @@
 bucket: development
-corpus_ref: baz
-corpus_src: foo
-corpus_trg: bar
-src_locale: ru
-trg_locale: en
-
-src: en
-trg: ms
-
+model:
+  src: bs
+  trg: en
+  # The artifacts will be saved with the following format:
+  # gs://{bucket}/models/{src}-{trg}/{name}_{task_id}/final_eval/{eval}/{service}[_{architecture}]
+  service: mozilla
+  architecture: tiny # Not required for non-mozilla evals.
+  name: spring-2024
+corpus:
+  src: https://github.com/mozilla/firefox-translations-models/blob/main/evaluation/bs-en/flores-dev.bs
+  trg: https://github.com/mozilla/firefox-translations-models/blob/main/evaluation/bs-en/flores-dev.bergamot-tiny.en
+  ref: https://github.com/mozilla/firefox-translations-models/blob/main/evaluation/bs-en/flores-dev.en
+  
 taskcluster:
   # The GCS bucket to upload artifacts to. The options are:
   #   - production
@@ -19,3 +23,5 @@ taskcluster:
   #     - artifacts are deleted after 30 days
   #     - should be used when artifact retention is not important
   upload-bucket: production
+  worker-classes:
+    default: gcp-spot

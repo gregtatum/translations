@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "description": "A batch of NMT translation evaluations.",
+  "properties": {
+    "scores": {
+      "type": "array",
+      "description": "The batch of evaluations",
+      "minItems": 10,
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "description": "Evaluation scores for each single translation.",
+        "properties": {
+          
+          "adequacy": {
+            "type": "object",
+            "description": "Assessment of how well the meaning of the source is preserved.",
+            "properties": {
+              "score": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5,
+                "description": "5=complete meaning preserved, 4=minor meaning issues, 3=partial meaning loss, 2=major meaning errors, 1=meaning not preserved"
+              },
+              "description": {
+                "type": "string",
+                "description": "A comment explaining scores 1-4, or an empty string if 5."
+              }
+            },
+            "required": ["score", "description"],
+            "additionalProperties": false
+          },
+          
+          "fluency": {
+            "type": "object",
+            "description": "Assessment of grammatical and stylistic fluency.",
+            "properties": {
+              "score": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5,
+                "description": "5=fluent and natural, 4=minor grammatical issues, 3=awkward but understandable, 2=difficult to understand, 1=ungrammatical or nonsensical"
+              },
+              "description": {
+                "type": "string",
+                "description": "A comment explaining an fluency score below 5, or an empty string."
+              }
+            },
+            "required": ["score", "description"],
+            "additionalProperties": false
+          },
+          
+          "terminology": {
+            "type": "object",
+            "description": "Assessment of correct use of domain-specific terminology.",
+            "properties": {
+              "score": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5,
+                "description": "5=correct and consistent use, 4=minor inconsistency or misuse, 3=some incorrect or inconsistent terms, 2=frequent term issues, 1=terminology mostly incorrect"
+              },
+              "description": {
+                "type": "string",
+                "description": "Optional comment explaining the terminology score."
+              }
+            },
+            "required": ["score", "description"],
+            "additionalProperties": false
+          },
+          
+          "hallucination": {
+            "type": "object",
+            "description": "Assessment of fabricated or unrelated content.",
+            "properties": {
+              "score": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5,
+                "description": "5=no hallucinations, 4=minor unsupported additions, 3=some invented content, 2=frequent hallucinations, 1=hallucinated most content"
+              },
+              "description": {
+                "type": "string",
+                "description": "Optional comment explaining the hallucination score."
+              }
+            },
+            "required": ["score", "description"],
+            "additionalProperties": false
+          },
+          
+          "punctuation": {
+            "type": "object",
+            "description": "Assessment of punctuation correctness.",
+            "properties": {
+              "score": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5,
+                "description": "5=punctuation is appropriate and matches expectations 4=minor punctuation issues (e.g., missing stylistic marks) 3=some punctuation errors or inconsistencies 2=frequent punctuation problems 1=punctuation is largely incorrect or absent"
+              },
+              "description": {
+                "type": "string",
+                "description": "Optional comment explaining the punctuation score."
+              }
+            },
+            "required": ["score", "description"],
+            "additionalProperties": false
+          }
+        },
+        
+        "required": ["adequacy", "fluency", "terminology", "hallucination", "punctuation"],
+        "additionalProperties": false
+      }
+    },
+    "summary": {
+      "type": "object",
+      "description": "Evaluator's overall commentary summarizing trends across all evaluated segments.",
+      "properties": {
+        "adequacy": {
+          "type": "string",
+          "description": "e.g. Most translations retained the main meaning of the source, with occasional omissions or shifts in nuance. A few misrepresented roles or introduced unclear phrasing, but full meaning loss was rare. The overall message typically came through clearly."
+        },
+        "fluency": {
+          "type": "string",
+          "description": "e.g. Translations were generally smooth and grammatically sound. Minor awkwardness or unnatural phrasing appeared infrequently and rarely impaired understanding. The tone aligned well with standard written Spanish."
+        },
+        "terminology": {
+          "type": "string",
+          "description": "e.g. Terminology use was mostly accurate but uneven. Some mistranslations stemmed from literal mappings or confusion between similar words. Name and title inconsistencies appeared occasionally but did not dominate.",
+        },
+        "hallucination": {
+          "type": "string",
+          "description": "e.g. Hallucinations were rare. The model usually stayed faithful to the source, with only slight deviations or interpretive rewording. Fabricated content was virtually nonexistent.",
+        },
+        "punctuation": {
+          "type": "string",
+          "description": "e.g. Punctuation was mostly correct, though inconsistencies surfaced in quotation marks and comma placement. These were minor and didn’t significantly affect readability. Spanish norms were followed in most cases."
+        }
+      },
+      "required": [
+        "adequacy",
+        "fluency",
+        "terminology",
+        "hallucination",
+        "punctuation"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": ["scores", "summary"],
+  "additionalProperties": false
+}

@@ -48,14 +48,7 @@ def train_action(
     # pull out data from the action input. this comes from the payload when
     # firing an action. This data is made available to transforms and the
     # target tasks method through `config.params` and `parameters` respectively.
-    parameters["eval_config"] = {
-        "src_locale": input["src_locale"],
-        "trg_locale": input["trg_locale"],
-        "corpus_src": input["corpus_src"],
-        "corpus_trg": input["corpus_trg"],
-        "corpus_ref": input["corpus_ref"],
-        "upload-bucket": input["bucket"],
-    }
+    parameters["eval_config"] = input
     # used by the target tasks method to find desired tasks; there is no
     # connection between this target stage and the one in the `train` action
     # other than the naming convention

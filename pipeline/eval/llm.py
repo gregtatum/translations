@@ -5,6 +5,7 @@ Run an LLM to evaluate a repo.
 import argparse
 import time
 import json
+import taskcluster
 import json5
 import os
 from pathlib import Path
@@ -12,9 +13,97 @@ from typing import Any, Optional
 from openai import OpenAI
 from pipeline.common.downloads import read_lines
 from pipeline.common.logging import get_logger
+from pydantic import BaseModel, Field, conint
 
 logger = get_logger(__file__)
 
+class ScoreComponent(BaseModel):
+    score: conint(ge=1, le=5) = Field(
+        ...,
+        description=(
+            "5=complete meaning preserved, 4=minor meaning issues, 3=partial meaning loss, "
+            "2=major meaning errors, 1=meaning not preserved"
+        )
+    )
+    description: str = Field(
+        ...,
+        description="A comment explaining scores 1-4, or an empty string if 5."
+    )
+
+class SegmentEvaluation(BaseModel):
+    adequacy: ScoreComponent = Field(
+        ...,
+        description="Assessment of how well the meaning of the source is preserved."
+    )
+    fluency: ScoreComponent = Field(
+        ...,
+        description="Assessment of grammatical and stylistic fluency."
+    )
+    terminology: ScoreComponent = Field(
+        ...,
+        description="Assessment of correct use of domain-specific terminology."
+    )
+    hallucination: ScoreComponent = Field(
+        ...,
+        description="Assessment of fabricated or unrelated content."
+    )
+    punctuation: ScoreComponent = Field(
+        ...,
+        description="Assessment of punctuation correctness."
+    )
+
+class EvaluationSummary(BaseModel):
+    adequacy: str = Field(
+        ...,
+        description=(
+            "e.g. Most translations retained the main meaning of the source, with occasional omissions "
+            "or shifts in nuance. A few misrepresented roles or introduced unclear phrasing, but full "
+            "meaning loss was rare. The overall message typically came through clearly."
+        )
+    )
+    fluency: str = Field(
+        ...,
+        description=(
+            "e.g. Translations were generally smooth and grammatically sound. Minor awkwardness or "
+            "unnatural phrasing appeared infrequently and rarely impaired understanding. The tone "
+            "aligned well with standard written Spanish."
+        )
+    )
+    terminology: str = Field(
+        ...,
+        description=(
+            "e.g. Terminology use was mostly accurate but uneven. Some mistranslations stemmed from "
+            "literal mappings or confusion between similar words. Name and title inconsistencies "
+            "appeared occasionally but did not dominate."
+        )
+    )
+    hallucination: str = Field(
+        ...,
+        description=(
+            "e.g. Hallucinations were rare. The model usually stayed faithful to the source, with only "
+            "slight deviations or interpretive rewording. Fabricated content was virtually nonexistent."
+        )
+    )
+    punctuation: str = Field(
+        ...,
+        description=(
+            "e.g. Punctuation was mostly correct, though inconsistencies surfaced in quotation marks "
+            "and comma placement. These were minor and didn’t significantly affect readability. Spanish "
+            "norms were followed in most cases."
+        )
+    )
+
+class EvaluationBatch(BaseModel):
+    scores: List[SegmentEvaluation] = Field(
+        ...,
+        min_items=10,
+        max_items=10,
+        description="The batch of evaluations"
+    )
+    summary: EvaluationSummary = Field(
+        ...,
+        description="Evaluator's overall commentary summarizing trends across all evaluated segments."
+    )
 
 class Config:
     def __init__(self) -> None:
@@ -24,7 +113,40 @@ class Config:
             formatter_class=argparse.RawTextHelpFormatter,
         )
 
-        parser.add_argument("--fetches", required=True, type=Path, help="The path to the datasets")
+        parser.add_argument(
+            "--corpus_src",
+            required=True,
+            type=str,
+            help="The url or path to a source evaluation corpus.",
+        )
+        parser.add_argument(
+            "--corpus_trg",
+            required=True,
+            type=str,
+            help="The url or path to a target evaluation corpus.",
+        )
+        parser.add_argument(
+            "--corpus_ref",
+            required=True,
+            type=str,
+            help="The url or path to a reference evaluation corpus (same language as target).",
+        )
+
+        parser.add_argument(
+            "--model_service",
+            required=True,
+            type=str,
+            help='Which service is being evaluated, e.g. "mozilla", "google"',
+        )
+        parser.add_argument(
+            "--model_architecture", type=Path, help="The target evaluation corpus."
+        )
+        parser.add_argument(
+            "--model_name",
+            type=Path,
+            help="The reference evaluation corpus (same language as target).",
+        )
+
         parser.add_argument(
             "--artifacts", required=True, type=Path, help="The path to the artifacts folder"
         )
@@ -42,7 +164,9 @@ class Config:
 
         args = parser.parse_args()
 
-        self.fetches: Path = args.fetches
+        self.corpus_src = args.corpus_src
+        self.corpus_trg = args.corpus_trg
+        self.corpus_ref = args.corpus_ref
         self.artifacts: Path = args.artifacts
         self.src: str = args.src
         self.trg: str = args.trg
@@ -65,13 +189,13 @@ def yield_batched_translations(config: Config):
     translations: list[dict[str, str]] = []
 
     with (
-        read_lines(config.fetches / f"devtest.{config.src}") as devtest_src,
-        read_lines(config.fetches / f"devtest.{config.trg}") as devtest_trg,
-        read_lines(config.fetches / f"devtest.{config.trg}.ref") as devtest_ref,
+        read_lines(config.corpus_src) as corpus_src,
+        read_lines(config.corpus_trg) as corpus_trg,
+        read_lines(config.corpus_ref) as corpus_ref,
     ):
         batch_size = 0
         for i, (src_line, trg_line, ref_line) in enumerate(
-            zip(devtest_src, devtest_trg, devtest_ref)
+            zip(corpus_src, corpus_trg, corpus_ref)
         ):
             if config.max_count and i >= config.max_count:
                 break
@@ -143,11 +267,12 @@ def run_eval_batch_prompt(
             temperature = 0.5
             logger.info(f"Retry {attempt+1}/{retry_count}: The last query failed to parse.")
 
-        response = client.responses.create(
+        response = client.responses.parse(
             model=config.model,
             instructions=instructions,
             input=input,
             temperature=temperature,
+            text_format=,
         )
 
         call_time = time.time() - start
@@ -260,14 +385,35 @@ def run_eval_final_summary(
     return summary, usage
 
 
+def get_open_ai_key() -> str:
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if api_key:
+        logger.info("Found the api key from OPENAI_API_KEY.")
+        return api_key
+
+    root_url = os.environ.get("TASKCLUSTER_PROXY_URL")
+
+    assert root_url, (
+        "The OPENAI_API_KEY environment variable must be set when running locally. "
+        "When running in Taskcluster the TASKCLUSTER_PROXY_URL must be set."
+    )
+    secrets = taskcluster.Secrets({"rootUrl": root_url})
+
+    try:
+        response: Any = secrets.get("project/translations/level-1/chatgpt")
+        return response["secret"]["token"]
+    except Exception as e:
+        raise Exception(f"Could not retrieve the OpenAI secret key: {e}")
+
+
 def main() -> None:
     config = Config()
 
-    client = OpenAI(
-        api_key=os.environ.get("OPENAI_API_KEY"),
-    )
+    config.artifacts.mkdir(exist_ok=True)
 
-    #
+    client = OpenAI(api_key=get_open_ai_key())
+
+    logger.info("Load in the evaluation instructions")
     with open(Path(__file__).parent / "eval-batch-instructions.md", "r") as file:
         eval_batch_instructions = file.read().format(src=config.src, trg=config.trg)
     with open(Path(__file__).parent / "eval-final-summary.md", "r") as file:

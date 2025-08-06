@@ -29,8 +29,7 @@ WORKER_CLASSES = (
 
 def can_train(parameters: dict[str, Any]) -> bool:
     return parameters["head_repository"] in TRAIN_ON_PROJECTS or (
-        parameters["base_repository"] in TRAIN_ON_PROJECTS
-        and parameters["tasks_for"].startswith("github-pull-request")
+        parameters["base_repository"] in TRAIN_ON_PROJECTS and parameters["tasks_for"].startswith("github-pull-request")
     )
 
 
@@ -59,9 +58,7 @@ def validate_continuation(params: dict[str, Any]) -> None:
             )
 
         if "vocab" not in continuation:
-            raise ValueError(
-                'A vocab must be provided when using "continuation.corpus.distillation".'
-            )
+            raise ValueError('A vocab must be provided when using "continuation.corpus.distillation".')
 
 
 def get_descendants(task_id, queue, res=None):
@@ -91,9 +88,7 @@ def get_descendants(task_id, queue, res=None):
     return res
 
 
-def get_train_parameters(
-    parameters_obj: Parameters, training_config: dict[str, Any]
-) -> Parameters:
+def get_train_parameters(parameters_obj: Parameters, training_config: dict[str, Any]) -> Parameters:
     parameters: dict[str, Any] = dict(parameters_obj)
 
     previous_group_ids = training_config.pop("previous-group-ids", None)
@@ -116,11 +111,7 @@ def get_train_parameters(
                 task_id = task["status"]["taskId"]
                 task_name = task["task"]["metadata"]["name"]
                 # Skip service tasks
-                if (
-                    task_name.startswith("Action")
-                    or task_name.startswith("Decision")
-                    or task_name.startswith("PR")
-                ):
+                if task_name.startswith("Action") or task_name.startswith("Decision") or task_name.startswith("PR"):
                     continue
 
                 # Tasks from the latter previous-group-ids groups override previously found tasks
@@ -132,11 +123,7 @@ def get_train_parameters(
             # Add ancestors of all the top level completed tasks
             for task_id, label in get_ancestors(list(tasks_to_add.values())).items():
                 # Skip service tasks
-                if (
-                    label.startswith("Action")
-                    or label.startswith("Decision")
-                    or label.startswith("PR")
-                ):
+                if label.startswith("Action") or label.startswith("Decision") or label.startswith("PR"):
                     continue
                 tasks_to_add[label] = task_id
 
@@ -145,22 +132,14 @@ def get_train_parameters(
             # Optionally rerun the tasks with the specified prefix and their descendants by removing them from the existing tasks
             start_prefix = training_config.pop("start-task-prefix", None)
             if start_prefix:
-                start_tasks = {
-                    id: label
-                    for label, id in tasks_to_add.items()
-                    if label.startswith(start_prefix)
-                }
-                logger.info(
-                    f"Identified start tasks to rerun`: {json.dumps(start_tasks, indent=2)}"
-                )
+                start_tasks = {id: label for label, id in tasks_to_add.items() if label.startswith(start_prefix)}
+                logger.info(f"Identified start tasks to rerun`: {json.dumps(start_tasks, indent=2)}")
                 all_descendants = {}
                 for task_id in start_tasks:
                     descendants = get_descendants(task_id, queue)
                     all_descendants.update(descendants)
 
-                logger.info(
-                    f"Found start task descendants to remove`: {json.dumps(all_descendants, indent=2)}"
-                )
+                logger.info(f"Found start task descendants to remove`: {json.dumps(all_descendants, indent=2)}")
 
                 tasks_to_add = {
                     label: task_id
@@ -180,9 +159,7 @@ def get_train_parameters(
     }
 
     if overridden_existing_tasks:
-        logger.info(
-            f"Old values for `overridden_existing_tasks`: {json.dumps(overridden_existing_tasks, indent=2)}"
-        )
+        logger.info(f"Old values for `overridden_existing_tasks`: {json.dumps(overridden_existing_tasks, indent=2)}")
 
     # Do the override!
     parameters["existing_tasks"].update(existing_tasks)  # type: ignore
@@ -190,14 +167,11 @@ def get_train_parameters(
 
     # Log the new values for the `overridden_existing_tasks`
     new_values_for_overridden = {
-        existing_task: parameters["existing_tasks"][existing_task]
-        for existing_task in overridden_existing_tasks.keys()
+        existing_task: parameters["existing_tasks"][existing_task] for existing_task in overridden_existing_tasks.keys()
     }
 
     if new_values_for_overridden:
-        logger.info(
-            f"New values for `overridden_existing_tasks`: {json.dumps(new_values_for_overridden, indent=2)}"
-        )
+        logger.info(f"New values for `overridden_existing_tasks`: {json.dumps(new_values_for_overridden, indent=2)}")
 
     parameters["target_tasks_method"] = "train-target-tasks"
     parameters["optimize_target_tasks"] = True
@@ -224,9 +198,7 @@ def make_schema_strict(schema: dict) -> dict:
 
         properties: dict[str, Any] = schema["properties"]
         schema["required"] = [
-            key
-            for key, value in properties.items()
-            if isinstance(value, dict) and not value.get("optional", False)
+            key for key, value in properties.items() if isinstance(value, dict) and not value.get("optional", False)
         ]
 
         # The "optional" property is custom to this funct
@@ -249,7 +221,7 @@ def make_schema_strict(schema: dict) -> dict:
     return schema
 
 
-def get_config_schema(graph_config: dict[str, Any]):
+def get_training_config_schema(graph_config: dict[str, Any]):
     """
     The schema for the training config. The graph_config parameter is the
     taskcluster/config.yml file. For documentation of the elements see the
@@ -588,7 +560,7 @@ def get_config_schema(graph_config: dict[str, Any]):
     order=500,
     context=[],
     available=can_train,
-    schema=get_config_schema,
+    schema=get_training_config_schema,
 )
 def train_action(
     parameters: Parameters,
@@ -603,6 +575,4 @@ def train_action(
 
     https://taskcluster-taskgraph.readthedocs.io/en/latest/howto/create-actions.html#defining-action-tasks
     """
-    taskgraph_decision(
-        {"root": graph_config.root_dir}, parameters=get_train_parameters(parameters, input)
-    )
+    taskgraph_decision({"root": graph_config.root_dir}, parameters=get_train_parameters(parameters, input))
