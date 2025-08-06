@@ -18,3 +18,5 @@ def test_final_eval():
         callback="evaluate",
         extra_args=["--api_batch_size", "4", "--max_count", "8"],
     )
+
+    data_dir.print_tree()

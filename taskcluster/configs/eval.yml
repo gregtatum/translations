@@ -8,10 +8,10 @@ model:
   architecture: tiny # Not required for non-mozilla evals.
   name: spring-2024
 corpus:
-  src: https://github.com/mozilla/firefox-translations-models/blob/main/evaluation/bs-en/flores-dev.bs
-  trg: https://github.com/mozilla/firefox-translations-models/blob/main/evaluation/bs-en/flores-dev.bergamot-tiny.en
-  ref: https://github.com/mozilla/firefox-translations-models/blob/main/evaluation/bs-en/flores-dev.en
-  
+  src: https://raw.githubusercontent.com/mozilla/firefox-translations-models/refs/heads/main/evaluation/bs-en/flores-dev.bs
+  trg: https://raw.githubusercontent.com/mozilla/firefox-translations-models/refs/heads/main/evaluation/bs-en/flores-dev.bergamot-tiny.en
+  ref: https://raw.githubusercontent.com/mozilla/firefox-translations-models/refs/heads/main/evaluation/bs-en/flores-dev.en
+
 taskcluster:
   # The GCS bucket to upload artifacts to. The options are:
   #   - production
