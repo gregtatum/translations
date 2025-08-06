@@ -74,7 +74,7 @@ tasks:
                 by-tasks-for:
                     github-pull-request: development
                     pr-action: development
-                    default: "{bucket}"
+                    default: "{upload_bucket}"
             # upstream artifacts defines which artifacts from upstream tasks we want to upload
             upstream-artifacts:
                 - "public/build/*"
@@ -91,9 +91,9 @@ tasks:
                 # https://firefox-source-docs.mozilla.org/taskcluster/taskgraph.html#task-parameterization
                 "*.log":
                     - {
-                        "task-reference": "logs/{src}-{trg}/{model_name}_<decision>/final_eval/{model_service}_{model_architecture]"
+                        "task-reference": "logs/{src}-{trg}/{model_name}_<decision>/final_eval/{model_service}_{model_architecture}"
                       }
                 "*":
                     - {
-                        "task-reference": "models/{src}-{trg}/{model_name}_<decision>/final_eval/{model_service}_{model_architecture]"
+                        "task-reference": "models/{src}-{trg}/{model_name}_<decision>/final_eval/{model_service}_{model_architecture}"
                       }
