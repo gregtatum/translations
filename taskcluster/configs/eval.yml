@@ -1,9 +1,8 @@
-bucket: development
 model:
   src: bs
   trg: en
   # The artifacts will be saved with the following format:
-  # gs://{bucket}/models/{src}-{trg}/{name}_{task_id}/final_eval/{eval}/{service}_{architecture}
+  # gs://{upload-bucket}/models/{src}-{trg}/{name}_{task_id}/final_eval/{eval}/{service}_{architecture}
   service: mozilla
   architecture: tiny
   name: spring-2024
@@ -22,6 +21,6 @@ taskcluster:
   #     - GCS bucket is moz-fx-translations-data--5f91-stage-translations-data
   #     - artifacts are deleted after 30 days
   #     - should be used when artifact retention is not important
-  upload-bucket: production
+  upload-bucket: development
   worker-classes:
     default: gcp-spot

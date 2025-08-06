@@ -23,7 +23,6 @@ import sys
 import yaml
 
 from utils.trigger_training import (
-    get_decision_task_push,
     get_decision_task_push_loop,
     get_task_id_from_url,
     run,
@@ -44,7 +43,7 @@ def write_to_log(config_path: Path, config: dict, action_task_id: str, branch: s
         lines = [
             "",
             f"config: {config_path}",
-            f"langpair: {config['src']}-{config['trg']}",
+            f"langpair: {config['model']['src']}-{config['model']['trg']}",
             f"time: {datetime.datetime.now()}",
             f"action: {ROOT_URL}/tasks/{action_task_id}",
             f"branch: {branch}",
@@ -58,15 +57,15 @@ def get_eval_action(decision_task_id: str):
     actions_json = get_artifact(decision_task_id, "public/actions.json")
 
     for action in actions_json["actions"]:
-        if action["name"] == "train":
+        if action["name"] == "evaluate":
             return action
 
-    print("Could not find the train action.")
+    print("Could not find the evaluate action.")
     print(actions_json)
     sys.exit(1)
 
 
-def trigger_eval(decision_task_id: str, config: dict[str, Any]) -> str | None:
+def trigger_evaluation(decision_task_id: str, config: dict[str, Any]) -> str | None:
     taskcluster = TaskclusterConfig(ROOT_URL)
     taskcluster.auth()
     hooks: Hooks = taskcluster.get_service("hooks")
@@ -166,31 +165,19 @@ def main() -> None:
 
     validate_taskcluster_credentials()
 
-    timeout = 20
-    while True:
-        decision_task = get_decision_task_push(branch)
+    if branch:
+        print(f"Using --branch: {branch}")
+    else:
+        branch = run(["git", "branch", "--show-current"])
+        print(f"Using current branch: {branch}")
 
-        if decision_task:
-            if decision_task.status == "completed" and decision_task.conclusion == "success":
-                # The decision task is completed.
-                break
-            elif decision_task.status == "queued":
-                print(f"Decision task is queued, trying again in {timeout} seconds")
-            elif decision_task.status == "in_progress":
-                print(f"Decision task is in progress, trying again in {timeout} seconds")
-            else:
-                # The task failed.
-                print(
-                    f'Decision task is "{decision_task.status}" with the conclusion "{decision_task.conclusion}"'
-                )
-                sys.exit(1)
-        else:
-            print(f"Decision task is not available, trying again in {timeout} seconds")
-
-        sleep(timeout)
+    if branch != "main" and not branch.startswith("dev") and not branch.startswith("release"):
+        print(f'The git branch "{branch}" must be "main", or start with "dev" or "release"')
+        sys.exit(1)
 
     decision_task = get_decision_task_push_loop(branch)
     decision_task_id = get_task_id_from_url(decision_task.details_url)
+    print("Decision Task ID", decision_task_id)
 
     action_task_id = trigger_evaluation(decision_task_id, config)
     if action_task_id:

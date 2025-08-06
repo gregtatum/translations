@@ -48,7 +48,7 @@ tasks:
                 corpus_src: eval_config.corpus.src
                 corpus_trg: eval_config.corpus.trg
                 corpus_ref: eval_config.corpus.ref
-                upload_bucket: taskcluster.upload-bucket
+                upload_bucket: eval_config.taskcluster.upload-bucket
             substitution-fields:
                 - label
                 - worker.artifact-map

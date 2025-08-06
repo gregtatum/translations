@@ -47,7 +47,7 @@ def get_decision_task_push(branch: str):
     repo = g.get_repo(repo_name)
     ref = f"heads/{branch}"
 
-    print('Finding the "Decision Task (push)"')
+    print(f'Finding the "Decision Task (push) from {ref}"')
     checks = repo.get_commit(ref).get_check_runs()
     decision_task = None
     for check in checks:
