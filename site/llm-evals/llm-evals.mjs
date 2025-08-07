@@ -2,7 +2,12 @@
  * @import { Evaluation, ScoreType, Analysis, ScoreNumbers, Summary } from "./llm-evals"
  */
 
-import { getElement, exposeAsGlobal, create } from "../utils.mjs";
+import {
+  getElement,
+  exposeAsGlobal,
+  create,
+  changeLocation,
+} from "../utils.mjs";
 import { terminology } from "./terminology.mjs";
 
 const elements = {
@@ -10,6 +15,8 @@ const elements = {
   error: getElement("error"),
   tbody: getElement("tbody"),
   table: getElement("table"),
+  baseUrl: /** @type {HTMLInputElement} */ (getElement("baseUrl")),
+  form: getElement("form"),
 };
 
 /**
@@ -21,11 +28,60 @@ function showError(message) {
   elements.loading.style.display = "none";
 }
 
+/**
+ * @returns {null | string}
+ */
+function getBaseUrl() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const baseUrl = urlParams.get("baseUrl");
+  if (!baseUrl) {
+    return null;
+  }
+  // Validate that it's a URL.
+  try {
+    new URL(baseUrl);
+  } catch {
+    return null;
+  }
+  if (!baseUrl.endsWith("/") || !baseUrl.endsWith("%2F")) {
+    return baseUrl + "/";
+  }
+  return baseUrl;
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
+  const baseUrl = getBaseUrl();
+  if (baseUrl) {
+    initializePage(baseUrl);
+    elements.baseUrl.value = baseUrl;
+  }
+
+  elements.form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const newBaseUrl = elements.baseUrl.value;
+    try {
+      // Validate the URL.
+      new URL(newBaseUrl);
+    } catch {
+      showError("The location was not a valid URL.");
+      return;
+    }
+    const urlParams = new URLSearchParams();
+    urlParams.set("baseUrl", newBaseUrl);
+    changeLocation(urlParams);
+  });
+});
+
+/**
+ * @param {string} baseUrl
+ */
+async function initializePage(baseUrl) {
+  elements.loading.style.display = "block";
+
   /** @type {Evaluation[]} */
   let evals;
   try {
-    evals = await getEvals();
+    evals = await getEvals(baseUrl);
   } catch (error) {
     showError("Failed to get the evals. See the console for more information.");
     console.error(error);
@@ -34,7 +90,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   /** @type {Summary} */
   let summary;
   try {
-    summary = await getSummary();
+    summary = await getSummary(baseUrl);
   } catch (error) {
     showError(
       "Failed to get the summary. See the console for more information."
@@ -51,21 +107,23 @@ document.addEventListener("DOMContentLoaded", async () => {
   exposeAsGlobal("analysis", analysis);
 
   renderAnalysis(evals, analysis, summary);
-});
+}
 
 /**
+ * @param {string} baseUrl
  * @returns {Promise<Evaluation[]>}
  */
-async function getEvals() {
-  const response = await fetch("scores.json");
+async function getEvals(baseUrl) {
+  const response = await fetch(baseUrl + "scores.json");
   return response.json();
 }
 
 /**
+ * @param {string} baseUrl
  * @returns {Promise<Summary>}
  */
-async function getSummary() {
-  const response = await fetch("summary.json");
+async function getSummary(baseUrl) {
+  const response = await fetch(baseUrl + "summary.json");
   return response.json();
 }
 

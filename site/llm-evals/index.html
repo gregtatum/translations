@@ -22,6 +22,13 @@
     <p>
       This page visualizes the information for evaluations.
     </p>
+    <form id="form">
+      <label for="baseUrl">URL where the evaluations are located</label><br/>
+      <div class='urlInput'>
+        <input type="text" id="baseUrl" placeholder="https://"></input>
+        <input type="submit" value="Load"></input>
+      </div>
+    <form>
     <p id="loading">Fetching the evaluations…</p>
     <p id="error"></p>
     <table class="evaluation-results" id="table">

@@ -2,8 +2,22 @@
   margin: 20px 0;
 }
 
-#error {
+#error, #loading {
   display: none;
+}
+
+#form {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.urlInput {
+  display: flex;
+  gap: 5px;
+  & input[type=text] {
+    flex: 1;
+  }
 }
 
 .histogram {
