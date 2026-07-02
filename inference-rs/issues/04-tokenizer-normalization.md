@@ -1,0 +1,34 @@
+# Tokenizer Normalization + Byte Fallback
+
+The Rust SentencePiece tokenizer (`src/spm.rs`) currently skips the model's normalizer and
+byte fallback: it does whitespace-escaping + a dummy prefix only. That is identity for
+Latin text (so it's invisible on the en→es/en→fr samples) and silently wrong for accented
+/ CJK / unusual Unicode input.
+
+## Work
+
+- Implement the `precompiled_charsmap` normalization from the `.spm` `normalizer_spec`
+  (the NFKC-based Trie), matching SentencePiece.
+- Add byte-fallback pieces for out-of-vocabulary characters instead of collapsing to
+  `<unk>`.
+
+## Why sequence this early
+
+Unlike the numeric parity work, tokenizer id-parity is *bit-exact achievable* and stays
+that way once correct. It's also the highest-correctness-stakes gap for non-Latin pairs,
+and it gates any honest CJK evaluation.
+
+## Validation
+
+Via the corpus oracle in [03-spm-oracle.md](./03-spm-oracle.md) (NLLB sample + unicode /
+byte-fallback edge cases). That oracle is the verification vehicle; this issue is the
+implementation behind it. Split-vocab (CJK) tokenization is exercised through
+[05-split-vocab-oracle.md](./05-split-vocab-oracle.md).
+
+## Approach (decided)
+
+**Implement the `precompiled_charsmap` Trie in Rust** (keeps the dependency-free goal — no
+runtime SentencePiece link). It's validated *oracle-driven*, not self-referentially: the
+golden ids come from the built `spm_encode` in [03-spm-oracle.md](./03-spm-oracle.md), so a
+wrong Trie fails the id-parity check. No separate normalization unit test that compares our
+Trie to our Trie.
