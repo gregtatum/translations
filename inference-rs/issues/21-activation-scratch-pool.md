@@ -173,3 +173,41 @@ per-op `[rows×d]`/`[rows×ffn]` buffers (`matmul_into` affine outputs, FFN hidd
 move neither settled RSS (allocator-gated) nor throughput meaningfully (732K allocs ≈ tens of ms of
 a 8 s run). Left as a cleanliness follow-up; revisit if paired with a page-returning allocator or
 the Rust gemmology port ([18](./18-gemmology-rust-port.md)), where an owned scratch arena is natural.
+
+## Update — pool built and measured: churn-only, not a memory lever (commit `15068183`)
+
+Built the ring/pool as designed: capacity-keyed `FxHashMap` free list (`src/pool.rs`), `Buf` leases
+returned on `Drop`, `Weights::affine` and the engine forward drawing activation buffers from it
+(`embed`/attention/`ffn`/`postnorm`/`decode_step_batch` return `Buf`; detach to owned only for the
+encoder context and the cross-attn K/V cache). Bit-identical (output hash unchanged; full suite +
+parity green). Measured (en→ru base / Frankenstein):
+
+| metric | before | after |
+|---|--:|--:|
+| dhat churn | 8.15 GB | **3.92 GB** |
+| allocations | 732K | 638K |
+| dhat t-gmax (peak live) | 86 MB | 86 MB (unchanged) |
+| **settled RSS** | 249 MiB | **249 MiB (unchanged)** |
+| words/s | 1300 | ~1295 (neutral) |
+
+**Conclusion: the pool is churn / allocator-CPU cleanliness only — it does not move settled RSS**
+(allocator-gated; see [19](./19-settled-rss-allocator.md), where jemalloc takes settled RSS to
+146/125 MiB) **nor throughput.** Kept because it is metric-neutral and halves churn, but it is not a
+memory lever; jemalloc is.
+
+**Gotcha discovered — an unbounded pool makes memory *worse*.** A first cut without the per-block
+`Pool::clear()` **raised t-gmax to 226 MB**: the pool lives the whole run, but activation sizes vary
+widely (encoder `batch·seq`; decoder `m` shrinks every step as sentences retire), so a global
+free list keyed by capacity *hoards* ~140 MB of buffers it rarely re-pops. Clearing the pool at each
+block boundary bounds retention to one block's working set and restores t-gmax to 86 MB. This is the
+concrete failure mode of "pool everything" when sizes aren't stable — worth recording.
+
+## Resolution — reverted (commit `9573b8d1`)
+
+The pool was reverted. It delivered no user-facing improvement — settled RSS and throughput both
+unchanged — so shipping the `Buf`-threading surface and the per-block-clear invariant was net
+complexity for a vanity metric (churn). **This issue is closed by a negative result:** reducing our
+allocation *pattern* is inert here; settled RSS is gated by the allocator, and jemalloc
+([19](./19-settled-rss-allocator.md)) is the lever that actually moves it (−100 MiB). The design
+analysis above (ring/pool vs bump; the per-block-clear hoarding gotcha) is retained as the record of
+what was tried and why it doesn't pay off.
