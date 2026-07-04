@@ -125,6 +125,17 @@ pub fn pick<'a>(
         .max_by(|a, b| version_key(&a.version).cmp(&version_key(&b.version)))
 }
 
+/// Whether a `list` query selects the pair `src`→`trg`. A `src-trg` query
+/// prefix-matches each half against its side (`en-es` → `en*`→`es*`, `zh-en` →
+/// `zh*`→`en*`, catching both Chinese scripts); a bare query prefix-matches
+/// either side, so `es` surfaces both `es → en` and `en → es`.
+pub fn language_matches(src: &str, trg: &str, query: &str) -> bool {
+    match query.split_once('-') {
+        Some((q_src, q_trg)) => src.starts_with(q_src) && trg.starts_with(q_trg),
+        None => src.starts_with(query) || trg.starts_with(query),
+    }
+}
+
 /// Unique `(src, trg)` pairs that have a `model` record, sorted — the set the
 /// `list` command enumerates.
 pub fn pairs(records: &[Record]) -> Vec<(String, String)> {
