@@ -37,24 +37,95 @@ bounded to ±63 (guaranteed no saturation) and *separately* characterizes the fu
 | **avxvnni** | x86 `vpdpbusd` | i32 | **exact** | modern x86 (Alder Lake+) | not wired — see below |
 | **avx512vnni** | x86-512 `vpdpbusd` | i32 | **exact** | server x86 | not wired — see below |
 | **ssse3 / sse2** | x86 `pmaddubsw` | i16 → i32 | approx — i16 saturates | older x86 | in gemmology, not wired |
-| **wasm** | WASM SIMD i16 madd | i16 → i32 | approx — i16 saturates | Firefox in-browser engine | reference engine, not this crate |
+| **wasm (Firefox)** | escapes to a *native* kernel | per that kernel's arch | same as native on that CPU | Firefox in-browser engine | reference engine, not this crate |
 
 "Exact" = bit-identical to the scalar int32 reference, and therefore to the marian oracle the
 scalar kernel is validated against. "Approx" = identical *until* the int16 lane saturates.
+
+Firefox is not a distinct WASM-SIMD kernel: its translations WASM module imports the int8 GEMM
+from a native, sandbox-external module (`WebAssembly.mozIntGemm`; see the import in
+`inference/marian-fork/src/tensors/cpu/wasm_intgemm_interface.h` and `inference/wasm/import-gemm-module.js`),
+so it runs native CPU-dispatched code — the same behavior as a native build on that CPU. The
+in-WASM kernel is only a fallback.
+
+**marian's x86 path is runtime-dispatched, and mostly saturating.** The forked marian's int8
+CPU inference uses **intgemm** on x86 (not gemmology, not FBGEMM), which CPUID-dispatches
+`AVX-512-VNNI → AVX-512BW → AVX2 → SSSE3` (`inference/marian-fork/src/3rd_party/intgemm/intgemm/intgemm.h`).
+Only the **AVX-512-VNNI** tier (`vpdpbusd`) is exact; **AVX2, SSSE3, and even AVX-512BW all
+saturate** via `maddubs`. On ARM, marian uses gemmology (i8mm / neon64), which is exact. intgemm
+and gemmology emit the *same* instructions per arch, so inference-rs matches production
+arch-for-arch: our AVX2 == intgemm AVX2 (saturating), our i8mm == marian ARM gemmology (exact).
+The practical divergence axis is therefore the **CPU's ISA**, not the engine — two Firefox users
+on a VNNI server vs. an AVX2 laptop already differ the same way.
 
 VNNI (`vpdpbusd`) is the x86 analogue of ARM's `usdot`: it accumulates into i32 directly, so it
 is both faster than AVX2 *and* exact. Wiring it up (behind a runtime CPUID dispatch) is the
 remaining x86 work — see [issues/x86-gemmology-backend.md](./issues/x86-gemmology-backend.md).
 
-## Why Firefox (WASM) and inference-rs can disagree
+## Validation status
 
-Firefox's in-browser engine runs the WASM int8 kernel, which uses the **saturating** i16 path —
-the same family as x86 AVX2/SSE. inference-rs on Apple Silicon runs **i8mm**, which is exact. So
-on inputs where the i16 lane saturates, the WASM reference and inference-rs-on-ARM produce
-slightly different logits, and occasionally a different argmax (hence a different token). This
-is the most likely source of observed reference-translation differences between the two — not a
-bug in either, but the accumulator-width split above. On an x86 build, inference-rs uses AVX2
-and lands on the *same* saturating side as WASM.
+What CI actually proves, and what it can't with the hardware available. The GitHub runners are
+`ubuntu-24.04-arm` (i8mm) and stock `ubuntu-latest` x86 — and the x86 runner tops out at **AVX2**
+(probed flags: `avx2 sse sse2 sse4_1 sse4_2 sse4a`; no AVX-512, no VNNI). So a backend is only
+CI-validated if some runner CPU can actually execute it. `tests/gemm_parity.rs` is the harness;
+`FXTRANSLATE_REQUIRE_SIMD` / `FXTRANSLATE_REQUIRE_SCALAR` make a wrong backend a hard failure.
+
+| Backend | Wired | CI-validated | How, or why not |
+|---|---|---|---|
+| **scalar** | ✓ fallback | ✓ | `test-portable` leg: `fast,portable`, `REQUIRE_SCALAR` asserts the build fell back to scalar; tests pass with no C++ toolchain. |
+| **i8mm+neon64** | ✓ | ✓ **exact, full-range** | `test (arm-i8mm)`: `REQUIRE_SIMD`, bit-parity vs. scalar on adversarial full-range inputs (`usdot` → i32, no saturation). |
+| **avx2** | ✓ | ◐ **in-regime; saturation characterized** | `test (x86-avx2)`: `REQUIRE_SIMD`, exact on bounded (±63) inputs; the full-range divergence is *measured and reported*, not asserted (it's an accepted approximation). |
+| **avxvnni** | ✗ | ✗ **unvalidated** | No stock runner exposes VNNI. Would be exact → could assert full-range parity, but only under Intel SDE emulation or a VNNI-capable larger runner. |
+| **avx512vnni** | ✗ | ✗ **unvalidated** | No AVX-512 on stock runners. Same path to validation as `avxvnni`. |
+| **ssse3 / sse2** | ✗ | ✗ **unvalidated** | Kernel exists in gemmology and *is* executable on the stock runner (SSE present), but not wired. Would saturate like AVX2. Testable here if we ever ship it. |
+| **wasm** | n/a | ✗ **unvalidated here** | A separate engine/toolchain (Firefox), not built by this crate. Validated in the Firefox tree, not here. |
+
+Legend: ✓ proven · ◐ proven within its valid numeric range, known-divergent outside it · ✗ not exercised.
+
+**Gaps and how to close them.** The exact x86 path (VNNI) is the notable unvalidated one, purely
+because no available runner can run it. An **Intel SDE**-emulated leg (the tool intgemm/marian use)
+would run the VNNI-compiled tests on any x86 and — since VNNI is exact — assert full-range parity,
+the strongest gate here; a VNNI-capable larger runner would do it on real silicon. SSE would only
+be validated if we choose to ship it. Until then those rows stay ✗ by design, not by oversight.
+
+## Why Firefox and inference-rs can disagree — it's the CPU, not the engine
+
+Firefox and inference-rs run the *same family* of kernel (native, CPU-dispatched int8 GEMM), so
+on the **same CPU** they agree (modulo reduction order). They diverge when they run on CPUs with
+different accumulator behavior:
+
+- Firefox on a non-VNNI x86 (most laptops) saturates; inference-rs on x86 (AVX2) saturates too →
+  **they match**.
+- Firefox-native and inference-rs both on ARM i8mm are exact → **they match**.
+- Firefox on a saturating x86 vs. inference-rs on an exact Apple-Silicon Mac → **they differ** —
+  but so do two Firefox users on a VNNI server vs. an AVX2 laptop. The split is inherent to the
+  quantization scheme, not to either engine.
+
+So observed reference-translation differences trace to the **accumulator-width split by CPU ISA**
+(exact `usdot`/`vpdpbusd` vs. saturating `maddubs`), not a bug and not something inference-rs
+introduces — it mirrors production arch-for-arch.
+
+## Is the shipped model biased toward saturation, or toward x86?
+
+Short answer: **no meaningful bias.** Two facts from the training pipeline (`pipeline/quantize/`,
+`pipeline/train/`) settle it:
+
+- **Fine-tuning never runs the int8 kernel.** `student.finetune.yml`'s `quantize-bits: 8` uses
+  marian's `ModelQuantizer` (`marian-dev/src/optimizers/quantizer.cpp`): it rounds *weights* to the
+  int8 grid and reverts them to float — ordinary FP math on GPU, weights only, **no integer
+  accumulation, no saturation**. The model is tuned to tolerate weight *rounding*, not to depend on
+  saturation. So an exact kernel is not "wrong" — there is no saturation-trained reference to
+  deviate from.
+- **Calibration is a magnitude statistic with headroom.** The activation multipliers come from
+  `marian-decoder --dump-quantmult` on the devset: `QuantMultA = 127 / (mean(maxAbs) + 1.1·std)`
+  (`pipeline/quantize/extract_stats.py`). That measures how large activations get (plus ~1.1σ of
+  headroom), not how the accumulator behaves — essentially saturation-independent.
+
+The one real x86 flavor: calibration runs on an x86 GCP CI worker, so the alphas are gathered on
+x86 int8 numerics. But it's magnitude-based with headroom, and the model ships as ISA-neutral
+`intgemm8` (dispatched per-CPU at inference), so it privileges neither saturation nor a specific
+ISA. Net: exact kernels (ARM i8mm, VNNI, our scalar) are faithful — arguably closer to the float
+model than the saturating x86 default most users actually run.
 
 ## Portable options (Cargo features)
 
