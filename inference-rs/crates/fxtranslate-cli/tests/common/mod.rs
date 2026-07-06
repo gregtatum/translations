@@ -176,10 +176,13 @@ impl Fetch for MockFetch {
 
 /// Engine-free translator: `load` succeeds unless the pair was marked
 /// [`unsupported`](MockTranslator::unsupported), returning a session that
-/// upper-cases each line and prefixes the pair.
+/// upper-cases each line and prefixes the pair. A pair marked
+/// [`pivots`](MockTranslator::pivots) yields a session that reports the pivot hop
+/// and tags its output with the full `src→hub→trg` route.
 #[derive(Default)]
 pub struct MockTranslator {
     unsupported: Vec<(String, String)>,
+    pivots: Vec<(String, String, String)>,
 }
 
 impl MockTranslator {
@@ -190,6 +193,14 @@ impl MockTranslator {
     /// Make `load(src, trg, …)` fail, to exercise the error transcript.
     pub fn unsupported(mut self, src: &str, trg: &str) -> MockTranslator {
         self.unsupported.push((src.to_string(), trg.to_string()));
+        self
+    }
+
+    /// Make `load(src, trg, …)` return a pivot session through `hub`, so a
+    /// transcript proves the pivot hop is reported and routed through the hub.
+    pub fn pivots(mut self, src: &str, trg: &str, hub: &str) -> MockTranslator {
+        self.pivots
+            .push((src.to_string(), trg.to_string(), hub.to_string()));
         self
     }
 }
@@ -204,9 +215,15 @@ impl Translator for MockTranslator {
         if self.unsupported.iter().any(|(s, t)| s == src && t == trg) {
             return Err(format!("no model for {src}-{trg} in Remote Settings"));
         }
+        let pivot = self
+            .pivots
+            .iter()
+            .find(|(s, t, _)| s == src && t == trg)
+            .map(|(_, _, hub)| hub.clone());
         Ok(Box::new(MockSession {
             src: src.to_string(),
             trg: trg.to_string(),
+            pivot,
         }))
     }
 }
@@ -214,11 +231,24 @@ impl Translator for MockTranslator {
 struct MockSession {
     src: String,
     trg: String,
+    pivot: Option<String>,
 }
 
 impl Session for MockSession {
     fn translate(&self, text: &str) -> String {
-        format!("[{}→{}] {}", self.src, self.trg, text.to_uppercase())
+        match &self.pivot {
+            Some(hub) => format!(
+                "[{}→{}→{}] {}",
+                self.src,
+                hub,
+                self.trg,
+                text.to_uppercase()
+            ),
+            None => format!("[{}→{}] {}", self.src, self.trg, text.to_uppercase()),
+        }
+    }
+    fn pivot(&self) -> Option<&str> {
+        self.pivot.as_deref()
     }
 }
 

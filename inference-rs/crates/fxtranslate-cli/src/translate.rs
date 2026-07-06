@@ -4,9 +4,9 @@
 //! and no model.
 
 use fxtranslate::cache::Cache;
-use fxtranslate::engine::Engine;
+use fxtranslate::engine::Translation;
 use fxtranslate::fetch::Fetch;
-use fxtranslate::loader::load_engine;
+use fxtranslate::loader::load_translation;
 
 /// Resolves a `src`→`trg` model into a ready [`Session`]. The two-phase shape
 /// (`load` once, then `translate` many lines) matches pipe/REPL usage: the model
@@ -25,6 +25,12 @@ pub trait Translator {
 /// A loaded model, ready to translate lines.
 pub trait Session {
     fn translate(&self, text: &str) -> String;
+    /// The pivot language when the pair is served by a two-leg pivot
+    /// (`src`→`pivot`→`trg`), else `None`. Lets the caller report the hop; a
+    /// direct pair returns `None`.
+    fn pivot(&self) -> Option<&str> {
+        None
+    }
 }
 
 /// Production translator: Remote Settings discovery + verified cache + the
@@ -57,17 +63,21 @@ impl Translator for EngineTranslator<'_> {
             None => Cache::locate(),
         }
         .with_progress(self.show_progress);
-        let engine = load_engine(self.fetch, &cache, src, trg)?;
-        Ok(Box::new(EngineSession(engine)))
+        let translation = load_translation(self.fetch, &cache, src, trg)?;
+        Ok(Box::new(EngineSession(translation)))
     }
 }
 
 /// Newtype so the library (which owns [`Session`]) can implement it for the
-/// foreign [`Engine`] without tripping the orphan rule.
-struct EngineSession(Engine);
+/// foreign [`Translation`] without tripping the orphan rule. Wraps the
+/// pivot-aware [`Translation`], so `es`→`fr` transparently chains its two legs.
+struct EngineSession(Translation);
 
 impl Session for EngineSession {
     fn translate(&self, text: &str) -> String {
         self.0.translate(text)
+    }
+    fn pivot(&self) -> Option<&str> {
+        self.0.pivot()
     }
 }
