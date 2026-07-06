@@ -93,6 +93,7 @@ The real-trace integration tests skip when no trace is present, so `task rs:test
 ## Further reading
 
 - [`crates/fxtranslate/README.md`](./crates/fxtranslate/README.md) — engine + CLI usage, library API, performance.
+- [pivot-translations.md](./pivot-translations.md) — how non-English pairs (`es → fr`) are served by pivoting through English: route resolution, memory, the `list` views, and the cheat-proof audit.
 - [gemm-backends.md](./gemm-backends.md) — the int8 GEMM backends and how they diverge per architecture.
 - `notes/` — the design and build-out history (`01`–`10`): the parity bar and plan, the model
   architecture, the memory/perf approach, and the final comparisons.
