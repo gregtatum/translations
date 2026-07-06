@@ -41,6 +41,12 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def config_path(models_dir: str, src: str, trg: str) -> Path:
+    """The decode-config path for a downloaded `src`→`trg` model (may not exist)."""
+    langs = f"{src.lower()}{trg.lower()}"
+    return Path(models_dir) / langs / f"config.{langs}.yml"
+
+
 def resolve_config(models_dir: str, source: str, target: str) -> tuple[str, str, str, Path]:
     """Resolve the decode config for a language pair, erroring if it is missing.
 
@@ -48,13 +54,51 @@ def resolve_config(models_dir: str, source: str, target: str) -> tuple[str, str,
     """
     src, trg = source.lower(), target.lower()
     langs = f"{src}{trg}"
-    config = Path(models_dir) / langs / f"config.{langs}.yml"
+    config = config_path(models_dir, src, trg)
     if not config.exists():
         raise SystemExit(
             f"[error] decode config not found at {config}\n"
             f"  Download the model first with: task rs:download-model -- {src} {trg}"
         )
     return src, trg, langs, config
+
+
+def resolve_route(
+    models_dir: str, source: str, target: str, hub: str = "en"
+) -> tuple[str, list[tuple[str, str, Path]]]:
+    """Resolve a language pair to a translation route against the *downloaded*
+    models, mirroring `fxtranslate::route::resolve_route`: a direct model wins,
+    else pivot `src`→`hub`→`trg`. This is the perf/parity harnesses' local
+    equivalent — it resolves by which config files exist on disk, not Remote
+    Settings, so both engines run the same route the shipped resolver would pick.
+
+    Returns `(kind, legs)` where `kind` is `"direct"` or `"pivot"` and each leg is
+    `(src, trg, config_path)`. Errors (with download hints) when neither a direct
+    model nor both pivot legs are present on disk.
+    """
+    src, trg = source.lower(), target.lower()
+    hub = hub.lower()
+    direct = config_path(models_dir, src, trg)
+    if direct.exists():
+        return ("direct", [(src, trg, direct)])
+
+    # A pair already touching the hub (or src == trg) has no sensible pivot — the
+    # legs would be degenerate (hub→hub). Report it as a missing direct model.
+    if hub in (src, trg):
+        raise SystemExit(
+            f"[error] decode config not found at {direct}\n"
+            f"  Download the model first with: task rs:download-model -- {src} {trg}"
+        )
+
+    leg1, leg2 = config_path(models_dir, src, hub), config_path(models_dir, hub, trg)
+    missing = [(a, b, p) for (a, b, p) in ((src, hub, leg1), (hub, trg, leg2)) if not p.exists()]
+    if missing:
+        hints = "\n".join(f"  task rs:download-model -- {a} {b}" for a, b, _ in missing)
+        raise SystemExit(
+            f"[error] no direct {src}→{trg} model, and the pivot through {hub} is "
+            f"missing {len(missing)} leg(s):\n{hints}"
+        )
+    return ("pivot", [(src, hub, leg1), (hub, trg, leg2)])
 
 
 def read_input_text(args: argparse.Namespace) -> str:

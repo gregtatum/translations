@@ -10,8 +10,17 @@ matches what ships; pass --shortlist to enable it on both sides.
 Each engine loads once (text is piped over stdin), so this is two process
 launches, not two per sentence.
 
+A pair with no direct model (e.g. `es fr`) is compared as a PIVOT through English
+(`es → en → fr`): each engine runs both legs and — crucially — feeds its OWN
+intermediate into leg 2 (inference-rs's English into inference-rs's `en → fr`,
+marian's into marian's). That keeps the check non-tautological: it exercises leg 2
+on machine-English (out of the dev-corpus distribution) and confirms our pivot
+orchestration — the detokenized text handed between legs — matches the reference's
+end to end, not just each leg in isolation.
+
 Usage:
     inference-rs/scripts/parity.py en fr
+    inference-rs/scripts/parity.py es fr           # pivots es → en → fr
     inference-rs/scripts/parity.py en es --corpus path/to/corpus.txt --limit 50
 
 Or via the task wrapper:
@@ -102,20 +111,40 @@ def main() -> None:
     parser.add_argument("--limit", type=int, default=0, help="cap sentences (0 = all)")
     parser.add_argument("--cpu-threads", type=int, default=1)
     parser.add_argument(
+        "--pivot",
+        default="en",
+        help="hub language for pivoting when there is no direct model (default: en)",
+    )
+    parser.add_argument(
         "--shortlist", action="store_true", help="enable the shortlist on both sides"
     )
     args = parser.parse_args()
 
-    _src, _trg, langs, config = common.resolve_config(args.models_dir, args.source, args.target)
-    model_cfg = common.parse_model_config(config)
+    kind, legs = common.resolve_route(args.models_dir, args.source, args.target, args.pivot)
 
     lines = [l for l in Path(args.corpus).read_text().splitlines() if l.strip()]
     if args.limit:
         lines = lines[: args.limit]
     text = "\n".join(lines) + "\n"
 
-    ref = reference_outputs(config, text, args.cpu_threads, args.shortlist)
-    rust = rust_outputs(model_cfg, text, args.shortlist)
+    if kind == "direct":
+        _src, _trg, config = legs[0]
+        langs = f"{_src}{_trg}"
+        ref = reference_outputs(config, text, args.cpu_threads, args.shortlist)
+        rust = rust_outputs(common.parse_model_config(config), text, args.shortlist)
+    else:
+        # Pivot: each engine chains its own two legs, feeding its OWN leg-1 output
+        # into leg 2 (see the module docstring on why that stays non-tautological).
+        (src, hub, cfg1), (_hub, trg, cfg2) = legs
+        langs = f"{src}{hub}{trg} (pivot)"
+
+        def nl(out_lines: list[str]) -> str:
+            return "\n".join(out_lines) + "\n"
+
+        ref_mid = reference_outputs(cfg1, text, args.cpu_threads, args.shortlist)
+        ref = reference_outputs(cfg2, nl(ref_mid), args.cpu_threads, args.shortlist)
+        rust_mid = rust_outputs(common.parse_model_config(cfg1), text, args.shortlist)
+        rust = rust_outputs(common.parse_model_config(cfg2), nl(rust_mid), args.shortlist)
 
     if len(ref) != len(lines) or len(rust) != len(lines):
         print(

@@ -36,8 +36,16 @@ needs the wasm build; the translator-cli number is a conservative reference only
 Metrics are defined in a legend printed under the table — nothing cryptic, since
 these numbers get peer-reviewed by low-context readers.
 
+A pair with no direct model (e.g. `es fr`) is timed as a PIVOT through English
+(`es → en → fr`): the corpus is translated leg 1, its output fed through leg 2,
+and per-leg plus end-to-end wall / sent-per-sec are reported. Both legs must be
+downloaded (`task rs:download-model -- es en`, `-- en fr`). `--pivot <hub>` picks
+a different hub; `--samply`/`--blocks` aren't supported for pivots (profile each
+leg directly).
+
 Run directly:
     inference-rs/scripts/perf.py en fr
+    inference-rs/scripts/perf.py es fr                     # pivots es → en → fr
     inference-rs/scripts/perf.py en fr --features lean-embed
     inference-rs/scripts/perf.py en fr --samply            # both engines, one-off
     inference-rs/scripts/perf.py en fr --samply --blocks   # both engines, block-batched
@@ -92,9 +100,10 @@ def engine_cmd(model, src_vocab, trg_vocab, shortlist: bool, timing: bool) -> li
     return cmd
 
 
-def run_engine(cmd: list[str], corpus: str) -> tuple[float, list[dict]]:
-    """One corpus pass: wall-clock seconds (load + translate all + exit) and the
-    per-sentence timing spans parsed from stderr."""
+def run_engine(cmd: list[str], corpus: str) -> tuple[float, list[dict], str]:
+    """One corpus pass: wall-clock seconds (load + translate all + exit), the
+    per-sentence timing spans parsed from stderr, and the translated stdout (so a
+    pivot can feed one leg's output into the next)."""
     t0 = time.perf_counter()
     p = subprocess.run(cmd, input=corpus, capture_output=True, text=True)
     wall = time.perf_counter() - t0
@@ -106,7 +115,7 @@ def run_engine(cmd: list[str], corpus: str) -> tuple[float, list[dict]]:
         for line in p.stderr.splitlines()
         if line.startswith(prefix)
     ]
-    return wall, spans
+    return wall, spans, p.stdout
 
 
 def marian_config(config: Path, shortlist: bool, ssplit_sentence: bool) -> Path:
@@ -130,9 +139,12 @@ def marian_config(config: Path, shortlist: bool, ssplit_sentence: bool) -> Path:
     return Path(tmp.name)
 
 
-def run_marian(config: Path, corpus: str, shortlist: bool, translator_cli: Path) -> float:
+def run_marian(
+    config: Path, corpus: str, shortlist: bool, translator_cli: Path
+) -> tuple[float, str]:
     """One corpus pass through translator-cli, one-off per sentence, single-threaded,
-    model loaded once. Returns wall-clock seconds.
+    model loaded once. Returns `(wall-clock seconds, translated stdout)` — the
+    stdout lets a pivot chain one leg's output into the next.
 
     NOTE: bergamot asserts mini-batch-words > max-length-break (128), so it cannot
     be forced to one sentence per batch — it is a batch tool. We therefore run it at
@@ -150,7 +162,7 @@ def run_marian(config: Path, corpus: str, shortlist: bool, translator_cli: Path)
         tmp_path.unlink(missing_ok=True)
     if p.returncode != 0:
         sys.exit(f"[perf] translator-cli failed (exit {p.returncode}):\n{p.stderr[-800:]}")
-    return wall
+    return wall, p.stdout
 
 
 def med_iqr(xs: list[float]) -> tuple[float, float, float]:
@@ -179,7 +191,7 @@ def timing_mode(args, model, src_vocab, trg_vocab, config, corpus, n_sent) -> No
     cmd = engine_cmd(model, src_vocab, trg_vocab, args.shortlist, timing=True)
     rs_walls, ttfts, dec_tokps = [], [], []
     for i in range(args.warmup + args.runs):
-        wall, spans = run_engine(cmd, corpus)
+        wall, spans, _ = run_engine(cmd, corpus)
         if not spans:
             sys.exit("[perf] no timing spans — is this a --timing build of the CLI?")
         if i < args.warmup:
@@ -197,7 +209,7 @@ def timing_mode(args, model, src_vocab, trg_vocab, config, corpus, n_sent) -> No
                 f"[perf] translator-cli not found at {cli} (build it, or pass --translator-cli)"
             )
         for i in range(args.warmup + args.runs):
-            wall = run_marian(config, corpus, args.shortlist, cli)
+            wall, _ = run_marian(config, corpus, args.shortlist, cli)
             if i >= args.warmup:
                 marian_walls.append(wall)
 
@@ -238,6 +250,87 @@ def timing_mode(args, model, src_vocab, trg_vocab, config, corpus, n_sent) -> No
         "here at the production default (1024 words, ~30 sentences/batch), which is an UPPER\n"
         "BOUND on marian throughput. A faithful one-off marian baseline (one document per\n"
         "call on a loaded model, like the Wasm path) needs the wasm build, not translator-cli."
+    )
+
+
+def leg_paths(config: Path) -> tuple[Path, Path, Path]:
+    """`(model, src_vocab, trg_vocab)` for one leg's decode config."""
+    cfg = common.parse_model_config(config)
+    vocabs = cfg["vocabs"]
+    return cfg["model"], vocabs[0], vocabs[1] if len(vocabs) > 1 else vocabs[0]
+
+
+def _newline_terminated(text: str) -> str:
+    """One-sentence-per-line corpus with a trailing newline (a leg's stdout fed as
+    the next leg's stdin)."""
+    return text if text.endswith("\n") else text + "\n"
+
+
+def pivot_timing_mode(args, legs, corpus, n_sent) -> None:
+    """Time an end-to-end pivot (`src`→`hub`→`trg`): translate the corpus through
+    leg 1, feed its output through leg 2, and report per-leg and combined wall /
+    sent-per-sec. Each leg loads its model once per run (as production would hold
+    both resident); the combined wall is the sum of the two legs. This mirrors how
+    Firefox pivots — detokenized text handed between two engine runs — so the
+    numbers are the true cost of a non-English pair, not a direct model."""
+    (src, hub, cfg1), (_hub, trg, cfg2) = legs
+    m1, sv1, tv1 = leg_paths(cfg1)
+    m2, sv2, tv2 = leg_paths(cfg2)
+    cmd1 = engine_cmd(m1, sv1, tv1, args.shortlist, timing=True)
+    cmd2 = engine_cmd(m2, sv2, tv2, args.shortlist, timing=True)
+
+    leg1_walls, leg2_walls, combined = [], [], []
+    for i in range(args.warmup + args.runs):
+        w1, spans1, mid = run_engine(cmd1, corpus)
+        if not spans1:
+            sys.exit("[perf] no timing spans — is this a --timing build of the CLI?")
+        w2, _spans2, _final = run_engine(cmd2, _newline_terminated(mid))
+        if i < args.warmup:
+            continue
+        leg1_walls.append(w1)
+        leg2_walls.append(w2)
+        combined.append(w1 + w2)
+
+    marian_walls = []
+    if args.baseline:
+        cli = Path(args.translator_cli)
+        if not cli.exists():
+            sys.exit(
+                f"[perf] translator-cli not found at {cli} (build it, or pass --translator-cli)"
+            )
+        for i in range(args.warmup + args.runs):
+            mw1, mid = run_marian(cfg1, corpus, args.shortlist, cli)
+            mw2, _ = run_marian(cfg2, _newline_terminated(mid), args.shortlist, cli)
+            if i >= args.warmup:
+                marian_walls.append(mw1 + mw2)
+
+    feat = args.features or "default"
+    print(
+        f"\ncorpus: {Path(args.corpus).stem} ({n_sent} sent) | 1 thread | "
+        f"runs={args.runs} warmup={args.warmup} | shortlist={'on' if args.shortlist else 'off'}\n"
+        f"  PIVOT {src}→{hub}→{trg}: no direct {src}→{trg} model, so the corpus is\n"
+        f"  translated {src}→{hub} then {hub}→{trg} (detokenized text handed between legs)\n"
+        "  inference-rs: one-off (one sentence at a time); each leg loads its model once\n"
+        "  translator-cli: BATCHED (mini-batch-words 1024 — see note below)"
+    )
+    hdr = f"{'engine':22}{'wall (s)':>8}{'wall IQR':>16}{'sent/s':>10}{'sent/s IQR':>16}"
+    print(hdr)
+    print(row(f"  {src}→{hub} (rs)", leg1_walls, n_sent))
+    print(row(f"  {hub}→{trg} (rs)", leg2_walls, n_sent))
+    print(row(f"inference-rs {feat} (pivot)", combined, n_sent))
+    if marian_walls:
+        print(row("translator-cli (pivot)", marian_walls, n_sent))
+        rs_sps = n_sent / statistics.median(combined)
+        mar_sps = n_sent / statistics.median(marian_walls)
+        print(f"{'ratio (rs / marian)':22}{'':>8}{'':>16}{rs_sps / mar_sps:>10.2f}x")
+    print(
+        "\nlegend:\n"
+        "  the two indented rows are per-leg; 'pivot' rows are the end-to-end cost\n"
+        "  (leg1 wall + leg2 wall). sent/s = corpus size / wall, so the per-leg and\n"
+        "  combined sent/s are directly comparable to a direct pair's numbers.\n"
+        "  IQR = interquartile range (25th–75th percentile) across runs.\n"
+        "\nCAVEAT: translator-cli is a batch tool (see the direct-mode note); its pivot\n"
+        "number is an upper bound on marian throughput, not a one-off baseline."
     )
 
 
@@ -468,6 +561,11 @@ def main() -> None:
     parser.add_argument("source", nargs="?", default="en")
     parser.add_argument("target", nargs="?", default="fr")
     parser.add_argument("--models-dir", default=common.DEFAULT_MODELS_DIR)
+    parser.add_argument(
+        "--pivot",
+        default="en",
+        help="hub language for pivoting when there is no direct model (default: en)",
+    )
     parser.add_argument("--corpus", default=str(DEFAULT_CORPUS), help="one sentence per line")
     parser.add_argument("--limit", type=int, default=0, help="cap sentences (0 = all)")
     parser.add_argument("--runs", type=int, default=10, help="measured runs")
@@ -503,12 +601,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    _src, _trg, _langs, config = common.resolve_config(args.models_dir, args.source, args.target)
-    model_cfg = common.parse_model_config(config)
-    vocabs = model_cfg["vocabs"]
-    src_vocab = vocabs[0]
-    trg_vocab = vocabs[1] if len(vocabs) > 1 else vocabs[0]
-    model = model_cfg["model"]
+    kind, legs = common.resolve_route(args.models_dir, args.source, args.target, args.pivot)
 
     lines = [l for l in Path(args.corpus).read_text().splitlines() if l.strip()]
     if args.limit:
@@ -516,6 +609,21 @@ def main() -> None:
     corpus = "\n".join(lines) + "\n"
 
     build(args.features)
+
+    if kind == "pivot":
+        # Block-batched and samply profiling are per-model paths; a pivot chains
+        # two, so profile each leg directly rather than emit misleading numbers.
+        if args.samply or args.blocks:
+            (src, hub, _), (_, trg, _) = legs
+            sys.exit(
+                f"[perf] --samply/--blocks aren't supported for the pivot {src}→{hub}→{trg}; "
+                f"profile each leg directly, e.g. perf.py {src} {hub} … and perf.py {hub} {trg} …"
+            )
+        pivot_timing_mode(args, legs, corpus, len(lines))
+        return
+
+    _src, _trg, config = legs[0]
+    model, src_vocab, trg_vocab = leg_paths(config)
 
     if args.samply:
         samply_mode(args, model, src_vocab, trg_vocab, config, corpus)
