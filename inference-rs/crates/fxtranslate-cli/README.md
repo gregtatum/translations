@@ -13,9 +13,10 @@ $ cargo install fxtranslate-cli
 ## Usage
 
 ```console
-# Enumerate the available <src>-<trg> pairs (or filter to a language):
+# List supported languages (or filter to one); --all shows the raw model pairs:
 $ fxtranslate list
 $ fxtranslate list es
+$ fxtranslate list --all
 
 # Translate a phrase. The model for the pair is discovered, downloaded, and
 # cached on first use, then reused from disk on subsequent runs.
@@ -27,9 +28,13 @@ Wissen ist Macht.
 
 $ fxtranslate translate es en "Buenos días, ¿cómo estás?"
 Good morning, how are you?
+
+# Neither side is English? It pivots through English automatically.
+$ fxtranslate translate es fr "Buenos días."
+Bonjour.
 ```
 
-Every Firefox Translations model translates to or from English, so each direction is its own model (`en → es` and `es → en` are separate downloads).
+Every Firefox Translations model translates to or from English, so each direction is its own model (`en → es` and `es → en` are separate downloads). A pair where neither side is English — like `es → fr` — is served by **pivoting**: it runs `es → en` then `en → fr` automatically, so the full cartesian product of languages works out of the box. That's also why `list` shows *languages* by default (each one usable to and from the others) rather than raw model pairs. See [pivot-translations.md](https://github.com/mozilla/translations/blob/main/inference-rs/pivot-translations.md) for how it resolves, what it costs in memory, and how it's validated.
 
 With no text argument, `translate` reads from stdin — one translation per line when piped, or an interactive prompt on a terminal:
 
