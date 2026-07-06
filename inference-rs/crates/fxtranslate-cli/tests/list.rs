@@ -59,7 +59,7 @@ mod languages {
 
     /// Every language is bidirectional here, so all land under "Fully supported",
     /// code-sorted, one row each (English included as the hub). Names align to the
-    /// widest ("Chinese (Traditional)"); both Norwegian standards are named.
+    /// widest ("Traditional Chinese"); both Norwegian standards are named.
     #[test]
     fn fully_supported() {
         assert_transcript(
@@ -67,13 +67,13 @@ mod languages {
             &list(&["list"], false),
             &[
                 "Fully supported (translate to and from any other):",
-                "  English               (en)",
-                "  Spanish               (es)",
-                "  French                (fr)",
-                "  Norwegian Bokmål      (nb)",
-                "  Norwegian Nynorsk     (nn)",
-                "  Chinese (Simplified)  (zh-Hans)",
-                "  Chinese (Traditional) (zh-Hant)",
+                "  English             (en)",
+                "  Spanish             (es)",
+                "  French              (fr)",
+                "  Norwegian Bokmål    (nb)",
+                "  Norwegian Nynorsk   (nn)",
+                "  Simplified Chinese  (zh-Hans)",
+                "  Traditional Chinese (zh-Hant)",
                 "[7 languages]",
             ],
         );
@@ -101,8 +101,8 @@ mod languages {
             &list(&["list", "zh"], false),
             &[
                 "Fully supported (translate to and from any other):",
-                "  Chinese (Simplified)  (zh-Hans)",
-                "  Chinese (Traditional) (zh-Hant)",
+                "  Simplified Chinese  (zh-Hans)",
+                "  Traditional Chinese (zh-Hant)",
                 "[2 languages]",
             ],
         );
@@ -143,18 +143,18 @@ mod all_pairs {
             "list --all",
             &list(&["list", "--all"], false),
             &[
-                "English               (en)      → Spanish               (es)",
-                "English               (en)      → French                (fr)",
-                "English               (en)      → Norwegian Bokmål      (nb)",
-                "English               (en)      → Norwegian Nynorsk     (nn)",
-                "English               (en)      → Chinese (Simplified)  (zh-Hans)",
-                "English               (en)      → Chinese (Traditional) (zh-Hant)",
-                "Spanish               (es)      → English               (en)",
-                "French                (fr)      → English               (en)",
-                "Norwegian Bokmål      (nb)      → English               (en)",
-                "Norwegian Nynorsk     (nn)      → English               (en)",
-                "Chinese (Simplified)  (zh-Hans) → English               (en)",
-                "Chinese (Traditional) (zh-Hant) → English               (en)",
+                "English             (en)      → Spanish             (es)",
+                "English             (en)      → French              (fr)",
+                "English             (en)      → Norwegian Bokmål    (nb)",
+                "English             (en)      → Norwegian Nynorsk   (nn)",
+                "English             (en)      → Simplified Chinese  (zh-Hans)",
+                "English             (en)      → Traditional Chinese (zh-Hant)",
+                "Spanish             (es)      → English             (en)",
+                "French              (fr)      → English             (en)",
+                "Norwegian Bokmål    (nb)      → English             (en)",
+                "Norwegian Nynorsk   (nn)      → English             (en)",
+                "Simplified Chinese  (zh-Hans) → English             (en)",
+                "Traditional Chinese (zh-Hant) → English             (en)",
                 "[12 pairs]",
             ],
         );
@@ -182,8 +182,8 @@ mod all_pairs {
             "list zh-en --all",
             &list(&["list", "zh-en", "--all"], false),
             &[
-                "Chinese (Simplified)  (zh-Hans) → English (en)",
-                "Chinese (Traditional) (zh-Hant) → English (en)",
+                "Simplified Chinese  (zh-Hans) → English (en)",
+                "Traditional Chinese (zh-Hant) → English (en)",
                 "[2 pairs]",
             ],
         );
