@@ -46,8 +46,8 @@ USAGE:
 By default, `list` shows LANGUAGES, not raw models. A language is listed under
 \"Fully supported\" when it can translate both to and from other languages — every
 such pair works, directly or by pivoting through English. Languages that ship a
-model in only one direction (e.g. only `en → xx`) can't pivot both ways, so they
-appear under \"Single-direction only\" with that direction.
+model in only one direction (e.g. only `en → xx`) work only that way, so they
+appear under \"Single-direction models\" with the direction they support.
 
 Underneath, every Firefox Translations model is a one-way pair to or from English
 (`en → es` and `es → en` are separate models). Pass --all to list those raw pairs.
@@ -223,10 +223,10 @@ pub fn write_pairs(
 }
 
 /// The default `list` view: languages, not raw pairs. A language is *fully
-/// supported* when it has a model both to and from the hub (English), so it pivots
-/// to/from any other fully-supported language — listed once, as itself.
-/// Languages with a model in only one direction can't pivot both ways, so they're
-/// listed separately with that direction. Returns the number of languages shown.
+/// supported* when it has a model both to and from the hub (English), so it reaches
+/// every other fully-supported language — listed once, as itself. Languages with a
+/// model in only one direction work only that way, so they're listed separately as
+/// single-direction models. Returns the number of languages shown.
 pub fn write_languages(
     fetch: &dyn Fetch,
     query: Option<&str>,
@@ -265,8 +265,8 @@ pub fn write_languages(
         }
     }
 
-    // Single-direction only: render as the actual one-way pairs (hub→L for
-    // target-only, L→hub for source-only), reusing the aligned pair table.
+    // Single-direction models: the actual one-way pairs (hub→L for target-only,
+    // L→hub for source-only), rendered compactly with a single `(src trg)` tag.
     let one_way: Vec<(String, String)> = target_only
         .iter()
         .map(|l| (PREFERRED_HUB.to_string(), (*l).clone()))
@@ -280,11 +280,43 @@ pub fn write_languages(
         if !bidi.is_empty() {
             writeln!(out).map_err(|e| e.to_string())?;
         }
-        writeln!(out, "Single-direction only (one way, no pivot):").map_err(|e| e.to_string())?;
-        render_pairs(&one_way, color, out)?;
+        writeln!(out, "Single-direction models:").map_err(|e| e.to_string())?;
+        render_single_direction(&one_way, color, out)?;
     }
 
     Ok(total)
+}
+
+/// Write the single-direction rows as `source → target (src trg)`, names padded to
+/// their columns. Unlike the `--all` table (which tags each name) this pairs the
+/// two display names and closes with one compact `(src trg)` tag — the short form
+/// for the one-way list in the default view.
+fn render_single_direction(
+    rows: &[(String, String)],
+    color: bool,
+    out: &mut dyn Write,
+) -> Result<(), String> {
+    let w_src = rows
+        .iter()
+        .map(|(s, _)| display_name(s).chars().count())
+        .max()
+        .unwrap_or(0);
+    let w_trg = rows
+        .iter()
+        .map(|(_, t)| display_name(t).chars().count())
+        .max()
+        .unwrap_or(0);
+    let (cyan, green, dim, reset) = palette(color);
+    for (s, t) in rows {
+        let sname = format!("{:<w_src$}", display_name(s));
+        let tname = format!("{:<w_trg$}", display_name(t));
+        writeln!(
+            out,
+            "{cyan}{sname}{reset} {dim}→{reset} {green}{tname}{reset} {dim}({s} {t}){reset}"
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    Ok(())
 }
 
 /// The external dependencies [`run`] executes against: the network (for `list`
