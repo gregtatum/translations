@@ -26,4 +26,6 @@ path = "src/lib.rs"
 # Settings discovery + the verified cache + the built-in `ureq`/rustls HTTP client
 # (`fxtranslate::{remote,cache,fetch,lang,loader}`) the CLI drives. The fast SIMD
 # path is still opt-in via `--features fxtranslate/fast`.
-fxtranslate = { version = "=0.1.0", path = "../fxtranslate", features = ["net"] }
+# `icu-segmenter` adds Unicode sentence segmentation so long / multi-sentence input
+# is split and translated per sentence instead of truncating (see engine::segment).
+fxtranslate = { version = "=0.1.0", path = "../fxtranslate", features = ["net", "icu-segmenter"] }
