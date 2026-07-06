@@ -75,7 +75,9 @@ struct EngineSession(Translation);
 
 impl Session for EngineSession {
     fn translate(&self, text: &str) -> String {
-        self.0.translate(text)
+        // `translate_long` segments each line into sentences so long / multi-sentence
+        // input translates in full instead of truncating at the context window.
+        self.0.translate_long(text)
     }
     fn pivot(&self) -> Option<&str> {
         self.0.pivot()

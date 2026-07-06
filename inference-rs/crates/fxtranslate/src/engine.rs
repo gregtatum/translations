@@ -161,10 +161,72 @@ impl Engine {
     }
 
     /// Tokenize `text`, run greedy decoding, and detokenize the result.
+    ///
+    /// This is the raw single-sequence path: `text` is fed to the decoder whole,
+    /// so input longer than the model's context window truncates (the decoder
+    /// emits EOS early — see `tests/translate.rs`). For long or multi-sentence
+    /// input use [`translate_long`](Engine::translate_long), which segments first.
     pub fn translate(&self, text: &str) -> String {
         let src_ids = self.src_vocab.encode_with_eos(text);
         let out_ids = self.greedy(&src_ids);
         self.trg_vocab.decode(&out_ids)
+    }
+
+    /// Translate long `text` by splitting it into sentences with `seg` and
+    /// translating each within the model's context window, then rejoining with the
+    /// original inter-sentence whitespace ([`segment::reassemble`]).
+    ///
+    /// Each sentence is decoded independently — no context is shared across
+    /// sentences. Piped/stdin input can't assume adjacent sentences are related;
+    /// a batched document-level translator that exploits cross-sentence context is
+    /// future work. A sentence that already fits the window (the common case) is
+    /// translated byte-for-byte as [`translate`](Engine::translate) would; only a
+    /// single sentence exceeding the window is hard-wrapped (see
+    /// [`translate_within_window`](Engine::translate_within_window)).
+    ///
+    /// [`segment::reassemble`]: crate::segment::reassemble
+    pub fn translate_segmented(&self, text: &str, seg: &dyn crate::segment::Segmenter) -> String {
+        let spans = seg.sentences(text);
+        let outputs: Vec<String> = spans
+            .iter()
+            .map(|s| self.translate_within_window(s.of(text)))
+            .collect();
+        crate::segment::reassemble(text, &spans, &outputs)
+    }
+
+    /// Translate long `text` with the best available segmenter: the Unicode
+    /// [`IcuSegmenter`](crate::segment::IcuSegmenter) when the `icu-segmenter`
+    /// feature is on, else the built-in [`BasicSegmenter`](crate::segment::BasicSegmenter).
+    pub fn translate_long(&self, text: &str) -> String {
+        #[cfg(feature = "icu-segmenter")]
+        {
+            self.translate_segmented(text, &crate::segment::IcuSegmenter::new())
+        }
+        #[cfg(not(feature = "icu-segmenter"))]
+        {
+            self.translate_segmented(text, &crate::segment::BasicSegmenter)
+        }
+    }
+
+    /// Translate one sentence assumed to be a single unit. If it fits the context
+    /// window it is translated whole (identical to [`translate`](Engine::translate));
+    /// otherwise it is hard-wrapped into window-sized token slices whose
+    /// translations are concatenated — accepting a seam. Marian does the same
+    /// (`max-length-break` wrapping); a single sentence over ~127 tokens is rare.
+    fn translate_within_window(&self, sentence: &str) -> String {
+        let mut ids = self.src_vocab.encode(sentence);
+        let eos = self.src_vocab.eos_id();
+        if ids.len() <= crate::segment::MAX_SOURCE_TOKENS {
+            ids.push(eos);
+            return self.trg_vocab.decode(&self.greedy(&ids));
+        }
+        let mut out = String::new();
+        for slice in ids.chunks(crate::segment::MAX_SOURCE_TOKENS) {
+            let mut piece = slice.to_vec();
+            piece.push(eos);
+            out.push_str(&self.trg_vocab.decode(&self.greedy(&piece)));
+        }
+        out
     }
 
     /// Like [`translate`], but returns wall-clock [`Timing`] for the perf harness
@@ -984,6 +1046,18 @@ impl Translation {
         match self {
             Translation::Direct(engine) => engine.translate(text),
             Translation::Pivot { first, second, .. } => second.translate(&first.translate(text)),
+        }
+    }
+
+    /// Long-input-safe translate: each leg segments and translates per sentence
+    /// ([`Engine::translate_long`]). For a pivot, the first leg's rejoined output
+    /// is re-segmented by the second leg.
+    pub fn translate_long(&self, text: &str) -> String {
+        match self {
+            Translation::Direct(engine) => engine.translate_long(text),
+            Translation::Pivot { first, second, .. } => {
+                second.translate_long(&first.translate_long(text))
+            }
         }
     }
 

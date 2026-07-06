@@ -33,6 +33,12 @@ dirs = { version = "6", optional = true }
 # Blocking HTTP(S) client (rustls, no system TLS) for the built-in `NetworkFetch`.
 ureq = { version = "2", optional = true }
 
+# Unicode (UAX #29) sentence segmentation for long-input translation (feature
+# `icu-segmenter`). Rule-based with bundled `compiled_data` — no runtime data
+# files, and CJK works without the large word-segmentation dictionaries (those are
+# only for word breaking). Optional so the lean/wasm engine stays icu-free.
+icu_segmenter = { version = "2", optional = true }
+
 [features]
 # Fast by default. `gemmology` requests the SIMD kernel; build.rs compiles it for
 # the target when it can (aarch64 and x86_64 today, C++17 toolchain present) and otherwise
@@ -80,6 +86,16 @@ download = ["dep:tinyjson", "dep:ruzstd", "dep:sha2", "dep:dirs"]
 # `download`. Off by default so embedders that supply their own client (Firefox,
 # wasm) don't pull a TLS stack.
 net = ["download", "dep:ureq"]
+
+# Unicode sentence segmentation for `Engine::translate_long` / `translate_segmented`
+# via `icu_segmenter` (UAX #29, CJK-capable). Off by default: the segmentation
+# logic and the built-in `BasicSegmenter` fallback are always compiled; this only
+# swaps in the Unicode-correct segmenter. fxtranslate-cli enables it.
+# Binary-size impact (release, aarch64): +~18 KiB when ICU is already linked (the
+# CLI pulls it via `net`→idna→icu_normalizer); the segmenter code is ~380 B and
+# the rest is the UAX#29 sentence-break data. A lean build with no other ICU pays
+# for the shared ICU core too. Measured via `cargo bloat` / release binary diff.
+icu-segmenter = ["dep:icu_segmenter"]
 
 [build-dependencies]
 # Compiles src/gemmology_shim.cpp, but only under the `gemmology` feature (build.rs

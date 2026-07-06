@@ -52,6 +52,7 @@ pub mod engine;
 pub mod gemm;
 pub mod model;
 pub mod ops;
+pub mod segment;
 pub mod shortlist;
 pub mod spm;
 pub mod trace;
