@@ -6,9 +6,10 @@
 //! client) and a [`Cache`], get a ready [`Engine`].
 
 use crate::cache::{ensure_model, Cache, ModelFiles};
-use crate::engine::Engine;
+use crate::engine::{Engine, Translation};
 use crate::fetch::Fetch;
 use crate::remote::fetch_records;
+use crate::route::{resolve_route, Route};
 
 /// Resolve, download (or cache-hit), and hash-verify every file needed to
 /// translate `src`→`trg`, without building the engine — for callers that want the
@@ -38,4 +39,37 @@ pub fn load_engine(
 ) -> Result<Engine, String> {
     let files = ensure_files(fetch, cache, src, trg)?;
     Engine::load(&files.model, &files.src_vocab, &files.trg_vocab)
+}
+
+/// Discover, download+cache (verified), and build a ready [`Translation`] for
+/// `src`→`trg` — the pivot-aware primary path. A direct model yields
+/// [`Translation::Direct`]; a non-hub pair with no direct model is served by
+/// resolving a pivot (see [`resolve_route`]) and loading **both** legs, held
+/// resident for the session as [`Translation::Pivot`]. Records are fetched once
+/// and reused across both legs.
+pub fn load_translation(
+    fetch: &dyn Fetch,
+    cache: &Cache,
+    src: &str,
+    trg: &str,
+) -> Result<Translation, String> {
+    let records = fetch_records(fetch)?;
+    match resolve_route(&records, src, trg)? {
+        Route::Direct { src, trg } => {
+            let files = ensure_model(fetch, cache, &records, &src, &trg)?;
+            let engine = Engine::load(&files.model, &files.src_vocab, &files.trg_vocab)?;
+            Ok(Translation::Direct(engine))
+        }
+        Route::Pivot { src, pivot, trg } => {
+            let leg1 = ensure_model(fetch, cache, &records, &src, &pivot)?;
+            let leg2 = ensure_model(fetch, cache, &records, &pivot, &trg)?;
+            let first = Engine::load(&leg1.model, &leg1.src_vocab, &leg1.trg_vocab)?;
+            let second = Engine::load(&leg2.model, &leg2.src_vocab, &leg2.trg_vocab)?;
+            Ok(Translation::Pivot {
+                pivot,
+                first,
+                second,
+            })
+        }
+    }
 }

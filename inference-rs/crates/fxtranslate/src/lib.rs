@@ -13,7 +13,8 @@
 //! is the batteries-included, Firefox-independent half: [`remote`] discovers
 //! models in Remote Settings, [`cache`] downloads + verifies them into a local
 //! cache over a pluggable [`fetch::Fetch`] client, [`lang`] maps language tags to
-//! display names, and [`loader`] wires discovery → cache → [`engine`] into a
+//! display names, [`route`] resolves a language pair to a direct model or a
+//! two-leg pivot, and [`loader`] wires discovery → cache → [`engine`] into a
 //! single `src→trg`→[`engine::Engine`] call. All off by default so the plain
 //! engine dependency (and wasm) stays lean; an embedder that brings its own HTTP
 //! client enables `download` and implements [`fetch::Fetch`].
@@ -67,3 +68,5 @@ pub mod lang;
 pub mod loader;
 #[cfg(feature = "download")]
 pub mod remote;
+#[cfg(feature = "download")]
+pub mod route;

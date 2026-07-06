@@ -476,3 +476,43 @@ mod ensure_model_wiring {
         assert!(files.lex.is_none(), "no shortlist for CJK split pair");
     }
 }
+
+/// Pivot routing meets download: a non-hub pair with no direct model resolves to a
+/// two-leg route, and each leg's files download+verify through `ensure_model` —
+/// the on-disk half of what `load_translation` builds two engines from.
+mod pivot_wiring {
+    use super::*;
+    use fxtranslate::route::{resolve_route, Route};
+
+    /// `es → fr` has no direct model, so it pivots through English; both legs
+    /// (`es → en`, `en → fr`) resolve and their files land in the cache.
+    #[test]
+    fn pivot_resolves_and_downloads_both_legs() {
+        let cache = tmp_cache();
+        let recs = vec![
+            tiny_record("model.esen.bin", "model", "es", "en"),
+            tiny_record("vocab.esen.spm", "vocab", "es", "en"),
+            tiny_record("model.enfr.bin", "model", "en", "fr"),
+            tiny_record("vocab.enfr.spm", "vocab", "en", "fr"),
+        ];
+        let mut mock = MockFetch::new();
+        for r in &recs {
+            mock = mock.route(&r.cdn_url(), fixture("tiny.bin.zst"));
+        }
+
+        let route = resolve_route(&recs, "es", "fr").unwrap();
+        let (src, pivot, trg) = match route {
+            Route::Pivot { src, pivot, trg } => (src, pivot, trg),
+            Route::Direct { .. } => panic!("es→fr must pivot, not resolve directly"),
+        };
+        assert_eq!(
+            (src.as_str(), pivot.as_str(), trg.as_str()),
+            ("es", "en", "fr")
+        );
+
+        let leg1 = ensure_model(&mock, &cache, &recs, &src, &pivot).unwrap();
+        let leg2 = ensure_model(&mock, &cache, &recs, &pivot, &trg).unwrap();
+        assert!(leg1.model.is_file(), "es→en model cached");
+        assert!(leg2.model.is_file(), "en→fr model cached");
+    }
+}
