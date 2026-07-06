@@ -108,9 +108,9 @@ mod languages {
         );
     }
 
-    /// Both single-direction sections render: `en → nn` (target-only) and
-    /// `is → en` (source-only), with `es` still fully supported. The single-
-    /// direction rows reuse the aligned pair table.
+    /// Both single-direction cases render: `en → nn` (target-only) and `is → en`
+    /// (source-only), with `es` still fully supported. Single-direction rows pair
+    /// the display names and close with a compact `(src trg)` tag.
     #[test]
     fn single_direction_sections() {
         assert_transcript(
@@ -121,9 +121,9 @@ mod languages {
                 "  English (en)",
                 "  Spanish (es)",
                 "",
-                "Single-direction only (one way, no pivot):",
-                "English   (en) → nn      (nn)",
-                "Icelandic (is) → English (en)",
+                "Single-direction models:",
+                "English   → nn      (en nn)",
+                "Icelandic → English (is en)",
                 "[4 languages]",
             ],
         );
@@ -244,8 +244,8 @@ mod version_gate {
             "list version-gate",
             &list_against("rs-version-gate.json", &["list"], false),
             &[
-                "Single-direction only (one way, no pivot):",
-                "Spanish (es) → English (en)",
+                "Single-direction models:",
+                "Spanish → English (es en)",
                 "[1 languages]",
             ],
         );

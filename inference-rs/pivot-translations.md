@@ -78,9 +78,9 @@ languages fully interoperable:
 - **Fully supported** — a language with a model both to and from the hub (`en → L` *and*
   `L → en`). It can translate to/from any other fully-supported language, directly or by pivoting.
   Listed once, as itself: `Spanish (es)`.
-- **Single-direction only** — a language that ships a model in only one direction (e.g. only
-  `en → nn`). It cannot pivot both ways, so it is listed separately with the direction it supports
-  (rendered as the actual one-way pair).
+- **Single-direction models** — a language that ships a model in only one direction (e.g. only
+  `en → nn`) works only that way, so it is listed separately as the one-way pair it supports
+  (`English → Tamil (en ta)`).
 
 `list --all` drops to the raw, per-direction model pairs (`en → es`, `es → en`, …) — the literal
 download units. A `[lang]` argument filters either view by prefix (`zh` catches `zh-Hans` and
