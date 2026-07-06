@@ -53,8 +53,8 @@ Underneath, every Firefox Translations model is a one-way pair to or from Englis
 (`en → es` and `es → en` are separate models). Pass --all to list those raw pairs.
 
 A [lang] argument filters by prefix, so `zh` catches `zh-Hans` and `zh-Hant`.
-Display names come from Google's language list; a tag with no known name shows the
-code. See pivot-translations.md for how non-English pairs are served.
+Display names are the standard BCP 47 language names; a tag with no known name shows
+the code. See pivot-translations.md for how non-English pairs are served.
 
 EXAMPLES:
   fxtranslate list                    # supported languages
