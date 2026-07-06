@@ -9,10 +9,10 @@
 //! mismatch the helper prints the actual output as a paste-ready array to drop in.
 //!
 //! Two fixtures: `rs-list.json` is fully bidirectional (normal pairs `es`/`fr`,
-//! Chinese script tags, Norwegian incl. the `nn` code fallback), so it exercises
-//! the default "fully supported" view and `--all`. `rs-single-direction.json` adds
-//! a target-only (`en → nn`) and a source-only (`is → en`) language, so the
-//! "single-direction only" section renders.
+//! Chinese script tags, both Norwegian written standards `nb`/`nn`), so it
+//! exercises the default "fully supported" view and `--all`.
+//! `rs-single-direction.json` adds a target-only (`en → nn`) and a source-only
+//! (`is → en`) language, so the "single-direction models" section renders.
 
 use std::path::PathBuf;
 
@@ -59,7 +59,7 @@ mod languages {
 
     /// Every language is bidirectional here, so all land under "Fully supported",
     /// code-sorted, one row each (English included as the hub). Names align to the
-    /// widest ("Chinese (Traditional)"); the `nn` code fallback shows.
+    /// widest ("Chinese (Traditional)"); both Norwegian standards are named.
     #[test]
     fn fully_supported() {
         assert_transcript(
@@ -71,7 +71,7 @@ mod languages {
                 "  Spanish               (es)",
                 "  French                (fr)",
                 "  Norwegian Bokmål      (nb)",
-                "  nn                    (nn)",
+                "  Norwegian Nynorsk     (nn)",
                 "  Chinese (Simplified)  (zh-Hans)",
                 "  Chinese (Traditional) (zh-Hant)",
                 "[7 languages]",
@@ -122,8 +122,8 @@ mod languages {
                 "  Spanish (es)",
                 "",
                 "Single-direction models:",
-                "English   → nn      (en nn)",
-                "Icelandic → English (is en)",
+                "English   → Norwegian Nynorsk (en nn)",
+                "Icelandic → English           (is en)",
                 "[4 languages]",
             ],
         );
@@ -135,8 +135,8 @@ mod all_pairs {
     use super::*;
 
     /// The whole table (no filter): sort order, every display name (incl. the `å`
-    /// in Norwegian Bokmål, the `nn` code fallback, and the Chinese script names),
-    /// five-column alignment, and the `[N pairs]` trailer — auditable at a glance.
+    /// in Norwegian Bokmål and the Chinese script names), five-column alignment,
+    /// and the `[N pairs]` trailer — auditable at a glance.
     #[test]
     fn every_pair() {
         assert_transcript(
@@ -146,13 +146,13 @@ mod all_pairs {
                 "English               (en)      → Spanish               (es)",
                 "English               (en)      → French                (fr)",
                 "English               (en)      → Norwegian Bokmål      (nb)",
-                "English               (en)      → nn                    (nn)",
+                "English               (en)      → Norwegian Nynorsk     (nn)",
                 "English               (en)      → Chinese (Simplified)  (zh-Hans)",
                 "English               (en)      → Chinese (Traditional) (zh-Hant)",
                 "Spanish               (es)      → English               (en)",
                 "French                (fr)      → English               (en)",
                 "Norwegian Bokmål      (nb)      → English               (en)",
-                "nn                    (nn)      → English               (en)",
+                "Norwegian Nynorsk     (nn)      → English               (en)",
                 "Chinese (Simplified)  (zh-Hans) → English               (en)",
                 "Chinese (Traditional) (zh-Hant) → English               (en)",
                 "[12 pairs]",

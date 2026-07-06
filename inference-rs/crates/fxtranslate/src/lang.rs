@@ -2,10 +2,10 @@
 //!
 //! Names are taken from Google Cloud Translation's supported-languages list
 //! (<https://docs.cloud.google.com/translate/docs/languages>), keyed by the tags
-//! Firefox Translations actually ships (all 54 as of writing). Two tags differ
-//! from Google's own codes and are mapped by language: `zh-Hans`/`zh-Hant` →
-//! Google's Chinese (Simplified)/(Traditional) (`zh-CN`/`zh-TW`). `nn` (Norwegian
-//! Nynorsk) is not on Google's page, so it falls back to the code (see
+//! Firefox Translations actually ships (all 54 as of writing). Three tags aren't on
+//! Google's page by that code and are named by language identity: `zh-Hans`/`zh-Hant`
+//! → Google's Chinese (Simplified)/(Traditional) (`zh-CN`/`zh-TW`), and `nn` →
+//! Norwegian Nynorsk. An unknown tag falls back to the code itself (see
 //! [`display_name`]). Deliberately a small static table, not a display-names
 //! library.
 
@@ -48,6 +48,7 @@ const NAMES: &[(&str, &str)] = &[
     ("ms", "Malay"),
     ("nb", "Norwegian Bokmål"),
     ("nl", "Dutch"),
+    ("nn", "Norwegian Nynorsk"),
     ("pl", "Polish"),
     ("pt", "Portuguese"),
     ("ro", "Romanian"),
@@ -87,12 +88,12 @@ mod tests {
         assert_eq!(display_name("zh-Hans"), "Chinese (Simplified)");
         assert_eq!(display_name("zh-Hant"), "Chinese (Traditional)");
         assert_eq!(display_name("fa"), "Persian");
+        // Not on Google's page by this code; named by language identity.
+        assert_eq!(display_name("nn"), "Norwegian Nynorsk");
     }
 
     #[test]
     fn unknown_tag_falls_back_to_code() {
-        // `nn` (Norwegian Nynorsk) is not on Google's page.
-        assert_eq!(display_name("nn"), "nn");
         assert_eq!(display_name("xx"), "xx");
     }
 
