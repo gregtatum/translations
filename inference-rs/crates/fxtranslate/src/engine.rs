@@ -960,6 +960,42 @@ impl Engine {
     }
 }
 
+/// A ready translation for a language pair: either one [`Engine`] for a direct
+/// pair, or two chained for a pivot (`src`→`pivot`→`trg`). Both engines stay
+/// resident for the session — [`translate`](Translation::translate) hands the
+/// detokenized intermediate text from the first to the second, mirroring how
+/// Firefox pivots outside the engine (Marian itself has no pivot logic).
+pub enum Translation {
+    /// A single model translates the pair directly.
+    Direct(Engine),
+    /// Two models chained through a pivot language; `first` is `src`→`pivot`,
+    /// `second` is `pivot`→`trg`. `pivot` is kept for reporting the hop.
+    Pivot {
+        pivot: String,
+        first: Engine,
+        second: Engine,
+    },
+}
+
+impl Translation {
+    /// Translate `text`, pivoting through the intermediate language when the pair
+    /// has no direct model.
+    pub fn translate(&self, text: &str) -> String {
+        match self {
+            Translation::Direct(engine) => engine.translate(text),
+            Translation::Pivot { first, second, .. } => second.translate(&first.translate(text)),
+        }
+    }
+
+    /// The pivot language, if this is a two-leg pivot (for status reporting).
+    pub fn pivot(&self) -> Option<&str> {
+        match self {
+            Translation::Direct(_) => None,
+            Translation::Pivot { pivot, .. } => Some(pivot),
+        }
+    }
+}
+
 /// Which embedding matrix a lookup uses.
 #[derive(Clone, Copy)]
 enum Side {
