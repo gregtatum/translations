@@ -1,0 +1,44 @@
+{
+ "data": [
+  {
+   "name": "model.esen.intgemm.alphas.bin",
+   "version": "3.0",
+   "fileType": "model",
+   "sourceLanguage": "es",
+   "targetLanguage": "en",
+   "attachment": {
+    "location": "main-workspace/translations-models-v2/esen.zst"
+   }
+  },
+  {
+   "name": "model.enes.intgemm.alphas.bin",
+   "version": "3.0",
+   "fileType": "model",
+   "sourceLanguage": "en",
+   "targetLanguage": "es",
+   "attachment": {
+    "location": "main-workspace/translations-models-v2/enes.zst"
+   }
+  },
+  {
+   "name": "model.ennn.intgemm.alphas.bin",
+   "version": "3.0",
+   "fileType": "model",
+   "sourceLanguage": "en",
+   "targetLanguage": "nn",
+   "attachment": {
+    "location": "main-workspace/translations-models-v2/ennn.zst"
+   }
+  },
+  {
+   "name": "model.isen.intgemm.alphas.bin",
+   "version": "3.0",
+   "fileType": "model",
+   "sourceLanguage": "is",
+   "targetLanguage": "en",
+   "attachment": {
+    "location": "main-workspace/translations-models-v2/isen.zst"
+   }
+  }
+ ]
+}

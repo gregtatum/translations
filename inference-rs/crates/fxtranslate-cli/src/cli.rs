@@ -13,44 +13,54 @@ use crate::translate::{Session, Translator};
 use fxtranslate::fetch::Fetch;
 use fxtranslate::lang::display_name;
 use fxtranslate::remote::{fetch_records, language_matches, pairs};
+use fxtranslate::route::{catalog, PREFERRED_HUB};
 
 pub const USAGE: &str = "\
 fxtranslate — translate with Firefox Translations models
 
 USAGE:
-  fxtranslate list [lang]                     Enumerate available <src>-<trg> pairs
-                                              (`list --help` for details)
+  fxtranslate list [lang] [--all]             List supported languages (or raw
+                                              model pairs with --all; `list --help`)
   fxtranslate translate <src> <trg> [text…]   Translate: args if given, else stdin
                                               lines, else an interactive TTY prompt
+
+Non-English pairs pivot through English automatically (`es → fr` runs `es → en`
+then `en → fr`); see pivot-translations.md.
+
 OPTIONS:
   --cache-dir <DIR>   Model cache directory (default: <platform cache>/fxtranslate)
   -h, --help          Show this help
 
 EXAMPLES:
   fxtranslate list es
-  echo \"Hello world.\" | fxtranslate translate en es
+  echo \"Hola mundo.\" | fxtranslate translate es fr   # pivots via English
   fxtranslate translate en es \"Hello world.\"
   fxtranslate translate en es                 # interactive";
 
 pub const LIST_USAGE: &str = "\
-fxtranslate list — enumerate available translation models
+fxtranslate list — list supported languages and models
 
 USAGE:
-  fxtranslate list [lang]
+  fxtranslate list [lang] [--all]
 
-Every Firefox Translations model translates to or from English, so each model is a
-one-way pair (`en → es` and `es → en` are two separate models). With no argument,
-all pairs are listed. A [lang] argument filters to every pair where that language
-appears on EITHER side — so `fxtranslate list es` shows both `es → en` and
-`en → es`. Matching is by prefix, so `zh` catches `zh-Hans` and `zh-Hant`; a full
-`src-trg` (e.g. `en-es`) selects one pair. Display names come from Google's
-language list; a tag with no known name shows the code.
+By default, `list` shows LANGUAGES, not raw models. A language is listed under
+\"Fully supported\" when it can translate both to and from other languages — every
+such pair works, directly or by pivoting through English. Languages that ship a
+model in only one direction (e.g. only `en → xx`) can't pivot both ways, so they
+appear under \"Single-direction only\" with that direction.
+
+Underneath, every Firefox Translations model is a one-way pair to or from English
+(`en → es` and `es → en` are separate models). Pass --all to list those raw pairs.
+
+A [lang] argument filters by prefix, so `zh` catches `zh-Hans` and `zh-Hant`.
+Display names come from Google's language list; a tag with no known name shows the
+code. See pivot-translations.md for how non-English pairs are served.
 
 EXAMPLES:
-  fxtranslate list                    # every pair
-  fxtranslate list es                 # both directions for Spanish
-  fxtranslate list zh                 # zh-Hans / zh-Hant, both directions
-  fxtranslate list en-es              # just the en → es pair";
+  fxtranslate list                    # supported languages
+  fxtranslate list es                 # just Spanish
+  fxtranslate list --all              # every raw src → trg model pair
+  fxtranslate list es --all           # both raw directions for Spanish";
 
 /// A parsed command line.
 #[derive(Debug, PartialEq, Eq)]
@@ -59,8 +69,9 @@ pub enum Command {
     Help,
     /// Print `list`-specific usage.
     ListHelp,
-    /// Enumerate model pairs, optionally filtered.
-    List { query: Option<String> },
+    /// Enumerate languages (default) or raw model pairs (`--all`), optionally
+    /// filtered.
+    List { query: Option<String>, all: bool },
     /// Translate `src`→`trg`; `text` empty = stdin/REPL.
     Translate {
         src: String,
@@ -77,10 +88,12 @@ pub fn parse(args: &[String]) -> Result<Command, String> {
     let mut cache_dir: Option<String> = None;
     let mut positional: Vec<String> = Vec::new();
     let mut help = false;
+    let mut all = false;
     let mut it = args.iter();
     while let Some(a) = it.next() {
         match a.as_str() {
             "-h" | "--help" => help = true,
+            "--all" => all = true,
             "--cache-dir" => {
                 cache_dir = Some(it.next().ok_or("--cache-dir needs a path")?.clone());
             }
@@ -95,6 +108,7 @@ pub fn parse(args: &[String]) -> Result<Command, String> {
             } else {
                 Ok(Command::List {
                     query: positional.get(1).cloned(),
+                    all,
                 })
             }
         }
@@ -122,59 +136,54 @@ pub fn parse(args: &[String]) -> Result<Command, String> {
     }
 }
 
-/// Fetch the model records via `fetch`, filter by `query`
-/// ([`language_matches`]), and write the aligned list to `out`. `color` toggles
-/// ANSI styling (the caller decides based on TTY / `NO_COLOR`). Returns the
-/// number of pairs written. Names are padded (by Unicode scalar count, matching
-/// `{:<width$}`) *before* color-wrapping so escape bytes never affect columns.
-pub fn write_list(
-    fetch: &dyn Fetch,
-    query: Option<&str>,
-    color: bool,
-    out: &mut dyn Write,
-) -> Result<usize, String> {
-    let records = fetch_records(fetch)?;
-    let all = pairs(&records);
-    let shown: Vec<_> = all
-        .iter()
-        .filter(|(s, t)| query.map_or(true, |q| language_matches(s, t, q)))
-        .collect();
-    if shown.is_empty() {
-        return Err(format!(
-            "no model pairs match `{}` ({} pairs available; try `fxtranslate list`)",
-            query.unwrap_or(""),
-            all.len()
-        ));
+/// ANSI styling used by both list views: `(cyan source, green target, dim, reset)`,
+/// or empty strings when `color` is off (the caller decides based on TTY /
+/// `NO_COLOR`).
+fn palette(color: bool) -> (&'static str, &'static str, &'static str, &'static str) {
+    if color {
+        ("\x1b[36m", "\x1b[32m", "\x1b[2m", "\x1b[0m")
+    } else {
+        ("", "", "", "")
     }
+}
 
+/// Whether a `list` language view surfaces language `lang` for `query`. A bare
+/// query prefix-matches the code (so `zh` catches `zh-Hans`/`zh-Hant`); a
+/// `src-trg` query matches either half, so `en-es` surfaces both English and
+/// Spanish in the language view.
+fn language_query_matches(lang: &str, query: &str) -> bool {
+    match query.split_once('-') {
+        Some((a, b)) => lang.starts_with(a) || lang.starts_with(b),
+        None => lang.starts_with(query),
+    }
+}
+
+/// Write the aligned `src`→`trg` table for `rows` to `out`. Names and the source
+/// tag are padded (by Unicode scalar count, matching `{:<width$}`) *before*
+/// color-wrapping, so escape bytes never affect columns. Shared by `--all` and the
+/// single-direction section of the default view.
+fn render_pairs(rows: &[(String, String)], color: bool, out: &mut dyn Write) -> Result<(), String> {
     // Column widths (Unicode scalar counts). The source *tag* is padded too, so a
     // long source script tag like `(zh-Hans)` doesn't push the arrow out of line;
     // the target tag is the last column, so it needs no padding.
-    let w_src = shown
+    let w_src = rows
         .iter()
         .map(|(s, _)| display_name(s).chars().count())
         .max()
         .unwrap_or(0);
-    let w_stag = shown
+    let w_stag = rows
         .iter()
         .map(|(s, _)| s.chars().count() + 2) // "(" + tag + ")"
         .max()
         .unwrap_or(0);
-    let w_trg = shown
+    let w_trg = rows
         .iter()
         .map(|(_, t)| display_name(t).chars().count())
         .max()
         .unwrap_or(0);
 
-    let (cyan, green, dim, reset) = if color {
-        ("\x1b[36m", "\x1b[32m", "\x1b[2m", "\x1b[0m")
-    } else {
-        ("", "", "", "")
-    };
-
-    for (s, t) in &shown {
-        // Pad each column's plain text before color-wrapping, so escape bytes
-        // never count toward width.
+    let (cyan, green, dim, reset) = palette(color);
+    for (s, t) in rows {
         let sname = format!("{:<w_src$}", display_name(s));
         let stag = format!("{:<w_stag$}", format!("({s})"));
         let tname = format!("{:<w_trg$}", display_name(t));
@@ -184,7 +193,98 @@ pub fn write_list(
         )
         .map_err(|e| e.to_string())?;
     }
+    Ok(())
+}
+
+/// The `list --all` view: fetch records, filter by `query` ([`language_matches`]),
+/// and write the aligned raw `src`→`trg` model pairs. Returns the number of pairs.
+pub fn write_pairs(
+    fetch: &dyn Fetch,
+    query: Option<&str>,
+    color: bool,
+    out: &mut dyn Write,
+) -> Result<usize, String> {
+    let records = fetch_records(fetch)?;
+    let all = pairs(&records);
+    let shown: Vec<(String, String)> = all
+        .iter()
+        .filter(|(s, t)| query.map_or(true, |q| language_matches(s, t, q)))
+        .cloned()
+        .collect();
+    if shown.is_empty() {
+        return Err(format!(
+            "no model pairs match `{}` ({} pairs available; try `fxtranslate list --all`)",
+            query.unwrap_or(""),
+            all.len()
+        ));
+    }
+    render_pairs(&shown, color, out)?;
     Ok(shown.len())
+}
+
+/// The default `list` view: languages, not raw pairs. A language is *fully
+/// supported* when it has a model both to and from the hub (English), so it pivots
+/// to/from any other fully-supported language — listed once, as itself.
+/// Languages with a model in only one direction can't pivot both ways, so they're
+/// listed separately with that direction. Returns the number of languages shown.
+pub fn write_languages(
+    fetch: &dyn Fetch,
+    query: Option<&str>,
+    color: bool,
+    out: &mut dyn Write,
+) -> Result<usize, String> {
+    let records = fetch_records(fetch)?;
+    let cat = catalog(&records, PREFERRED_HUB);
+
+    let keep = |l: &&String| query.map_or(true, |q| language_query_matches(l, q));
+    let bidi: Vec<&String> = cat.bidirectional.iter().filter(keep).collect();
+    let source_only: Vec<&String> = cat.source_only.iter().filter(keep).collect();
+    let target_only: Vec<&String> = cat.target_only.iter().filter(keep).collect();
+    let total = bidi.len() + source_only.len() + target_only.len();
+    if total == 0 {
+        return Err(format!(
+            "no languages match `{}` (try `fxtranslate list`, or `list --all` for raw pairs)",
+            query.unwrap_or("")
+        ));
+    }
+
+    let (cyan, _green, dim, reset) = palette(color);
+
+    // Fully supported: one row per language, code-sorted (from `catalog`).
+    if !bidi.is_empty() {
+        writeln!(out, "Fully supported (translate to and from any other):")
+            .map_err(|e| e.to_string())?;
+        let w = bidi
+            .iter()
+            .map(|l| display_name(l).chars().count())
+            .max()
+            .unwrap_or(0);
+        for l in &bidi {
+            let name = format!("{:<w$}", display_name(l));
+            writeln!(out, "  {cyan}{name}{reset} {dim}({l}){reset}").map_err(|e| e.to_string())?;
+        }
+    }
+
+    // Single-direction only: render as the actual one-way pairs (hub→L for
+    // target-only, L→hub for source-only), reusing the aligned pair table.
+    let one_way: Vec<(String, String)> = target_only
+        .iter()
+        .map(|l| (PREFERRED_HUB.to_string(), (*l).clone()))
+        .chain(
+            source_only
+                .iter()
+                .map(|l| ((*l).clone(), PREFERRED_HUB.to_string())),
+        )
+        .collect();
+    if !one_way.is_empty() {
+        if !bidi.is_empty() {
+            writeln!(out).map_err(|e| e.to_string())?;
+        }
+        writeln!(out, "Single-direction only (one way, no pivot):").map_err(|e| e.to_string())?;
+        render_pairs(&one_way, color, out)?;
+    }
+
+    Ok(total)
 }
 
 /// The external dependencies [`run`] executes against: the network (for `list`
@@ -228,11 +328,16 @@ fn dispatch(args: &[String], deps: &Deps, io: &mut Io) -> Result<(), String> {
     match parse(args)? {
         Command::Help => writeln!(io.stdout, "{USAGE}").map_err(|e| e.to_string()),
         Command::ListHelp => writeln!(io.stdout, "{LIST_USAGE}").map_err(|e| e.to_string()),
-        Command::List { query } => {
+        Command::List { query, all } => {
             // Color only on an interactive stdout, and honor NO_COLOR.
             let color = io.stdout_is_tty && !io.no_color;
-            let n = write_list(deps.fetch, query.as_deref(), color, io.stdout)?;
-            writeln!(io.stderr, "[{n} pairs]").map_err(|e| e.to_string())
+            if all {
+                let n = write_pairs(deps.fetch, query.as_deref(), color, io.stdout)?;
+                writeln!(io.stderr, "[{n} pairs]").map_err(|e| e.to_string())
+            } else {
+                let n = write_languages(deps.fetch, query.as_deref(), color, io.stdout)?;
+                writeln!(io.stderr, "[{n} languages]").map_err(|e| e.to_string())
+            }
         }
         Command::Translate {
             src,
@@ -256,7 +361,15 @@ fn run_translate(
 ) -> Result<(), String> {
     writeln!(io.stderr, "[fxtranslate] resolving {src}→{trg} model…").map_err(|e| e.to_string())?;
     let session = translator.load(src, trg, cache_dir)?;
-    writeln!(io.stderr, "[fxtranslate] ready ({src}→{trg}).").map_err(|e| e.to_string())?;
+    // A non-hub pair with no direct model is served by pivoting; surface the hop
+    // so the resolved route is visible (`es→en→fr`), not silently different.
+    match session.pivot() {
+        Some(hub) => writeln!(io.stderr, "[fxtranslate] ready ({src}→{hub}→{trg}, pivot).")
+            .map_err(|e| e.to_string())?,
+        None => {
+            writeln!(io.stderr, "[fxtranslate] ready ({src}→{trg}).").map_err(|e| e.to_string())?
+        }
+    }
 
     if !text.is_empty() {
         writeln!(io.stdout, "{}", session.translate(text)).map_err(|e| e.to_string())?;

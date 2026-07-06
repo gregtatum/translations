@@ -11,8 +11,8 @@
 
 use std::path::PathBuf;
 
-use fxtranslate_cli::cli::Deps;
 use fxtranslate::remote::records_url;
+use fxtranslate_cli::cli::Deps;
 use fxtranslate_cli::translate::EngineTranslator;
 
 mod common;
@@ -106,6 +106,26 @@ fn interactive_repl() {
     );
 }
 
+/// Pivot pair: a non-hub `es → fr` is served by pivoting through English. The
+/// "ready" line names the hop (`es→en→fr, pivot`) and the translation is routed
+/// through the hub — transparent to args mode.
+#[test]
+fn pivot_pair_reports_hop() {
+    assert_transcript(
+        "translate pivot",
+        &translate(
+            &["translate", "es", "fr", "Hola mundo."],
+            &MockTranslator::new().pivots("es", "fr", "en"),
+            Streams::default(),
+        ),
+        &[
+            "[fxtranslate] resolving es→fr model…",
+            "[fxtranslate] ready (es→en→fr, pivot).",
+            "[es→en→fr] HOLA MUNDO.",
+        ],
+    );
+}
+
 /// Unresolvable pair: `load` fails after the "resolving" line — no "ready", no
 /// translation, error reported to stderr.
 #[test]
@@ -142,7 +162,7 @@ fn unsupported_major_is_gated_out() {
         &run_transcript(&["translate", "en", "fr", "Hi"], &deps, Streams::default()),
         &[
             "[fxtranslate] resolving en→fr model…",
-            "fxtranslate: no model for en-fr in Remote Settings",
+            "fxtranslate: no model or pivot route for en-fr in Remote Settings",
         ],
     );
 }

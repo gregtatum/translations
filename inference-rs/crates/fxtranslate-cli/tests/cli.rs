@@ -120,7 +120,15 @@ mod parse_grammar {
         assert_eq!(
             parse(&argv(&["list", "es"])).unwrap(),
             Command::List {
-                query: Some("es".into())
+                query: Some("es".into()),
+                all: false,
+            }
+        );
+        assert_eq!(
+            parse(&argv(&["list", "es", "--all"])).unwrap(),
+            Command::List {
+                query: Some("es".into()),
+                all: true,
             }
         );
         assert_eq!(
