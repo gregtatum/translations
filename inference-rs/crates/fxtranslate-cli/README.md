@@ -56,3 +56,7 @@ Status lines (model resolution, progress) are written to stderr, so piped stdout
 Models are cached under the platform-native cache directory — `~/Library/Caches/fxtranslate/models` on macOS, `$XDG_CACHE_HOME/fxtranslate/models` on Linux, `%LOCALAPPDATA%\fxtranslate\models` on Windows — with one subdirectory per language pair. Override the location with `--cache-dir <DIR>`.
 
 The models are discovered via Mozilla's Remote Settings and downloaded from Firefox's CDN, which is provisioned for Firefox rather than third-party traffic. This CLI is a convenient way to try the engine; if you're building a product on top of it, use the [library](https://crates.io/crates/fxtranslate) and re-host the models you depend on rather than relying on Firefox's hosting.
+
+## Changelog
+
+See [CHANGELOG.md](https://github.com/gregtatum/translations/blob/inference-rs/inference-rs/CHANGELOG.md) for the release history.

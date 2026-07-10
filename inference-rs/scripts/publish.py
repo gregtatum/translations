@@ -44,6 +44,7 @@ Usage:
 
 import argparse
 import re
+import shutil
 import subprocess
 import sys
 import tomllib
@@ -51,6 +52,7 @@ from pathlib import Path
 
 WORKSPACE = Path(__file__).resolve().parent.parent  # inference-rs/
 ROOT_MANIFEST = WORKSPACE / "Cargo.toml"
+CHANGELOG = WORKSPACE / "CHANGELOG.md"  # one workspace changelog, copied into each crate
 TAG_PREFIX = "fxtranslate-v"  # bare `0.1.0` etc. are taken by old repo tags
 
 SEMVER = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
@@ -288,8 +290,10 @@ def validate_packaging(order: list[Crate]) -> None:
 def publish_crate(crate: str) -> None:
     """Publish one crate; treat 'already uploaded' as success so a re-run is safe."""
     log(f"cargo publish -p {crate}")
+    # --allow-dirty packages the staged CHANGELOG.md copy, an intentional untracked
+    # file (see stage_changelog); the version bump is already committed.
     r = subprocess.run(
-        ["cargo", "publish", "-p", crate, "--manifest-path", str(ROOT_MANIFEST)],
+        ["cargo", "publish", "--allow-dirty", "-p", crate, "--manifest-path", str(ROOT_MANIFEST)],
         text=True,
         capture_output=True,
     )
@@ -303,6 +307,31 @@ def publish_crate(crate: str) -> None:
         f"publishing {crate} failed (see above); crates already published stay up — "
         f"fix and re-run to publish the rest, then the tag is created"
     )
+
+
+def stage_changelog(order: list[Crate]) -> list[Path]:
+    """Copy the one workspace CHANGELOG.md into each publishable crate directory so it
+    ships in the `.crate` (cargo only packages files under a crate's own root, so a
+    single root changelog wouldn't otherwise be included). The copies are deliberately
+    left untracked — they're a publish-time artifact, not committed duplicates — which
+    is why `publish_crate` packages with `--allow-dirty`. Returns the copied paths for
+    `cleanup_changelog` to remove afterward."""
+    if not CHANGELOG.is_file():
+        log(f"WARNING: {CHANGELOG.name} not found at {CHANGELOG}; crates ship without a changelog")
+        return []
+    staged: list[Path] = []
+    for c in order:
+        dest = c.manifest.parent / CHANGELOG.name
+        shutil.copyfile(CHANGELOG, dest)
+        staged.append(dest)
+        log(f"staged {CHANGELOG.name} into {dest.parent.relative_to(WORKSPACE)}")
+    return staged
+
+
+def cleanup_changelog(staged: list[Path]) -> None:
+    """Remove the copies `stage_changelog` made, leaving one changelog in the workspace."""
+    for dest in staged:
+        dest.unlink(missing_ok=True)
 
 
 def main() -> None:
@@ -379,8 +408,14 @@ def main() -> None:
     readme_report(crates, old)
 
     if args.dry_run:
-        log("dry-run: validating current packaging (no files/crates/git touched)")
-        validate_packaging(order)
+        log("dry-run: validating current packaging (no crates/git touched)")
+        # Stage the changelog so packaging validation sees exactly what would ship,
+        # then remove it — the tree is left as it was found.
+        staged = stage_changelog(order)
+        try:
+            validate_packaging(order)
+        finally:
+            cleanup_changelog(staged)
         would = (
             f"publish [{', '.join(c.name for c in order)}], then tag {tag} and push to {args.remote}"
         )
@@ -404,25 +439,33 @@ def main() -> None:
     if not args.skip_tests:
         run(["cargo", "test", "--manifest-path", str(ROOT_MANIFEST)])
 
-    validate_packaging(order)
+    # Bundle the changelog into each crate for packaging and publishing, then remove
+    # the copies once every crate is up (or on failure). The copies stay untracked, so
+    # the release commit below — which adds only manifests + Cargo.lock — never picks
+    # them up, and the tag points at a tree with a single workspace changelog.
+    staged = stage_changelog(order)
+    try:
+        validate_packaging(order)
 
-    # Commit before publishing, so the published crates correspond to a committed
-    # state (and the tag we create points at exactly what shipped). On `--initial`
-    # there's no version bump to commit; commit only a lockfile refresh if the build
-    # produced one, so the tag still lands on a clean tree.
-    if bumping:
-        manifests = [str(c.manifest.relative_to(WORKSPACE)) for c in crates]
-        git("add", *manifests, "Cargo.lock")
-        git("commit", "-m", f"release: fxtranslate {new}")
-        log(f"committed release bump for {new}")
-    elif git("status", "--porcelain", "--", "Cargo.lock"):
-        git("add", "Cargo.lock")
-        git("commit", "-m", f"release: fxtranslate {new} (lockfile refresh)")
-        log("committed Cargo.lock refresh")
+        # Commit before publishing, so the published crates correspond to a committed
+        # state (and the tag we create points at exactly what shipped). On `--initial`
+        # there's no version bump to commit; commit only a lockfile refresh if the build
+        # produced one, so the tag still lands on a clean tree.
+        if bumping:
+            manifests = [str(c.manifest.relative_to(WORKSPACE)) for c in crates]
+            git("add", *manifests, "Cargo.lock")
+            git("commit", "-m", f"release: fxtranslate {new}")
+            log(f"committed release bump for {new}")
+        elif git("status", "--porcelain", "--", "Cargo.lock"):
+            git("add", "Cargo.lock")
+            git("commit", "-m", f"release: fxtranslate {new} (lockfile refresh)")
+            log("committed Cargo.lock refresh")
 
-    # crates.io first (not atomic, not reversible) ...
-    for c in order:
-        publish_crate(c.name)
+        # crates.io first (not atomic, not reversible) ...
+        for c in order:
+            publish_crate(c.name)
+    finally:
+        cleanup_changelog(staged)
 
     # ... tag last (atomic), only now that every crate is up.
     git("tag", "-a", tag, "-m", f"fxtranslate {new}")

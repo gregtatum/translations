@@ -117,6 +117,10 @@ Note that the Firefox inference process running Wasm includes other features suc
 - **Throughput: 0.96× native marian, ~3.0× the shipping Firefox Wasm path.** After the gemmology kernel swap both fxtranslate and marian spend ~80% of their time in the *same* i8mm GEMM kernel, so the remaining ~4% is how much GEMM work each issues, not kernel speed.
 - **Memory: the lightest of the three** — 149 MiB settled is half of native marian's and 58% under Firefox's inference process alone. This is the payoff of running the embedding table and output projection in int8 (no retained f32 copy) and adopting a page-returning allocator (jemalloc); memory-mapping the model (`Engine::load_mmapped`) trims settled RSS further still.
 
+## Changelog
+
+See [CHANGELOG.md](https://github.com/gregtatum/translations/blob/inference-rs/inference-rs/CHANGELOG.md) for the release history.
+
 ## Acknowledgements
 
  * [Firefox Translations](https://github.com/mozilla/translations) - The project this work was based off of.
