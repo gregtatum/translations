@@ -35,6 +35,7 @@ fn main() -> ExitCode {
         stderr: &mut stderr,
         stdin_is_tty,
         stdout_is_tty,
+        stderr_is_tty,
         no_color,
     };
 

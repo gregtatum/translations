@@ -1,0 +1,52 @@
+{
+ "data": [
+  {
+   "name": "model.enes.bin",
+   "version": "3.0",
+   "fileType": "model",
+   "sourceLanguage": "en",
+   "targetLanguage": "es",
+   "attachment": { "location": "cdn/enes-model.zst" }
+  },
+  {
+   "name": "vocab.enes.spm",
+   "version": "3.0",
+   "fileType": "vocab",
+   "sourceLanguage": "en",
+   "targetLanguage": "es",
+   "attachment": { "location": "cdn/enes-vocab.zst" }
+  },
+  {
+   "name": "model.esen.bin",
+   "version": "3.0",
+   "fileType": "model",
+   "sourceLanguage": "es",
+   "targetLanguage": "en",
+   "attachment": { "location": "cdn/esen-model.zst" }
+  },
+  {
+   "name": "vocab.esen.spm",
+   "version": "3.0",
+   "fileType": "vocab",
+   "sourceLanguage": "es",
+   "targetLanguage": "en",
+   "attachment": { "location": "cdn/esen-vocab.zst" }
+  },
+  {
+   "name": "model.enfr.bin",
+   "version": "3.0",
+   "fileType": "model",
+   "sourceLanguage": "en",
+   "targetLanguage": "fr",
+   "attachment": { "location": "cdn/enfr-model.zst" }
+  },
+  {
+   "name": "vocab.enfr.spm",
+   "version": "3.0",
+   "fileType": "vocab",
+   "sourceLanguage": "en",
+   "targetLanguage": "fr",
+   "attachment": { "location": "cdn/enfr-vocab.zst" }
+  }
+ ]
+}

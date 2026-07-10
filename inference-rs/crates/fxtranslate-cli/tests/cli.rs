@@ -43,6 +43,13 @@ mod help {
             format!("{}\n", fxtranslate_cli::cli::LIST_USAGE)
         );
     }
+
+    #[test]
+    fn models_specific() {
+        let expected = format!("{}\n", fxtranslate_cli::cli::MODELS_USAGE);
+        assert_eq!(cli(&["models", "--help"]), expected);
+        assert_eq!(cli(&["models"]), expected, "bare `models` is also its help");
+    }
 }
 
 /// Bad/incomplete argv → an informative error on stderr, then the usage help.
@@ -54,7 +61,7 @@ mod grammar {
         let t = cli(&["frobnicate"]);
         assert_eq!(
             t.lines().next().unwrap(),
-            "fxtranslate: unknown command `frobnicate`; expected `translate` or `list`"
+            "fxtranslate: unknown command `frobnicate`; expected `translate`, `list`, or `models`"
         );
         assert!(t.contains("USAGE:"), "usage help follows the error");
     }
@@ -65,7 +72,7 @@ mod grammar {
         let t = cli(&["en", "es", "hola"]);
         assert_eq!(
             t.lines().next().unwrap(),
-            "fxtranslate: unknown command `en`; expected `translate` or `list`"
+            "fxtranslate: unknown command `en`; expected `translate`, `list`, or `models`"
         );
     }
 
@@ -84,6 +91,34 @@ mod grammar {
         assert_eq!(
             cli(&["--cache-dir"]),
             "fxtranslate: --cache-dir needs a path\n"
+        );
+    }
+
+    #[test]
+    fn models_add_needs_two_langs() {
+        let t = cli(&["models", "add", "en"]);
+        assert_eq!(
+            t.lines().next().unwrap(),
+            "fxtranslate: `models add` needs `<src> <trg>`; got `add en`"
+        );
+        assert!(t.contains("fxtranslate models"), "models usage follows the error");
+    }
+
+    #[test]
+    fn models_rm_needs_a_pair_or_all() {
+        let t = cli(&["models", "rm"]);
+        assert_eq!(
+            t.lines().next().unwrap(),
+            "fxtranslate: `models rm` needs a `<pair>` (e.g. `en-es` or `en es`) or `--all`"
+        );
+    }
+
+    #[test]
+    fn unknown_models_subcommand() {
+        let t = cli(&["models", "frobnicate"]);
+        assert_eq!(
+            t.lines().next().unwrap(),
+            "fxtranslate: unknown `models` subcommand `frobnicate`; expected `list`, `add`, `rm`, or `info`"
         );
     }
 }
@@ -137,5 +172,52 @@ mod parse_grammar {
         );
         assert_eq!(parse(&argv(&["--help"])).unwrap(), Command::Help);
         assert_eq!(parse(&argv(&[])).unwrap(), Command::Help);
+    }
+
+    #[test]
+    fn models_subcommands_and_cache_dir() {
+        assert_eq!(
+            parse(&argv(&["--cache-dir", "/tmp/c", "models", "list"])).unwrap(),
+            Command::ModelsList {
+                cache_dir: Some("/tmp/c".into()),
+            }
+        );
+        assert_eq!(
+            parse(&argv(&["models", "add", "es", "fr"])).unwrap(),
+            Command::ModelsAdd {
+                src: "es".into(),
+                trg: "fr".into(),
+                cache_dir: None,
+            }
+        );
+        // A `<pair>` collapses to the joined dir name whether given as one token or two.
+        assert_eq!(
+            parse(&argv(&["models", "info", "en-es"])).unwrap(),
+            Command::ModelsInfo {
+                name: "en-es".into(),
+                cache_dir: None,
+            }
+        );
+        assert_eq!(
+            parse(&argv(&["models", "rm", "zh-Hans", "en"])).unwrap(),
+            Command::ModelsRemove {
+                name: Some("zh-Hans-en".into()),
+                all: false,
+                cache_dir: None,
+            }
+        );
+        assert_eq!(
+            parse(&argv(&["models", "rm", "--all"])).unwrap(),
+            Command::ModelsRemove {
+                name: None,
+                all: true,
+                cache_dir: None,
+            }
+        );
+        assert_eq!(parse(&argv(&["models"])).unwrap(), Command::ModelsHelp);
+        assert_eq!(
+            parse(&argv(&["models", "--help"])).unwrap(),
+            Command::ModelsHelp
+        );
     }
 }

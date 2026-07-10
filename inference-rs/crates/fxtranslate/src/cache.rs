@@ -79,6 +79,42 @@ pub struct ModelFiles {
     pub lex: Option<PathBuf>,
 }
 
+/// One locally cached pair directory and its on-disk footprint — a row in the
+/// `models list` view.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CachedPair {
+    /// The `<src>-<trg>` directory name — the id `pair_files`/`remove_pair` take.
+    pub name: String,
+    /// The pair directory itself (`<root>/<name>`).
+    pub dir: PathBuf,
+    /// Sum of regular-file sizes under `dir`, excluding in-flight temp files.
+    pub bytes: u64,
+}
+
+/// Recursive sum of regular-file byte lengths under `dir`, skipping dot-prefixed
+/// entries — which covers the cache's own in-flight temp files (`.<name>.download`,
+/// `.<name>.partial` from [`Cache::ensure`]) so a download in progress never inflates
+/// the reported size. A missing `dir` is `0`, not an error.
+pub fn dir_size(dir: &Path) -> Result<u64, String> {
+    if !dir.exists() {
+        return Ok(0);
+    }
+    let mut total = 0;
+    for entry in fs::read_dir(dir).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        if entry.file_name().to_string_lossy().starts_with('.') {
+            continue;
+        }
+        let meta = entry.metadata().map_err(|e| e.to_string())?;
+        if meta.is_dir() {
+            total += dir_size(&entry.path())?;
+        } else if meta.is_file() {
+            total += meta.len();
+        }
+    }
+    Ok(total)
+}
+
 /// A directory of cached, decompressed model files.
 pub struct Cache {
     root: PathBuf,
@@ -132,6 +168,77 @@ impl Cache {
     /// Per-pair directory: `<root>/<src>-<trg>`.
     pub fn pair_dir(&self, src: &str, trg: &str) -> PathBuf {
         self.root.join(format!("{src}-{trg}"))
+    }
+
+    /// Resolve a pair directory by its (joined) name, refusing anything that isn't a
+    /// single normal path component — so a stray `..`, an absolute path, or a nested
+    /// name can never make `pair_files`/`remove_pair` touch a dir outside the cache.
+    fn pair_path(&self, name: &str) -> Result<PathBuf, String> {
+        let mut comps = Path::new(name).components();
+        match (comps.next(), comps.next()) {
+            (Some(std::path::Component::Normal(_)), None) => Ok(self.root.join(name)),
+            _ => Err(format!("invalid model name `{name}`")),
+        }
+    }
+
+    /// Enumerate cached pairs: each immediate sub-directory of the cache root, sorted
+    /// by name, with its computed size (see [`dir_size`]). A missing root means
+    /// nothing has been cached yet, so this yields an empty `Vec`, not an error.
+    pub fn list_cached(&self) -> Result<Vec<CachedPair>, String> {
+        if !self.root.exists() {
+            return Ok(Vec::new());
+        }
+        let mut cached = Vec::new();
+        for entry in fs::read_dir(&self.root).map_err(|e| e.to_string())? {
+            let entry = entry.map_err(|e| e.to_string())?;
+            if !entry.file_type().map_err(|e| e.to_string())?.is_dir() {
+                continue;
+            }
+            let name = entry.file_name().to_string_lossy().into_owned();
+            if name.starts_with('.') {
+                continue;
+            }
+            let dir = entry.path();
+            let bytes = dir_size(&dir)?;
+            cached.push(CachedPair { name, dir, bytes });
+        }
+        cached.sort_by(|a, b| a.name.cmp(&b.name));
+        Ok(cached)
+    }
+
+    /// The cached files in the `name` pair directory as `(file name, size, path)`,
+    /// sorted by name; skips the cache's own temp files. An absent directory yields an
+    /// empty `Vec` (nothing cached for that pair).
+    pub fn pair_files(&self, name: &str) -> Result<Vec<(String, u64, PathBuf)>, String> {
+        let dir = self.pair_path(name)?;
+        if !dir.exists() {
+            return Ok(Vec::new());
+        }
+        let mut files = Vec::new();
+        for entry in fs::read_dir(&dir).map_err(|e| e.to_string())? {
+            let entry = entry.map_err(|e| e.to_string())?;
+            let fname = entry.file_name().to_string_lossy().into_owned();
+            if fname.starts_with('.') {
+                continue;
+            }
+            let meta = entry.metadata().map_err(|e| e.to_string())?;
+            if meta.is_file() {
+                files.push((fname, meta.len(), entry.path()));
+            }
+        }
+        files.sort_by(|a, b| a.0.cmp(&b.0));
+        Ok(files)
+    }
+
+    /// Delete the `name` pair directory and everything in it. Idempotent: `Ok(false)`
+    /// if it wasn't there, `Ok(true)` if it was removed.
+    pub fn remove_pair(&self, name: &str) -> Result<bool, String> {
+        let dir = self.pair_path(name)?;
+        if !dir.exists() {
+            return Ok(false);
+        }
+        fs::remove_dir_all(&dir).map_err(|e| e.to_string())?;
+        Ok(true)
     }
 
     /// Ensure `record`'s decompressed file is present and hash-verified, fetching

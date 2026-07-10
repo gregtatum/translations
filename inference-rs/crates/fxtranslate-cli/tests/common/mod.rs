@@ -326,6 +326,8 @@ pub struct Streams {
     pub stdin_tty: bool,
     /// stdout is a TTY → `list` may color.
     pub stdout_tty: bool,
+    /// stderr is a TTY → `models add` draws the download progress line.
+    pub stderr_tty: bool,
     /// `NO_COLOR` is set.
     pub no_color: bool,
     /// Mirror typed stdin lines into the transcript (for readable REPL sessions).
@@ -348,6 +350,7 @@ pub fn run_transcript(args: &[&str], deps: &Deps, s: Streams) -> String {
             stderr: &mut err,
             stdin_is_tty: s.stdin_tty,
             stdout_is_tty: s.stdout_tty,
+            stderr_is_tty: s.stderr_tty,
             no_color: s.no_color,
         };
         let _ = run(&argv, deps, &mut io);
@@ -359,6 +362,7 @@ pub fn run_transcript(args: &[&str], deps: &Deps, s: Streams) -> String {
             stderr: &mut err,
             stdin_is_tty: s.stdin_tty,
             stdout_is_tty: s.stdout_tty,
+            stderr_is_tty: s.stderr_tty,
             no_color: s.no_color,
         };
         let _ = run(&argv, deps, &mut io);

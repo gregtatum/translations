@@ -516,3 +516,147 @@ mod pivot_wiring {
         assert!(leg2.model.is_file(), "en→fr model cached");
     }
 }
+
+/// Local cache management (pure filesystem): enumerate cached pairs with sizes, list
+/// a pair's files, and delete a pair — the read/inspect/delete half of the `models`
+/// verbs. No network: the tests build directories by hand under a temp cache root.
+mod local_cache {
+    use super::*;
+    use fxtranslate::cache::dir_size;
+    use std::fs;
+
+    /// Create `<root>/<pair>/<file>` holding `n` bytes.
+    fn write_pair_file(cache: &Cache, pair: &str, file: &str, n: usize) {
+        let dir = cache.root().join(pair);
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join(file), vec![0u8; n]).unwrap();
+    }
+
+    #[test]
+    fn list_cached_empty_when_root_absent() {
+        // An untouched cache (root never created) lists nothing — not an error.
+        let cache = tmp_cache();
+        assert!(cache.list_cached().unwrap().is_empty());
+        assert_eq!(dir_size(&cache.root().join("nope")).unwrap(), 0, "missing dir is 0 bytes");
+    }
+
+    #[test]
+    fn list_cached_sums_sizes_sorted_and_skips_temps() {
+        let cache = tmp_cache();
+        // en-es: model (100) + vocab (20) = 120, plus an in-flight temp that must NOT
+        // count toward the size. es-en: a single 50-byte file.
+        write_pair_file(&cache, "en-es", "model.enes.bin", 100);
+        write_pair_file(&cache, "en-es", "vocab.enes.spm", 20);
+        write_pair_file(&cache, "en-es", ".model.enes.bin.download", 999);
+        write_pair_file(&cache, "es-en", "model.esen.bin", 50);
+
+        let cached = cache.list_cached().unwrap();
+        assert_eq!(
+            cached.iter().map(|c| c.name.as_str()).collect::<Vec<_>>(),
+            ["en-es", "es-en"],
+            "pairs listed sorted by name"
+        );
+        assert_eq!(cached[0].bytes, 120, "temp file excluded from size");
+        assert_eq!(cached[1].bytes, 50);
+    }
+
+    #[test]
+    fn pair_files_lists_sorted_skipping_temps() {
+        let cache = tmp_cache();
+        write_pair_file(&cache, "en-es", "vocab.enes.spm", 20);
+        write_pair_file(&cache, "en-es", "model.enes.bin", 100);
+        write_pair_file(&cache, "en-es", ".model.enes.bin.partial", 5);
+
+        let files = cache.pair_files("en-es").unwrap();
+        let names: Vec<&str> = files.iter().map(|(n, ..)| n.as_str()).collect();
+        assert_eq!(names, ["model.enes.bin", "vocab.enes.spm"], "sorted, no temps");
+        assert_eq!(files[0].1, 100, "size reported per file");
+        assert!(cache.pair_files("nope").unwrap().is_empty(), "absent pair is empty");
+    }
+
+    #[test]
+    fn remove_pair_is_idempotent_and_isolated() {
+        let cache = tmp_cache();
+        write_pair_file(&cache, "en-es", "model.enes.bin", 10);
+        write_pair_file(&cache, "es-en", "model.esen.bin", 10);
+
+        assert!(cache.remove_pair("en-es").unwrap(), "present pair removed");
+        assert!(!cache.root().join("en-es").exists(), "dir gone");
+        assert!(cache.root().join("es-en").exists(), "sibling untouched");
+        assert!(!cache.remove_pair("en-es").unwrap(), "second remove is a no-op");
+    }
+
+    #[test]
+    fn pair_ops_reject_paths_escaping_the_cache() {
+        // A stray `..` (or any non-single-component name) must never let remove/inspect
+        // reach outside the cache root.
+        let cache = tmp_cache();
+        assert!(cache.remove_pair("../evil").is_err());
+        assert!(cache.pair_files("a/b").is_err());
+    }
+}
+
+/// Pivot-aware, engine-free pre-download (`ensure_route_files`): resolve the route
+/// through Remote Settings and cache every file — both legs for a pivot — without
+/// building an engine. The on-disk half of `models add`.
+mod route_download {
+    use super::*;
+    use fxtranslate::loader::ensure_route_files;
+    use fxtranslate::route::Route;
+
+    /// es↔en + en→fr models/vocabs as a Remote Settings body, no hashes (so the tiny
+    /// fixture is trusted). Enough for a direct `en→es` and a pivot `es→fr`.
+    fn records_body() -> String {
+        let rec = |name: &str, ft: &str, src: &str, trg: &str, loc: &str| {
+            format!(
+                r#"{{"name":"{name}","version":"3.0","fileType":"{ft}","sourceLanguage":"{src}","targetLanguage":"{trg}","attachment":{{"location":"{loc}"}}}}"#
+            )
+        };
+        let recs = [
+            rec("model.enes", "model", "en", "es", "cdn/enes-model.zst"),
+            rec("vocab.enes", "vocab", "en", "es", "cdn/enes-vocab.zst"),
+            rec("model.esen", "model", "es", "en", "cdn/esen-model.zst"),
+            rec("vocab.esen", "vocab", "es", "en", "cdn/esen-vocab.zst"),
+            rec("model.enfr", "model", "en", "fr", "cdn/enfr-model.zst"),
+            rec("vocab.enfr", "vocab", "en", "fr", "cdn/enfr-vocab.zst"),
+        ];
+        format!(r#"{{"data":[{}]}}"#, recs.join(","))
+    }
+
+    /// A `MockFetch` serving the records body and every attachment as the tiny fixture.
+    fn mock() -> MockFetch {
+        let body = records_body();
+        let recs = parse_records(&body).unwrap();
+        let mut m = MockFetch::new().route(&records_url(), body.into_bytes());
+        for r in &recs {
+            m = m.route(&r.cdn_url(), fixture("tiny.bin.zst"));
+        }
+        m
+    }
+
+    #[test]
+    fn direct_pair_caches_one_leg() {
+        let cache = tmp_cache();
+        let (route, files) = ensure_route_files(&mock(), &cache, "en", "es").unwrap();
+        assert!(matches!(route, Route::Direct { .. }), "en→es is direct");
+        assert_eq!(files.len(), 1, "one leg for a direct pair");
+        assert!(files[0].model.is_file());
+    }
+
+    #[test]
+    fn pivot_pair_caches_both_legs() {
+        let cache = tmp_cache();
+        let (route, files) = ensure_route_files(&mock(), &cache, "es", "fr").unwrap();
+        assert_eq!(
+            route,
+            Route::Pivot {
+                src: "es".into(),
+                pivot: "en".into(),
+                trg: "fr".into()
+            }
+        );
+        assert_eq!(files.len(), 2, "both pivot legs downloaded");
+        assert!(cache.root().join("es-en").is_dir(), "es→en leg cached");
+        assert!(cache.root().join("en-fr").is_dir(), "en→fr leg cached");
+    }
+}

@@ -10,10 +10,12 @@ use std::io::{BufRead, Write};
 use std::process::ExitCode;
 
 use crate::translate::{Session, Translator};
+use fxtranslate::cache::Cache;
 use fxtranslate::fetch::Fetch;
 use fxtranslate::lang::display_name;
+use fxtranslate::loader::ensure_route_files;
 use fxtranslate::remote::{fetch_records, language_matches, pairs};
-use fxtranslate::route::{catalog, PREFERRED_HUB};
+use fxtranslate::route::{catalog, Route, PREFERRED_HUB};
 
 pub const USAGE: &str = "\
 fxtranslate — translate with Firefox Translations models
@@ -23,6 +25,8 @@ USAGE:
                                               model pairs with --all; `list --help`)
   fxtranslate translate <src> <trg> [text…]   Translate: args if given, else stdin
                                               lines, else an interactive TTY prompt
+  fxtranslate models <cmd>                    Manage locally cached models
+                                              (`models --help`)
 
 Non-English pairs pivot through English automatically (`es → fr` runs `es → en`
 then `en → fr`); see pivot-translations.md.
@@ -35,7 +39,36 @@ EXAMPLES:
   fxtranslate list es
   echo \"Hola mundo.\" | fxtranslate translate es fr   # pivots via English
   fxtranslate translate en es \"Hello world.\"
-  fxtranslate translate en es                 # interactive";
+  fxtranslate translate en es                 # interactive
+  fxtranslate models list                     # what's cached, and how big";
+
+pub const MODELS_USAGE: &str = "\
+fxtranslate models — manage locally cached models
+
+USAGE:
+  fxtranslate models list                 Show the cache location and every cached
+                                          model pair with its size and the total
+  fxtranslate models add <src> <trg>      Download a pair ahead of time (both legs
+                                          of a pivot, e.g. `add es fr` fetches
+                                          es→en and en→fr) without translating
+  fxtranslate models rm <pair> | --all    Delete a cached pair (or the whole cache),
+                                          reporting the space reclaimed
+  fxtranslate models info <pair>          Show a cached pair's files, their sizes,
+                                          and their on-disk paths
+
+A <pair> is either two tags (`en es`) or the joined directory name (`en-es`) shown
+by `models list`. Downloads reuse the same verified cache as `translate`, so `list`
+shows exactly what a translation would load.
+
+OPTIONS:
+  --cache-dir <DIR>   Model cache directory (default: <platform cache>/fxtranslate)
+
+EXAMPLES:
+  fxtranslate models list
+  fxtranslate models add es fr        # pre-fetch the es→en→fr pivot
+  fxtranslate models info en-es
+  fxtranslate models rm en-es
+  fxtranslate models rm --all";
 
 pub const LIST_USAGE: &str = "\
 fxtranslate list — list supported languages and models
@@ -79,6 +112,27 @@ pub enum Command {
         text: String,
         cache_dir: Option<String>,
     },
+    /// Print `models`-specific usage.
+    ModelsHelp,
+    /// `models list`: cache location + every cached pair with sizes.
+    ModelsList { cache_dir: Option<String> },
+    /// `models add <src> <trg>`: pre-download a pair (both legs of a pivot).
+    ModelsAdd {
+        src: String,
+        trg: String,
+        cache_dir: Option<String>,
+    },
+    /// `models rm <pair>` (a joined `<src>-<trg>` dir name) or `--all`.
+    ModelsRemove {
+        name: Option<String>,
+        all: bool,
+        cache_dir: Option<String>,
+    },
+    /// `models info <pair>`: one pair's files, sizes, and on-disk paths.
+    ModelsInfo {
+        name: String,
+        cache_dir: Option<String>,
+    },
 }
 
 /// Parse argv (without the program name) into a [`Command`]. Pure — no I/O — so
@@ -112,6 +166,7 @@ pub fn parse(args: &[String]) -> Result<Command, String> {
                 })
             }
         }
+        Some("models") => parse_models(&positional, cache_dir, all, help),
         // `--help` with a non-list (or no) command → top-level help.
         _ if help => Ok(Command::Help),
         None => Ok(Command::Help),
@@ -131,9 +186,80 @@ pub fn parse(args: &[String]) -> Result<Command, String> {
             })
         }
         Some(other) => Err(format!(
-            "unknown command `{other}`; expected `translate` or `list`\n\n{USAGE}"
+            "unknown command `{other}`; expected `translate`, `list`, or `models`\n\n{USAGE}"
         )),
     }
+}
+
+/// Parse a `models <cmd> …` invocation (the sub-verb is `positional[1]`). `cache_dir`
+/// and `all` were already lifted out by [`parse`] (so `--cache-dir` reaches every
+/// sub-verb and `--all` powers `rm --all`). Help — or no sub-verb — yields
+/// [`Command::ModelsHelp`].
+fn parse_models(
+    positional: &[String],
+    cache_dir: Option<String>,
+    all: bool,
+    help: bool,
+) -> Result<Command, String> {
+    if help {
+        return Ok(Command::ModelsHelp);
+    }
+    match positional.get(1).map(String::as_str) {
+        None => Ok(Command::ModelsHelp),
+        Some("list") => Ok(Command::ModelsList { cache_dir }),
+        Some("add") => {
+            if positional.len() < 4 {
+                return Err(format!(
+                    "`models add` needs `<src> <trg>`; got `{}`\n\n{MODELS_USAGE}",
+                    positional[1..].join(" ")
+                ));
+            }
+            Ok(Command::ModelsAdd {
+                src: positional[2].clone(),
+                trg: positional[3].clone(),
+                cache_dir,
+            })
+        }
+        Some("rm") => {
+            if all {
+                return Ok(Command::ModelsRemove {
+                    name: None,
+                    all: true,
+                    cache_dir,
+                });
+            }
+            let name = pair_name(&positional[2..]);
+            if name.is_empty() {
+                return Err(format!(
+                    "`models rm` needs a `<pair>` (e.g. `en-es` or `en es`) or `--all`\n\n{MODELS_USAGE}"
+                ));
+            }
+            Ok(Command::ModelsRemove {
+                name: Some(name),
+                all: false,
+                cache_dir,
+            })
+        }
+        Some("info") => {
+            let name = pair_name(&positional[2..]);
+            if name.is_empty() {
+                return Err(format!(
+                    "`models info` needs a `<pair>` (e.g. `en-es` or `en es`)\n\n{MODELS_USAGE}"
+                ));
+            }
+            Ok(Command::ModelsInfo { name, cache_dir })
+        }
+        Some(other) => Err(format!(
+            "unknown `models` subcommand `{other}`; expected `list`, `add`, `rm`, or `info`\n\n{MODELS_USAGE}"
+        )),
+    }
+}
+
+/// Build the `<src>-<trg>` cache-directory name from a pair argument. Both the
+/// two-tag form (`["en", "es"]`) and the already-joined form (`["en-es"]`) collapse
+/// to `en-es` — the directory name `Cache` uses — so `rm`/`info` accept either.
+fn pair_name(tokens: &[String]) -> String {
+    tokens.join("-")
 }
 
 /// ANSI styling used by both list views: `(cyan source, green target, dim, reset)`,
@@ -339,6 +465,10 @@ pub struct Io<'a> {
     pub stdin_is_tty: bool,
     /// stdout is a terminal → `list` may color (also gated by `no_color`).
     pub stdout_is_tty: bool,
+    /// stderr is a terminal → `models add` draws the `\r` download progress line
+    /// (the same TTY gate `Cache::with_progress` expects). Download progress and
+    /// status go to stderr, so it's gated on stderr, not stdout.
+    pub stderr_is_tty: bool,
     /// `NO_COLOR` is set in the environment.
     pub no_color: bool,
 }
@@ -377,7 +507,208 @@ fn dispatch(args: &[String], deps: &Deps, io: &mut Io) -> Result<(), String> {
             text,
             cache_dir,
         } => run_translate(deps.translator, io, &src, &trg, &text, cache_dir.as_deref()),
+        Command::ModelsHelp => writeln!(io.stdout, "{MODELS_USAGE}").map_err(|e| e.to_string()),
+        Command::ModelsList { cache_dir } => run_models_list(io, cache_dir.as_deref()),
+        Command::ModelsAdd {
+            src,
+            trg,
+            cache_dir,
+        } => run_models_add(deps.fetch, io, &src, &trg, cache_dir.as_deref()),
+        Command::ModelsRemove {
+            name,
+            all,
+            cache_dir,
+        } => run_models_remove(io, name.as_deref(), all, cache_dir.as_deref()),
+        Command::ModelsInfo { name, cache_dir } => run_models_info(io, &name, cache_dir.as_deref()),
     }
+}
+
+/// The cache the `models` verbs act on: an explicit `--cache-dir` or the platform
+/// default (mirroring `EngineTranslator::load`). `progress` (stderr-TTY-gated) drives
+/// the `models add` download bar; the read-only verbs pass `false`.
+fn open_cache(cache_dir: Option<&str>, progress: bool) -> Cache {
+    match cache_dir {
+        Some(d) => Cache::with_root(d),
+        None => Cache::locate(),
+    }
+    .with_progress(progress)
+}
+
+/// Human-readable byte count on the base-1024 scale the download progress line uses:
+/// raw bytes under 1 KiB, then one decimal of KiB/MiB/GiB.
+fn human_bytes(n: u64) -> String {
+    const KIB: f64 = 1024.0;
+    const MIB: f64 = KIB * 1024.0;
+    const GIB: f64 = MIB * 1024.0;
+    let f = n as f64;
+    if f >= GIB {
+        format!("{:.1} GiB", f / GIB)
+    } else if f >= MIB {
+        format!("{:.1} MiB", f / MIB)
+    } else if f >= KIB {
+        format!("{:.1} KiB", f / KIB)
+    } else {
+        format!("{n} B")
+    }
+}
+
+/// A cached pair's `Source → Target` label, or `None` when the directory name doesn't
+/// have the hub (English) on one side. Every Firefox model is a one-way pair to or
+/// from the hub, so `en-xx` / `xx-en` split cleanly; anything else falls back to the
+/// raw directory name at the call site.
+fn pretty_pair(name: &str) -> Option<(String, String)> {
+    let hub = PREFERRED_HUB;
+    let named = |tag: &str| display_name(tag).to_string();
+    if let Some(rest) = name.strip_prefix(&format!("{hub}-")) {
+        Some((named(hub), named(rest)))
+    } else {
+        name.strip_suffix(&format!("-{hub}"))
+            .map(|rest| (named(rest), named(hub)))
+    }
+}
+
+/// `models list`: the cache location, then a row per cached pair (a `Source → Target`
+/// label, the `(dir-name)` id, and the size), and the total. Empty cache prints a
+/// friendly hint. The `[N cached]` stderr trailer mirrors `list`'s `[N languages]`.
+fn run_models_list(io: &mut Io, cache_dir: Option<&str>) -> Result<(), String> {
+    let cache = open_cache(cache_dir, false);
+    writeln!(io.stdout, "Cache: {}", cache.root().display()).map_err(|e| e.to_string())?;
+
+    let cached = cache.list_cached()?;
+    if cached.is_empty() {
+        writeln!(
+            io.stdout,
+            "No models cached yet. Add one with `fxtranslate models add <src> <trg>`."
+        )
+        .map_err(|e| e.to_string())?;
+        writeln!(io.stderr, "[0 cached]").map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+
+    // Label + tag per row up front, so both columns align to their widest entry
+    // (names padded before color-wrapping, as in `render_pairs`).
+    let rows: Vec<(String, String, String)> = cached
+        .iter()
+        .map(|c| {
+            let label = match pretty_pair(&c.name) {
+                Some((s, t)) => format!("{s} → {t}"),
+                None => c.name.clone(),
+            };
+            (label, format!("({})", c.name), human_bytes(c.bytes))
+        })
+        .collect();
+    let w_label = rows.iter().map(|(l, ..)| l.chars().count()).max().unwrap_or(0);
+    let w_tag = rows.iter().map(|(_, t, _)| t.chars().count()).max().unwrap_or(0);
+
+    let color = io.stdout_is_tty && !io.no_color;
+    let (cyan, _green, dim, reset) = palette(color);
+    for (label, tag, size) in &rows {
+        let label = format!("{label:<w_label$}");
+        let tag = format!("{tag:<w_tag$}");
+        writeln!(io.stdout, "  {cyan}{label}{reset} {dim}{tag}{reset} {size}")
+            .map_err(|e| e.to_string())?;
+    }
+    let total: u64 = cached.iter().map(|c| c.bytes).sum();
+    writeln!(io.stdout, "Total: {}", human_bytes(total)).map_err(|e| e.to_string())?;
+    writeln!(io.stderr, "[{} cached]", cached.len()).map_err(|e| e.to_string())
+}
+
+/// `models add`: pre-download every file for `src`→`trg` (both legs of a pivot) via
+/// [`ensure_route_files`], without building an engine. Status goes to stderr — like
+/// `translate` — and names the pivot hop so the resolved route is visible.
+fn run_models_add(
+    fetch: &dyn Fetch,
+    io: &mut Io,
+    src: &str,
+    trg: &str,
+    cache_dir: Option<&str>,
+) -> Result<(), String> {
+    let cache = open_cache(cache_dir, io.stderr_is_tty);
+    writeln!(io.stderr, "[fxtranslate] downloading {src}→{trg} model…").map_err(|e| e.to_string())?;
+    let (route, _files) = ensure_route_files(fetch, &cache, src, trg)?;
+    match route {
+        Route::Pivot { pivot, .. } => {
+            writeln!(io.stderr, "[fxtranslate] cached ({src}→{pivot}→{trg}, pivot).")
+                .map_err(|e| e.to_string())
+        }
+        Route::Direct { .. } => {
+            writeln!(io.stderr, "[fxtranslate] cached ({src}→{trg}).").map_err(|e| e.to_string())
+        }
+    }
+}
+
+/// `models rm`: delete one pair (`name`) or, with `all`, every cached pair — each
+/// removal reporting the space it reclaimed. Idempotent: removing an absent pair is a
+/// note, not an error.
+fn run_models_remove(
+    io: &mut Io,
+    name: Option<&str>,
+    all: bool,
+    cache_dir: Option<&str>,
+) -> Result<(), String> {
+    let cache = open_cache(cache_dir, false);
+
+    if all {
+        let cached = cache.list_cached()?;
+        if cached.is_empty() {
+            return writeln!(io.stdout, "No models cached; nothing to remove.")
+                .map_err(|e| e.to_string());
+        }
+        let mut freed = 0u64;
+        for c in &cached {
+            cache.remove_pair(&c.name)?;
+            writeln!(io.stdout, "Removed {} ({})", c.name, human_bytes(c.bytes))
+                .map_err(|e| e.to_string())?;
+            freed += c.bytes;
+        }
+        return writeln!(
+            io.stderr,
+            "[{} removed, {} reclaimed]",
+            cached.len(),
+            human_bytes(freed)
+        )
+        .map_err(|e| e.to_string());
+    }
+
+    // A specific pair: look it up first so we can report the reclaimed size, then
+    // remove it. An unknown name simply isn't in the listing → "not cached".
+    let name = name.expect("`models rm` without --all always carries a name (see parse_models)");
+    match cache.list_cached()?.iter().find(|c| c.name == name) {
+        Some(c) => {
+            let bytes = c.bytes;
+            cache.remove_pair(name)?;
+            writeln!(io.stdout, "Removed {name} ({})", human_bytes(bytes))
+                .map_err(|e| e.to_string())
+        }
+        None => writeln!(io.stdout, "{name} is not cached.").map_err(|e| e.to_string()),
+    }
+}
+
+/// `models info`: one pair's files — each with its size and full on-disk path — plus
+/// the total. A pair with no cached files prints a "not cached" note.
+fn run_models_info(io: &mut Io, name: &str, cache_dir: Option<&str>) -> Result<(), String> {
+    let cache = open_cache(cache_dir, false);
+    let files = cache.pair_files(name)?;
+    if files.is_empty() {
+        return writeln!(
+            io.stdout,
+            "{name} is not cached. Add it with `fxtranslate models add <src> <trg>`."
+        )
+        .map_err(|e| e.to_string());
+    }
+
+    writeln!(io.stdout, "{name} ({})", cache.root().join(name).display())
+        .map_err(|e| e.to_string())?;
+    let w_name = files.iter().map(|(n, ..)| n.chars().count()).max().unwrap_or(0);
+    let sizes: Vec<String> = files.iter().map(|(_, b, _)| human_bytes(*b)).collect();
+    let w_size = sizes.iter().map(|s| s.chars().count()).max().unwrap_or(0);
+    for ((fname, _, path), size) in files.iter().zip(&sizes) {
+        let fname = format!("{fname:<w_name$}");
+        let size = format!("{size:>w_size$}");
+        writeln!(io.stdout, "  {fname}  {size}  {}", path.display()).map_err(|e| e.to_string())?;
+    }
+    let total: u64 = files.iter().map(|(_, b, _)| *b).sum();
+    writeln!(io.stdout, "Total: {}", human_bytes(total)).map_err(|e| e.to_string())
 }
 
 /// Load the `src`→`trg` session, then translate `text` if given, else stdin

@@ -26,6 +26,31 @@ pub fn ensure_files(
     ensure_model(fetch, cache, &records, src, trg)
 }
 
+/// Resolve `src`→`trg` and download+verify every file the route needs — including
+/// **both** legs of a pivot — **without** building an engine. The pre-download path
+/// behind `fxtranslate models add`: it mirrors [`load_translation`]'s discovery and
+/// routing (so a pivot caches exactly the same two models a later `translate` would
+/// load) but stops at the on-disk files. Returns the resolved [`Route`] (so the
+/// caller can report the pivot hop) alongside one [`ModelFiles`] for a direct pair or
+/// two — in run order — for a pivot.
+pub fn ensure_route_files(
+    fetch: &dyn Fetch,
+    cache: &Cache,
+    src: &str,
+    trg: &str,
+) -> Result<(Route, Vec<ModelFiles>), String> {
+    let records = fetch_records(fetch)?;
+    let route = resolve_route(&records, src, trg)?;
+    let files = match &route {
+        Route::Direct { src, trg } => vec![ensure_model(fetch, cache, &records, src, trg)?],
+        Route::Pivot { src, pivot, trg } => vec![
+            ensure_model(fetch, cache, &records, src, pivot)?,
+            ensure_model(fetch, cache, &records, pivot, trg)?,
+        ],
+    };
+    Ok((route, files))
+}
+
 /// Discover, download+cache (verified), and build a ready [`Engine`] for
 /// `src`→`trg`. The one-call path: `fetch_records` → [`ensure_model`] →
 /// [`Engine::load`]. `fetch` supplies HTTP (the built-in `NetworkFetch` under
