@@ -5,6 +5,17 @@ which are versioned and published together. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-07-09
+
+### Fixed
+
+- Translation is now resilient offline: when Remote Settings can't be reached,
+  `translate` falls back to an already-cached model instead of failing at the records
+  fetch. A direct cached pair, or a pivot whose legs are both cached, still works with no
+  network; only a genuinely absent pair errors (now naming both the missing pair and the
+  discovery failure). Backed by `Cache::cached_model`, which rebuilds the file set from
+  the cache directory without any records.
+
 ## [0.3.0] - 2026-07-09
 
 ### Added

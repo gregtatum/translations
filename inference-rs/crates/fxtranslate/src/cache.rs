@@ -241,6 +241,47 @@ impl Cache {
         Ok(true)
     }
 
+    /// Assemble [`ModelFiles`] from whatever is already in the pair's cache directory,
+    /// with no network and no Remote Settings records — the offline path. A cached
+    /// file's on-disk name is its record name, whose leading dotted component is the
+    /// file type (`model.*`, `vocab.*`, `srcvocab.*`, `trgvocab.*`, `lex.*`), so the
+    /// type is read straight off the filename; the cache's own `.`-prefixed temp files
+    /// are ignored. Returns `None` unless a model and a vocabulary (shared, or both
+    /// split halves) are present. Hashes aren't re-checked — the online run that wrote
+    /// these files already verified them.
+    pub fn cached_model(&self, src: &str, trg: &str) -> Option<ModelFiles> {
+        let (mut model, mut vocab, mut src_vocab, mut trg_vocab, mut lex) =
+            (None, None, None, None, None);
+        for entry in fs::read_dir(self.pair_dir(src, trg)).ok()?.flatten() {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            let slot = if name.starts_with("model.") {
+                &mut model
+            } else if name.starts_with("srcvocab.") {
+                &mut src_vocab
+            } else if name.starts_with("trgvocab.") {
+                &mut trg_vocab
+            } else if name.starts_with("vocab.") {
+                &mut vocab
+            } else if name.starts_with("lex.") {
+                &mut lex
+            } else {
+                continue; // temp files (`.…`) and anything unrecognized
+            };
+            *slot = Some(entry.path());
+        }
+        // Shared vocab serves both directions; otherwise both split halves are required.
+        let (src_vocab, trg_vocab) = match vocab {
+            Some(v) => (v.clone(), v),
+            None => (src_vocab?, trg_vocab?),
+        };
+        Some(ModelFiles {
+            model: model?,
+            src_vocab,
+            trg_vocab,
+            lex,
+        })
+    }
+
     /// Ensure `record`'s decompressed file is present and hash-verified, fetching
     /// (and decompressing) it via `fetch` only on a miss or a hash mismatch.
     /// Returns the on-disk path.

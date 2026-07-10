@@ -608,6 +608,81 @@ mod local_cache {
         assert!(cache.remove_pair("../evil").is_err());
         assert!(cache.pair_files("a/b").is_err());
     }
+
+    #[test]
+    fn cached_model_reads_shared_vocab_pair_offline() {
+        // A shared-vocab pair (model + vocab + lex): reassembled from the directory
+        // with no records, classifying each file by its leading `<type>.` name. The
+        // in-flight temp is ignored, and the one vocab serves both directions.
+        let cache = tmp_cache();
+        write_pair_file(&cache, "en-es", "model.enes.intgemm.alphas.bin", 10);
+        write_pair_file(&cache, "en-es", "vocab.enes.spm", 10);
+        write_pair_file(&cache, "en-es", "lex.50.50.enes.s2t.bin", 10);
+        write_pair_file(&cache, "en-es", ".model.enes.bin.download", 999);
+
+        let files = cache
+            .cached_model("en", "es")
+            .expect("assembled from cache");
+        assert!(files.model.ends_with("model.enes.intgemm.alphas.bin"));
+        assert_eq!(files.src_vocab, files.trg_vocab, "shared vocab serves both");
+        assert!(files.src_vocab.ends_with("vocab.enes.spm"));
+        assert!(files.lex.is_some(), "lex picked up");
+    }
+
+    #[test]
+    fn cached_model_reads_split_vocab_pair_offline() {
+        let cache = tmp_cache();
+        write_pair_file(&cache, "en-ja", "model.enja.intgemm.alphas.bin", 10);
+        write_pair_file(&cache, "en-ja", "srcvocab.enja.spm", 10);
+        write_pair_file(&cache, "en-ja", "trgvocab.enja.spm", 10);
+
+        let files = cache
+            .cached_model("en", "ja")
+            .expect("assembled from cache");
+        assert_ne!(
+            files.src_vocab, files.trg_vocab,
+            "split vocab halves differ"
+        );
+        assert!(files.lex.is_none(), "no shortlist for this pair");
+    }
+
+    #[test]
+    fn cached_model_none_when_incomplete() {
+        let cache = tmp_cache();
+        assert!(cache.cached_model("en", "es").is_none(), "absent pair");
+        // A model with no vocabulary can't be loaded, so it's not a usable cache.
+        write_pair_file(&cache, "en-es", "model.enes.bin", 10);
+        assert!(
+            cache.cached_model("en", "es").is_none(),
+            "model but no vocab"
+        );
+    }
+}
+
+/// Offline resilience: `load_translation` tries Remote Settings first, then falls back
+/// to the local cache when discovery fails, so a previously-downloaded pair still works
+/// with no network.
+mod offline_fallback {
+    use super::*;
+    use fxtranslate::loader::load_translation;
+
+    #[test]
+    fn reports_missing_pair_and_unreachable_discovery() {
+        // Records fetch fails (the mock has no route) AND nothing is cached: the error
+        // names the missing pair and the discovery failure — proving the cache fallback
+        // ran — rather than surfacing only the raw network error.
+        let cache = tmp_cache();
+        // `Translation` isn't `Debug`, so match rather than `unwrap_err`.
+        let err = match load_translation(&MockFetch::new(), &cache, "en", "es") {
+            Err(e) => e,
+            Ok(_) => panic!("expected an error with no network and an empty cache"),
+        };
+        assert!(err.contains("no cached model for en→es"), "got: {err}");
+        assert!(
+            err.contains("unreachable"),
+            "names the discovery failure: {err}"
+        );
+    }
 }
 
 /// Pivot-aware, engine-free pre-download (`ensure_route_files`): resolve the route
