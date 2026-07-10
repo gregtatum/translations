@@ -332,7 +332,11 @@ def main() -> None:
     ap.add_argument(
         "--skip-tests", action="store_true", help="skip `cargo test` before publishing"
     )
-    ap.add_argument("--remote", default="origin", help="git remote to push to (default: origin)")
+    # Default to the `gregtatum` fork, not `origin` — in this repo `origin` is the
+    # upstream mozilla/translations, and a release push belongs on the fork.
+    ap.add_argument(
+        "--remote", default="gregtatum", help="git remote to push to (default: gregtatum)"
+    )
     ap.add_argument("--no-push", action="store_true", help="commit + tag locally but don't push")
     args = ap.parse_args()
 
