@@ -11,8 +11,7 @@ Versioning policy — LOCKSTEP. The workspace crates share one version and bump
 together, and fxtranslate-cli pins the engine exactly (`fxtranslate = "=X.Y.Z"`), so
 a CLI release always links the engine it was built and validated against. One number
 for the whole workspace is simpler to reason about than independent drift, and the
-CLI is useless without a matching engine anyway. (This settles the open "lockstep vs.
-independent" question in PUBLISHING.md.)
+CLI is useless without a matching engine anyway.
 
 Which crates publish is read from the manifests, not hard-coded: any workspace member
 without `publish = false` is published. Today that's `fxtranslate` (the engine) and

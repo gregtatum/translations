@@ -90,6 +90,23 @@ the `MARIAN_TRACE` env var (a no-op for normal runs); `--trace` just sets it for
 
 The real-trace integration tests skip when no trace is present, so `task rs:test` passes without one.
 
+## Publishing
+
+`fxtranslate` and `fxtranslate-cli` publish to crates.io together, in lockstep — one shared
+version, with the CLI pinning the engine exactly. `task rs:publish` fronts `scripts/publish.py`,
+which runs the whole sequence: bump both crates, build + test, publish the engine then the CLI
+(that order — the CLI's pin must resolve on crates.io first), and finally create + push the
+`fxtranslate-vX.Y.Z` tag. The dev-only `fxtranslate-oracle` is never published.
+
+```bash
+task rs:publish -- patch --dry-run   # preview: prints the plan, changes nothing
+task rs:publish -- patch             # release for real (or: minor / major / --set X.Y.Z)
+```
+
+Re-runs are safe — already-uploaded crates are skipped — and the tag only lands once both crates
+are up. You need `cargo login` with publish rights, a clean tree (`--allow-dirty` to override), and
+should be on `main`. `--no-push` tags locally without pushing.
+
 ## Further reading
 
 - [`crates/fxtranslate/README.md`](./crates/fxtranslate/README.md) — engine + CLI usage, library API, performance.

@@ -173,6 +173,21 @@ tasks:
     cmds:
       - python3 {{.TASKFILE_DIR}}/scripts/release_build.py {{.CLI_ARGS}}
 
+  publish:
+    desc: Publish the fxtranslate crates to crates.io (lockstep bump, engine then CLI, then tag).
+    summary: |
+      Bumps both publishable crates in lockstep, builds + tests, publishes the engine
+      then the CLI (that order — the CLI pins the engine exactly), and creates + pushes
+      the fxtranslate-vX.Y.Z tag once both are up. Re-runs are safe (already-uploaded
+      crates are skipped). Needs `cargo login`, a clean tree, and should be on main.
+
+      Examples:
+        task rs:publish -- patch --dry-run   # preview; changes nothing
+        task rs:publish -- patch             # release for real (or: minor / major / --set X.Y.Z)
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - python3 {{.TASKFILE_DIR}}/scripts/publish.py {{.CLI_ARGS}}
+
   fxtranslate:
     desc: Run the batteries-included fxtranslate CLI (discover/download/cache + translate).
     summary: |
