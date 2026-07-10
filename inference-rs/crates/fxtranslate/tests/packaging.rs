@@ -537,7 +537,11 @@ mod local_cache {
         // An untouched cache (root never created) lists nothing — not an error.
         let cache = tmp_cache();
         assert!(cache.list_cached().unwrap().is_empty());
-        assert_eq!(dir_size(&cache.root().join("nope")).unwrap(), 0, "missing dir is 0 bytes");
+        assert_eq!(
+            dir_size(&cache.root().join("nope")).unwrap(),
+            0,
+            "missing dir is 0 bytes"
+        );
     }
 
     #[test]
@@ -569,9 +573,16 @@ mod local_cache {
 
         let files = cache.pair_files("en-es").unwrap();
         let names: Vec<&str> = files.iter().map(|(n, ..)| n.as_str()).collect();
-        assert_eq!(names, ["model.enes.bin", "vocab.enes.spm"], "sorted, no temps");
+        assert_eq!(
+            names,
+            ["model.enes.bin", "vocab.enes.spm"],
+            "sorted, no temps"
+        );
         assert_eq!(files[0].1, 100, "size reported per file");
-        assert!(cache.pair_files("nope").unwrap().is_empty(), "absent pair is empty");
+        assert!(
+            cache.pair_files("nope").unwrap().is_empty(),
+            "absent pair is empty"
+        );
     }
 
     #[test]
@@ -583,7 +594,10 @@ mod local_cache {
         assert!(cache.remove_pair("en-es").unwrap(), "present pair removed");
         assert!(!cache.root().join("en-es").exists(), "dir gone");
         assert!(cache.root().join("es-en").exists(), "sibling untouched");
-        assert!(!cache.remove_pair("en-es").unwrap(), "second remove is a no-op");
+        assert!(
+            !cache.remove_pair("en-es").unwrap(),
+            "second remove is a no-op"
+        );
     }
 
     #[test]

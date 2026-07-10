@@ -597,8 +597,16 @@ fn run_models_list(io: &mut Io, cache_dir: Option<&str>) -> Result<(), String> {
             (label, format!("({})", c.name), human_bytes(c.bytes))
         })
         .collect();
-    let w_label = rows.iter().map(|(l, ..)| l.chars().count()).max().unwrap_or(0);
-    let w_tag = rows.iter().map(|(_, t, _)| t.chars().count()).max().unwrap_or(0);
+    let w_label = rows
+        .iter()
+        .map(|(l, ..)| l.chars().count())
+        .max()
+        .unwrap_or(0);
+    let w_tag = rows
+        .iter()
+        .map(|(_, t, _)| t.chars().count())
+        .max()
+        .unwrap_or(0);
 
     let color = io.stdout_is_tty && !io.no_color;
     let (cyan, _green, dim, reset) = palette(color);
@@ -624,13 +632,15 @@ fn run_models_add(
     cache_dir: Option<&str>,
 ) -> Result<(), String> {
     let cache = open_cache(cache_dir, io.stderr_is_tty);
-    writeln!(io.stderr, "[fxtranslate] downloading {src}→{trg} model…").map_err(|e| e.to_string())?;
+    writeln!(io.stderr, "[fxtranslate] downloading {src}→{trg} model…")
+        .map_err(|e| e.to_string())?;
     let (route, _files) = ensure_route_files(fetch, &cache, src, trg)?;
     match route {
-        Route::Pivot { pivot, .. } => {
-            writeln!(io.stderr, "[fxtranslate] cached ({src}→{pivot}→{trg}, pivot).")
-                .map_err(|e| e.to_string())
-        }
+        Route::Pivot { pivot, .. } => writeln!(
+            io.stderr,
+            "[fxtranslate] cached ({src}→{pivot}→{trg}, pivot)."
+        )
+        .map_err(|e| e.to_string()),
         Route::Direct { .. } => {
             writeln!(io.stderr, "[fxtranslate] cached ({src}→{trg}).").map_err(|e| e.to_string())
         }
@@ -699,7 +709,11 @@ fn run_models_info(io: &mut Io, name: &str, cache_dir: Option<&str>) -> Result<(
 
     writeln!(io.stdout, "{name} ({})", cache.root().join(name).display())
         .map_err(|e| e.to_string())?;
-    let w_name = files.iter().map(|(n, ..)| n.chars().count()).max().unwrap_or(0);
+    let w_name = files
+        .iter()
+        .map(|(n, ..)| n.chars().count())
+        .max()
+        .unwrap_or(0);
     let sizes: Vec<String> = files.iter().map(|(_, b, _)| human_bytes(*b)).collect();
     let w_size = sizes.iter().map(|s| s.chars().count()).max().unwrap_or(0);
     for ((fname, _, path), size) in files.iter().zip(&sizes) {

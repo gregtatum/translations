@@ -416,9 +416,7 @@ def main() -> None:
             validate_packaging(order)
         finally:
             cleanup_changelog(staged)
-        would = (
-            f"publish [{', '.join(c.name for c in order)}], then tag {tag} and push to {args.remote}"
-        )
+        would = f"publish [{', '.join(c.name for c in order)}], then tag {tag} and push to {args.remote}"
         log(
             f"dry-run complete. A real run would: {would}."
             if args.initial

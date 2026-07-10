@@ -245,7 +245,10 @@ mod tests {
     fn reassemble_latin_uses_source_spaces() {
         let src = "Hello world. How are you?";
         let spans = BasicSegmenter.sentences(src);
-        let outputs = vec!["Bonjour le monde.".to_string(), "Comment ça va ?".to_string()];
+        let outputs = vec![
+            "Bonjour le monde.".to_string(),
+            "Comment ça va ?".to_string(),
+        ];
         assert_eq!(
             reassemble(src, &spans, &outputs),
             "Bonjour le monde. Comment ça va ?"

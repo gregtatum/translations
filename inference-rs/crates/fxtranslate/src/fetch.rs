@@ -11,9 +11,9 @@
 //! resume) is layered on top of `get_to` by [`download_retrying`].
 
 use std::fs::OpenOptions;
-use std::io::{Seek, Write};
 #[cfg(feature = "net")]
 use std::io::{Read, SeekFrom};
+use std::io::{Seek, Write};
 use std::path::Path;
 use std::time::Duration;
 

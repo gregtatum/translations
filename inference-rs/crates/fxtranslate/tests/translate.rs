@@ -189,7 +189,11 @@ fn translate_long_with_icu_is_complete() {
 fn segmented_single_sentence_matches_raw() {
     use fxtranslate::segment::BasicSegmenter;
     let Some(engine) = engine() else { return };
-    for s in ["Hello world.", "The cat sat on the mat.", "I love programming."] {
+    for s in [
+        "Hello world.",
+        "The cat sat on the mat.",
+        "I love programming.",
+    ] {
         assert_eq!(
             engine.translate_segmented(s, &BasicSegmenter),
             engine.translate(s),

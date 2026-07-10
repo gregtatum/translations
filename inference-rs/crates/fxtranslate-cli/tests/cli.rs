@@ -101,7 +101,10 @@ mod grammar {
             t.lines().next().unwrap(),
             "fxtranslate: `models add` needs `<src> <trg>`; got `add en`"
         );
-        assert!(t.contains("fxtranslate models"), "models usage follows the error");
+        assert!(
+            t.contains("fxtranslate models"),
+            "models usage follows the error"
+        );
     }
 
     #[test]
