@@ -32,6 +32,14 @@ mod imp {
         fn gemmology_prepared_bytes() -> usize;
         fn gemmology_read_row(handle: *const c_void, id: usize, out: *mut i8);
         fn gemmology_backend_name() -> *const c_char;
+        fn gemmology_gemm_threads() -> usize;
+    }
+
+    /// Cores the intra-op GEMM pool will use (feature `gemm-threads` +
+    /// `FXT_GEMM_THREADS`): `1` = inert (sequential), `0` = feature not compiled.
+    pub fn gemm_threads() -> usize {
+        // SAFETY: reads a size from the shim; always valid.
+        unsafe { gemmology_gemm_threads() }
     }
 
     /// Total retained bytes of prepared-B weight buffers — the persistent C++
@@ -183,6 +191,11 @@ mod imp {
         "scalar"
     }
 
+    /// Always 0 — no SIMD kernel, so no intra-op GEMM pool.
+    pub fn gemm_threads() -> usize {
+        0
+    }
+
     /// Stub mirror of the SIMD [`PreparedB`]; never constructed.
     pub struct PreparedB {
         _never: (),
@@ -216,4 +229,4 @@ mod imp {
     }
 }
 
-pub use imp::{backend, prepared_bytes, PreparedB};
+pub use imp::{backend, gemm_threads, prepared_bytes, PreparedB};

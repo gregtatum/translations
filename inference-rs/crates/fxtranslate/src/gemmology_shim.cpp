@@ -27,6 +27,17 @@
 #include <cstdlib>
 #include <cstring>
 
+#ifdef FXT_GEMM_THREADS
+// Intra-op GEMM parallelism (feature `gemm-threads`): a persistent thread pool
+// that plays gemmology's ExecutionEngine role, splitting one matmul's output
+// columns across cores. Only these headers are pulled in under the feature.
+#include <condition_variable>
+#include <functional>
+#include <mutex>
+#include <thread>
+#include <vector>
+#endif
+
 #include "gemmology.h"
 
 namespace {
@@ -74,6 +85,128 @@ struct PreparedB {
   size_t k;      // inner dimension (a multiple of kRegElems, 16)
 };
 
+#ifdef FXT_GEMM_THREADS
+
+// A persistent thread pool that satisfies gemmology's ExecutionEngine concept:
+// `operator()(Start, End, Stride, f)` runs `f(i)` for i in [Start, End) step
+// Stride across the pool, blocking until all indices are done. gemmology's
+// int8 `Multiply` drives it over the output-column groups (stride 8), so the
+// columns of one matmul are computed on separate cores — the same weight and
+// activation are read by all workers and each writes disjoint output columns,
+// so there is no shared mutable state and the result is bit-identical to the
+// sequential kernel.
+//
+// The workers are created once and parked on a condition variable between calls
+// (unlike gemmology's shipped StdThreadExecutionEngine, which spawns and joins a
+// fresh set of threads on every call — far too costly at the decoder's per-token
+// cadence). The size comes from FXT_GEMM_THREADS (env) and defaults to 1, i.e.
+// the pool is inert until explicitly asked for cores, so merely compiling the
+// feature changes nothing at runtime.
+class GemmPool {
+ public:
+  static GemmPool &instance() {
+    static GemmPool pool;
+    return pool;
+  }
+
+  size_t size() const { return nthreads_; }
+
+  template <class F>
+  void operator()(size_t start, size_t end, size_t stride, F &&f) {
+    if (end <= start) return;
+    const size_t iters = (end - start + stride - 1) / stride;
+    const size_t nt = iters < nthreads_ ? iters : nthreads_;
+    if (nt <= 1) {  // too little work to farm out — run inline.
+      for (size_t i = start; i < end; i += stride) f(i);
+      return;
+    }
+    std::function<void(size_t)> job = [&](size_t i) { f(i); };
+    const size_t chunk = (iters + nt - 1) / nt;  // iterations per worker
+    {
+      std::unique_lock<std::mutex> lk(mtx_);
+      job_ = &job;
+      start_ = start;
+      stride_ = stride;
+      iters_ = iters;
+      chunk_ = chunk;
+      ntasks_ = nt;
+      remaining_ = nt - 1;  // workers 1..nt-1; the caller runs stripe 0
+      ++generation_;
+      cv_work_.notify_all();
+    }
+    run_stripe(0);  // caller participates
+    std::unique_lock<std::mutex> lk(mtx_);
+    cv_done_.wait(lk, [&] { return remaining_ == 0; });
+    job_ = nullptr;
+  }
+
+ private:
+  GemmPool() {
+    const char *env = std::getenv("FXT_GEMM_THREADS");
+    long n = env ? std::strtol(env, nullptr, 10) : 1;
+    if (n < 1) n = 1;
+    nthreads_ = static_cast<size_t>(n);
+    for (size_t w = 1; w < nthreads_; ++w)
+      workers_.emplace_back([this, w] { worker_loop(w); });
+  }
+
+  ~GemmPool() {
+    {
+      std::unique_lock<std::mutex> lk(mtx_);
+      stop_ = true;
+      cv_work_.notify_all();
+    }
+    for (auto &t : workers_) t.join();
+  }
+
+  // Run this worker/caller's contiguous stripe of the iteration space. Reads the
+  // job fields without the lock: they are set before the workers are woken and
+  // are not modified until every stripe has completed (operator() waits), so the
+  // job is stable for the duration.
+  void run_stripe(size_t w) {
+    const size_t lo = w * chunk_;
+    size_t hi = lo + chunk_;
+    if (hi > iters_) hi = iters_;
+    for (size_t it = lo; it < hi; ++it) (*job_)(start_ + it * stride_);
+  }
+
+  void worker_loop(size_t w) {
+    size_t seen = 0;
+    for (;;) {
+      std::unique_lock<std::mutex> lk(mtx_);
+      cv_work_.wait(lk, [&] { return stop_ || generation_ != seen; });
+      if (stop_) return;
+      seen = generation_;
+      const bool has_work = w < ntasks_;
+      lk.unlock();
+      if (has_work) run_stripe(w);
+      if (has_work) {
+        lk.lock();
+        if (--remaining_ == 0) cv_done_.notify_one();
+      }
+    }
+  }
+
+  size_t nthreads_ = 1;
+  std::vector<std::thread> workers_;
+  std::mutex mtx_;
+  std::condition_variable cv_work_, cv_done_;
+  bool stop_ = false;
+  size_t generation_ = 0;
+  // Current job, valid only while operator() is running (guarded by the barrier).
+  std::function<void(size_t)> *job_ = nullptr;
+  size_t start_ = 0, stride_ = 0, iters_ = 0, chunk_ = 0, ntasks_ = 0, remaining_ = 0;
+};
+
+// Parallelize a matmul only when it is big enough that splitting its columns
+// beats the dispatch overhead: below this many multiply-accumulates
+// (A_rows·width·B_cols) the sequential kernel wins. Tuned so the full-vocab
+// output projection and the encoder's layers (large row counts) thread while the
+// decoder's tiny per-token matmuls stay sequential. See notes/11.
+constexpr size_t kParallelMinWork = size_t{1} << 22;  // ~4.2M MACs
+
+#endif  // FXT_GEMM_THREADS
+
 }  // namespace
 
 extern "C" {
@@ -110,6 +243,17 @@ void gemmology_free_b(void *handle) {
 // Total retained bytes of prepared-B weight buffers (persistent C++ allocations).
 size_t gemmology_prepared_bytes() {
   return g_prepared_bytes.load(std::memory_order_relaxed);
+}
+
+// Number of cores the intra-op GEMM pool will use (feature `gemm-threads` +
+// FXT_GEMM_THREADS). 1 means the pool is inert (sequential); 0 means the feature
+// wasn't compiled in. Lets the harness report which mode is live.
+size_t gemmology_gemm_threads() {
+#ifdef FXT_GEMM_THREADS
+  return GemmPool::instance().size();
+#else
+  return 0;
+#endif
 }
 
 // The compiled kernel's xsimd arch name ("i8mm+neon64", "avx2", ...). Sourced
@@ -159,10 +303,22 @@ void gemmology_multiply(void *handle, const uint8_t *a, size_t m, float unquant,
 
   float *out_al = static_cast<float *>(aligned(m * n_pad * sizeof(float)));
 
-  gemmology::Shift::Multiply<Arch>(
-      a_al, h->data, m, k, n_pad,
-      gemmology::callbacks::UnquantizeAndAddBiasAndWrite(unquant, bias_al,
-                                                         out_al));
+  auto callback =
+      gemmology::callbacks::UnquantizeAndAddBiasAndWrite(unquant, bias_al, out_al);
+
+#ifdef FXT_GEMM_THREADS
+  // Route only the large matmuls through the pool (Option A). The column split
+  // is bit-identical to the sequential kernel (disjoint output columns, same
+  // integer accumulation), so this never moves a logit.
+  GemmPool &pool = GemmPool::instance();
+  if (pool.size() > 1 && m * k * n_pad >= kParallelMinWork) {
+    gemmology::Shift::Multiply<Arch>(a_al, h->data, m, k, n_pad, callback, pool);
+  } else {
+    gemmology::Shift::Multiply<Arch>(a_al, h->data, m, k, n_pad, callback);
+  }
+#else
+  gemmology::Shift::Multiply<Arch>(a_al, h->data, m, k, n_pad, callback);
+#endif
 
   // Copy the valid [m, :n] region back into the caller's tight [m, n] buffer.
   for (size_t r = 0; r < m; ++r)

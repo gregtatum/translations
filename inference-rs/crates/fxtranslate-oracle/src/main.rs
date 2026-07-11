@@ -349,8 +349,9 @@ fn translate(args: &[String]) -> ExitCode {
         #[cfg(feature = "gemmology")]
         if timing {
             eprintln!(
-                "[gemmology] {{\"prepared_bytes\":{}}}",
-                fxtranslate::gemm::prepared_bytes()
+                "[gemmology] {{\"prepared_bytes\":{},\"gemm_threads\":{}}}",
+                fxtranslate::gemm::prepared_bytes(),
+                fxtranslate::gemm::gemm_threads()
             );
         }
         return ExitCode::SUCCESS;

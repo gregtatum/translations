@@ -74,7 +74,8 @@ fn main() {
     println!("cargo:rerun-if-env-changed=GEMMOLOGY_DIR");
     println!("cargo:rerun-if-env-changed=XSIMD_INCLUDE_DIR");
 
-    let result = cc::Build::new()
+    let mut build = cc::Build::new();
+    build
         .cpp(true)
         .std("c++17")
         .flag(arch_flag)
@@ -82,8 +83,13 @@ fn main() {
         .opt_level(3)
         .include(&gemmology)
         .include(&xsimd)
-        .file("src/gemmology_shim.cpp")
-        .try_compile("gemmology_shim");
+        .file("src/gemmology_shim.cpp");
+    // Intra-op GEMM parallelism (feature `gemm-threads`): compile the persistent
+    // pool in the shim. Off otherwise, so the shim has no threading code at all.
+    if std::env::var_os("CARGO_FEATURE_GEMM_THREADS").is_some() {
+        build.define("FXT_GEMM_THREADS", None);
+    }
+    let result = build.try_compile("gemmology_shim");
 
     match result {
         Ok(()) => println!("cargo::rustc-cfg=gemmology_simd"),
