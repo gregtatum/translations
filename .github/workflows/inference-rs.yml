@@ -116,6 +116,21 @@ jobs:
         run: >-
           cargo test -p fxtranslate --features fast --test gemm_parity
           simd_backend_is_live_when_required -- --nocapture --exact
+      # Confirm the optional threading features on THIS arch (the reason CI matters:
+      # the author only has ARM locally, so this proves x86 AVX2 too). Option A's
+      # persistent GEMM pool is exercised by the vocab-scale gemm_parity shape with
+      # FXT_GEMM_THREADS>1 and asserted bit-identical to the scalar kernel; Option B
+      # (data-parallel batch) is pure Rust and builds/links here. FXTRANSLATE_REQUIRE_SIMD
+      # (job env) still makes a silent scalar fallback a failure, so the pooled path
+      # is proven live, not skipped. Model-dependent Option-B parity skips without a
+      # model, as elsewhere.
+      - name: Test threading features (Option A intra-op pool + Option B build)
+        working-directory: inference-rs
+        env:
+          FXT_GEMM_THREADS: '4'
+        run: >-
+          cargo test -p fxtranslate --features fast,threads,gemm-threads
+          --test gemm_parity --test batched_decode -- --nocapture
 
   test-portable:
     # The "runs everywhere" contract: the pure-Rust scalar kernel must build with

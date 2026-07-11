@@ -147,6 +147,7 @@ fn matches_scalar_across_shapes() {
 fn simd_backend_is_live_when_required() {
     let backend = gemm::backend();
     eprintln!("gemm backend = {backend}");
+    eprintln!("intra-op GEMM pool threads = {}", gemm::gemm_threads());
     if require_simd() {
         assert_ne!(
             backend, "scalar",
@@ -212,6 +213,45 @@ fn full_range_matches_only_on_exact_backends() {
         );
     }
     // Saturating backend: divergence here is expected and documented, not a failure.
+}
+
+/// Intra-op GEMM pool (feature `gemm-threads`, Option A) — cross-arch validation.
+///
+/// With `FXT_GEMM_THREADS>1` the vocab-scale projection shape is above the shim's
+/// work threshold, so `gemmology_multiply` splits its output columns across the
+/// persistent pool. The column split is disjoint (no cross-thread reduction), so
+/// the pooled result must stay bit-identical to the scalar reference — the same
+/// gate as the sequential kernel. CI runs this on both SIMD arches (i8mm, AVX2)
+/// with the pool active, so a green run proves the pool is correct there, not just
+/// on the author's machine.
+#[cfg(feature = "gemm-threads")]
+#[test]
+fn intra_op_pool_matches_scalar() {
+    let threads = gemm::gemm_threads();
+    eprintln!(
+        "intra-op GEMM pool: threads={threads} backend={}",
+        gemm::backend()
+    );
+    // m·k·n well above the shim's parallel threshold, so the pool engages when
+    // FXT_GEMM_THREADS>1; `check` asserts the result matches the scalar kernel.
+    let ran = check(4, 384, 32000, 99);
+    if require_simd() {
+        assert!(
+            ran,
+            "SIMD required but the vocab-scale pool shape skipped (backend={})",
+            gemm::backend()
+        );
+        // The pool is opt-in via FXT_GEMM_THREADS; when CI sets it >1 this proves
+        // the intra-op path was live on this arch rather than silently sequential.
+        if let Ok(n) = std::env::var("FXT_GEMM_THREADS") {
+            if n.parse::<usize>().unwrap_or(1) > 1 {
+                assert!(
+                    threads > 1,
+                    "FXT_GEMM_THREADS={n} but the shim pool reports {threads} threads"
+                );
+            }
+        }
+    }
 }
 
 #[test]
