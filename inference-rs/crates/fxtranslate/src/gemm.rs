@@ -152,6 +152,16 @@ mod imp {
             unsafe { gemmology_free_b(self.handle) };
         }
     }
+
+    // SAFETY: the packed weight buffer behind `handle` is written once by
+    // `gemmology_prepare_b` and is thereafter read-only — `matmul`/`read_row` only
+    // read it, and the shim allocates its A/bias/output scratch per call (see
+    // `gemmology_shim.cpp`), so it holds no shared mutable state. Concurrent calls
+    // on the same `&PreparedB` from multiple threads therefore only perform
+    // disjoint reads, which is sound. This lets an `Engine` be shared across worker
+    // threads (feature `threads`) without duplicating the packed weights. Not
+    // `Send`: ownership/drop should stay on the thread that created it.
+    unsafe impl Sync for PreparedB {}
 }
 
 /// Scalar-fallback stub: no SIMD kernel was compiled for this target (an arch with

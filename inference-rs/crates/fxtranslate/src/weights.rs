@@ -20,7 +20,7 @@ use crate::ops;
 #[cfg(not(feature = "lean-embed"))]
 use crate::trace::DType;
 #[cfg(feature = "gemmology")]
-use {crate::gemm::PreparedB, std::cell::RefCell};
+use {crate::gemm::PreparedB, std::cell::RefCell, std::sync::OnceLock};
 
 /// A gemmology-prepared affine weight. Built once at load; the raw int8 bytes are
 /// then freed from the model (the packed form is all the GEMM needs), so each
@@ -30,15 +30,20 @@ struct AffineWeight {
     pb: PreparedB,
     /// Shift correction `-127·unquant·colsum(W)` (bias-independent), length `n`.
     correction: Vec<f32>,
-    /// Full prepared bias `correction + raw_bias`, cached on first use (the bias
-    /// name is known only at call time). `None` until then.
-    bias: Option<Vec<f32>>,
+    /// Full prepared bias `correction + raw_bias`, computed on first use (the bias
+    /// name is known only at call time). A `OnceLock` rather than a `RefCell`-guarded
+    /// `Option` so the cache is `Sync` — many threads may share these weights and
+    /// race to initialize the bias; `get_or_init` makes that safe and idempotent
+    /// (the value is a pure function of the immutable correction + raw bias).
+    bias: OnceLock<Vec<f32>>,
     qa: f32,
     unquant: f32,
 }
 
 /// Reusable scratch for the shifted int8 affine, so the hot path allocates no
-/// per-call activation buffers.
+/// per-call activation buffers. Lives in a thread-local (see `GEMM_SCRATCH`), not
+/// in `Weights`, so the weights stay immutable/shareable and each worker thread
+/// gets its own buffers with no contention.
 #[cfg(feature = "gemmology")]
 #[derive(Default)]
 struct GemmScratch {
@@ -46,6 +51,15 @@ struct GemmScratch {
     /// One int8 embedding row gathered out of the packed projection buffer, reused
     /// across lookups so the on-demand dequant path allocates nothing.
     wemb_row: Vec<i8>,
+}
+
+#[cfg(feature = "gemmology")]
+thread_local! {
+    /// Per-thread activation scratch for the affine/projection hot path. Thread-local
+    /// (not a `Weights` field) so `Weights` is immutable and shareable across threads;
+    /// each thread reuses its own buffers, keeping the single-thread zero-per-call-alloc
+    /// behaviour while never sharing a buffer between threads.
+    static GEMM_SCRATCH: RefCell<GemmScratch> = RefCell::new(GemmScratch::default());
 }
 
 /// Architecture hyperparameters read from the embedded `special:model.yml`.
@@ -134,17 +148,16 @@ pub struct Weights {
 
     /// Affine weights packed into gemmology's layout at load, keyed by param name.
     /// Their raw int8 bytes are freed from `model` once packed (no double copy).
-    /// Interior-mutable only to cache the full prepared bias on first use.
+    /// Immutable after load — each `AffineWeight` caches its prepared bias in its
+    /// own `OnceLock`, so the map itself needs no interior mutability.
     #[cfg(feature = "gemmology")]
-    affine_cache: RefCell<HashMap<String, AffineWeight>>,
-    /// The output-projection `Wemb` packed for the full-vocab GEMM (lean-embed;
-    /// built on first projection). The raw `Wemb` is kept (embedding lookups
-    /// need it), so this one is the unavoidable second copy.
+    affine_cache: HashMap<String, AffineWeight>,
+    /// The output-projection `Wemb` packed for the full-vocab GEMM (lean-embed).
+    /// Built once eagerly at load (see `Weights::new`); read-only afterwards, so a
+    /// plain `Option` — no `RefCell`. The raw `Wemb` is dropped when the pack
+    /// succeeds (the packed layout serves both projection and row lookups).
     #[cfg(all(feature = "gemmology", feature = "lean-embed"))]
-    proj_pb: RefCell<Option<PreparedB>>,
-    /// Reusable activation scratch for the affine hot path.
-    #[cfg(feature = "gemmology")]
-    scratch: RefCell<GemmScratch>,
+    proj_pb: Option<PreparedB>,
 }
 
 /// Pack every affine weight (those with a `{name}_QuantMultA` sibling, excluding
@@ -190,7 +203,7 @@ fn prepare_affines(model: &mut Model, embed_param: &str) -> HashMap<String, Affi
             AffineWeight {
                 pb,
                 correction,
-                bias: None,
+                bias: OnceLock::new(),
                 qa,
                 unquant,
             },
@@ -309,7 +322,7 @@ impl Weights {
                 Some(load_embedding(&model, src_wemb_param)?)
             };
             #[cfg(feature = "gemmology")]
-            let affine_cache = RefCell::new(prepare_affines(&mut model, trg_wemb_param));
+            let affine_cache = prepare_affines(&mut model, trg_wemb_param);
             Ok(Weights {
                 model,
                 config,
@@ -321,8 +334,6 @@ impl Weights {
                 src_wemb,
                 #[cfg(feature = "gemmology")]
                 affine_cache,
-                #[cfg(feature = "gemmology")]
-                scratch: RefCell::new(GemmScratch::default()),
             })
         }
         #[cfg(feature = "lean-embed")]
@@ -344,7 +355,7 @@ impl Weights {
                 .unwrap_or_else(|| vec![0.0; trg_vocab]);
             let proj_bias = ops::prepare_bias(raw, trg_vocab, dim, &raw_bias, proj_unquant);
             #[cfg(feature = "gemmology")]
-            let affine_cache = RefCell::new(prepare_affines(&mut model, trg_wemb_param));
+            let affine_cache = prepare_affines(&mut model, trg_wemb_param);
 
             // Pack the target `Wemb` for the output projection now (eagerly) rather
             // than on first projection. Embedding lookups happen on the first encode,
@@ -369,7 +380,7 @@ impl Weights {
                         it.data = crate::model::Bytes::Owned(Vec::new());
                     }
                 }
-                RefCell::new(packed)
+                packed
             };
             Ok(Weights {
                 model,
@@ -388,8 +399,6 @@ impl Weights {
                 affine_cache,
                 #[cfg(feature = "gemmology")]
                 proj_pb,
-                #[cfg(feature = "gemmology")]
-                scratch: RefCell::new(GemmScratch::default()),
             })
         }
     }
@@ -456,10 +465,11 @@ impl Weights {
         {
             // `proj_pb` is packed eagerly at load (see `Weights::new`); when present
             // it also backs embedding lookups, so the raw int8 copy is already gone.
-            if let Some(pb) = self.proj_pb.borrow().as_ref() {
-                let mut s = self.scratch.borrow_mut();
-                ops::prepare_a_into(h, self.proj_qa, &mut s.a_u8);
-                pb.matmul_into(&s.a_u8, m, self.proj_unquant, &self.proj_bias, out);
+            if let Some(pb) = self.proj_pb.as_ref() {
+                GEMM_SCRATCH.with_borrow_mut(|s| {
+                    ops::prepare_a_into(h, self.proj_qa, &mut s.a_u8);
+                    pb.matmul_into(&s.a_u8, m, self.proj_unquant, &self.proj_bias, out);
+                });
                 return;
             }
         }
@@ -527,13 +537,14 @@ impl Weights {
         // reblocking). The source embedding (split vocab) is never packed → raw.
         #[cfg(feature = "gemmology")]
         if param == self.trg_wemb_param {
-            if let Some(pb) = self.proj_pb.borrow().as_ref() {
-                let mut s = self.scratch.borrow_mut();
-                s.wemb_row.resize(d, 0);
-                pb.read_row(id as usize, &mut s.wemb_row);
-                for (o, &b) in dst.iter_mut().zip(&s.wemb_row) {
-                    *o = b as f32 * inv;
-                }
+            if let Some(pb) = self.proj_pb.as_ref() {
+                GEMM_SCRATCH.with_borrow_mut(|s| {
+                    s.wemb_row.resize(d, 0);
+                    pb.read_row(id as usize, &mut s.wemb_row);
+                    for (o, &b) in dst.iter_mut().zip(&s.wemb_row) {
+                        *o = b as f32 * inv;
+                    }
+                });
                 return;
             }
         }
@@ -572,7 +583,7 @@ impl Weights {
     /// else from the raw int8 tensor. Returns `false` if the embedding is float.
     pub fn output_wemb_int8_row(&self, id: u32, out: &mut [i8]) -> bool {
         #[cfg(all(feature = "lean-embed", feature = "gemmology"))]
-        if let Some(pb) = self.proj_pb.borrow().as_ref() {
+        if let Some(pb) = self.proj_pb.as_ref() {
             pb.read_row(id as usize, out);
             return true;
         }
@@ -609,9 +620,11 @@ impl Weights {
         // shim reuse its own — a steady-state affine allocates only its output.
         #[cfg(feature = "gemmology")]
         {
-            let mut cache = self.affine_cache.borrow_mut();
-            if let Some(aw) = cache.get_mut(base) {
-                if aw.bias.is_none() {
+            if let Some(aw) = self.affine_cache.get(base) {
+                // The full prepared bias (correction + raw bias) is a pure function of
+                // this weight; compute it once and cache it in the `OnceLock`. The bias
+                // name is fixed per weight at every call site, so the value is stable.
+                let bias = aw.bias.get_or_init(|| {
                     let mut bias = aw.correction.clone();
                     if let Some(bn) = bias_name {
                         if let Some(rb) = self.f32(bn) {
@@ -620,14 +633,14 @@ impl Weights {
                             }
                         }
                     }
-                    aw.bias = Some(bias);
-                }
-                let mut s = self.scratch.borrow_mut();
-                ops::prepare_a_into(x, aw.qa, &mut s.a_u8);
-                let mut out = Vec::new();
-                aw.pb
-                    .matmul_into(&s.a_u8, m, aw.unquant, aw.bias.as_ref().unwrap(), &mut out);
-                return out;
+                    bias
+                });
+                return GEMM_SCRATCH.with_borrow_mut(|s| {
+                    ops::prepare_a_into(x, aw.qa, &mut s.a_u8);
+                    let mut out = Vec::new();
+                    aw.pb.matmul_into(&s.a_u8, m, aw.unquant, bias, &mut out);
+                    out
+                });
             }
         }
 

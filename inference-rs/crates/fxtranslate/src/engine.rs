@@ -35,9 +35,14 @@ pub struct Engine {
     shortlist: Option<Shortlist>,
     /// Whether source and target share a vocabulary (affects shortlist candidates).
     shared_vocab: bool,
-    /// Reusable full-vocab logits buffer for the batched projection, so each
-    /// decode step doesn't allocate a fresh `[active, vocab]` vector.
-    logits_scratch: RefCell<Vec<f32>>,
+}
+
+thread_local! {
+    /// Per-thread full-vocab logits buffer for the batched projection, so each decode
+    /// step doesn't allocate a fresh `[active, vocab]` vector. Thread-local (not an
+    /// `Engine` field) so one `Engine` can be shared across worker threads (feature
+    /// `threads`) while each thread reuses its own buffer with no contention.
+    static LOGITS_SCRATCH: RefCell<Vec<f32>> = const { RefCell::new(Vec::new()) };
 }
 
 /// Per-sentence wall-clock timing from [`Engine::translate_timed`], in the spans
@@ -151,7 +156,6 @@ impl Engine {
             pe_offs,
             shortlist: None,
             shared_vocab: true,
-            logits_scratch: RefCell::new(Vec::new()),
         }
     }
 
@@ -335,17 +339,18 @@ impl Engine {
 
         if self.shortlist.is_none() {
             let vocab = self.weights.output_vocab();
-            let mut logits = self.logits_scratch.borrow_mut();
-            self.weights.full_logits_batch_into(tops, n, &mut logits);
-            for (i, &b) in active.iter().enumerate() {
-                let next = argmax(&logits[i * vocab..(i + 1) * vocab]);
-                if next == eos {
-                    done[b] = true;
-                } else {
-                    out[b].push(next);
-                    prev[b] = next;
+            LOGITS_SCRATCH.with_borrow_mut(|logits| {
+                self.weights.full_logits_batch_into(tops, n, logits);
+                for (i, &b) in active.iter().enumerate() {
+                    let next = argmax(&logits[i * vocab..(i + 1) * vocab]);
+                    if next == eos {
+                        done[b] = true;
+                    } else {
+                        out[b].push(next);
+                        prev[b] = next;
+                    }
                 }
-            }
+            });
         } else {
             for (i, &b) in active.iter().enumerate() {
                 let next = self.project_argmax(&tops[i * d..(i + 1) * d], cands[b].as_deref());
