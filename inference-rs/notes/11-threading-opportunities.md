@@ -262,3 +262,118 @@ stays bit-for-bit green):
 **Coordination (when both are on).** Prefer B across the sentences available, and
 fall back to A only when there aren't enough sentences to fill the cores (e.g. a
 1-sentence batch → A across all cores). This enforces "don't nest" automatically.
+
+## Results (implemented)
+
+Both options shipped as off-by-default features (`threads`, `gemm-threads`); the
+default build, wasm, and reproducible builds are single-threaded and unchanged.
+Every measurement below was checked **bit-identical to the single-thread output**
+(`diff` of the full translation at each thread count), so the cheat-proof
+oracle-parity and batch-invariance suites still hold — threading moves no logit.
+
+**Setup.** en→ru `base` model (dim-emb 512, FFN 2048, 6 enc / 2 SSRU dec, tied 32k),
+Firefox's *Frankenstein* corpus (`corpora/frankenstein-en.blocks.txt`: 103 blocks /
+403 sentences / 9,513 source words), jemalloc allocator, release build. Machine: an
+18-core Apple Silicon (**6 performance + 12 efficiency** cores) — the P/E split
+shapes the curves. Throughput is source-words ÷ wall-clock over the whole corpus
+(model load excluded); peak RSS is `/usr/bin/time -l` maximum resident set size;
+median of 3 runs after a warmup.
+
+### Option B — data-parallel across blocks (`threads`)
+
+Whole blocks distributed across worker threads sharing one read-only `&Engine`
+(bounded per-block batches; the production "translate a document" shape).
+
+| threads | words/s | speedup | peak RSS |
+|--------:|--------:|--------:|---------:|
+| 1  | 1276 | 1.00× | 151 MiB |
+| 2  | 2045 | 1.60× | 210 |
+| 4  | 3163 | 2.48× | 270 |
+| 6  | 4048 | 3.17× | 281 |
+| 8  | 4951 | 3.88× | 367 |
+| 12 | 6243 | 4.89× | 437 |
+| 18 | 8448 | 6.62× | 491 |
+
+- The `threads=1` figure (1276 words/s, 151 MiB) matches the README's single-thread
+  baseline (1267 / 149), confirming the new path adds no serial overhead.
+- **Near-linear through the 6 performance cores** (3.17× at 6), then a shallower
+  climb as work spills onto the slower efficiency cores — still **6.6× at 18**. This
+  is the shape to expect on a heterogeneous CPU; on 6 homogeneous cores you'd see
+  ~5–6× flat.
+- **Memory grows modestly and as predicted:** the ~130 MiB of resident weights are
+  shared once; each extra in-flight block adds only its activation state (SSRU cells,
+  cross-attention K/V, the 32k logits buffer). 18 workers → 491 MiB, i.e. **~19
+  MiB/worker on top of one shared model**. The naïve alternative — one `Engine`
+  (hence one copy of the weights) per thread — would cost ~18 × 151 ≈ **2.7 GiB**.
+  Shared weights save ~2.2 GiB at 18 threads; that is the whole point of the Phase-1
+  refactor.
+
+### Option A — intra-op GEMM parallelism (`gemm-threads`)
+
+The output-projection and encoder matmuls split across cores inside one `Multiply`
+(pool size via `FXT_GEMM_THREADS`); the batch stays serial (`--threads 1`).
+
+| gemm_threads | words/s | speedup | peak RSS |
+|-------------:|--------:|--------:|---------:|
+| 1 | 1256 | 1.00× | 151 MiB |
+| 2 | 1658 | 1.31× | 155 |
+| 4 | 2097 | 1.66× | 150 |
+| 6 | 2087 | 1.66× | 156 |
+| 8 | 2198 | 1.74× | 153 |
+
+Single-sentence decode latency (m=1, the case Option B can't help): **32.2 ms → 19.2
+ms at 4 cores = 1.68×**.
+
+- **Caps at ~1.7×**, matching the Amdahl estimate: ~2/3 of the time is the matmul, but
+  ~1/3 (argmax over 32k logits, layernorm, softmax, int8 conversion) doesn't
+  parallelize, and the decoder's small per-token matmuls stay sequential by design.
+  It plateaus at 4–6 cores — beyond that the serial third dominates.
+- **Peak RSS is flat (~151–156 MiB)** across all pool sizes: intra-op threading adds
+  only thread stacks, no activation state. This is the memory-free lever.
+
+### Reading the two together
+
+The measured contrast is exactly the pre-implementation analysis:
+
+| | throughput ceiling | memory cost | helps a single sentence? |
+|---|---|---|---|
+| **B** (`threads`) | high — 6.6× @ 18 cores | +~19 MiB/worker | no (decode is sequential) |
+| **A** (`gemm-threads`) | ~1.7×, plateaus @ 4–6 | ~zero (flat RSS) | **yes** — 1.68× decode latency |
+
+So: **Option B for throughput** (a server / document translator with many sentences
+in flight) — highest ceiling, memory-lean via shared weights. **Option A for
+single-sentence latency** (interactive, one short input) — the only lever when there
+is no batch width, at no memory cost. They compose but must not nest (each sentence
+on its own core *or* one sentence split across cores, not both); the recommended
+policy is B across available sentences, A only when a batch can't fill the cores.
+
+### How to reproduce
+
+```
+# Option B (data-parallel blocks): 1..N workers, shared weights
+cargo build --release -p fxtranslate-oracle --features fast,threads
+target/release/fxtranslate-oracle translate <model.bin> <vocab.spm> \
+    --blocks corpora/frankenstein-en.blocks.txt --threads 8 --timing   # -> [run] words/s
+
+# Option A (intra-op GEMM): batch serial, pool size via env
+cargo build --release -p fxtranslate-oracle --features fast,threads,gemm-threads
+FXT_GEMM_THREADS=6 target/release/fxtranslate-oracle translate <model.bin> <vocab.spm> \
+    --blocks corpora/frankenstein-en.blocks.txt --threads 1 --timing
+```
+
+Raw sweeps: `artifacts/thread-scaling-B.txt`, `artifacts/thread-scaling-A.txt`
+(gitignored). Correctness at every thread count verified by `diff` against the
+`--threads 1` / `FXT_GEMM_THREADS=1` output, plus the `threads` batch-invariance test
+(`tests/batched_decode.rs`) and `gemm_parity` with the pool active.
+
+### Follow-ups not taken here
+
+- CI (`scripts/check.py`) still tests the single-thread default; a `threads` /
+  `gemm-threads` test lane would guard the parallel paths in CI (the batch-invariance
+  and gemm-parity tests already cover them, just not in the default `rs:check` run).
+- The automatic B-vs-A coordination policy is documented but not wired: today the
+  caller picks (`--threads` for B, `FXT_GEMM_THREADS` for A). A single knob that
+  spends cores on B first and falls back to A for thin batches is the natural next step.
+- `Engine::with_threads` (library Option B for a single big `translate_batch` call) is
+  shipped and unit-tested but not the harness's measurement path; the harness measures
+  block-level parallelism, which is the realistic document workload and bounds memory.

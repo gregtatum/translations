@@ -117,6 +117,13 @@ Note that the Firefox inference process running Wasm includes other features suc
 - **Throughput: 0.96× native marian, ~3.0× the shipping Firefox Wasm path.** After the gemmology kernel swap both fxtranslate and marian spend ~80% of their time in the *same* i8mm GEMM kernel, so the remaining ~4% is how much GEMM work each issues, not kernel speed.
 - **Memory: the lightest of the three** — 149 MiB settled is half of native marian's and 58% under Firefox's inference process alone. This is the payoff of running the embedding table and output projection in int8 (no retained f32 copy) and adopting a page-returning allocator (jemalloc); memory-mapping the model (`Engine::load_mmapped`) trims settled RSS further still.
 
+The figures above are single-threaded. Two optional, off-by-default features add CPU parallelism (the default build stays single-threaded and deterministic, matching the wasm path):
+
+- **`threads`** — data-parallel batch translation. `Engine::translate_batch` / `greedy_batch` spread a batch's independent sentences across worker threads that share **one** read-only copy of the weights (each worker keeps its own thread-local scratch), so throughput scales with cores while memory grows only by a few MiB of activation state per worker — not a whole model per thread. Call `Engine::with_threads(n)`. Measured ~6.6× throughput on an 18-core machine, output bit-identical to single-thread.
+- **`gemm-threads`** — splits one large int8 matrix multiply (the full-vocab output projection and the encoder layers) across cores via a persistent pool in the gemmology shim (size via `FXT_GEMM_THREADS`). This speeds up *single-sentence* latency (~1.68× decode), which the data-parallel path can't, at essentially no extra memory.
+
+Both are bit-identical to the single-thread engine — they split independent sentences or disjoint output columns — so the fidelity guarantees are unchanged. See `notes/11-threading-opportunities.md` for the analysis and full scaling/memory tables.
+
 ## Changelog
 
 See [CHANGELOG.md](https://github.com/gregtatum/translations/blob/inference-rs/inference-rs/CHANGELOG.md) for the release history.
