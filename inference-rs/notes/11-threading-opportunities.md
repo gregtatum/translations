@@ -307,6 +307,14 @@ Whole blocks distributed across worker threads sharing one read-only `&Engine`
   (hence one copy of the weights) per thread — would cost ~18 × 151 ≈ **2.7 GiB**.
   Shared weights save ~2.2 GiB at 18 threads; that is the whole point of the Phase-1
   refactor.
+- **Profile** (`--threads 4`, en→ru base + Frankenstein, ARM i8mm):
+  <https://share.firefox.dev/4yhxBKb>. Recorded with `samply record` (symbolicated).
+  Shows the four workers each running `greedy_batch_serial` →
+  `Weights::affine` / `full_logits_batch_into` → `gemmology_multiply` →
+  `Shift::Multiply<i8mm+neon64>`, with the main thread parked in
+  `translate_blocks` / `std::thread::scope` — i.e. the GEMM kernel dominating on
+  every worker, spread across cores. Regenerate with:
+  `samply record -- target/release/fxtranslate-oracle translate <model> <vocab> --blocks corpora/frankenstein-en.blocks.txt --threads 4`
 
 ### Option A — intra-op GEMM parallelism (`gemm-threads`)
 
