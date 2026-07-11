@@ -68,3 +68,34 @@ fn translate_batch_matches_single() {
         );
     }
 }
+
+/// The data-parallel batch path (feature `threads`) partitions the batch across
+/// worker threads sharing one copy of the weights. Every sentence must decode to
+/// exactly what the serial batch produces — the split is over independent
+/// sentences, so threading must not move a single token. More sentences than
+/// workers so the partition spans multiple chunks per thread.
+#[cfg(feature = "threads")]
+#[test]
+fn greedy_batch_parallel_matches_serial() {
+    let Some(eng) = engine() else { return };
+    let texts = [
+        "The cat sat on the mat.",
+        "Dogs run.",
+        "Scientists carefully explained the experiment to the students.",
+        "Birds fly south.",
+        "Hello world.",
+        "The quick brown fox jumps over the lazy dog.",
+        "Good morning.",
+        "She sells seashells by the seashore.",
+        "Winter is coming soon.",
+        "They travelled across the country by train.",
+    ];
+    let ids: Vec<Vec<u32>> = texts.iter().map(|t| eng.src_ids(t)).collect();
+    let serial = eng.greedy_batch(&ids); // default threads == 1
+    let eng = eng.with_threads(8);
+    let parallel = eng.greedy_batch(&ids);
+    assert_eq!(
+        parallel, serial,
+        "data-parallel greedy_batch diverges from the serial batch"
+    );
+}

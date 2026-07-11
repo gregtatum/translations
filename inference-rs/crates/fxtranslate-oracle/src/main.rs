@@ -163,13 +163,16 @@ fn replay(args: &[String]) -> ExitCode {
 /// caller's explicit choice.
 fn translate(args: &[String]) -> ExitCode {
     const USAGE: &str = "usage: fxtranslate-oracle translate <model.bin> <src.spm> [trg.spm] \
-         [--shortlist] [--timing] [--blocks <file>] [--mmap] [text]";
+         [--shortlist] [--timing] [--blocks <file>] [--threads N] [--mmap] [text]";
 
     // Split off the optional flags; keep the rest positional.
     let mut use_shortlist = false;
     let mut timing = false;
     let mut mmap = false;
     let mut blocks: Option<&str> = None;
+    // `--threads N` selects the data-parallel block path (Option B); absent keeps the
+    // legacy per-block timing loop the marian-comparison harness parses. `0` = auto.
+    let mut threads: Option<usize> = None;
     let mut pos: Vec<&str> = Vec::new();
     let mut i = 0;
     while i < args.len() {
@@ -177,6 +180,16 @@ fn translate(args: &[String]) -> ExitCode {
             "--shortlist" => use_shortlist = true,
             "--timing" => timing = true,
             "--mmap" => mmap = true,
+            "--threads" => {
+                i += 1;
+                match args.get(i).and_then(|n| n.parse::<usize>().ok()) {
+                    Some(n) => threads = Some(n),
+                    None => {
+                        eprintln!("--threads needs a non-negative integer\n{USAGE}");
+                        return ExitCode::FAILURE;
+                    }
+                }
+            }
             "--blocks" => {
                 i += 1;
                 match args.get(i) {
@@ -242,10 +255,18 @@ fn translate(args: &[String]) -> ExitCode {
         }
     }
 
+    // `--threads N` (block mode) distributes whole blocks across worker threads in
+    // `translate_blocks` below; the engine itself stays serial so the two levels
+    // don't nest. Compiled only under the `threads` feature — on a serial build the
+    // flag is a no-op (a warning), so the perf harness must build `--features threads`.
+    #[cfg(not(feature = "threads"))]
+    if threads.is_some() {
+        eprintln!("[warn] --threads ignored: built without the `threads` feature");
+    }
+
     // Block mode: read a blank-line-delimited block file (one sentence per line,
     // empty line between blocks) and batch-translate each block, matching the
-    // production block unit. Translations mirror the input layout; `--timing`
-    // emits one JSON span per block on stderr for the perf harness.
+    // production block unit. Translations mirror the input layout.
     if let Some(path) = blocks {
         let content = match std::fs::read_to_string(path) {
             Ok(c) => c,
@@ -254,27 +275,75 @@ fn translate(args: &[String]) -> ExitCode {
                 return ExitCode::FAILURE;
             }
         };
-        for (bi, chunk) in content.split("\n\n").enumerate() {
-            let block: Vec<&str> = chunk.lines().filter(|l| !l.trim().is_empty()).collect();
-            if block.is_empty() {
-                continue;
+
+        // With `--threads`, translate whole blocks concurrently (blocks are
+        // independent — the production data-parallel unit) and report one aggregate
+        // wall-clock span. Without it, keep the legacy per-block timing loop the
+        // marian-comparison harness (`scripts/perf.py`) parses.
+        if threads.is_some() {
+            let blocks_vec: Vec<Vec<String>> = content
+                .split("\n\n")
+                .map(|chunk| {
+                    chunk
+                        .lines()
+                        .filter(|l| !l.trim().is_empty())
+                        .map(str::to_string)
+                        .collect::<Vec<String>>()
+                })
+                .filter(|b| !b.is_empty())
+                .collect();
+            let src_words: usize = blocks_vec
+                .iter()
+                .flatten()
+                .map(|s| s.split_whitespace().count())
+                .sum();
+            let sentences: usize = blocks_vec.iter().map(Vec::len).sum();
+
+            let t_run = std::time::Instant::now();
+            let outputs = translate_blocks(&engine, &blocks_vec, threads.unwrap_or(1));
+            let wall_ms = t_run.elapsed().as_secs_f64() * 1e3;
+
+            for outs in &outputs {
+                for o in outs {
+                    println!("{o}");
+                }
+                println!();
             }
-            let (outs, t) = engine.translate_batch_timed(&block);
-            for o in &outs {
-                println!("{o}");
-            }
-            println!(); // blank line between blocks, mirroring the input
             if timing {
                 eprintln!(
-                    "[block] {{\"block\":{bi},\"sentences\":{},\"src_tokens\":{},\"tokens\":{},\
-                     \"encode_ms\":{:.4},\"ttft_ms\":{:.4},\"decode_ms\":{:.4}}}",
-                    t.sentences,
-                    t.src_tokens,
-                    t.tokens,
-                    t.encode_ms,
-                    t.encode_ms + t.first_token_ms,
-                    t.decode_ms
+                    "[run] {{\"threads\":{},\"blocks\":{},\"sentences\":{},\"src_words\":{},\
+                     \"wall_ms\":{:.4},\"words_per_s\":{:.2}}}",
+                    threads.unwrap_or(1),
+                    blocks_vec.len(),
+                    sentences,
+                    src_words,
+                    wall_ms,
+                    src_words as f64 / (wall_ms / 1e3),
                 );
+            }
+        } else {
+            for (bi, chunk) in content.split("\n\n").enumerate() {
+                let block: Vec<&str> = chunk.lines().filter(|l| !l.trim().is_empty()).collect();
+                if block.is_empty() {
+                    continue;
+                }
+                let (outs, t) = engine.translate_batch_timed(&block);
+                for o in &outs {
+                    println!("{o}");
+                }
+                println!(); // blank line between blocks, mirroring the input
+                if timing {
+                    eprintln!(
+                        "[block] {{\"block\":{bi},\"sentences\":{},\"src_tokens\":{},\"tokens\":{},\
+                         \"encode_ms\":{:.4},\"ttft_ms\":{:.4},\"decode_ms\":{:.4}}}",
+                        t.sentences,
+                        t.src_tokens,
+                        t.tokens,
+                        t.encode_ms,
+                        t.encode_ms + t.first_token_ms,
+                        t.decode_ms
+                    );
+                }
             }
         }
         #[cfg(feature = "gemmology")]
@@ -338,6 +407,55 @@ fn translate(args: &[String]) -> ExitCode {
     heap_snapshot("after translate (retained)");
 
     ExitCode::SUCCESS
+}
+
+/// Translate whole blocks, optionally across worker threads (Option B at the
+/// production granularity: blocks are independent, so distribute them over threads
+/// that share one read-only `&engine` — bounded per-block batches, one copy of the
+/// weights). Output order matches the input. Under a serial build (no `threads`
+/// feature) it runs the blocks in order.
+fn translate_blocks(engine: &Engine, blocks: &[Vec<String>], threads: usize) -> Vec<Vec<String>> {
+    #[cfg(feature = "threads")]
+    {
+        let n = if threads == 0 {
+            std::thread::available_parallelism()
+                .map(|v| v.get())
+                .unwrap_or(1)
+        } else {
+            threads
+        };
+        if n > 1 && blocks.len() > 1 {
+            let chunk = blocks.len().div_ceil(n);
+            let mut out: Vec<Vec<String>> = Vec::with_capacity(blocks.len());
+            std::thread::scope(|s| {
+                let handles: Vec<_> = blocks
+                    .chunks(chunk)
+                    .map(|bc| {
+                        s.spawn(move || {
+                            bc.iter()
+                                .map(|b| {
+                                    let refs: Vec<&str> = b.iter().map(String::as_str).collect();
+                                    engine.translate_batch(&refs)
+                                })
+                                .collect::<Vec<Vec<String>>>()
+                        })
+                    })
+                    .collect();
+                for h in handles {
+                    out.extend(h.join().expect("block worker panicked"));
+                }
+            });
+            return out;
+        }
+    }
+    let _ = threads;
+    blocks
+        .iter()
+        .map(|b| {
+            let refs: Vec<&str> = b.iter().map(String::as_str).collect();
+            engine.translate_batch(&refs)
+        })
+        .collect()
 }
 
 /// Print the current live heap and the running max (dhat feature only).

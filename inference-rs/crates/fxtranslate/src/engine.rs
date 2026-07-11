@@ -35,7 +35,22 @@ pub struct Engine {
     shortlist: Option<Shortlist>,
     /// Whether source and target share a vocabulary (affects shortlist candidates).
     shared_vocab: bool,
+    /// Worker-thread count for the data-parallel batch path (feature `threads`).
+    /// `1` = serial. Set via [`Engine::with_threads`]; the weights are shared, so
+    /// more workers cost only per-thread activation scratch, not more model copies.
+    #[cfg(feature = "threads")]
+    threads: usize,
 }
+
+// The engine holds only immutable state after load (weights are packed once and
+// read-only; all per-call scratch is thread-local), so it is `Sync` and can be
+// shared by reference across the data-parallel workers. Assert it at compile time
+// so a future field with interior mutability can't silently break the invariant.
+#[cfg(feature = "threads")]
+const _: fn() = || {
+    fn assert_sync<T: Sync>() {}
+    assert_sync::<Engine>();
+};
 
 thread_local! {
     /// Per-thread full-vocab logits buffer for the batched projection, so each decode
@@ -156,7 +171,29 @@ impl Engine {
             pe_offs,
             shortlist: None,
             shared_vocab: true,
+            #[cfg(feature = "threads")]
+            threads: 1,
         }
+    }
+
+    /// Set the worker-thread count for the data-parallel batch path
+    /// ([`translate_batch`](Engine::translate_batch) / [`greedy_batch`](Engine::greedy_batch)).
+    /// `0` auto-detects the machine's parallelism; `1` keeps it serial. The weights
+    /// are shared across workers, so this trades cores for throughput at the cost of
+    /// only per-thread activation scratch — no extra copy of the model.
+    ///
+    /// Only present under the `threads` feature. Per-sentence output is identical to
+    /// the serial path regardless of thread count (the batch is partitioned into
+    /// independent sentences), so this never changes a translation.
+    #[cfg(feature = "threads")]
+    pub fn with_threads(mut self, n: usize) -> Engine {
+        self.threads = match n {
+            0 => std::thread::available_parallelism()
+                .map(|v| v.get())
+                .unwrap_or(1),
+            n => n,
+        };
+        self
     }
 
     /// Expose source tokenization for debugging.
@@ -660,6 +697,37 @@ impl Engine {
     /// input order. Sentences that hit EOS or their length cap are kept in the
     /// batch and masked out (their tops ignored) until the whole block finishes.
     pub fn greedy_batch(&self, sentences: &[Vec<u32>]) -> Vec<Vec<u32>> {
+        // Data-parallel path (feature `threads`): the sentences of a batch are
+        // independent, so split them into contiguous chunks and translate the chunks
+        // on separate worker threads that share `&self` (the weights are read-only;
+        // each worker uses its own thread-local scratch). Concatenating in chunk
+        // order preserves input order, and each sentence is still batched within its
+        // chunk, so the tokens are bit-identical to the serial path.
+        #[cfg(feature = "threads")]
+        {
+            if self.threads > 1 && sentences.len() > 1 {
+                let n = self.threads.min(sentences.len());
+                let chunk = sentences.len().div_ceil(n);
+                let mut out: Vec<Vec<u32>> = Vec::with_capacity(sentences.len());
+                std::thread::scope(|s| {
+                    let handles: Vec<_> = sentences
+                        .chunks(chunk)
+                        .map(|c| s.spawn(move || self.greedy_batch_serial(c)))
+                        .collect();
+                    for h in handles {
+                        out.extend(h.join().expect("greedy_batch worker panicked"));
+                    }
+                });
+                return out;
+            }
+        }
+        self.greedy_batch_serial(sentences)
+    }
+
+    /// Serial batched greedy decode of a block of sentences — one batched encode +
+    /// batched decode with per-row EOS. [`greedy_batch`] calls this directly (serial
+    /// build / `threads == 1`) or once per worker chunk (data-parallel).
+    fn greedy_batch_serial(&self, sentences: &[Vec<u32>]) -> Vec<Vec<u32>> {
         let d = self.config.dim_emb;
         let batch = sentences.len();
         let ctx = self.encode_batch(sentences);

@@ -31,6 +31,10 @@ default = []
 # Forward the engine's compute features so the diag binary can A/B them.
 lean-embed = ["fxtranslate/lean-embed"]
 gemmology = ["fxtranslate/gemmology"]
+# Threading: data-parallel batch (Option B) and intra-op GEMM (Option A), forwarded
+# so the perf harness can A/B them via `--features fast,threads` etc.
+threads = ["fxtranslate/threads"]
+gemm-threads = ["fxtranslate/gemm-threads"]
 # Allocator choices for the binary (page-returning jemalloc; dhat heap profiler).
 jemalloc = ["dep:tikv-jemallocator"]
 dhat-heap = ["dep:dhat"]

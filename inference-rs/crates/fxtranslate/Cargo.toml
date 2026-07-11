@@ -68,6 +68,21 @@ lean-embed = []
 # Numerically identical to the scalar path (see tests/gemm_parity.rs).
 gemmology = []
 
+# Data-parallel batch translation (Option B): `Engine::translate_batch` /
+# `greedy_batch` spread a batch's sentences across CPU cores, one worker per core,
+# all sharing one copy of the weights (each worker keeps its own thread-local
+# activation scratch). Pure Rust (`std::thread::scope`), no deps. Off by default so
+# the default build and wasm stay single-threaded and deterministic; enable it and
+# call `Engine::with_threads(n)` to opt in. See notes/11-threading-opportunities.md.
+threads = []
+
+# Intra-op GEMM parallelism (Option A): split each *large* int8 matrix multiply
+# (the full-vocab output projection and the encoder layers) across CPU cores via a
+# persistent thread pool in the C++ shim. Only meaningful with the SIMD kernel, so
+# it implies `gemmology`. Off by default; helps single-sentence latency where the
+# data-parallel `threads` path can't. See notes/11-threading-opportunities.md.
+gemm-threads = ["gemmology"]
+
 # Force the portable scalar kernel: no SIMD, no C++ toolchain — even when
 # `gemmology`/`fast` are on. An opt-out from the fast default without
 # `--no-default-features` (e.g. `cargo build --features portable`), for
