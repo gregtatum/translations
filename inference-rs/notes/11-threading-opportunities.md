@@ -347,6 +347,34 @@ is no batch width, at no memory cost. They compose but must not nest (each sente
 on its own core *or* one sentence split across cores, not both); the recommended
 policy is B across available sentences, A only when a batch can't fill the cores.
 
+### Cross-architecture confirmation (GitHub CI)
+
+The tables above are ARM (Apple Silicon). CI extends the check to the other SIMD
+arch. Two levels:
+
+- **Permanent (no model):** the `test` matrix (`ubuntu-24.04-arm` i8mm +
+  `ubuntu-latest` x86 AVX2) runs the vocab-scale `gemm_parity` shape through the
+  Option A pool with `FXT_GEMM_THREADS=4` and asserts it stays bit-identical to the
+  scalar kernel — proving the intra-op pool is correct on **AVX2**, not just i8mm.
+  `intra-op GEMM pool: threads=4 backend=avx2 … max_diff=0.00e0`.
+- **One-shot end-to-end (temporary committed model, since force-removed):** a real
+  en→fr model was committed on a throwaway commit so CI could run the engine
+  end-to-end on both runners (4 vCPU each), then force-pushed away. Output was
+  **bit-identical** between 1 and 4 threads on both arches. Throughput on
+  `corpora/nllb-en-fr.blocks.txt` (307 blocks / 1000 sentences / 15,856 words):
+
+  | | ARM i8mm (4 vCPU) | x86 AVX2 (4 vCPU) |
+  |---|---|---|
+  | **Option B** 1 → 2 → 4 threads | 950 → 1829 → 3590 w/s (**3.78×**) | 656 → 1292 → 1716 w/s (**2.62×**) |
+  | **Option A** pool 1 → 2 → 4 | 953 → 1152 → 1442 w/s (1.51×) | 657 → 789 → 793 w/s (1.21×) |
+
+  Lower absolute scaling than the 18-core table because these runners have 4 vCPUs
+  (Option B tracks cores; Option A hits its Amdahl plateau even sooner with so few).
+  The point of the run was cross-arch **correctness + that it scales on x86 AVX2**,
+  which the author can't test locally — both hold. To reproduce, re-commit a small
+  model under `data/models/<pair>/` and add a temporary block-harness CI step (the
+  model isn't kept in-tree).
+
 ### How to reproduce
 
 ```
@@ -368,9 +396,14 @@ Raw sweeps: `artifacts/thread-scaling-B.txt`, `artifacts/thread-scaling-A.txt`
 
 ### Follow-ups not taken here
 
-- CI (`scripts/check.py`) still tests the single-thread default; a `threads` /
-  `gemm-threads` test lane would guard the parallel paths in CI (the batch-invariance
-  and gemm-parity tests already cover them, just not in the default `rs:check` run).
+- CI now runs the Option A pool (bit-identical to scalar) on both SIMD arches via a
+  raw-cargo step in the `test` job, but `task rs:check` / `scripts/check.py` (the
+  local default) still only builds the single-thread config. Folding a
+  `threads,gemm-threads` lane into `check.py` (kept in sync with the workflow via
+  `lint-ci`) would guard the parallel paths locally too.
+- End-to-end Option B parity + throughput on CI needs a model, which isn't kept
+  in-tree; it was confirmed once via a throwaway committed model (see above) but
+  isn't part of the standing CI (which skips model-dependent tests).
 - The automatic B-vs-A coordination policy is documented but not wired: today the
   caller picks (`--threads` for B, `FXT_GEMM_THREADS` for A). A single knob that
   spends cores on B first and falls back to A for thin batches is the natural next step.
