@@ -147,6 +147,9 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: inference-rs
+      # `net` is added so the model-management tests (packaging.rs) compile; it is
+      # pure-Rust (ureq/rustls), so the "no C++ toolchain" contract this job guards
+      # still holds — only `portable`/gemmology decide the kernel, which stays scalar.
       - name: Test the portable scalar kernel
         working-directory: inference-rs
-        run: cargo test -p fxtranslate --features fast,portable -- --nocapture
+        run: cargo test -p fxtranslate --features fast,portable,net -- --nocapture
