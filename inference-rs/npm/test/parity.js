@@ -6,18 +6,25 @@
 // list`, `models info`) to the Rust reference (crates/fxtranslate-cli). Rerun
 // with `npm run check:parity`.
 //
-// Three groups:
+// Four groups:
 //   * grammar/help/error — pure, no I/O (always run).
 //   * cache-reading (`models list`/`info`) — HERMETIC: run against an on-disk
 //     fixture cache this script builds, with known-size files, so both binaries
 //     read the same bytes with no network. Covers the empty-cache and
 //     unknown-pair edges too.
+//   * cache-writing `models rm` (step 4) — HERMETIC and destructive: each case gets
+//     its own freshly-seeded fixture cache per binary, so the removal output, the
+//     space-reclaimed trailer, the two-tag form, and the unknown/empty notes are all
+//     pinned byte-for-byte without ever touching the user's real cache.
 //   * `list` — needs LIVE Remote Settings (no injected-fetch flag on the Rust
 //     binary yet; that arrives in step 5). Run against the network and diffed
 //     byte-for-byte; skipped (not failed) when the network is unavailable.
 //
-// The still-stubbed cache-WRITING paths (`translate`, `models add`, `models rm`)
-// are excluded — they land in step 4.
+// `translate` and `models add` are NOT in this harness: `add` downloads real model
+// attachments (network + large files — verified separately), and `translate` output
+// is the tolerant tier (wasm libm), not a byte-exact interface case. Their INTERFACE
+// bits (status lines, pivot hop, REPL/EOF) are proven in the step-4 report and will
+// join the Python conformance harness (Pass A/B) in steps 5-6.
 
 "use strict";
 
@@ -148,6 +155,71 @@ function buildFixtureCache() {
   return root;
 }
 
+/**
+ * Populate `root` with the same fixture pairs {@link buildFixtureCache} writes, into
+ * an existing (empty) directory — for the destructive `models rm` cases, which need a
+ * fresh copy per binary so the Rust and JS runs never share (or reuse) a cache.
+ *
+ * @param {string} root
+ */
+function seedFixtureInto(root) {
+  /**
+   * @param {string} pair
+   * @param {string} name
+   * @param {number} bytes
+   */
+  const write = (pair, name, bytes) => {
+    const dir = path.join(root, pair);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, name), Buffer.alloc(bytes, 0x61));
+  };
+  write("en-es", "model.enes.bin", 31);
+  write("en-es", "vocab.enes.spm", 31);
+  write("es-en", "model.esen.bin", 1234567); // 1.2 MiB (decimal path)
+  write("es-en", "vocab.esen.spm", 2048);
+}
+
+/**
+ * A destructive `models rm` case, run byte-exact against BOTH binaries. Each binary
+ * gets its OWN freshly-seeded fixture cache (`seed` = whether to populate it, so the
+ * empty-cache note is also covered), with `--cache-dir` appended. Returns whether
+ * stdout, stderr, and exit all matched.
+ *
+ * @param {string[]} argv
+ * @param {boolean} seed
+ * @returns {boolean}
+ */
+function compareRmCase(argv, seed) {
+  const rustDir = fs.mkdtempSync(path.join(os.tmpdir(), "fxtranslate-parity-rm-rust-"));
+  const jsDir = fs.mkdtempSync(path.join(os.tmpdir(), "fxtranslate-parity-rm-js-"));
+  try {
+    if (seed) {
+      seedFixtureInto(rustDir);
+      seedFixtureInto(jsDir);
+    }
+    const label = `fxtranslate ${argv.join(" ")}${seed ? "" : " (empty)"}`.trim();
+    const rust = runBin(rustBin, [...argv, "--cache-dir", rustDir]);
+    const js = runBin(jsBin, [...argv, "--cache-dir", jsDir]);
+    /** @type {string[]} */
+    const diffs = [];
+    if (rust.status !== js.status) diffs.push(`exit: rust=${rust.status} js=${js.status}`);
+    if (!rust.stdout.equals(js.stdout)) diffs.push("stdout differs");
+    if (!rust.stderr.equals(js.stderr)) diffs.push("stderr differs");
+    if (diffs.length === 0) {
+      console.log(`  ok   ${label}`);
+      return true;
+    }
+    console.log(`  FAIL ${label}`);
+    for (const d of diffs) console.log(`         ${d}`);
+    console.log(`       --- rust ---\n${rust.stdout}${rust.stderr}`);
+    console.log(`       --- js ---\n${js.stdout}${js.stderr}`);
+    return false;
+  } finally {
+    fs.rmSync(rustDir, { recursive: true, force: true });
+    fs.rmSync(jsDir, { recursive: true, force: true });
+  }
+}
+
 /** Whether the network can reach Remote Settings — a plain Rust `list` that exits 0. */
 function networkAvailable() {
   const probe = runBin(rustBin, ["list"]);
@@ -188,6 +260,19 @@ function main() {
     fs.rmSync(cache, { recursive: true, force: true });
     fs.rmSync(emptyCache, { recursive: true, force: true });
   }
+
+  console.log("\nmodels rm (hermetic, per-case fresh fixture caches — destructive):");
+  /** @param {string[]} argv @param {boolean} seed */
+  const runRm = (argv, seed) => {
+    if (compareRmCase(argv, seed)) pass++;
+    else fail++;
+  };
+  runRm(["models", "rm", "en-es"], true); // one pair (raw bytes)
+  runRm(["models", "rm", "es-en"], true); // one pair (MiB, decimal path)
+  runRm(["models", "rm", "en", "es"], true); // two-tag form
+  runRm(["models", "rm", "zz-zz"], true); // unknown pair note
+  runRm(["models", "rm", "--all"], true); // wipe all + reclaimed trailer
+  runRm(["models", "rm", "--all"], false); // empty cache note
 
   console.log("\nlist (LIVE Remote Settings — the Rust binary has no injected-fetch flag yet):");
   if (networkAvailable()) {
