@@ -1,0 +1,20 @@
+#!/bin/sh
+# Non-blocking reminder printed after every commit. It never fails the commit —
+# it just drops the repo's commit-message convention into the terminal (and thus
+# into an agent's context) so the next commit trends back toward the house style.
+#
+# Only shown when stderr isn't a TTY, i.e. an agent/tool commit rather than a
+# human committing interactively at a terminal.
+#
+# Enable once per clone with:  git config core.hooksPath .githooks
+
+[ -t 2 ] && exit 0
+
+cat >&2 <<'EOF'
+
+Commit style reminder: a short imperative subject, then a paragraph or two of prose
+explaining the intent of the change, no tautology repeating what the code does, nor
+self-talk about how the conversation went.
+`git commit --amend` if needed.
+
+EOF
