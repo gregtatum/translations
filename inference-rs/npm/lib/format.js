@@ -89,6 +89,30 @@ function humanBytes(n) {
 }
 
 /**
+ * A single in-place (`\r`, no newline) download-progress line, padded to 60 scalars
+ * to clear a longer previous line — e.g. `  model.enes.bin: 12.4 / 31.0 MiB (40%)`,
+ * falling back to bytes-only when the server sent no `Content-Length`. Byte-for-byte
+ * with Rust's `render_progress` (`cache.rs`). The caller writes a trailing newline
+ * once the download finishes.
+ *
+ * @param {string} name
+ * @param {number} done
+ * @param {number | undefined} total
+ * @returns {string}
+ */
+function renderProgress(name, done, total) {
+  const MIB = 1024 * 1024;
+  let line;
+  if (total !== undefined && total > 0) {
+    const pct = Math.round((done / total) * 100);
+    line = `  ${name}: ${(done / MIB).toFixed(1)} / ${(total / MIB).toFixed(1)} MiB (${pct}%)`;
+  } else {
+    line = `  ${name}: ${(done / MIB).toFixed(1)} MiB`;
+  }
+  return `\r${padEnd(line, 60)}`;
+}
+
+/**
  * ANSI palette `(cyan, green, dim, reset)`, or empty strings when color is off.
  * Mirrors Rust's `palette`.
  *
@@ -284,6 +308,7 @@ module.exports = {
   padEnd,
   padStart,
   humanBytes,
+  renderProgress,
   palette,
   languageQueryMatches,
   languageMatches,
