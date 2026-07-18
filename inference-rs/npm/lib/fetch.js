@@ -10,8 +10,21 @@ const PROD_ENDPOINT = "https://firefox.settings.services.mozilla.com";
 // The `-v2` collection, not the legacy `translations-models`.
 const COLLECTION = "translations-models-v2";
 
-/** The records endpoint for the model collection. Mirrors `remote::records_url`. */
+// Environment override for the records endpoint. Mirrors `remote::RECORDS_URL_ENV`:
+// when set, `recordsUrl()` returns it verbatim, so the conformance harness can
+// point both CLIs at a committed records fixture (served over http://127.0.0.1:PORT)
+// and keep `list` hermetic + byte-exact. Unset = live production behavior.
+const RECORDS_URL_ENV = "FXTRANSLATE_RECORDS_URL";
+
+/**
+ * The records endpoint for the model collection. Honors the `FXTRANSLATE_RECORDS_URL`
+ * override when set; otherwise the live production URL. Mirrors `remote::records_url`.
+ */
 function recordsUrl() {
+  const override = process.env[RECORDS_URL_ENV];
+  if (override) {
+    return override;
+  }
   return `${PROD_ENDPOINT}/v1/buckets/main/collections/${COLLECTION}/records`;
 }
 
@@ -67,4 +80,4 @@ function nodeFetch() {
   };
 }
 
-module.exports = { recordsUrl, nodeFetch, PROD_ENDPOINT, COLLECTION };
+module.exports = { recordsUrl, nodeFetch, PROD_ENDPOINT, COLLECTION, RECORDS_URL_ENV };

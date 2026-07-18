@@ -14,8 +14,22 @@ pub const PROD_ENDPOINT: &str = "https://firefox.settings.services.mozilla.com";
 pub const COLLECTION: &str = "translations-models-v2";
 pub const CDN_ROOT: &str = "https://firefox-settings-attachments.cdn.mozilla.net";
 
-/// The records endpoint for the model collection.
+/// Environment override for the records endpoint. When set, [`records_url`]
+/// returns its value verbatim instead of the live production URL — the seam the
+/// conformance harness uses to inject a committed records fixture (served over a
+/// local `http://127.0.0.1:PORT`) so `list` is hermetic and byte-exact. Unset =
+/// live production behavior, unchanged. The JS shell honors the same variable
+/// (see `npm/lib/fetch.js`).
+pub const RECORDS_URL_ENV: &str = "FXTRANSLATE_RECORDS_URL";
+
+/// The records endpoint for the model collection. Honors the
+/// [`RECORDS_URL_ENV`] override when set; otherwise the live production URL.
 pub fn records_url() -> String {
+    if let Ok(url) = std::env::var(RECORDS_URL_ENV) {
+        if !url.is_empty() {
+            return url;
+        }
+    }
     format!("{PROD_ENDPOINT}/v1/buckets/main/collections/{COLLECTION}/records")
 }
 
