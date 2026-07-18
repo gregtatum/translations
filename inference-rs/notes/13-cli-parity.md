@@ -258,10 +258,55 @@ Steps 1–4 produce a working npm CLI; 5–7 make its parity provable and contin
 
 ## Status
 
-Design only. Recon complete: the core/shell seams exist in the code as described
-(`route.rs`, `remote.rs`, `segment.rs`, `fetch.rs`, `cache.rs`, `cli.rs`
-`Io`/`Deps`, `tests/common` mocks). Next step: build-order step 1 — expose the pure
-core (`parse_records`/`resolve_route`/`catalog`/verify/segment) to wasm behind the
-right feature gates, and unit-test wasm-vs-native equality on a fixed record set.
+**Build-order steps 1–8 implemented.** The pure core is exposed to wasm
+(`parse_records`/`resolve_route`/`catalog`/`verify_and_decompress`/`segment`,
+step 1); the combined lib+CLI npm package lives at `npm/` (`bin/fxtranslate.js`,
+`lib/*.js` + `lib/index.d.ts`, wasm core copied into `npm/wasm/` by
+`npm run build:wasm`, steps 2–4); and the Python conformance harness
+(`scripts/conformance.py`) proves the npm CLI's interface is **byte-exact** with
+the Rust reference and translation parity holds at the documented tolerance
+(steps 5–7). `npm run typecheck` (`tsc --noEmit`, JSDoc-only, no compile step) is
+clean.
+
+**Step 8 — packaging dry-run (validated; NO real publish).** `package.json`
+finalized for publishing: `name` `fxtranslate` (unscoped; a `npm view fxtranslate`
+returns 404, i.e. the name appears **available/unclaimed** on the registry),
+`version` `0.4.0`, `license` `MPL-2.0`, `bin` `{ "fxtranslate":
+"bin/fxtranslate.js" }`, `main`/`module` `lib/index.js`, `types`
+`lib/index.d.ts`, library `exports` (`.` → types/import/require), `engines`
+`node >=18` (global `fetch`), and a `files` allowlist `[bin/, lib/, wasm/,
+README.md, LICENSE]`. A `LICENSE` (MPL-2.0) was added to `npm/`; `npm/.gitignore`
+now also ignores `*.tgz` (alongside `wasm/`, `node_modules/`).
+
+`npm pack --dry-run` manifest — **20 files, 182.3 kB packed / 467.0 kB
+unpacked**:
+
+```
+📦  fxtranslate@0.4.0
+ 16.7 kB  LICENSE
+  4.4 kB  README.md
+  1.2 kB  bin/fxtranslate.js
+  ~66 kB  lib/*.js (cache, cli, fetch, format, index, io, lang, run, translate, usage)
+  3.2 kB  lib/index.d.ts
+  1.0 kB  package.json
+ 11.9 kB  wasm/fxtranslate_wasm_bg.js
+337.5 kB  wasm/fxtranslate_wasm_bg.wasm
+  6.6 kB  wasm/fxtranslate_wasm.d.ts + 1.8 kB *_bg.wasm.d.ts
+ 20.2 kB  wasm/fxtranslate_wasm.js
+package size (packed): 182.3 kB   unpacked: 467.0 kB   total files: 20
+```
+
+Included: `bin/`, `lib/` (`.js` + `.d.ts`), `wasm/` (core + `.d.ts`), `README.md`,
+`LICENSE`, `package.json`. Excluded: `test/`, `node_modules/`, `tsconfig.json`,
+`package-lock.json`, `scripts/`. **No model files** (`.bin`/`.spm`/`.lex`/…) — the
+package is library-first and downloads/caches models at runtime like the Rust CLI.
+`npm publish --dry-run` reported the same manifest and `+ fxtranslate@0.4.0`
+(dry-run; not logged in, nothing published). A packed `.tgz` installed into a
+throwaway temp dir resolved the `fxtranslate` bin and the wasm core from the
+installed layout — `fxtranslate --help` and `list --help` ran correctly.
+
+**The name, version, and the actual `npm publish` await Greg's go-ahead.** This is
+a dry-run only.
+
 Related: `[[multi-lang-binding-strategy]]`, `[[wasm-parity-stance]]`,
 `[[fxtranslate-product-direction]]`.

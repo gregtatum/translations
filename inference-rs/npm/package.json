@@ -25,7 +25,8 @@
     "bin/",
     "lib/",
     "wasm/",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build:wasm": "bash scripts/build-wasm.sh",
