@@ -10,7 +10,11 @@
 //!
 //! [`Engine::from_bytes`]: fxtranslate::Engine::from_bytes
 
+use fxtranslate::cache::verify_and_decompress as core_verify_and_decompress;
 use fxtranslate::engine::{Engine, Phase};
+use fxtranslate::remote::{parse_records as core_parse_records, Record};
+use fxtranslate::route::{catalog as core_catalog, resolve_route as core_resolve_route, Route};
+use fxtranslate::segment::{BasicSegmenter, Segmenter};
 use wasm_bindgen::prelude::*;
 
 /// A translation engine callable from JavaScript.
@@ -134,5 +138,187 @@ impl Translator {
         {
             "scalar".to_string()
         }
+    }
+}
+
+/// The pure model-discovery surface, exposed to JavaScript as free functions.
+///
+/// These mirror the core `remote`/`route`/`segment`/`cache` functions the JS shell
+/// needs for the read-only paths (`list`, `models`, download verify). Structured
+/// results cross the wasm boundary as JSON strings the host parses — this keeps the
+/// wasm build free of serde/serde-wasm-bindgen and matches the crate's minimal-dep
+/// philosophy. The JS orchestration does its own async HTTP + filesystem and only
+/// ever calls these synchronous, pure functions.
+pub mod discovery {
+    use super::*;
+
+    /// Append `s` to `out` as a JSON string literal (quotes + minimal escaping).
+    /// Covers what Remote Settings language tags / names / hashes actually contain
+    /// (`"`, `\`, control chars); no serde needed for these shallow shapes.
+    fn push_json_str(out: &mut String, s: &str) {
+        out.push('"');
+        for c in s.chars() {
+            match c {
+                '"' => out.push_str("\\\""),
+                '\\' => out.push_str("\\\\"),
+                '\n' => out.push_str("\\n"),
+                '\r' => out.push_str("\\r"),
+                '\t' => out.push_str("\\t"),
+                c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04x}", c as u32)),
+                c => out.push(c),
+            }
+        }
+        out.push('"');
+    }
+
+    /// A JSON array of string literals.
+    fn json_str_array(items: &[String]) -> String {
+        let mut out = String::from("[");
+        for (i, item) in items.iter().enumerate() {
+            if i > 0 {
+                out.push(',');
+            }
+            push_json_str(&mut out, item);
+        }
+        out.push(']');
+        out
+    }
+
+    /// One record as a JSON object with the fields [`Record`] carries. `null` for
+    /// absent optionals (`architecture`, `decompressedHash`).
+    fn record_json(out: &mut String, r: &Record) {
+        out.push_str("{\"name\":");
+        push_json_str(out, &r.name);
+        out.push_str(",\"fileType\":");
+        push_json_str(out, &r.file_type);
+        out.push_str(",\"sourceLanguage\":");
+        push_json_str(out, &r.src);
+        out.push_str(",\"targetLanguage\":");
+        push_json_str(out, &r.trg);
+        out.push_str(",\"version\":");
+        push_json_str(out, &r.version);
+        out.push_str(",\"architecture\":");
+        match &r.architecture {
+            Some(a) => push_json_str(out, a),
+            None => out.push_str("null"),
+        }
+        out.push_str(",\"decompressedHash\":");
+        match &r.decompressed_hash {
+            Some(h) => push_json_str(out, h),
+            None => out.push_str("null"),
+        }
+        out.push_str(",\"location\":");
+        push_json_str(out, &r.location);
+        out.push('}');
+    }
+
+    /// Parse a Remote Settings `records` response body into the model-file records
+    /// fxtranslate understands, returned as a JSON array.
+    ///
+    /// The host fetches the collection JSON itself (async `fetch`) and passes the
+    /// body in; this normalizes it to the fields routing needs (name, fileType,
+    /// languages, version, architecture, decompressedHash, location), skipping
+    /// records that lack the required fields — same rule as the native parser.
+    /// Returns the JSON array on success, or throws with the parse error.
+    #[wasm_bindgen(js_name = parseRecords)]
+    pub fn parse_records(body: &str) -> Result<String, JsError> {
+        let records = core_parse_records(body).map_err(|e| JsError::new(&e))?;
+        let mut out = String::from("[");
+        for (i, r) in records.iter().enumerate() {
+            if i > 0 {
+                out.push(',');
+            }
+            record_json(&mut out, r);
+        }
+        out.push(']');
+        Ok(out)
+    }
+
+    /// Resolve `src`→`trg` against a Remote Settings `records` body to the route
+    /// that realizes it: a direct model, or a two-leg pivot through a hub.
+    ///
+    /// Takes the raw collection JSON (the same body [`parseRecords`] accepts) so the
+    /// host doesn't have to round-trip a records representation back across the
+    /// boundary. Returns one of
+    /// `{"kind":"direct","src":..,"trg":..}` or
+    /// `{"kind":"pivot","src":..,"pivot":..,"trg":..}`,
+    /// or throws when neither a direct model nor a pivot exists.
+    #[wasm_bindgen(js_name = resolveRoute)]
+    pub fn resolve_route(records_json: &str, src: &str, trg: &str) -> Result<String, JsError> {
+        let records = core_parse_records(records_json).map_err(|e| JsError::new(&e))?;
+        let route = core_resolve_route(&records, src, trg).map_err(|e| JsError::new(&e))?;
+        let mut out = String::new();
+        match route {
+            Route::Direct { src, trg } => {
+                out.push_str("{\"kind\":\"direct\",\"src\":");
+                push_json_str(&mut out, &src);
+                out.push_str(",\"trg\":");
+                push_json_str(&mut out, &trg);
+                out.push('}');
+            }
+            Route::Pivot { src, pivot, trg } => {
+                out.push_str("{\"kind\":\"pivot\",\"src\":");
+                push_json_str(&mut out, &src);
+                out.push_str(",\"pivot\":");
+                push_json_str(&mut out, &pivot);
+                out.push_str(",\"trg\":");
+                push_json_str(&mut out, &trg);
+                out.push('}');
+            }
+        }
+        Ok(out)
+    }
+
+    /// Classify every language reachable through `hub` (e.g. `"en"`) by the
+    /// directions it supports, from a Remote Settings `records` body — the data the
+    /// `list` command renders.
+    ///
+    /// Takes the raw collection JSON. Returns
+    /// `{"bidirectional":[..],"sourceOnly":[..],"targetOnly":[..]}`, each a sorted
+    /// language-tag array. Throws only on a JSON parse error.
+    #[wasm_bindgen(js_name = catalog)]
+    pub fn catalog(records_json: &str, hub: &str) -> Result<String, JsError> {
+        let records = core_parse_records(records_json).map_err(|e| JsError::new(&e))?;
+        let cat = core_catalog(&records, hub);
+        let mut out = String::from("{\"bidirectional\":");
+        out.push_str(&json_str_array(&cat.bidirectional));
+        out.push_str(",\"sourceOnly\":");
+        out.push_str(&json_str_array(&cat.source_only));
+        out.push_str(",\"targetOnly\":");
+        out.push_str(&json_str_array(&cat.target_only));
+        out.push('}');
+        Ok(out)
+    }
+
+    /// Split `text` into sentence units with the built-in (icu-free) segmenter and
+    /// return their trimmed content as a JSON string array.
+    ///
+    /// This is the same [`BasicSegmenter`] the wasm `Translator.translate_long`
+    /// drives, exposed so the JS shell can segment before batching. Whitespace
+    /// between sentences is not preserved here (the CLI reassembles from the source
+    /// with `reassemble`); this yields the sentence contents in order.
+    #[wasm_bindgen(js_name = segmentSentences)]
+    pub fn segment_sentences(text: &str) -> String {
+        let spans = BasicSegmenter.sentences(text);
+        let sentences: Vec<String> = spans.iter().map(|s| s.of(text).to_string()).collect();
+        json_str_array(&sentences)
+    }
+
+    /// Decompress a zstd model attachment and verify the decompressed bytes against
+    /// an expected hex SHA-256 (a record's `decompressedHash`), returning the
+    /// decompressed bytes.
+    ///
+    /// The JS shell downloads the `.zst` attachment itself and calls this to decode
+    /// + verify before writing it to its cache — so it never reimplements zstd or
+    /// SHA-256. Pass `expected_sha256_hex` = `null`/`undefined` to decompress
+    /// without verifying (records that carry no hash). Throws on a decode failure or
+    /// a hash mismatch.
+    #[wasm_bindgen(js_name = verifyAndDecompress)]
+    pub fn verify_and_decompress(
+        compressed: &[u8],
+        expected_sha256_hex: Option<String>,
+    ) -> Result<Vec<u8>, JsError> {
+        core_verify_and_decompress(compressed, expected_sha256_hex.as_deref())
+            .map_err(|e| JsError::new(&e))
     }
 }

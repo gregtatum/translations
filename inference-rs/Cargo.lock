@@ -291,6 +291,7 @@ dependencies = [
  "fxtranslate",
  "js-sys",
  "wasm-bindgen",
+ "wasm-bindgen-test",
 ]
 
 [[package]]

@@ -1,0 +1,93 @@
+{
+ "data": [
+  {
+   "name": "model.enes.intgemm.alphas.bin",
+   "version": "3.0",
+   "fileType": "model",
+   "architecture": "base-memory",
+   "sourceLanguage": "en",
+   "targetLanguage": "es",
+   "decompressedHash": "3b1c399511c01c84c36fae5c0524df44096288efdc8236e182b5c97d7ad2244c",
+   "attachment": {
+    "location": "main-workspace/translations-models-v2/enes.zst"
+   }
+  },
+  {
+   "name": "model.esen.intgemm.alphas.bin",
+   "version": "3.0",
+   "fileType": "model",
+   "architecture": "base-memory",
+   "sourceLanguage": "es",
+   "targetLanguage": "en",
+   "attachment": {
+    "location": "main-workspace/translations-models-v2/esen.zst"
+   }
+  },
+  {
+   "name": "model.enfr.intgemm.alphas.bin",
+   "version": "3.1",
+   "fileType": "model",
+   "architecture": "base-memory",
+   "sourceLanguage": "en",
+   "targetLanguage": "fr",
+   "attachment": {
+    "location": "main-workspace/translations-models-v2/enfr.zst"
+   }
+  },
+  {
+   "name": "model.fren.intgemm.alphas.bin",
+   "version": "3.0",
+   "fileType": "model",
+   "architecture": "base-memory",
+   "sourceLanguage": "fr",
+   "targetLanguage": "en",
+   "attachment": {
+    "location": "main-workspace/translations-models-v2/fren.zst"
+   }
+  },
+  {
+   "name": "model.ennn.intgemm.alphas.bin",
+   "version": "3.0",
+   "fileType": "model",
+   "architecture": "base-memory",
+   "sourceLanguage": "en",
+   "targetLanguage": "nn",
+   "attachment": {
+    "location": "main-workspace/translations-models-v2/ennn.zst"
+   }
+  },
+  {
+   "name": "model.isen.intgemm.alphas.bin",
+   "version": "3.0",
+   "fileType": "model",
+   "architecture": "base-memory",
+   "sourceLanguage": "is",
+   "targetLanguage": "en",
+   "attachment": {
+    "location": "main-workspace/translations-models-v2/isen.zst"
+   }
+  },
+  {
+   "name": "model.xxyy.old.bin",
+   "version": "2.0",
+   "fileType": "model",
+   "architecture": "base-memory",
+   "sourceLanguage": "xx",
+   "targetLanguage": "yy",
+   "attachment": {
+    "location": "main-workspace/translations-models-v2/xxyy.zst"
+   }
+  },
+  {
+   "name": "vocab.enes.spm",
+   "version": "3.0",
+   "fileType": "vocab",
+   "architecture": "base-memory",
+   "sourceLanguage": "en",
+   "targetLanguage": "es",
+   "attachment": {
+    "location": "main-workspace/translations-models-v2/vocab.enes.zst"
+   }
+  }
+ ]
+}

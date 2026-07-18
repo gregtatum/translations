@@ -28,9 +28,11 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 # The engine, lean/pure-Rust config: no mmap, no net, no C++ toolchain, scalar
-# kernel. This is the default here so `wasm-pack build` (which passes no feature
-# flags) already produces the intended lean wasm build.
-fxtranslate = { path = "../fxtranslate", default-features = false, features = ["lean-embed"] }
+# kernel. `discovery` adds the pure record parsing / pivot routing / verify code
+# (tinyjson, ruzstd, sha2 — all wasm-safe) without pulling `ureq`/`dirs`/`mmap`.
+# This is the default here so `wasm-pack build` (which passes no feature flags)
+# already produces the intended lean wasm build.
+fxtranslate = { path = "../fxtranslate", default-features = false, features = ["lean-embed", "discovery"] }
 # The JS <-> Rust boundary: marshals `&str`/`Uint8Array`/`String` across wasm.
 wasm-bindgen = "0.2"
 # Lets the perf harness pass a JS phase-boundary callback (a `Function`) that the
@@ -40,6 +42,12 @@ js-sys = "0.3"
 # Routes Rust panics to `console.error` with a readable message + stack instead
 # of an opaque `unreachable` trap. Installed once in the `Translator` constructor.
 console_error_panic_hook = "0.1"
+
+# wasm-only dev dep: run the discovery-parity test under a real wasm runtime
+# (`wasm-pack test --node`) so the wrappers are proven live, not just compiled.
+# Target-scoped so the native `cargo test -p fxtranslate-wasm` graph is unchanged.
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+wasm-bindgen-test = "0.3"
 
 # wasm-pack runs `wasm-opt` on the release build. `-Oz` optimizes for size (the
 # real deliverable is the compressed .wasm; `-Oz` shaves ~24% off the raw module —
