@@ -1,0 +1,26 @@
+fxtranslate models — manage locally cached models
+
+USAGE:
+  fxtranslate models list                 Show the cache location and every cached
+                                          model pair with its size and the total
+  fxtranslate models add <src> <trg>      Download a pair ahead of time (both legs
+                                          of a pivot, e.g. `add es fr` fetches
+                                          es→en and en→fr) without translating
+  fxtranslate models rm <pair> | --all    Delete a cached pair (or the whole cache),
+                                          reporting the space reclaimed
+  fxtranslate models info <pair>          Show a cached pair's files, their sizes,
+                                          and their on-disk paths
+
+A <pair> is either two tags (`en es`) or the joined directory name (`en-es`) shown
+by `models list`. Downloads reuse the same verified cache as `translate`, so `list`
+shows exactly what a translation would load.
+
+OPTIONS:
+  --cache-dir <DIR>   Model cache directory (default: <platform cache>/fxtranslate)
+
+EXAMPLES:
+  fxtranslate models list
+  fxtranslate models add es fr        # pre-fetch the es→en→fr pivot
+  fxtranslate models info en-es
+  fxtranslate models rm en-es
+  fxtranslate models rm --all

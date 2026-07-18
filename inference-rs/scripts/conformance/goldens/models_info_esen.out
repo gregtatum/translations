@@ -1,0 +1,4 @@
+es-en (<CACHE_DIR>/es-en)
+  model.esen.bin  1.2 MiB  <CACHE_DIR>/es-en/model.esen.bin
+  vocab.esen.spm  2.0 KiB  <CACHE_DIR>/es-en/vocab.esen.spm
+Total: 1.2 MiB

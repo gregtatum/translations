@@ -1,0 +1,23 @@
+fxtranslate — translate with Firefox Translations models
+
+USAGE:
+  fxtranslate list [lang] [--all]             List supported languages (or raw
+                                              model pairs with --all; `list --help`)
+  fxtranslate translate <src> <trg> [text…]   Translate: args if given, else stdin
+                                              lines, else an interactive TTY prompt
+  fxtranslate models <cmd>                    Manage locally cached models
+                                              (`models --help`)
+
+Non-English pairs pivot through English automatically (`es → fr` runs `es → en`
+then `en → fr`); see pivot-translations.md.
+
+OPTIONS:
+  --cache-dir <DIR>   Model cache directory (default: <platform cache>/fxtranslate)
+  -h, --help          Show this help
+
+EXAMPLES:
+  fxtranslate list es
+  echo "Hola mundo." | fxtranslate translate es fr   # pivots via English
+  fxtranslate translate en es "Hello world."
+  fxtranslate translate en es                 # interactive
+  fxtranslate models list                     # what's cached, and how big

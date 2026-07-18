@@ -1,0 +1,23 @@
+fxtranslate list — list supported languages and models
+
+USAGE:
+  fxtranslate list [lang] [--all]
+
+By default, `list` shows LANGUAGES, not raw models. A language is listed under
+"Fully supported" when it can translate both to and from other languages — every
+such pair works, directly or by pivoting through English. Languages that ship a
+model in only one direction (e.g. only `en → xx`) work only that way, so they
+appear under "Single-direction models" with the direction they support.
+
+Underneath, every Firefox Translations model is a one-way pair to or from English
+(`en → es` and `es → en` are separate models). Pass --all to list those raw pairs.
+
+A [lang] argument filters by prefix, so `zh` catches `zh-Hans` and `zh-Hant`.
+Display names are the standard BCP 47 language names; a tag with no known name shows
+the code. See pivot-translations.md for how non-English pairs are served.
+
+EXAMPLES:
+  fxtranslate list                    # supported languages
+  fxtranslate list es                 # just Spanish
+  fxtranslate list --all              # every raw src → trg model pair
+  fxtranslate list es --all           # both raw directions for Spanish

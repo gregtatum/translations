@@ -1,0 +1,4 @@
+en-es (<CACHE_DIR>/en-es)
+  model.enes.bin  31 B  <CACHE_DIR>/en-es/model.enes.bin
+  vocab.enes.spm  31 B  <CACHE_DIR>/en-es/vocab.enes.spm
+Total: 62 B
