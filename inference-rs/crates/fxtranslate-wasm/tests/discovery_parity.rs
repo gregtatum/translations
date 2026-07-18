@@ -13,7 +13,9 @@
 //!   under wasm, emit those exact same golden JSON strings. Same golden on both
 //!   targets is the wasm==native proof.
 
-use fxtranslate_wasm::discovery::{catalog, parse_records, resolve_route, segment_sentences};
+use fxtranslate_wasm::discovery::{
+    catalog, model_pairs, parse_records, resolve_route, segment_sentences,
+};
 
 /// The committed record set: en↔es and en↔fr are bidirectional, en→nn is
 /// target-only, is→en is source-only, and a v2 xx→yy record must be version-gated
@@ -27,6 +29,10 @@ const ROUTE_DIRECT: &str = r#"{"kind":"direct","src":"en","trg":"es"}"#;
 const ROUTE_PIVOT: &str = r#"{"kind":"pivot","src":"es","pivot":"en","trg":"fr"}"#;
 const CATALOG: &str =
     r#"{"bidirectional":["en","es","fr"],"sourceOnly":["is"],"targetOnly":["nn"]}"#;
+/// The version-gated, sorted, deduped `[src,trg]` pairs. The v2 `xx`→`yy` record is
+/// gated out, so it does not appear — that gating is the whole reason `list --all`
+/// calls the core rather than deriving pairs in JS.
+const PAIRS: &str = r#"[["en","es"],["en","fr"],["en","nn"],["es","en"],["fr","en"],["is","en"]]"#;
 
 fn route(src: &str, trg: &str) -> String {
     resolve_route(FIXTURE, src, trg)
@@ -40,6 +46,10 @@ fn cat(hub: &str) -> String {
 
 fn records() -> String {
     parse_records(FIXTURE).ok().expect("records parse")
+}
+
+fn pairs() -> String {
+    model_pairs(FIXTURE).ok().expect("pairs build")
 }
 
 /// The direct pair `en`→`es` resolves to the direct-route JSON.
@@ -71,6 +81,13 @@ fn parse_records_returns_json_array() {
     assert!(json.contains("\"en\""));
 }
 
+/// `modelPairs` returns the version-gated, sorted, deduped raw pairs — what
+/// `list --all` renders. The v2 pair is gated out.
+#[test]
+fn model_pairs_matches_golden() {
+    assert_eq!(pairs(), PAIRS);
+}
+
 /// Segmentation splits multi-sentence input into its sentence contents.
 #[test]
 fn segment_sentences_splits_input() {
@@ -86,10 +103,23 @@ fn segment_sentences_splits_input() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn goldens_reflect_core_decisions() {
-    use fxtranslate::remote::parse_records as core_parse;
+    use fxtranslate::remote::{pairs as core_pairs, parse_records as core_parse};
     use fxtranslate::route::{catalog as core_catalog, resolve_route as core_route, Route};
 
     let recs = core_parse(FIXTURE).expect("core parse");
+
+    // The gated `xx`→`yy` v2 record is absent from the core pair set the wrapper mirrors.
+    assert_eq!(
+        core_pairs(&recs),
+        vec![
+            ("en".to_string(), "es".to_string()),
+            ("en".to_string(), "fr".to_string()),
+            ("en".to_string(), "nn".to_string()),
+            ("es".to_string(), "en".to_string()),
+            ("fr".to_string(), "en".to_string()),
+            ("is".to_string(), "en".to_string()),
+        ]
+    );
 
     match core_route(&recs, "en", "es").expect("direct") {
         Route::Direct { src, trg } => {
@@ -135,6 +165,11 @@ mod wasm {
     #[wasm_bindgen_test]
     fn catalog_matches_golden_wasm() {
         assert_eq!(cat("en"), CATALOG);
+    }
+
+    #[wasm_bindgen_test]
+    fn model_pairs_matches_golden_wasm() {
+        assert_eq!(pairs(), PAIRS);
     }
 
     #[wasm_bindgen_test]

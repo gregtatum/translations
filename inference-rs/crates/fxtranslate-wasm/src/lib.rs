@@ -12,7 +12,7 @@
 
 use fxtranslate::cache::verify_and_decompress as core_verify_and_decompress;
 use fxtranslate::engine::{Engine, Phase};
-use fxtranslate::remote::{parse_records as core_parse_records, Record};
+use fxtranslate::remote::{pairs as core_pairs, parse_records as core_parse_records, Record};
 use fxtranslate::route::{catalog as core_catalog, resolve_route as core_resolve_route, Route};
 use fxtranslate::segment::{BasicSegmenter, Segmenter};
 use wasm_bindgen::prelude::*;
@@ -287,6 +287,33 @@ pub mod discovery {
         out.push_str(",\"targetOnly\":");
         out.push_str(&json_str_array(&cat.target_only));
         out.push('}');
+        Ok(out)
+    }
+
+    /// The unique, version-gated `src → trg` model pairs from a Remote Settings
+    /// `records` body — the raw one-way models the `list --all` view enumerates.
+    ///
+    /// Takes the raw collection JSON. Returns a JSON array of `[src, trg]` pairs,
+    /// already sorted and deduplicated and filtered to the supported model major —
+    /// so the JS shell renders exactly what `translate` could load without
+    /// reimplementing the version gate. The shell does its own prefix filtering on
+    /// this list (a shallow, safe-to-duplicate concern). Throws on a JSON parse error.
+    #[wasm_bindgen(js_name = modelPairs)]
+    pub fn model_pairs(records_json: &str) -> Result<String, JsError> {
+        let records = core_parse_records(records_json).map_err(|e| JsError::new(&e))?;
+        let ps = core_pairs(&records);
+        let mut out = String::from("[");
+        for (i, (s, t)) in ps.iter().enumerate() {
+            if i > 0 {
+                out.push(',');
+            }
+            out.push('[');
+            push_json_str(&mut out, s);
+            out.push(',');
+            push_json_str(&mut out, t);
+            out.push(']');
+        }
+        out.push(']');
         Ok(out)
     }
 
