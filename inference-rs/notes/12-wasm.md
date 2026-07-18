@@ -129,6 +129,61 @@ The point of the whole exercise is parity, so lean on the existing oracle:
 Note in output which kernel ran (scalar vs simd) so a silent scalar build doesn't
 get mistaken for a representative speed measurement.
 
+### Validation results (steps 1–6 done)
+
+The full en→fr corpus (`corpora/nllb-en-fr.blocks.txt`, 1306 lines, shortlist on)
+was run through the native scalar oracle (`--no-default-features --features
+lean-embed`) and through the wasm build under **Node v22.18.0**. Both sides are
+internally deterministic (two runs, byte-identical each). The wasm SIMD128 build
+and the plain wasm scalar build produce **bit-for-bit identical output over the
+whole corpus** — both are exact-family int8 backends — so the faster SIMD build
+stands in for "wasm output" everywhere below.
+
+**Exact-match rate: 1302 / 1306 = 99.69% (native-scalar vs wasm).** The four
+diverging lines are all long sentences where a near-tie greedy argmax flips one
+token:
+
+| line | nature of the divergence |
+|---|---|
+| 9   | single word swap (`rencontres` → `réunions`) |
+| 27  | two-token region (apostrophe glyph + `une` → `la`), resolves back |
+| 251 | one word swap (`en fait` → `réellement`), one-token length cascade |
+| 531 | word-order/insertion (`gratuitement` placement), one-token cascade |
+
+No blank lines diverge; no short sentence diverges; there is no runaway cascade.
+These are exactly the "whole-word argmax flips on long sentences" the plan
+anticipated.
+
+**Proven root cause: f32 transcendental last-bit differences, ≤ 1 ULP.** A
+throwaway spike routed *every* transcendental the engine uses — `exp` (softmax +
+highway sigmoid, `ops.rs`), `sqrt` (layernorm, `ops.rs`), and `sin` + `powf`
+(positional encoding, `engine.rs:191`/`:1121`) — through the pure-Rust `libm`
+crate on **both** native and wasm, rebuilt both, and re-ran the full corpus:
+**divergences collapsed from 4 to 0 — 100.00% exact match.** Same library on both
+sides ⇒ identical output, which is the proof. A standalone ULP sweep quantifies
+the gap between macOS arm64's *system* libm (what native `f32::` calls) and the
+*portable* libm (what `wasm32-unknown-unknown` std uses, since wasm has no system
+libm): **exp, sin, and powf each differ by at most 1 ULP; sqrt is 0 ULP**
+(hardware IEEE sqrt on both). On wasm, `f32::` and the `libm` crate are identical
+(both are the portable libm); on native they differ by that 1 ULP. Pure f32
+add/mul/dot and the int8 GEMM accumulation are **bit-identical** across the two
+targets (verified on transcendental-free inputs); the int8 GEMM is integer-exact
+by construction.
+
+Note the subtlety that made this worth proving rather than asserting: swapping
+only the `ops.rs` transcendentals (`exp`/`sqrt`) does **not** fix it — the
+dominant contributor is the positional-encoding `sin`/`powf`, whose 1-ULP wobble
+is baked into every token's input embedding and propagates through the network.
+The collapse to zero only happens once *all four* are shared.
+
+**Decision on record:** accept these small, fully-explained divergences. Do
+**not** force a shared libm in production — it would touch the hot math path
+(softmax/layernorm/PE) for a cosmetic bit-parity gain we don't need, since wasm is
+a validation + npm artifact and production ships native Rust. The int8 GEMM stays
+held to the strict bit-identical bar (`gemm_parity.rs`); it already clears it.
+Forcing full wasm↔native determinism *is* possible if ever required — the libm
+swap demonstrates it reaches 100% — but it's off the table by default.
+
 ## SIMD int8 kernel for wasm (in scope)
 
 Scalar int8 runs one multiply-add per instruction, and the matmul is ~2/3 of all
@@ -332,5 +387,11 @@ add the browser and distribution.
 
 ## Status
 
-Not started. Plan only. Next step: build order step 1 (byte constructors), then
-confirm the lean crate builds for `wasm32-unknown-unknown`.
+Build order steps 1–6 done: byte constructors (`Weights`/`Engine::from_bytes`),
+lean `wasm32-unknown-unknown` build, the `fxtranslate-wasm` bindgen crate, the Node
+driver (`js/run.js` + `js/batch.js`), and the live wasm SIMD128 int8 kernel
+(`backend() == "wasm-simd128"`, exact family). Validated: full-corpus
+native-scalar vs wasm parity at 99.69% exact match, with the four divergences
+proven to be ≤ 1-ULP transcendental (exp/sin/powf) differences between arm64
+system libm and wasm portable libm (see "Validation results"). Next: step 7
+(host-timed perf numbers) and step 8 (`.wasm` size vs native cdylib).
