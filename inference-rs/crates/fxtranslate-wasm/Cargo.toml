@@ -23,6 +23,10 @@ crate-type = ["cdylib", "rlib"]
 fxtranslate = { path = "../fxtranslate", default-features = false, features = ["lean-embed"] }
 # The JS <-> Rust boundary: marshals `&str`/`Uint8Array`/`String` across wasm.
 wasm-bindgen = "0.2"
+# Lets the perf harness pass a JS phase-boundary callback (a `Function`) that the
+# engine invokes at encode/decode/first-token boundaries, so the host times each
+# phase with `performance.now()` (wasm has no usable `std::time::Instant`).
+js-sys = "0.3"
 # Routes Rust panics to `console.error` with a readable message + stack instead
 # of an opaque `unreachable` trap. Installed once in the `Translator` constructor.
 console_error_panic_hook = "0.1"

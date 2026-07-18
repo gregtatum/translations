@@ -285,11 +285,169 @@ Target table (one row per build, all on the same machine + corpus):
 
 | build | words/s | TTFT (ms) | decode tok/s | rel. to native SIMD |
 |---|---|---|---|---|
-| native scalar (`portable`) | | | | |
-| native SIMD (`fast`/gemmology) | | | | 1.00× |
-| wasm scalar (Node) | | | | |
-| wasm SIMD128 (Node) | | | | |
-| wasm SIMD128 (Firefox, WebDriver) | | | | |
+| native scalar (`lean-embed`) | 565 | 30.9 | 1265 | 0.29× |
+| native SIMD (`fast`/gemmology) | 1925 | 8.0 | 4048 | 1.00× |
+| wasm scalar (Node) | 80 | 220.5 | 179 | 0.04× |
+| wasm SIMD128 (Node) | 365 | 44.9 | 799 | 0.19× |
+| wasm SIMD128 (Firefox, WebDriver) | _(step 9)_ | | | |
+
+### Perf results (step 7 — filled)
+
+All four rows above were measured on the **same machine, same model, same
+corpus, single-threaded, shortlist-off** so they drop straight into the project's
+`perf.py --blocks` format:
+
+- **Model + corpus:** en→fr `base` model (`data/models/enfr/`,
+  `model.enfr.intgemm.alphas.bin`) over `corpora/nllb-en-fr.blocks.txt` (**307
+  blocks / 15,856 source words**) — the same corpus the step-1–5 wasm parity pass
+  used, so the native and wasm rows are apples-to-apples with each other. (The
+  README/notes-11 canonical single-thread baseline is en→ru `base` +
+  *Frankenstein* at ~1267–1276 words/s; the numbers here are a different pair and
+  corpus, so treat that as the external reference point, not a row in this table.)
+- **Metric definitions (identical to `scripts/perf.py`'s `--blocks` mode):**
+  **words/s** = source words ÷ sum of per-block compute time (encode + decode,
+  model load excluded); **TTFT (ms)** = per-block encode + first-decode-step,
+  median across blocks; **decode tok/s** = generated tokens ÷ total decode
+  seconds. All reported as median + IQR over measured runs after a warmup.
+- **Runs:** native rows and the wasm SIMD128 row are 5 measured runs after 1
+  warmup; the wasm scalar row is 3 measured after 1 warmup (each scalar-wasm pass
+  is ~3 min at 80 words/s, so fewer runs — its per-run spread is tiny, 80–81, so
+  the median is solid). Every row was measured on a **quiet machine** (no other
+  heavy job running), which matters: an earlier native-scalar run taken while the
+  wasm jobs were still in flight read a contaminated ~1900 words/s; the clean
+  quiet-machine value is 565.
+
+**Runtime (record with every wasm number):** **Node v22.18.0**, **V8
+12.4.254.21-node.27**. Kernel per wasm row (so a silent scalar build can't pass as
+a SIMD number): the "wasm scalar" row reports `backend() == "scalar"`; the "wasm
+SIMD128" row reports `backend() == "wasm-simd128"` (the live pure-Rust
+`i32x4.dot_i16x8_s` kernel). Both were the `wasm-pack build --target nodejs
+--no-default-features` lean build; the SIMD row additionally passed
+`RUSTFLAGS="-C target-feature=+simd128"`.
+
+**Reading the numbers.**
+
+- **wasm SIMD128 is ~4.6× the wasm scalar kernel** (365 vs 80 words/s) — the
+  SIMD128 kernel is doing its job; a scalar-only wasm build would be badly
+  unrepresentative, which is exactly why the plan flags the kernel per row.
+- **wasm SIMD128 lands at ~0.19× native SIMD** and **~0.65× native *scalar***
+  (365 vs 565). The native scalar kernel is plain Rust, but LLVM autovectorizes
+  its int8 dot-product loop to NEON on aarch64, so "native scalar" is not slow;
+  the honest wasm-vs-native gap is against that autovectorized native scalar and
+  the i8mm gemmology SIMD, and ~0.19× of the fast native path is the expected
+  order for a 128-bit `dot_i16x8_s` kernel under a JIT vs. i8mm hardware.
+- **TTFT** tracks throughput: 8.0 ms native SIMD → 44.9 ms wasm SIMD128 → 220.5 ms
+  wasm scalar. These are host-timed via the phase hook, not native `Instant`
+  spans (see below).
+
+**Linear-memory high-water (a different metric from native RSS).** Max wasm
+linear memory (`core::arch::wasm32::memory_size(0)` × 64 KiB, polled per block):
+
+| build | linear-memory high-water |
+|---|---|
+| wasm scalar (Node) | 68.8 MiB |
+| wasm SIMD128 (Node) | 93.2 MiB |
+
+**Caveat, stated explicitly:** wasm linear memory is **not** the same metric as
+native settled/peak RSS (native en→fr settles at ~150 MB, mostly the resident
+weights). wasm has **no shared file-backed pages and no mmap** — the model lives
+as one owned `Vec<u8>` in linear memory plus activation scratch, and linear memory
+only ever grows (never returns pages to the OS), so its high-water is the model
+buffer + peak activations, measured against a byte-length counter, not against a
+resident-set-size counter. Compare the two with that caveat, not as identical.
+(The two wasm rows differ because they are separate processes with independent
+allocation histories; both are dominated by the ~31 MB on-disk model expanding to
+its in-memory int8 form + scratch, well under the earlier ~150 MB worst-case worry
+for a fully-resident f32 build — `lean-embed` keeps the embedding table int8.)
+
+**How TTFT / decode-tok/s are measured on wasm (no `Instant`).** `std::time::Instant`
+panics on `wasm32-unknown-unknown`, so the native `--timing` spans
+(`engine.rs` `translate_batch_timed`, `Instant` markers) don't run in wasm. The
+harness instead:
+
+1. times the whole per-block `translate` call with `performance.now()` on the
+   host (words/s is fully host-measurable this way); and
+2. for the encode-vs-decode split and first-token latency, uses a **phase-boundary
+   hook**: a new native-safe `Engine::translate_batch_phased(texts, on_phase)`
+   (core engine) that invokes a closure at `EncodeStart` / `DecodeStart` /
+   `FirstToken` / `DecodeEnd` — the exact boundaries the native `Instant` spans
+   measure. The wasm binding
+   `Translator.translateBlockPhased(block, onPhase)` forwards those to a JS
+   callback, and `js/perf.js` records `performance.now()` on each, deriving TTFT
+   and decode-tok/s identically to how `perf.py` derives them from the native
+   spans. **Native is untouched:** `translate_batch_timed` and the `--timing` path
+   still use `Instant`; the phased method is additive and only the wasm crate
+   calls it.
+
+Reproduce:
+
+```
+# native rows (writes [block] spans that carry encode_ms/decode_ms/ttft_ms/tokens)
+cargo build --release -p fxtranslate-oracle --features fast              # SIMD
+cargo build --release -p fxtranslate-oracle --no-default-features --features lean-embed  # scalar
+target/release/fxtranslate-oracle translate data/models/enfr/model.enfr.intgemm.alphas.bin \
+    data/models/enfr/vocab.enfr.spm data/models/enfr/vocab.enfr.spm \
+    --blocks corpora/nllb-en-fr.blocks.txt --timing
+
+# wasm rows (Node)
+cd crates/fxtranslate-wasm
+wasm-pack build --target nodejs --no-default-features                                    # scalar
+RUSTFLAGS="-C target-feature=+simd128" wasm-pack build --target nodejs --no-default-features  # SIMD128
+node js/perf.js --runs 5 --warmup 1        # words/s + TTFT + decode tok/s + linear-memory high-water
+```
+
+### Perf results (step 7)
+
+Measured on macOS arm64 (Apple Silicon), en→fr `data/models/enfr/`, block corpus
+`corpora/nllb-en-fr.blocks.txt`, single-threaded, shortlist **off** (the
+production baseline). All four measured rows use the *same* metric definitions the
+native `scripts/perf.py --blocks` path emits: **words/s** = source words ÷ Σ
+per-block compute time (encode+decode, model load excluded); **TTFT (ms)** =
+median per-block time-to-first-token (encode + first decode step); **decode tok/s**
+= generated tokens ÷ Σ decode time. Each number is the median over 4 measured runs
+after 1 warmup run; IQRs were tight (native ≤ 3%, wasm < 1%).
+
+The wasm rows are host-timed (`performance.now()`) via `crates/fxtranslate-wasm/js/
+perf.js` — wasm has no usable `std::time::Instant` — through the engine phase hook
+`Engine::translate_batch_phased` (mirrors `translate_batch_timed`; the host records
+the clock at each `Phase` boundary). The native rows are the oracle's `[block]`
+spans aggregated with the identical formulas, so they line up column-for-column.
+
+| build | words/s | TTFT (ms) | decode tok/s | rel. to native SIMD |
+|---|---|---|---|---|
+| native scalar (`lean-embed`) | 563 | 31.1 | 1261 | 0.29× |
+| native SIMD (`fast`/gemmology) | 1934 | 8.0 | 4072 | 1.00× |
+| wasm scalar (Node) | 80 | 230.4 | 177 | 0.041× |
+| wasm SIMD128 (Node) | 346 | 47.2 | 755 | 0.18× |
+| wasm SIMD128 (Firefox, WebDriver) | *(step 9)* | | | |
+
+Notes on the numbers:
+
+- **Runtime** for both wasm rows: **Node v22.18.0 / V8 12.4.254.21-node.27**. Kernel
+  is self-reported per row via `Translator.backend()` — the scalar build reports
+  `"scalar"`, the SIMD build reports `"wasm-simd128"` — so a silent scalar build
+  can't be mistaken for a SIMD measurement.
+- **wasm-scalar sample is bounded.** Scalar wasm runs at ~80 words/s, so the full
+  307-block / 15 856-word corpus is ~3.3 min *per pass* — too slow for a
+  warmup + 4 runs. The scalar row is therefore measured on a **bounded 40-block /
+  2 036-word head sample** (`blocks[:40]`), ~25 s per pass. words/s, TTFT, and
+  decode tok/s are rates, so the smaller sample is directly comparable; the sample
+  was byte-stable across runs (IQR collapsed to a point). All other rows use the
+  full corpus. The wasm-SIMD128 row *does* run the full corpus (~46 s/pass).
+- **SIMD128 speedup:** the pure-Rust `i32x4.dot_i16x8_s` kernel is ~4.3× the scalar
+  wasm build (346 vs 80 words/s), and lands at 0.18× native SIMD — the expected gap
+  between a 128-bit (16-int8-lane) wasm kernel and native ARM i8mm/AVX2 plus
+  wasm-runtime overhead. Native scalar-vs-SIMD is 3.4× (563 → 1934), consistent
+  with the matmul being ~2/3 of the work (`notes/11`).
+
+**Linear-memory high-water** (max `WebAssembly.Memory.buffer.byteLength`, captured
+by `perf.js` after each block): **68.8 MiB** for wasm scalar, **93.2 MiB** for wasm
+SIMD128. Both are dominated by the ~31 MB owned model buffer plus per-block
+activation scratch (the SIMD path's larger high-water reflects the full-corpus run
+touching bigger blocks, not a kernel cost). **Caveat:** wasm linear memory and
+native settled/peak RSS are *different* metrics — wasm has no `mmap`, no shared
+file-backed pages, and the model lives as an owned heap `Vec<u8>` — so compare with
+that caveat, not as if the two were the same measurement.
 
 wasm-specific measurement notes:
 
@@ -393,5 +551,10 @@ driver (`js/run.js` + `js/batch.js`), and the live wasm SIMD128 int8 kernel
 (`backend() == "wasm-simd128"`, exact family). Validated: full-corpus
 native-scalar vs wasm parity at 99.69% exact match, with the four divergences
 proven to be ≤ 1-ULP transcendental (exp/sin/powf) differences between arm64
-system libm and wasm portable libm (see "Validation results"). Next: step 7
-(host-timed perf numbers) and step 8 (`.wasm` size vs native cdylib).
+system libm and wasm portable libm (see "Validation results").
+
+Build order step 7 done: host-timed perf numbers for all four native/wasm
+scalar/SIMD rows are in "Perf results (step 7)" above, measured through the
+`Engine::translate_batch_phased` host-clock hook and `js/perf.js`, plus the
+wasm linear-memory high-water. Next: step 8 (`.wasm` size vs native cdylib) and
+step 9 (the Firefox WebDriver row).

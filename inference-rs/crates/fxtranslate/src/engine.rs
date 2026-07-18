@@ -90,6 +90,42 @@ pub struct BlockTiming {
     pub tokens: usize,
 }
 
+/// A phase boundary reported by [`Engine::translate_batch_phased`], so a host
+/// without a usable `Instant` (wasm32, where `std::time::Instant` panics) can
+/// time each phase itself with its own clock (`performance.now()`). The callback
+/// fires at the same boundaries the native `--timing` path measures with
+/// `Instant`, so host-timed spans line up with the native ones:
+///
+/// - [`Phase::EncodeStart`] — before the batched encode.
+/// - [`Phase::DecodeStart`] — encode done, before the decode loop (this is the
+///   encode/decode split; the decode span includes cross-attention K/V prep, as
+///   in [`Engine::translate_batch_timed`]).
+/// - [`Phase::FirstToken`] — the first decode step has emitted; the host's
+///   `DecodeStart → FirstToken` gap is the block's first-token latency.
+/// - [`Phase::DecodeEnd`] — the decode loop finished.
+///
+/// This exists only to move the *clock* to the host; it computes no durations and
+/// touches no math, so the native `Instant`-based `--timing` path is unaffected.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Phase {
+    EncodeStart,
+    DecodeStart,
+    FirstToken,
+    DecodeEnd,
+}
+
+/// Token counts for one block from [`Engine::translate_batch_phased`] — the
+/// numerators/denominators the host needs to turn its own phase timings into
+/// words/s, TTFT, and decode tok/s (the host supplies the durations).
+pub struct BlockCounts {
+    /// Sentences in the block.
+    pub sentences: usize,
+    /// Total source tokens across the block (spm subwords + EOS per sentence).
+    pub src_tokens: usize,
+    /// Total tokens generated across the block (excludes EOS).
+    pub tokens: usize,
+}
+
 /// Encoder output for a batch of sentences: `[batch, seq, dim]` row-major, padded
 /// to `seq` = the batch's max source length. `lens[b]` is sentence `b`'s true
 /// length, so callers ignore the pad rows.
@@ -865,6 +901,79 @@ impl Engine {
         (
             out.iter().map(|o| self.trg_vocab.decode(o)).collect(),
             timing,
+        )
+    }
+
+    /// Like [`translate_batch_timed`], but the *host* keeps the clock: `on_phase`
+    /// fires at each [`Phase`] boundary so a caller with no usable `Instant`
+    /// (wasm32) can time encode vs. decode vs. first-token with its own timer
+    /// (`performance.now()`), then combine the returned [`BlockCounts`] into
+    /// words/s / TTFT / decode-tok/s exactly as the native perf harness does.
+    ///
+    /// The decode logic is identical to [`translate_batch_timed`]; only the timing
+    /// mechanism differs (a closure the host times, vs. `Instant` spans). Native
+    /// code keeps using `translate_batch_timed`, so the `--timing` path is
+    /// untouched.
+    pub fn translate_batch_phased(
+        &self,
+        texts: &[&str],
+        mut on_phase: impl FnMut(Phase),
+    ) -> (Vec<String>, BlockCounts) {
+        let d = self.config.dim_emb;
+        let sentences: Vec<Vec<u32>> = texts
+            .iter()
+            .map(|t| self.src_vocab.encode_with_eos(t))
+            .collect();
+        let batch = sentences.len();
+
+        on_phase(Phase::EncodeStart);
+        let ctx = self.encode_batch(&sentences);
+        on_phase(Phase::DecodeStart);
+
+        let eos = self.trg_vocab.eos_id();
+        let max_len: Vec<usize> = sentences
+            .iter()
+            .map(|s| ((2.0 * s.len() as f32).ceil() as usize + 4).min(256))
+            .collect();
+        let cap = max_len.iter().copied().max().unwrap_or(0);
+        let cands: Vec<Option<Vec<u32>>> = sentences
+            .iter()
+            .map(|s| {
+                self.shortlist
+                    .as_ref()
+                    .map(|sl| sl.candidates(s, self.shared_vocab))
+            })
+            .collect();
+
+        let mut cells = vec![vec![0.0f32; batch * d]; self.config.dec_depth + 1];
+        let mut prev = vec![eos; batch];
+        let mut out = vec![Vec::new(); batch];
+        let mut done = vec![false; batch];
+
+        // Counted as decode work (as in `translate_batch_timed`): it replaces the
+        // per-step cross-attention K/V, so it sits inside the decode span.
+        let cross_kv = self.cross_attn_kv(&ctx);
+        for step in 0..cap {
+            let active = active_rows(&done, &max_len, step);
+            if active.is_empty() {
+                break;
+            }
+            let tops = self.decode_step_batch(&active, &prev, step, &ctx, &cross_kv, &mut cells);
+            if step == 0 {
+                on_phase(Phase::FirstToken);
+            }
+            self.select_active(&active, &tops, &cands, eos, &mut prev, &mut out, &mut done);
+        }
+        on_phase(Phase::DecodeEnd);
+
+        let counts = BlockCounts {
+            sentences: batch,
+            src_tokens: sentences.iter().map(Vec::len).sum(),
+            tokens: out.iter().map(Vec::len).sum(),
+        };
+        (
+            out.iter().map(|o| self.trg_vocab.decode(o)).collect(),
+            counts,
         )
     }
 
