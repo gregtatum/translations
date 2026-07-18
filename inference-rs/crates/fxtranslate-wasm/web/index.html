@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<meta charset="utf-8" />
+<title>fxtranslate wasm — browser harness</title>
+<!--
+  Minimal browser harness for the wasm fxtranslate engine (build-order step 9).
+
+  Loads the `--target web` ES-module glue, fetches the en->fr model / vocab /
+  shortlist as ArrayBuffers, constructs the wasm `Translator`, and exposes a
+  `window.fxrun(...)` the WebDriver client drives via executeAsyncScript. It uses
+  the SAME phase hook the Node perf harness uses (`translateBlockPhased` +
+  `linearMemoryBytes()`) so TTFT / decode-tok/s are derived identically to the
+  Node rows, just timed with in-page `performance.now()`.
+
+  Nothing here is a production path — the browser build is a validation artifact.
+-->
+<pre id="log">loading…</pre>
+<script type="module">
+  import init, { Translator } from "../pkg/fxtranslate_wasm.js";
+
+  const log = (m) => {
+    document.getElementById("log").textContent += "\n" + m;
+  };
+
+  const MODEL_DIR = "/data/models/enfr";
+  async function fetchBytes(name) {
+    const r = await fetch(`${MODEL_DIR}/${name}`);
+    if (!r.ok) throw new Error(`fetch ${name}: ${r.status}`);
+    return new Uint8Array(await r.arrayBuffer());
+  }
+
+  function median(xs) {
+    const s = [...xs].sort((a, b) => a - b);
+    const n = s.length;
+    return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2;
+  }
+
+  // Split a blank-line-delimited block file into blocks of non-empty lines —
+  // identical to perf.js's readBlocks and the oracle's `split("\n\n")` loop.
+  function readBlocks(text) {
+    return text
+      .split("\n\n")
+      .map((chunk) => chunk.split("\n").filter((l) => l.trim() !== ""))
+      .filter((b) => b.length > 0);
+  }
+
+  // Boot: initialise the wasm module and build the Translator once. Kept in a
+  // promise the harness awaits so a slow ~31 MB model load can't race a call.
+  const ready = (async () => {
+    await init();
+    const [model, vocab, shortlist] = await Promise.all([
+      fetchBytes("model.enfr.intgemm.alphas.bin"),
+      fetchBytes("vocab.enfr.spm"),
+      fetchBytes("lex.50.50.enfr.s2t.bin"),
+    ]);
+    log(`model buffer: ${model.length} bytes (${(model.length / 1048576).toFixed(1)} MiB)`);
+    const withShortlist = (sl) => new Translator(model, vocab, vocab, sl);
+    return { model, vocab, shortlist, withShortlist };
+  })();
+
+  // Line-by-line translation over the whole corpus (parity pass). Shortlist ON
+  // by default to match the step-5 reference path. Returns one output line per
+  // input line, blanks preserved, so it diffs against the native/Node output.
+  async function parity(corpusText, useShortlist) {
+    const { vocab, model, shortlist } = await ready;
+    const t = new Translator(model, vocab, vocab, useShortlist ? shortlist : null);
+    const raw = corpusText.split("\n");
+    if (raw.length && raw[raw.length - 1] === "") raw.pop();
+    const out = raw.map((l) => t.translate(l));
+    return { backend: t.backend(), lines: out };
+  }
+
+  // Perf pass: same metric derivation as js/perf.js, timed with in-page
+  // performance.now() through the phase hook. Shortlist OFF (production baseline).
+  async function perf(corpusText, runs, warmup) {
+    const { vocab, model } = await ready;
+    const t = new Translator(model, vocab, vocab, null);
+    const kernel = t.backend();
+    const blocks = readBlocks(corpusText);
+    const srcWords = blocks.reduce(
+      (acc, b) => acc + b.reduce((a, l) => a + l.split(/\s+/).filter(Boolean).length, 0),
+      0
+    );
+    let memHigh = t.linearMemoryBytes();
+
+    function onePass() {
+      let sumBlockMs = 0;
+      let sumDecodeMs = 0;
+      let sumTokens = 0;
+      const ttfts = [];
+      for (const block of blocks) {
+        let tEncodeStart = 0, tDecodeStart = 0, tFirstToken = 0, tDecodeEnd = 0;
+        const onPhase = (name) => {
+          const now = performance.now();
+          if (name === "encode_start") tEncodeStart = now;
+          else if (name === "decode_start") tDecodeStart = now;
+          else if (name === "first_token") tFirstToken = now;
+          else if (name === "decode_end") tDecodeEnd = now;
+        };
+        const result = t.translateBlockPhased(block.join("\n"), onPhase);
+        const nl = result.lastIndexOf("\n");
+        const counts = result.slice(nl + 1).split("\t").map(Number);
+        const tokens = counts[2];
+        const encodeMs = tDecodeStart - tEncodeStart;
+        const decodeMs = tDecodeEnd - tDecodeStart;
+        const firstTokenMs = tFirstToken - tDecodeStart;
+        sumBlockMs += encodeMs + decodeMs;
+        sumDecodeMs += decodeMs;
+        sumTokens += tokens;
+        ttfts.push(encodeMs + firstTokenMs);
+        const mem = t.linearMemoryBytes();
+        if (mem > memHigh) memHigh = mem;
+      }
+      const totalS = sumBlockMs / 1000.0;
+      return {
+        wps: totalS ? srcWords / totalS : 0,
+        ttft: median(ttfts),
+        decodeTokps: sumDecodeMs ? sumTokens / (sumDecodeMs / 1000.0) : 0,
+      };
+    }
+
+    const wpsRuns = [], ttftRuns = [], tokpsRuns = [];
+    for (let i = 0; i < warmup + runs; i++) {
+      const r = onePass();
+      if (i < warmup) continue;
+      wpsRuns.push(r.wps);
+      ttftRuns.push(r.ttft);
+      tokpsRuns.push(r.decodeTokps);
+    }
+    return {
+      kernel,
+      blocks: blocks.length,
+      srcWords,
+      wps: wpsRuns,
+      ttft: ttftRuns,
+      tokps: tokpsRuns,
+      memHighBytes: memHigh,
+      userAgent: navigator.userAgent,
+    };
+  }
+
+  // The single entry the WebDriver client awaits. `mode` selects the pass; the
+  // corpus text is passed in (fetched by the driver, so it need not be served).
+  window.fxrun = async (opts) => {
+    try {
+      if (opts.mode === "parity") return { ok: true, ...(await parity(opts.corpus, opts.shortlist)) };
+      if (opts.mode === "perf") return { ok: true, ...(await perf(opts.corpus, opts.runs, opts.warmup)) };
+      return { ok: false, error: `unknown mode ${opts.mode}` };
+    } catch (e) {
+      return { ok: false, error: String(e && e.stack ? e.stack : e) };
+    }
+  };
+
+  ready.then(() => log("ready")).catch((e) => log("ERROR: " + e));
+</script>

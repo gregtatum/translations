@@ -1,0 +1,15 @@
+{
+  "name": "fxtranslate-wasm-harness",
+  "version": "0.4.0",
+  "private": true,
+  "description": "Node + Firefox WebDriver harnesses for the wasm fxtranslate engine (validation only; not published).",
+  "scripts": {
+    "run": "node run.js",
+    "batch": "node batch.js",
+    "perf": "node perf.js",
+    "webdriver": "node webdriver.js"
+  },
+  "devDependencies": {
+    "selenium-webdriver": "^4.28.1"
+  }
+}

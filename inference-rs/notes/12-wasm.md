@@ -289,7 +289,7 @@ Target table (one row per build, all on the same machine + corpus):
 | native SIMD (`fast`/gemmology) | 1925 | 8.0 | 4048 | 1.00× |
 | wasm scalar (Node) | 80 | 220.5 | 179 | 0.04× |
 | wasm SIMD128 (Node) | 365 | 44.9 | 799 | 0.19× |
-| wasm SIMD128 (Firefox, WebDriver) | _(step 9)_ | | | |
+| wasm SIMD128 (Firefox, WebDriver) | 353 | 48.0 | 774 | 0.18× |
 
 ### Perf results (step 7 — filled)
 
@@ -419,7 +419,7 @@ spans aggregated with the identical formulas, so they line up column-for-column.
 | native SIMD (`fast`/gemmology) | 1934 | 8.0 | 4072 | 1.00× |
 | wasm scalar (Node) | 80 | 230.4 | 177 | 0.041× |
 | wasm SIMD128 (Node) | 346 | 47.2 | 755 | 0.18× |
-| wasm SIMD128 (Firefox, WebDriver) | *(step 9)* | | | |
+| wasm SIMD128 (Firefox, WebDriver) | 353 | 48.0 | 774 | 0.18× |
 
 Notes on the numbers:
 
@@ -463,6 +463,52 @@ wasm-specific measurement notes:
 - **The wasm build enables a *faithful* one-off marian comparison** that
   `translator-cli` can't give (perf.py already flags translator-cli's batch number as
   only an upper-bound reference); note that where relevant.
+
+### Browser parity (step 9 — filled)
+
+The Firefox row above is a real in-browser run, not an extrapolation from Node.
+The `--target web` SIMD128 module (`RUSTFLAGS="-C target-feature=+simd128"
+wasm-pack build --target web --no-default-features`) is loaded by a minimal
+ES-module page (`crates/fxtranslate-wasm/web/index.html`) that `fetch()`es the
+en→fr model / vocab / shortlist as `ArrayBuffer`s and drives the **same**
+`translateBlockPhased` + `linearMemoryBytes()` hooks the Node harness uses, timed
+in-page with `performance.now()`. A tiny static server (built into
+`crates/fxtranslate-wasm/js/webdriver.js`) serves the repo over HTTP — `fetch()` +
+ES modules don't work over `file://` — and headless **Firefox 153.0** (geckodriver
+0.37.0, driven by `selenium-webdriver`) loads the page and returns outputs +
+timing via `executeAsyncScript`. The page self-reports `backend() ==
+"wasm-simd128"`, so the row is the live SIMD kernel, not a silent scalar fallback.
+
+**Corpus parity in-browser** (`corpora/nllb-en-fr.blocks.txt`, all 1306 lines
+including blanks, shortlist ON — the same reference path as the step-5 Node pass):
+
+| comparison | exact match | interpretation |
+|---|---|---|
+| Firefox-wasm vs Node-wasm | **1306 / 1306 = 100.00%** | bit-identical (same `.wasm`, same portable libm) |
+| Firefox-wasm vs native scalar | **1302 / 1306 = 99.69%** | the documented ≤ 1-ULP transcendental residual |
+
+The browser-vs-Node match is **bit-for-bit** — same compiled module, same bundled
+portable libm — exactly as expected; a browser-specific divergence would have
+surfaced here and did not. The browser-vs-native rate is **the identical 99.69%**
+the Node-wasm build gets, and the four diverging lines are **exactly** the
+documented ones (9, 27, 251, 531) — the same near-tie greedy-argmax flips from the
+arm64-system-libm vs wasm-portable-libm ≤ 1-ULP gap (see "Validation results"),
+not anything new to the browser.
+
+**Large-buffer load:** the ~31 MB `model.enfr.intgemm.alphas.bin` `fetch()`es and
+constructs into wasm linear memory in Firefox with **no problem** — no OOM, no
+`RangeError`, no `maximum`-pages ceiling hit — settling at a **93.2 MiB**
+linear-memory high-water (identical to the Node SIMD128 row, since it's the same
+owned model buffer + activation scratch). The plan's "biggest practical risk"
+(large model buffer in wasm memory) does not materialise for this model in the
+browser.
+
+**Numbers vs Node:** Firefox lands at **353 words/s / 48.0 ms TTFT / 774 decode
+tok/s** (median over 5 runs after 1 warmup, full 307-block / 15 856-word corpus,
+shortlist off, single-threaded — the same metric definitions as every row above),
+within a few percent of the Node SIMD128 row (346 / 47.2 / 755). Both are the same
+pure-Rust `i32x4.dot_i16x8_s` kernel under a SpiderMonkey vs V8 JIT, so the close
+agreement is the expected result; neither is a stand-in for native ARM i8mm.
 
 ### Memory
 
@@ -658,5 +704,14 @@ Build order step 8 done: the native-cdylib-vs-wasm size comparison is in
 native `.text` vs a 143.3 KiB / 53.7 KiB-brotli shipped wasm SIMD128 `-Oz` module,
 at the same lean feature set, model excluded from both; the `wasm-opt -Oz` shave
 (~24%), scalar-vs-SIMD128 delta (~17 KiB), and `twiggy top` breakdown (bindgen glue
-~20% is the largest cost) are recorded there. Next: step 9 (the Firefox WebDriver
-row) and step 10 (npm packaging).
+~20% is the largest cost) are recorded there.
+
+Build order step 9 done: the Firefox WebDriver row is filled with a real
+in-browser run — **353 words/s / 48.0 ms TTFT / 774 decode tok/s / 93.2 MiB**
+high-water on **Firefox 153.0** (headless, geckodriver 0.37.0, driven by
+`selenium-webdriver`), kernel `wasm-simd128`. In-browser corpus parity is
+**100.00% vs Node-wasm** (bit-identical) and **99.69% vs native scalar** (the same
+four documented ≤ 1-ULP lines), and the ~31 MB model buffer loads in Firefox with
+no trouble — see "Browser parity (step 9)". The `--target web` page, harness, and
+WebDriver script live in `crates/fxtranslate-wasm/{web,js}/`. Next: step 10 (npm
+packaging).
