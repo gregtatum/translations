@@ -8,8 +8,6 @@
 
 use tinyjson::JsonValue;
 
-use crate::fetch::Fetch;
-
 pub const PROD_ENDPOINT: &str = "https://firefox.settings.services.mozilla.com";
 /// Production collection. NOTE: the `-v2` collection, not the legacy
 /// `translations-models` — matches `download_model.py`.
@@ -100,8 +98,11 @@ pub fn parse_records(body: &str) -> Result<Vec<Record>, String> {
     Ok(out)
 }
 
-/// Fetch and parse the model records.
-pub fn fetch_records(fetch: &dyn Fetch) -> Result<Vec<Record>, String> {
+/// Fetch and parse the model records. Native-only: it drives the built-in
+/// [`crate::fetch::Fetch`] client, which lives behind `download`. A wasm/JS shell
+/// fetches the JSON itself and calls [`parse_records`] directly.
+#[cfg(feature = "download")]
+pub fn fetch_records(fetch: &dyn crate::fetch::Fetch) -> Result<Vec<Record>, String> {
     let body = fetch.get(&records_url())?;
     let text = String::from_utf8(body).map_err(|e| format!("records not UTF-8: {e}"))?;
     parse_records(&text)

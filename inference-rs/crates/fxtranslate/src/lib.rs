@@ -61,16 +61,21 @@ pub mod spm;
 pub mod trace;
 pub mod weights;
 
-// Model management (feature `download`; `net` adds the built-in HTTP client).
-#[cfg(feature = "download")]
+// Portable model discovery (feature `discovery`; `download` implies it): record
+// parsing, pivot/catalog routing, and the pure verify+decompress. All wasm-safe.
+#[cfg(feature = "discovery")]
 pub mod cache;
+#[cfg(feature = "discovery")]
+pub mod remote;
+#[cfg(feature = "discovery")]
+pub mod route;
+
+// Native model management (feature `download`; `net` adds the built-in HTTP
+// client). The `std::fs`/`dirs` cache storage lives inside `cache` behind
+// `download`; these modules are native-only.
 #[cfg(feature = "download")]
 pub mod fetch;
 #[cfg(feature = "download")]
 pub mod lang;
 #[cfg(feature = "download")]
 pub mod loader;
-#[cfg(feature = "download")]
-pub mod remote;
-#[cfg(feature = "download")]
-pub mod route;

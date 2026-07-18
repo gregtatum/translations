@@ -94,13 +94,22 @@ gemm-threads = ["gemmology"]
 # reproducible/audited builds, wasm, or targets without a C++ compiler.
 portable = []
 
-# Model management: Remote Settings discovery (`remote`) + verified local cache
-# (`cache`) + the bring-your-own-HTTP `Fetch` trait/plumbing (`fetch`), the
-# language-tag display-name table (`lang`), and the `src→trg`→`Engine` convenience
-# (`loader`). Pure-Rust deps only (no TLS, no C toolchain) — an embedder with its
-# own HTTP client implements `Fetch` and reuses all of this. Off by default so a
-# plain dependency (and wasm) stays lean.
-download = ["dep:tinyjson", "dep:ruzstd", "dep:sha2", "dep:dirs"]
+# Portable model *discovery*: Remote Settings record parsing (`remote`), pivot /
+# catalog routing (`route`), and the pure `cache::verify_and_decompress` (sha256 +
+# zstd). Depends only on wasm-safe pure-Rust crates — no `dirs`, no `std::fs` cache
+# storage, no HTTP — so this whole surface compiles into the wasm build. `download`
+# implies it, so native builds are unchanged. Off by default so a plain engine
+# dependency stays lean.
+discovery = ["dep:tinyjson", "dep:ruzstd", "dep:sha2"]
+
+# Model management: everything in `discovery` plus the verified local cache
+# (`cache::Cache`, `std::fs` + `dirs`), the bring-your-own-HTTP `Fetch`
+# trait/plumbing (`fetch`), the language-tag display-name table (`lang`), and the
+# `src→trg`→`Engine` convenience (`loader`). Pure-Rust deps only (no TLS, no C
+# toolchain) — an embedder with its own HTTP client implements `Fetch` and reuses
+# all of this. Adds `dirs` for the platform cache root, which is NOT wasm-safe, so
+# it is kept out of `discovery`. Off by default.
+download = ["discovery", "dep:dirs"]
 
 # Add the built-in `ureq`-backed `NetworkFetch` (HTTPS via rustls). Implies
 # `download`. Off by default so embedders that supply their own client (Firefox,
