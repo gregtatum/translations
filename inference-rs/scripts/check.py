@@ -23,10 +23,19 @@ CHECKS = [
     {"task": "rs:lint-black", "label": "Lint Black"},
     {"task": "rs:lint-rust", "label": "Lint Rust"},
     {"task": "rs:lint-ci", "label": "Lint CI"},
-    {"task": "rs:test", "label": "Rust Tests"},
-    {"task": "rs:conformance", "label": "CLI Conformance"},
-    {"task": "inference-build", "label": "Build Inference Engine"},
+    {"task": "rs:test", "label": "Rust Tests", "heavy": True},
+    {"task": "rs:conformance", "label": "CLI Conformance", "heavy": True},
+    {"task": "inference-build", "label": "Build Inference Engine", "heavy": True},
 ]
+
+# The heavy checks (Rust Tests, CLI Conformance, Build Inference Engine) each
+# spin up a build/test that saturates every core (cargo-nextest, cargo + wasm
+# builds, cmake -j). Running them concurrently oversubscribes the CPU and thrashes:
+# on a 6-performance-core machine, the three heavy checks measured ~19s racing
+# against each other vs ~12s serialized. So we cap heavy checks to one at a time
+# while letting the light (IO/startup-bound) checks run fully in parallel.
+MAX_CONCURRENT_HEAVY = 1
+_heavy_slots = threading.Semaphore(MAX_CONCURRENT_HEAVY)
 
 IS_INTERACTIVE = sys.stdout.isatty()
 LABEL_WIDTH = max(len(check["label"]) for check in CHECKS)
@@ -242,51 +251,77 @@ def print_results(results: list) -> None:
 
 
 def run_interactive_checks(results_by_task: dict) -> None:
-    running_tasks = {check["task"] for check in CHECKS}
-    check_processes = [CheckProcess(check) for check in CHECKS]
+    # A heavy check appears as pending (not "running...") until it holds a heavy
+    # slot and has started its subprocess; light checks start immediately.
+    running_tasks: set = {check["task"] for check in CHECKS if not check.get("heavy")}
     render_lock = threading.Lock()
 
     render_interactive(results_by_task, running_tasks)
 
-    def watch(check_process: CheckProcess) -> None:
-        result = check_process.wait()
+    def watch(check: dict) -> None:
+        if check.get("heavy"):
+            _heavy_slots.acquire()
+        try:
+            with render_lock:
+                running_tasks.add(check["task"])
+                render_interactive(results_by_task, running_tasks)
+            check_process = CheckProcess(check)
+            result = check_process.wait()
+        finally:
+            if check.get("heavy"):
+                _heavy_slots.release()
         with render_lock:
-            results_by_task[check_process.check["task"]] = result
-            running_tasks.discard(check_process.check["task"])
+            results_by_task[check["task"]] = result
+            running_tasks.discard(check["task"])
             render_interactive(results_by_task, running_tasks)
 
-    join_all(threading.Thread(target=watch, args=(cp,)) for cp in check_processes)
+    join_all(threading.Thread(target=watch, args=(check,)) for check in CHECKS)
 
     if _has_rendered:
         print()
 
 
 def run_non_interactive_checks(results_by_task: dict) -> None:
-    check_processes = []
-    for check in CHECKS:
-        print(format_row(check, None, is_running=True), flush=True)
-        check_processes.append(CheckProcess(check))
-
     state_lock = threading.Lock()
+    started_processes: list = []
     first_failure: dict = {}
     successful_results: list = []
+    # Set on the first failure to stop queued heavy checks from ever starting
+    # their subprocess (they check it before and after acquiring the semaphore).
+    abort = threading.Event()
 
-    def watch(check_process: CheckProcess) -> None:
-        result = check_process.wait()
+    def watch(check: dict) -> None:
+        if check.get("heavy"):
+            if abort.is_set():
+                return
+            _heavy_slots.acquire()
+        try:
+            if abort.is_set():
+                return
+            print(format_row(check, None, is_running=True), flush=True)
+            with state_lock:
+                check_process = CheckProcess(check)
+                started_processes.append(check_process)
+            result = check_process.wait()
+        finally:
+            if check.get("heavy"):
+                _heavy_slots.release()
+
         with state_lock:
             if result["exit_code"] != 0:
                 if not first_failure:
                     first_failure["result"] = result
                     results_by_task[result["task"]] = result
                     print(format_row(result, result), flush=True)
-                    for other in check_processes:
+                    abort.set()
+                    for other in started_processes:
                         if other is not check_process:
                             other.kill()
                 return
             if not first_failure:
                 successful_results.append(result)
 
-    join_all(threading.Thread(target=watch, args=(cp,)) for cp in check_processes)
+    join_all(threading.Thread(target=watch, args=(check,)) for check in CHECKS)
 
     if not first_failure:
         for result in successful_results:

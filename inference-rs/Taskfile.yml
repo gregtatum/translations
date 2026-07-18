@@ -60,16 +60,18 @@ tasks:
       - poetry run black {{.TASKFILE_DIR}} {{.CLI_ARGS}}
 
   test:
-    desc: Run the workspace Rust tests (engine, oracle harness, and CLI).
+    desc: Run the workspace Rust tests (engine, oracle harness, CLI, and wasm).
     summary: |
-      Runs `cargo test` across the three crates. The engine runs with `fast,net` so the
-      gemmology parity and model-management tests are covered. The oracle's real-trace
-      parity tests skip unless a trace was recorded (task rs:translate-reference -- … --trace).
+      Runs one unified `cargo nextest` invocation across the whole workspace (engine,
+      oracle harness, CLI, and wasm) in a single global parallel pool. Feature unification
+      pulls in `net` via the CLI crate and `fast` is default, so `fxtranslate` is built
+      exactly once and every feature-gated test still runs. A second `cargo test --doc`
+      pass covers doctests, which nextest does not run. The oracle's real-trace parity
+      tests skip unless a trace was recorded (task rs:translate-reference -- … --trace).
     dir: '{{.TASKFILE_DIR}}'
     cmds:
-      - cargo test -p fxtranslate --features fast,net {{.CLI_ARGS}}
-      - cargo test -p fxtranslate-oracle {{.CLI_ARGS}}
-      - cargo test -p fxtranslate-cli {{.CLI_ARGS}}
+      - cargo nextest run --workspace {{.CLI_ARGS}}
+      - cargo test --workspace --doc {{.CLI_ARGS}}
 
   lint-rust:
     desc: Check the formatting of the inference-rs Rust code with rustfmt.
@@ -206,7 +208,14 @@ tasks:
     desc: Build the Rust fxtranslate CLI (debug) — the conformance oracle binary.
     dir: '{{.TASKFILE_DIR}}'
     cmds:
-      - cargo build -p fxtranslate-cli
+      # Build into a dedicated target dir (target/conformance) instead of the shared
+      # target/. This is a dev-profile build, whereas rs:test runs `cargo nextest`
+      # in the test profile; sharing target/ made the two invalidate and recompile
+      # each other's fxtranslate/fxtranslate-cli artifacts every time rs:check
+      # alternated between them (~6-12s of thrash). Isolating this build keeps
+      # nextest fully warm across runs. scripts/conformance.py's RUST_BIN points at
+      # this same target/conformance/debug/ path.
+      - cargo build -p fxtranslate-cli --target-dir target/conformance
 
   build-wasm:
     internal: true
@@ -223,7 +232,9 @@ tasks:
       help, errors, `list`, and `models list/info/rm`. Hermetic: a loopback records
       server + throwaway cache dirs, no network, no model downloads — so it is fast
       and lives in the default `task rs:check`. Deps build both CLIs it drives: the
-      Rust binary and the npm wasm core (npm/wasm/).
+      Rust binary and the npm wasm core (npm/wasm/). The Rust binary builds into a
+      dedicated target dir (target/conformance) so its dev-profile build doesn't
+      thrash rs:test's test-profile cache in the shared target/ — see build-cli.
 
       Regenerate goldens from the oracle with:
         scripts/conformance.py --update-goldens

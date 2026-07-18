@@ -47,7 +47,13 @@ FIXTURES_DIR = SCRIPTS_DIR / "conformance"
 RECORDS_FIXTURE = FIXTURES_DIR / "records.json"
 GOLDENS_DIR = FIXTURES_DIR / "goldens"
 
-RUST_BIN = CRATE_DIR / "target" / "debug" / "fxtranslate"
+# The Rust CLI is built into a dedicated target dir (target/conformance) by the
+# build-cli task, not the shared target/, so its dev-profile build doesn't thrash
+# rs:test's test-profile cache when rs:check alternates between them. Anchored to
+# CRATE_DIR so the path resolves the same whether invoked from the repo root or the
+# inference-rs dir. Pass B (conformance_translate.py) imports this module and reuses
+# the same REGISTRY, so it picks up this path too.
+RUST_BIN = CRATE_DIR / "target" / "conformance" / "debug" / "fxtranslate"
 NPM_BIN = CRATE_DIR / "npm" / "bin" / "fxtranslate.js"
 
 # Placeholder substituted for the throwaway cache dir's absolute path in captured

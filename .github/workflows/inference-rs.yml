@@ -99,6 +99,11 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: inference-rs
+      # `task rs:test` drives the workspace tests through cargo-nextest; install the
+      # prebuilt binary (no compile) so the runner has it before the test step.
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
       - uses: arduino/setup-task@v2
         with:
           version: 3.x
