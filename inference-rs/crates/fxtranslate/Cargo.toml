@@ -12,6 +12,11 @@ categories = ["text-processing", "science"]
 [lib]
 name = "fxtranslate"
 path = "src/lib.rs"
+# rlib for normal Rust consumers (cli/oracle/wasm crates); cdylib so the lean
+# engine can be built as a standalone shared object for the native-vs-wasm size
+# comparison (release_build.py --wasm-size). The cdylib is harmless for native
+# builds — nothing links against it — and only materializes when explicitly built.
+crate-type = ["rlib", "cdylib"]
 
 [dependencies]
 # Memory-map the model file (feature `mmap`, on under `fast`): weight tensors

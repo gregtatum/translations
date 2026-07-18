@@ -493,6 +493,100 @@ The native side already has size characterization via `scripts/release_build.py`
 Target: a small table of native-cdylib vs wasm (raw / gz / br) at the same feature
 set, so "how big is the engine as wasm vs native" has one clear answer.
 
+### Binary-size results (step 8 — filled)
+
+Measured on macOS arm64 with `release_build.py --wasm-size` (which extends the
+existing native size/`cargo bloat` path — the `--wasm-size` flag adds the wasm
+rows without changing the default output). Tooling: `wasm-opt` 131 and `brotli`
+1.2.0 from Homebrew (`brew install binaryen brotli`), `twiggy` 0.8.0 and
+`cargo-bloat` 0.12.1 from `cargo install` (twiggy is not on Homebrew). Both sides
+are built at the **same lean feature set** (`--no-default-features --features
+lean-embed`: no `net`/`mmap`/`icu`/`gemmology`) so this is engine-code vs
+engine-code, and **the model (~150 MB) is in neither artifact** — it is host-supplied
+at runtime, so every number below is code only.
+
+**The one-line answer — engine code, native vs wasm (same lean feature set):**
+
+| artifact | raw | gzip -9 | brotli -q11 |
+|---|---|---|---|
+| native engine `.text` (`fxtranslate` only) | 107.2 KiB | — | — |
+| wasm scalar module (`-Oz`) | 125.9 KiB | 57.0 KiB | 48.2 KiB |
+| wasm SIMD128 module (`-Oz`) | 143.3 KiB | 64.3 KiB | 53.7 KiB |
+
+A note on the native figure: a bare lean `cdylib` builds but is a **16 KiB empty
+stub** — with no `#[no_mangle]`/`extern "C"` exports nothing keeps the engine code
+alive, so LLVM dead-strips all of it. The honest native code number is therefore
+the engine's own `.text` as it actually links into a binary that *uses* it, taken
+with `cargo bloat --filter fxtranslate` on a lean `fxtranslate-oracle`: **107.2 KiB
+across 180 `fxtranslate::` symbols** (the binary's total `.text` is 418 KiB; the
+rest is std, the CLI framework, and formatting — none of which is the engine). This
+is the true analog of `twiggy top`, which likewise counts only code reachable from
+the module's exports. (`fxtranslate` now carries `crate-type = ["rlib", "cdylib"]`
+so the standalone-cdylib build is available for this measurement; it is inert for
+every existing native build — nothing links the cdylib — and `cargo build` is
+unaffected.) The shipped wasm module is bigger than the raw native `.text` because
+it also carries what the native binary pulls from the platform for free:
+`dlmalloc` (wasm has no system allocator), a bundled `libm` (`sinf` etc., since
+`wasm32-unknown-unknown` has no system libm — this is the same portable libm behind
+the ≤ 1-ULP parity story above), and the wasm-bindgen JS↔wasm marshaling shims.
+
+**wasm module, full breakdown — before vs after `wasm-opt -Oz`, raw + gz + br**
+(compressed is the real deliverable: npm/CDN and browsers ship the `.wasm`
+compressed):
+
+| build | raw | gzip -9 | brotli -q11 |
+|---|---|---|---|
+| scalar, raw wasm-bindgen | 165.8 KiB | 66.0 KiB | 56.2 KiB |
+| scalar, `wasm-opt -Oz` | 125.9 KiB | 57.0 KiB | 48.2 KiB |
+| SIMD128, raw wasm-bindgen | 184.2 KiB | 73.4 KiB | 62.1 KiB |
+| SIMD128, `wasm-opt -Oz` | 143.3 KiB | 64.3 KiB | 53.7 KiB |
+
+To get a clean before/after, `--wasm-size` temporarily disables wasm-pack's own
+wasm-opt (a throwaway `[package.metadata.wasm-pack.profile.release] wasm-opt =
+false` overlay it removes afterward — never committed), captures the raw
+wasm-bindgen output, then runs `wasm-opt -Oz` itself.
+
+- **`wasm-opt -Oz` delta:** it shaves **~40 KiB / ~24% off the raw module**
+  (scalar 165.8 → 125.9 KiB, SIMD128 184.2 → 143.3 KiB), and ~9 KiB / ~14% off the
+  brotli size. `-Oz` earns its place; the raw wasm-bindgen output is not what to
+  ship.
+- **scalar vs SIMD128 delta:** the SIMD128 kernel adds **~17 KiB raw / ~5.5 KiB
+  brotli** on top of scalar (`-Oz`: 125.9 → 143.3 KiB raw, 48.2 → 53.7 KiB br) —
+  the pure-Rust `i32x4.dot_i16x8_s` kernel and the `simd128` codegen it enables
+  elsewhere. A small, well-spent increase for the ~4.3× throughput it buys
+  (§Perf). Ship the SIMD128 build; scalar exists only as the bring-up baseline.
+
+**`twiggy top` — the SIMD128 `-Oz` module's code-size breakdown** (the wasm analog
+of `cargo bloat`; run on a name-retaining `-Oz -g` copy so symbols resolve — the
+shipped `-Oz` strips the ~14 KiB name subsection, which is why the shipped module
+is 143.3 KiB while the named one twiggy reads is 161 KiB):
+
+- **wasm-bindgen glue is the single largest cost, ~33 KiB (~20%):** the
+  `translator_new`/`translateBlockPhased`/`translate_long` "multivalue shim" +
+  "externref shim" entries — the generated JS↔wasm marshaling for the exported
+  `Translator` methods. This has no native counterpart; it is the price of the JS
+  boundary.
+- **the engine itself is ~48 KiB (~30%):** `SpmVocab::from_bytes` (8.1 KiB, the
+  largest single engine function), `Engine::decode_step_batch`, `Weights::affine`,
+  `Engine::greedy`, `SpmVocab::encode`, `Engine::multihead`, `intgemm_affine`, and
+  `PreparedB::matmul_into` (the SIMD128 kernel). This lines up with the native
+  `cargo bloat` top list — the same decode/encode/affine hot functions dominate on
+  both targets.
+- **platform fill the native binary gets for free:** `dlmalloc::malloc` (~4.8 KiB),
+  the bundled `libm` (`sinf` ~4.3 KiB + siblings), `hashbrown`/`BTreeMap`, and the
+  `.rodata` data segments.
+- **`console_error_panic_hook` + panic/formatting machinery is minor:**
+  twiggy attributes only ~1.6 KiB directly to panic handling; the hook's real cost
+  is the `core::fmt`/`char::escape_debug` formatting it keeps alive (~13 KiB of the
+  "other" fill), which a `panic = "abort"` build could trim if the module size ever
+  became critical. It is not the driver here — the bindgen glue is.
+
+Reproduce (adds the size table to the existing native size/validation output):
+
+```
+inference-rs/scripts/release_build.py --wasm-size --skip-validation
+```
+
 ## Build order
 
 1. `Weights::from_bytes` + `Engine::from_bytes` (+ shortlist-bytes). Unit-test on
@@ -556,5 +650,13 @@ system libm and wasm portable libm (see "Validation results").
 Build order step 7 done: host-timed perf numbers for all four native/wasm
 scalar/SIMD rows are in "Perf results (step 7)" above, measured through the
 `Engine::translate_batch_phased` host-clock hook and `js/perf.js`, plus the
-wasm linear-memory high-water. Next: step 8 (`.wasm` size vs native cdylib) and
-step 9 (the Firefox WebDriver row).
+wasm linear-memory high-water.
+
+Build order step 8 done: the native-cdylib-vs-wasm size comparison is in
+"Binary-size results (step 8)" above, emitted by `release_build.py --wasm-size`
+(extends the existing native size/`cargo bloat` path). Engine code is 107.2 KiB
+native `.text` vs a 143.3 KiB / 53.7 KiB-brotli shipped wasm SIMD128 `-Oz` module,
+at the same lean feature set, model excluded from both; the `wasm-opt -Oz` shave
+(~24%), scalar-vs-SIMD128 delta (~17 KiB), and `twiggy top` breakdown (bindgen glue
+~20% is the largest cost) are recorded there. Next: step 9 (the Firefox WebDriver
+row) and step 10 (npm packaging).

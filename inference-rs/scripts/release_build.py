@@ -19,13 +19,16 @@ Usage:
     inference-rs/scripts/release_build.py                 # build + validate (en-fr)
     inference-rs/scripts/release_build.py --pair en ru
     inference-rs/scripts/release_build.py --bloat         # + cargo bloat breakdown
+    inference-rs/scripts/release_build.py --wasm-size     # + native-vs-wasm size table
     inference-rs/scripts/release_build.py --skip-validation
 """
 
 import argparse
+import gzip
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import translate_common as common
@@ -36,10 +39,16 @@ MANIFEST = CRATE_DIR / "Cargo.toml"
 TARGET = CRATE_DIR / "target"
 TRANSLATOR_CLI = REPO_ROOT / "inference/build/src/app/translator-cli"
 DEFAULT_CORPUS = CRATE_DIR / "corpora/dev-en.txt"
+WASM_CRATE = CRATE_DIR / "crates/fxtranslate-wasm"
 
 # The shippable product and the dev/validation binary.
 CLI_BIN = TARGET / "release" / "fxtranslate"
 ORACLE_BIN = TARGET / "release" / "fxtranslate-oracle"
+
+# The lean feature set shared by the native cdylib and the wasm module, so the
+# native-vs-wasm size comparison is engine-code vs engine-code (no net/mmap/icu/
+# gemmology, scalar embedding kept int8). Matches the wasm crate's own default.
+LEAN_FEATURES = ["--no-default-features", "--features", "lean-embed"]
 
 
 def sh(cmd: list[str], **kw) -> subprocess.CompletedProcess:
@@ -83,6 +92,152 @@ def size_report(bloat: bool) -> None:
             print(r.stdout or r.stderr)
         else:
             print("\n[bloat] cargo-bloat not installed (cargo install cargo-bloat); skipping")
+
+
+def _compressed(path: Path) -> tuple[int, int, int]:
+    """(raw, gzip -9, brotli -q11) byte sizes for a file. Compressed sizes are the
+    real deliverable number — npm/CDN and browsers ship the .wasm compressed."""
+    data = path.read_bytes()
+    return len(data), len(gzip.compress(data, 9)), _brotli_size(data)
+
+
+def _brotli_size(data: bytes) -> int:
+    """brotli -q11 size, via the CLI if present, else Node's zlib.brotliCompressSync.
+    Either is fine; the method used is reported alongside the number."""
+    if shutil.which("brotli"):
+        r = subprocess.run(["brotli", "-q", "11", "-c"], input=data, stdout=subprocess.PIPE)
+        return len(r.stdout)
+    if shutil.which("node"):
+        script = (
+            "const z=require('zlib');const c=[];process.stdin.on('data',d=>c.push(d));"
+            "process.stdin.on('end',()=>{const b=z.brotliCompressSync(Buffer.concat(c),"
+            "{params:{[z.constants.BROTLI_PARAM_QUALITY]:11}});process.stdout.write(String(b.length));});"
+        )
+        r = subprocess.run(["node", "-e", script], input=data, stdout=subprocess.PIPE, text=False)
+        return int(r.stdout.decode())
+    return -1
+
+
+def _kib(n: int) -> str:
+    return f"{n / 1024:.1f} KiB" if n >= 0 else "n/a"
+
+
+def _row(name: str, raw: int, gz: int, br: int) -> None:
+    print(f"  {name:26} {_kib(raw):>10}  gz {_kib(gz):>10}  br {_kib(br):>10}")
+
+
+def size_report_wasm() -> None:
+    """Native lean cdylib vs wasm module, same feature set (LEAN_FEATURES), code
+    only — the model (~150 MB) is excluded from both artifacts by design.
+
+    The native number is the engine's own `.text` via `cargo bloat --filter
+    fxtranslate` on a lean binary: a bare cdylib with no exported symbols is
+    dead-stripped to an empty stub (nothing keeps the code alive), so the honest
+    native code figure is the engine code that actually links into a binary using
+    it. That is the true analog of `twiggy top`, which likewise measures code
+    reachable from the wasm module's exports.
+
+    The wasm numbers are the wasm-bindgen module before and after `wasm-opt -Oz`,
+    each raw + gzip + brotli, for both the scalar and SIMD128 kernels; `twiggy
+    top` gives the code-size breakdown."""
+    for tool in ("wasm-pack", "wasm-opt"):
+        if not shutil.which(tool):
+            print(f"\n[wasm-size] {tool} not installed; skipping the wasm size report")
+            return
+
+    print("\n== native engine code (lean cdylib, cargo bloat --filter fxtranslate) ==")
+    if shutil.which("cargo-bloat"):
+        r = sh(
+            [
+                "cargo",
+                "bloat",
+                "--release",
+                "--manifest-path",
+                str(MANIFEST),
+                "-p",
+                "fxtranslate-oracle",
+                *LEAN_FEATURES,
+                "--filter",
+                "fxtranslate",
+                "-n",
+                "12",
+            ]
+        )
+        print(r.stdout or r.stderr)
+    else:
+        print("  cargo-bloat not installed (cargo install cargo-bloat); skipping breakdown")
+
+    with tempfile.TemporaryDirectory() as td:
+        out = Path(td)
+        table = []  # (label, wasm_path)
+
+        # Raw wasm-bindgen output requires disabling wasm-pack's own wasm-opt so we
+        # can measure a clean before/after -Oz. Do it with a temporary metadata
+        # overlay that is removed afterward, never committed.
+        cargo = WASM_CRATE / "Cargo.toml"
+        original = cargo.read_text()
+        try:
+            cargo.write_text(
+                original + "\n[package.metadata.wasm-pack.profile.release]\nwasm-opt = false\n"
+            )
+            for label, rustflags in (
+                ("scalar", {}),
+                ("simd128", {"RUSTFLAGS": "-C target-feature=+simd128"}),
+            ):
+                env = dict(__import__("os").environ, **rustflags)
+                subprocess.run(
+                    [
+                        "wasm-pack",
+                        "build",
+                        "--target",
+                        "nodejs",
+                        "--no-default-features",
+                        "--out-dir",
+                        str(out / label),
+                    ],
+                    cwd=WASM_CRATE,
+                    env=env,
+                    check=True,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+                raw_wasm = out / label / "fxtranslate_wasm_bg.wasm"
+                oz_wasm = out / f"{label}-oz.wasm"
+                simd_flag = ["--enable-simd"] if label == "simd128" else []
+                subprocess.run(
+                    ["wasm-opt", "-Oz", *simd_flag, str(raw_wasm), "-o", str(oz_wasm)], check=True
+                )
+                table.append((f"wasm {label} (raw bindgen)", raw_wasm))
+                table.append((f"wasm {label} (-Oz)", oz_wasm))
+        finally:
+            cargo.write_text(original)
+
+        print("\n== wasm module size (same lean feature set; code only, model excluded) ==")
+        for label, path in table:
+            _row(label, *_compressed(path))
+
+        # twiggy top on the optimized SIMD module — the wasm analog of cargo bloat.
+        simd_oz = out / "simd128-oz.wasm"
+        if shutil.which("twiggy") and simd_oz.exists():
+            # Keep the name section so symbols resolve.
+            named = out / "simd128-oz-named.wasm"
+            subprocess.run(
+                [
+                    "wasm-opt",
+                    "-Oz",
+                    "-g",
+                    "--enable-simd",
+                    str(out / "simd128" / "fxtranslate_wasm_bg.wasm"),
+                    "-o",
+                    str(named),
+                ],
+                check=True,
+            )
+            print("\n== twiggy top (wasm SIMD128 -Oz, code-size breakdown) ==")
+            r = sh(["twiggy", "top", "-n", "15", str(named)])
+            print(r.stdout or r.stderr)
+        else:
+            print("\n[twiggy] not installed (cargo install twiggy); skipping wasm breakdown")
 
 
 def validate_lean() -> list[str]:
@@ -193,12 +348,19 @@ def main() -> None:
     ap.add_argument("--pair", nargs=2, metavar=("SRC", "TRG"), default=["en", "fr"])
     ap.add_argument("--limit", type=int, default=20, help="validation corpus sentence cap")
     ap.add_argument("--bloat", action="store_true", help="add a cargo bloat crate breakdown")
+    ap.add_argument(
+        "--wasm-size",
+        action="store_true",
+        help="add the native-cdylib-vs-wasm size table (raw/gz/br, wasm-opt -Oz, twiggy top)",
+    )
     ap.add_argument("--skip-validation", action="store_true")
     args = ap.parse_args()
 
     build(["-p", "fxtranslate-cli"])  # the shippable product (portable)
     build(["-p", "fxtranslate-oracle", "--features", "fast"])  # the native validation engine
     size_report(args.bloat)
+    if args.wasm_size:
+        size_report_wasm()
 
     if args.skip_validation:
         print("\n[validation] skipped (--skip-validation)")
