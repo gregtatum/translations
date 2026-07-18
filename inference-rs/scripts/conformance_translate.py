@@ -197,6 +197,13 @@ def main() -> None:
         f"translation parity {args.source}->{args.target} "
         f"({len(lines)} lines, golden={gpath.name}, floor={TOLERANCE_FLOOR:.0%})"
     )
+    if len(lines) < 100:
+        # The floor is calibrated against the full golden; on a small --limit slice
+        # a single benign flip swings the rate several points, so a FAIL here may be
+        # sampling noise, not a regression. Run the full golden to judge the floor.
+        print(
+            "  (small slice: one benign flip moves the rate several points — judge the floor on the full golden)"
+        )
 
     overall_fail = 0
     for cli in registry:

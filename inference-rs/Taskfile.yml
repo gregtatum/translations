@@ -201,6 +201,59 @@ tasks:
     cmds:
       - cargo run --quiet --release -p fxtranslate-cli -- {{.CLI_ARGS}}
 
+  build-cli:
+    internal: true
+    desc: Build the Rust fxtranslate CLI (debug) — the conformance oracle binary.
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - cargo build -p fxtranslate-cli
+
+  build-wasm:
+    internal: true
+    desc: Build the shared wasm core into npm/wasm/ (needs wasm-pack + the wasm32 target).
+    dir: '{{.TASKFILE_DIR}}/npm'
+    cmds:
+      - npm run build:wasm
+
+  conformance:
+    desc: Pass A of the CLI conformance harness — interface parity, byte-exact, hermetic.
+    summary: |
+      Runs every registered fxtranslate CLI (the Rust reference and the npm binding)
+      against committed goldens and asserts byte-identical stdout/stderr/exit for
+      help, errors, `list`, and `models list/info/rm`. Hermetic: a loopback records
+      server + throwaway cache dirs, no network, no model downloads — so it is fast
+      and lives in the default `task rs:check`. Deps build both CLIs it drives: the
+      Rust binary and the npm wasm core (npm/wasm/).
+
+      Regenerate goldens from the oracle with:
+        scripts/conformance.py --update-goldens
+    deps: [build-cli, build-wasm]
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - python3 {{.TASKFILE_DIR}}/scripts/conformance.py {{.CLI_ARGS}}
+
+  conformance-corpus:
+    desc: Pass B of the CLI conformance harness — corpus translation parity, tolerant.
+    summary: |
+      Feeds a corpus through each CLI's `translate` and reports the line-by-line
+      exact-match rate against a committed Rust golden, passing when it clears a
+      documented tolerance floor (npm-wasm diverges on a few <=1-ULP libm argmax
+      flips; the int8 GEMM stays bit-identical). Divergences are printed so they can
+      be eyeballed as benign word-choice flips.
+
+      NOT in the fast `task rs:check` / CI: it needs the real models (~150MB/pair,
+      downloaded on first use into the fxtranslate cache) and is slow — like
+      rs:parity. Build the CLIs it drives (rs:conformance builds them; or run
+      `cargo build -p fxtranslate-cli` and `task rs:build-wasm` first).
+
+      Examples:
+        task rs:conformance-corpus                 # every CLI vs the 200-line golden
+        task rs:conformance-corpus -- --limit 30   # quick slice
+        task rs:conformance-corpus -- --only npm   # just the npm binding
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - python3 {{.TASKFILE_DIR}}/scripts/conformance_translate.py {{.CLI_ARGS}}
+
   make-blocks:
     desc: Group the NLLB corpus into paragraph-sized blocks for the block benchmark.
     summary: |

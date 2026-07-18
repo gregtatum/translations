@@ -24,6 +24,7 @@ CHECKS = [
     {"task": "rs:lint-rust", "label": "Lint Rust"},
     {"task": "rs:lint-ci", "label": "Lint CI"},
     {"task": "rs:test", "label": "Rust Tests"},
+    {"task": "rs:conformance", "label": "CLI Conformance"},
     {"task": "inference-build", "label": "Build Inference Engine"},
 ]
 

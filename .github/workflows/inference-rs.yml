@@ -132,6 +132,36 @@ jobs:
           cargo test -p fxtranslate --features fast,threads,gemm-threads
           --test gemm_parity --test batched_decode -- --nocapture
 
+  conformance:
+    # Pass A of the CLI conformance harness: every fxtranslate binding (Rust
+    # reference + npm) must be byte-identical to the committed goldens for the
+    # interface (help/errors/list/models). Hermetic — a loopback records server +
+    # throwaway cache dirs, no network, no model downloads — so it runs here. Pass
+    # B (corpus translation parity) needs real models and stays out of CI (like
+    # rs:parity); run it locally with `task rs:conformance-corpus`.
+    #
+    # The task's deps build the two CLIs it drives: the Rust binary (cargo) and the
+    # npm wasm core (wasm-pack --target nodejs), so this job installs the wasm32
+    # target, wasm-pack, node, and task.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: inference-rs
+      - uses: jetli/wasm-pack-action@v0.4.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: arduino/setup-task@v2
+        with:
+          version: 3.x
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - run: task rs:conformance
+
   test-portable:
     # The "runs everywhere" contract: the pure-Rust scalar kernel must build with
     # no C++ toolchain and pass. `fast,portable` keeps the gemmology feature (so the
