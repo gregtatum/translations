@@ -1,0 +1,11 @@
+# Build artifacts and installed deps — never committed (same convention as
+# crates/fxtranslate-wasm/pkg per notes/12). `wasm/` is copied in by
+# `npm run build:wasm`; regenerate it, don't commit it.
+node_modules/
+wasm/
+
+# The repo-root .gitignore ignores `lib/` (a Python/Rust artifact convention).
+# Our hand-authored library sources live in npm/lib/ and MUST be tracked —
+# un-ignore the directory and its files here.
+!lib/
+!lib/**

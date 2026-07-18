@@ -1,0 +1,43 @@
+{
+  "name": "fxtranslate",
+  "version": "0.4.0",
+  "description": "Translate with Firefox Translations models — a Node CLI and library over the shared wasm inference core. Interface-compatible with the Rust fxtranslate CLI.",
+  "license": "MPL-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gregtatum/translations.git"
+  },
+  "type": "commonjs",
+  "bin": {
+    "fxtranslate": "bin/fxtranslate.js"
+  },
+  "main": "lib/index.js",
+  "module": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "import": "./lib/index.js",
+      "require": "./lib/index.js"
+    }
+  },
+  "files": [
+    "bin/",
+    "lib/",
+    "wasm/",
+    "README.md"
+  ],
+  "scripts": {
+    "build:wasm": "bash scripts/build-wasm.sh",
+    "typecheck": "tsc --noEmit",
+    "check:parity": "node test/parity.js",
+    "test": "node test/parity.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "typescript": "^5.5.0"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  // Non-publishing type check ONLY. `noEmit` — this never transpiles shipped
+  // code (the .js is authored with JSDoc and ships as-is). `npm run typecheck`
+  // runs `tsc --noEmit` so local tooling validates the JSDoc + the hand-written
+  // .d.ts against the wasm-generated engine types, catching drift.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "node16",
+    "moduleResolution": "node16",
+    "lib": ["ES2022"],
+    "types": ["node"],
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["bin/**/*.js", "lib/**/*.js", "lib/**/*.d.ts", "test/**/*.js"],
+  "exclude": ["node_modules", "wasm"]
+}
