@@ -3,7 +3,9 @@
 Run the inference-rs check tasks with concise, task-focused feedback.
 
 Instead of streaming every tool log, this renders a compact pass/fail summary.
-All checks run in parallel; interactive terminals get a live-updating summary,
+Light checks run in parallel; the CPU-heavy ones are serialized (see
+MAX_CONCURRENT_HEAVY). Interactive terminals get a live-updating summary grouped
+into "Parallel" and "Sequential" sections, each with its own wall-time total,
 while non-TTY runs report the first completed failure and stop the rest.
 
 Each entry in CHECKS is a task in this directory's Taskfile, namespaced under
@@ -39,6 +41,19 @@ _heavy_slots = threading.Semaphore(MAX_CONCURRENT_HEAVY)
 
 IS_INTERACTIVE = sys.stdout.isatty()
 LABEL_WIDTH = max(len(check["label"]) for check in CHECKS)
+
+# The interactive summary is grouped by how the checks are scheduled: the light
+# checks fan out in parallel, the heavy ones run one at a time. Each group shows
+# its own wall-time total (the parallel group's ≈ its slowest check; the
+# sequential group's ≈ the sum of its checks).
+GROUPS = [
+    ("Parallel", [check for check in CHECKS if not check.get("heavy")]),
+    ("Sequential", [check for check in CHECKS if check.get("heavy")]),
+]
+# Column where the duration starts: tree connector ("├─ ") + glyph ("✓ ") + label.
+DURATION_COL = 5 + LABEL_WIDTH
+# Lines the live summary redraws in place: one header per group plus every check.
+RENDER_LINE_COUNT = len(GROUPS) + len(CHECKS)
 
 COLORS = {
     "bold": "\x1b[1m",
@@ -140,10 +155,13 @@ class CheckProcess:
                 output, _ = self._proc.communicate()
             except Exception as error:  # noqa: BLE001 - surface any spawn/IO failure as output
                 output = f"{error}\n"
+            ended_at = time.monotonic()
             exit_code = self._proc.returncode
             self._result = {
                 **self.check,
-                "duration_ms": (time.monotonic() - self._started_at) * 1000,
+                "started_at": self._started_at,
+                "ended_at": ended_at,
+                "duration_ms": (ended_at - self._started_at) * 1000,
                 "exit_code": exit_code if exit_code is not None else 1,
                 "output": output or "",
             }
@@ -172,17 +190,57 @@ class CheckProcess:
 _has_rendered = False
 
 
-def render_interactive(results: dict, running_tasks: set) -> None:
+def group_duration_text(checks: list, results: dict, started_at: dict, now: float) -> str:
+    starts = [started_at[check["task"]] for check in checks if check["task"] in started_at]
+    if not starts:
+        return ""
+    group_start = min(starts)
+    if all(check["task"] in results for check in checks):
+        group_end = max(results[check["task"]]["ended_at"] for check in checks)
+        return format_duration((group_end - group_start) * 1000)
+    # Still running: elapsed wall time so far, dimmed to read as provisional.
+    return color(format_duration((now - group_start) * 1000), "dim")
+
+
+def render_group_header(
+    title: str, checks: list, results: dict, started_at: dict, now: float
+) -> str:
+    left = title.ljust(DURATION_COL)
+    duration = group_duration_text(checks, results, started_at, now)
+    return f"{styled(left, 'bold')} {duration}".rstrip()
+
+
+def render_group_child(
+    check: dict, result: Optional[dict], is_running: bool, is_last: bool
+) -> str:
+    connector = "└─" if is_last else "├─"
+    label = check["label"].ljust(LABEL_WIDTH)
+    if is_running:
+        duration = color("running...", "dim")
+    elif result:
+        duration = format_duration(result["duration_ms"])
+    else:
+        duration = ""
+    left = f"{color(connector, 'dim')} {status_glyph(result, is_running)} {label}"
+    return f"{left} {duration}".rstrip()
+
+
+def render_interactive(results: dict, running_tasks: set, started_at: dict) -> None:
     global _has_rendered
 
     if _has_rendered:
         # Move the cursor back up to the top of the summary block to redraw it in place.
-        sys.stdout.write(f"\x1b[{len(CHECKS)}F")
+        sys.stdout.write(f"\x1b[{RENDER_LINE_COUNT}F")
 
-    for check in CHECKS:
-        result = results.get(check["task"])
-        line = format_row(check, result, is_running=check["task"] in running_tasks)
-        sys.stdout.write(f"\x1b[2K{line}\n")
+    now = time.monotonic()
+    for title, checks in GROUPS:
+        header = render_group_header(title, checks, results, started_at, now)
+        sys.stdout.write(f"\x1b[2K{header}\n")
+        for index, check in enumerate(checks):
+            result = results.get(check["task"])
+            is_running = check["task"] in running_tasks
+            child = render_group_child(check, result, is_running, is_last=index == len(checks) - 1)
+            sys.stdout.write(f"\x1b[2K{child}\n")
 
     sys.stdout.flush()
     _has_rendered = True
@@ -252,11 +310,14 @@ def print_results(results: list) -> None:
 
 def run_interactive_checks(results_by_task: dict) -> None:
     # A heavy check appears as pending (not "running...") until it holds a heavy
-    # slot and has started its subprocess; light checks start immediately.
+    # slot and has started its subprocess; light checks start immediately, so they
+    # are seeded here as running with a shared start time for the group total.
+    start_time = time.monotonic()
     running_tasks: set = {check["task"] for check in CHECKS if not check.get("heavy")}
+    started_at: dict = {task: start_time for task in running_tasks}
     render_lock = threading.Lock()
 
-    render_interactive(results_by_task, running_tasks)
+    render_interactive(results_by_task, running_tasks, started_at)
 
     def watch(check: dict) -> None:
         if check.get("heavy"):
@@ -264,16 +325,16 @@ def run_interactive_checks(results_by_task: dict) -> None:
         try:
             with render_lock:
                 running_tasks.add(check["task"])
-                render_interactive(results_by_task, running_tasks)
-            check_process = CheckProcess(check)
-            result = check_process.wait()
+                started_at.setdefault(check["task"], time.monotonic())
+                render_interactive(results_by_task, running_tasks, started_at)
+            result = CheckProcess(check).wait()
         finally:
             if check.get("heavy"):
                 _heavy_slots.release()
         with render_lock:
             results_by_task[check["task"]] = result
             running_tasks.discard(check["task"])
-            render_interactive(results_by_task, running_tasks)
+            render_interactive(results_by_task, running_tasks, started_at)
 
     join_all(threading.Thread(target=watch, args=(check,)) for check in CHECKS)
 
