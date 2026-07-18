@@ -8,11 +8,20 @@
 
 const { run } = require("../lib/run");
 const { processIo } = require("../lib/io");
+const { nodeFetch } = require("../lib/fetch");
 
 const args = process.argv.slice(2);
 const io = processIo();
 
-// Later steps (3–4) inject a real Fetch/Translator here; grammar + help + errors
-// need neither, so `deps` is empty for now.
-const code = run(args, io);
-process.exit(code);
+// `list` fetches Remote Settings over the real Node `fetch`; the translator (for
+// `translate`, step 4) is not wired yet. The read-only cache verbs need no deps.
+const deps = { fetch: nodeFetch() };
+
+run(args, io, deps)
+  .then((code) => process.exit(code))
+  .catch((err) => {
+    // A defensive backstop: `run` already maps expected errors to a
+    // `fxtranslate: …` line + exit 1, so reaching here means an unexpected throw.
+    process.stderr.write(`fxtranslate: ${err && err.message ? err.message : err}\n`);
+    process.exit(1);
+  });

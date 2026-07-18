@@ -15,6 +15,7 @@ module.exports = {
   parseRecords: wasm.parseRecords,
   resolveRoute: wasm.resolveRoute,
   catalog: wasm.catalog,
+  modelPairs: wasm.modelPairs,
   segmentSentences: wasm.segmentSentences,
   verifyAndDecompress: wasm.verifyAndDecompress,
   // JS shell surface (CLI grammar + runner + host I/O contract).

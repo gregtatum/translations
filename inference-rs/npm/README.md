@@ -8,19 +8,23 @@ help text, error strings, and exit codes.
 One package, two entry points:
 
 - **CLI** — `bin/fxtranslate.js`, exposed as the `fxtranslate` binary.
-- **Library** — `import { Translator, resolveRoute, catalog, parseRecords, segmentSentences, verifyAndDecompress } from "fxtranslate"`.
+- **Library** — `import { Translator, resolveRoute, catalog, modelPairs, parseRecords, segmentSentences, verifyAndDecompress } from "fxtranslate"`.
 
 See `notes/13-cli-parity.md` in the repo for the full design (why the shell is
 native per language and only the pure decision logic is shared wasm).
 
 ## Status
 
-Build-order **step 2**: the package skeleton, the complete argument grammar,
-all help/usage text, and every error string + exit code — all proven
-byte-identical to the Rust CLI for cases that need no network and no models
-(`npm run check:parity`). The network/cache/translate command *bodies* (`list`,
-`translate`, `models list/add/rm/info`) are stubbed (they print a note to stderr
-and exit 1) pending steps 3–4.
+Build-order **step 3**: on top of the step-2 skeleton (argument grammar, help
+text, error strings, exit codes), the **read-only command bodies** are now
+implemented and proven byte-identical to the Rust CLI — `list [lang] [--all]`
+(fetch Remote Settings → wasm `catalog`/`modelPairs` → native formatter),
+`models list`, and `models info <pair>` (native `fs` cache reader over the same
+on-disk layout and default root the Rust CLI uses). `npm run check:parity` runs
+all three groups against the Rust oracle: hermetic grammar/help/error, hermetic
+`models list`/`info` against a built fixture cache, and live `list` against
+Remote Settings. The cache-*writing* / engine paths (`translate`, `models add`,
+`models rm`) remain stubbed (note to stderr, exit 1) pending step 4.
 
 ## Layout
 
@@ -34,8 +38,12 @@ npm/
     usage.js             USAGE / MODELS_USAGE / LIST_USAGE, byte-for-byte from cli.rs
     run.js               parse → dispatch → exit code (ports Rust `run`/`dispatch`)
     io.js                the host I/O + terminal contract (mirrors Rust `Io`)
+    fetch.js             the Node `Fetch` (global fetch) + Remote Settings records URL
+    cache.js             the fs cache reader (root/listCached/pairFiles); mirrors cache.rs
+    format.js            list/models view formatters, byte-for-byte from cli.rs
+    lang.js              tag → display-name table, ported from lang.rs
   scripts/build-wasm.sh  builds the wasm core and copies pkg/ → wasm/
-  test/parity.js         offline interface-parity check vs the Rust oracle
+  test/parity.js         interface-parity check vs the Rust oracle (grammar + cache + live list)
   tsconfig.json          non-publishing `tsc --noEmit` config (JSDoc type check)
   wasm/                  copied-in wasm core artifacts (gitignored; run build:wasm)
 ```

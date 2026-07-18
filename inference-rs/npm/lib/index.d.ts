@@ -16,6 +16,7 @@ export {
   parseRecords,
   resolveRoute,
   catalog,
+  modelPairs,
   segmentSentences,
   verifyAndDecompress,
 } from "../wasm/fxtranslate_wasm";
@@ -56,7 +57,7 @@ export interface Deps {
 export function parse(args: string[]): Command;
 
 /** Parse + execute `args` against `io`/`deps`, returning the exit code (0 or 1). */
-export function run(args: string[], io: Io, deps?: Deps): number;
+export function run(args: string[], io: Io, deps?: Deps): Promise<number>;
 
 /** Build an {@link Io} bound to the real process streams and terminal facts. */
 export function processIo(): Io;
