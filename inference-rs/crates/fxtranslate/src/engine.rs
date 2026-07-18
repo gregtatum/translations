@@ -144,11 +144,36 @@ impl Engine {
         Ok(engine)
     }
 
+    /// Like [`Engine::load`] but builds from in-memory buffers instead of file
+    /// paths: the model and both `.spm` vocabularies are parsed from bytes and the
+    /// weight tensors copied to owned heap storage, so the engine borrows nothing
+    /// from the passed slices. This is the byte-path entry the wasm build uses,
+    /// where the host supplies the model/vocab bytes rather than a filesystem.
+    ///
+    /// Pass the same slice (or byte-identical content) for `src_vocab` and
+    /// `trg_vocab` on shared-vocab pairs; distinct buffers for split-vocab (CJK).
+    pub fn from_bytes(model: &[u8], src_vocab: &[u8], trg_vocab: &[u8]) -> Result<Engine, String> {
+        let shared = src_vocab == trg_vocab;
+        let weights = Weights::from_bytes(model)?;
+        let src_vocab = SpmVocab::from_bytes(src_vocab);
+        let trg_vocab = SpmVocab::from_bytes(trg_vocab);
+        let mut engine = Engine::new(weights, src_vocab, trg_vocab);
+        engine.shared_vocab = shared;
+        Ok(engine)
+    }
+
     /// Attach a lexical shortlist so decoding restricts the output vocabulary to
     /// the per-sentence candidate set (required for exact reference parity).
     pub fn with_shortlist(mut self, shortlist: Shortlist) -> Engine {
         self.shortlist = Some(shortlist);
         self
+    }
+
+    /// Like [`Engine::with_shortlist`] but parses the shortlist from an in-memory
+    /// buffer ([`Shortlist::from_bytes`]) — the byte-path counterpart for the wasm
+    /// build, where the host supplies the shortlist bytes.
+    pub fn with_shortlist_bytes(self, shortlist: &[u8]) -> Engine {
+        self.with_shortlist(Shortlist::from_bytes(shortlist))
     }
 
     pub fn new(weights: Weights, src_vocab: SpmVocab, trg_vocab: SpmVocab) -> Engine {

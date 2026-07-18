@@ -261,6 +261,16 @@ impl Weights {
         Weights::new(model)
     }
 
+    /// Like [`Weights::load`] but parses the model from an in-memory buffer: the
+    /// weight tensors are copied to owned heap storage ([`Model::from_bytes`]), so
+    /// the resulting `Weights` borrows nothing from `bytes`. This is the byte-path
+    /// entry the wasm build uses, where model bytes come from the host rather than
+    /// a file.
+    pub fn from_bytes(bytes: &[u8]) -> Result<Weights, String> {
+        let model = Model::from_bytes(bytes).map_err(|e| e.to_string())?;
+        Weights::new(model)
+    }
+
     /// Like [`Weights::load`] but memory-maps the model file: weight tensors are
     /// views into the mapping rather than owned heap copies (feature `mmap`).
     #[cfg(feature = "mmap")]

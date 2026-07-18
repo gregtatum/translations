@@ -226,6 +226,42 @@ fn mmap_matches_owned() {
     }
 }
 
+/// The byte-path constructors must be parity-safe: an engine built from
+/// in-memory buffers (`Engine::from_bytes` + `with_shortlist_bytes`) produces
+/// byte-identical translations to the path-based `Engine::load`. This is the
+/// native equivalence proof for the wasm byte entry (the host feeds buffers, not
+/// paths).
+#[test]
+fn from_bytes_matches_load() {
+    if !std::path::Path::new(MODEL).exists() || !std::path::Path::new(VOCAB).exists() {
+        eprintln!("skipping from_bytes parity: model or vocab absent");
+        return;
+    }
+
+    let path_engine = Engine::load(MODEL, VOCAB, VOCAB).expect("path engine loads");
+    let path_engine =
+        path_engine.with_shortlist(Shortlist::load(SHORTLIST).expect("shortlist loads"));
+
+    let model_bytes = std::fs::read(MODEL).expect("read model");
+    let vocab_bytes = std::fs::read(VOCAB).expect("read vocab");
+    let shortlist_bytes = std::fs::read(SHORTLIST).expect("read shortlist");
+    let byte_engine =
+        Engine::from_bytes(&model_bytes, &vocab_bytes, &vocab_bytes).expect("byte engine builds");
+    let byte_engine = byte_engine.with_shortlist_bytes(&shortlist_bytes);
+
+    for src in [
+        "Hello world.",
+        "The cat sat on the mat.",
+        "I love programming.",
+    ] {
+        assert_eq!(
+            path_engine.translate(src),
+            byte_engine.translate(src),
+            "from_bytes vs load diverged on {src:?}"
+        );
+    }
+}
+
 /// Source ids for "Hello world." + EOS, matching the trace.
 fn engine_src_ids() -> Vec<u32> {
     vec![17169, 564, 264, 0]
