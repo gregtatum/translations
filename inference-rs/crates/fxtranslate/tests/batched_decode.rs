@@ -1,3 +1,4 @@
+#![cfg(not(target_arch = "wasm32"))] // native-only (filesystem fixtures / oracle); wasm runs gemm_parity
 //! Batched decoder parity (batch-invariance).
 //!
 //! `greedy_batch` / `translate_batch` must produce, for each sentence, exactly

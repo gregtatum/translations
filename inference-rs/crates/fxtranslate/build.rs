@@ -16,7 +16,27 @@ use std::path::PathBuf;
 
 fn main() {
     println!("cargo::rustc-check-cfg=cfg(gemmology_simd)");
+    // `fast_gemm` is the single "a `gemm::PreparedB` fast path exists" switch the
+    // engine/weights dispatch keys off. It is set by *either* accelerated backend:
+    // the native gemmology FFI kernel (`gemmology_simd`, below) or the pure-Rust
+    // wasm SIMD128 kernel (wasm32 target built with `+simd128`). Keeping them under
+    // one cfg means the call sites don't fork per-backend.
+    println!("cargo::rustc-check-cfg=cfg(fast_gemm)");
     println!("cargo:rerun-if-env-changed=FXTRANSLATE_REQUIRE_SIMD");
+
+    let arch = std::env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_default();
+
+    // The pure-Rust wasm SIMD128 int8 kernel needs no feature and no C++ toolchain:
+    // it compiles whenever the wasm32 target is built with `simd128` enabled
+    // (`-C target-feature=+simd128`). Detect it here so the plain scalar wasm build
+    // (step 5) keeps the scalar path. `portable` still forces scalar everywhere.
+    let target_features = std::env::var("CARGO_CFG_TARGET_FEATURE").unwrap_or_default();
+    let wasm_simd128 = arch == "wasm32"
+        && target_features.split(',').any(|f| f == "simd128")
+        && std::env::var_os("CARGO_FEATURE_PORTABLE").is_none();
+    if wasm_simd128 {
+        println!("cargo::rustc-cfg=fast_gemm");
+    }
 
     // When required, falling back to scalar is a build failure, not a warning.
     let require_simd = std::env::var_os("FXTRANSLATE_REQUIRE_SIMD").is_some();
@@ -39,7 +59,6 @@ fn main() {
     // Pick the arch-specific xsimd kernel + the `-m` flags to compile it with. The
     // define selects the `Arch` in the shim (see gemmology_shim.cpp). Targets not
     // listed here have no wired kernel and fall back to the scalar path.
-    let arch = std::env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_default();
     let (arch_define, arch_flag) = match arch.as_str() {
         // -march=armv8.4-a+i8mm enables __ARM_FEATURE_MATMUL_INT8 (usdot).
         "aarch64" => ("FXT_GEMM_I8MM", "-march=armv8.4-a+i8mm"),
@@ -92,7 +111,11 @@ fn main() {
     let result = build.try_compile("gemmology_shim");
 
     match result {
-        Ok(()) => println!("cargo::rustc-cfg=gemmology_simd"),
+        Ok(()) => {
+            println!("cargo::rustc-cfg=gemmology_simd");
+            // Native FFI kernel is live: the shared "fast PreparedB exists" switch.
+            println!("cargo::rustc-cfg=fast_gemm");
+        }
         Err(e) => bail(format!("gemmology C++ build failed ({e})")),
     }
 }

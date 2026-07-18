@@ -1,3 +1,4 @@
+#![cfg(not(target_arch = "wasm32"))] // native-only (filesystem fixtures / oracle); wasm runs gemm_parity
 //! SentencePiece tokenizer oracle: diff our `spm::encode` against `spm_encode`.
 //!
 //! The golden id sequences in `corpora/*.ids` are produced by the upstream

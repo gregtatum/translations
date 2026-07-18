@@ -47,8 +47,11 @@
 #[cfg(test)]
 mod compare;
 pub mod engine;
-/// FFI wrapper over the vendored gemmology SIMD kernel (`gemmology` feature).
-#[cfg(feature = "gemmology")]
+/// Accelerated int8 GEMM (`gemm::PreparedB`): the vendored gemmology SIMD kernel
+/// via FFI (`gemmology` feature, native) or the pure-Rust wasm SIMD128 kernel
+/// (wasm32 + `simd128`). Present under either so the engine has one fast-path
+/// surface; when neither is live it is a scalar-returning stub.
+#[cfg(any(feature = "gemmology", fast_gemm))]
 pub mod gemm;
 pub mod model;
 pub mod ops;

@@ -1,3 +1,4 @@
+#![cfg(not(target_arch = "wasm32"))] // native-only (filesystem fixtures / oracle); wasm runs gemm_parity
 //! SentencePiece tokenizer parity.
 //!
 //! Anchored on the traced `en→fr` run: the source ids recorded in the trace are

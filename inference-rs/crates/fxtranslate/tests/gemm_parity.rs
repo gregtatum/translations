@@ -1,15 +1,35 @@
-#![cfg(feature = "gemmology")]
-//! Cheat-proof parity for the gemmology SIMD kernel (i8mm on ARM, AVX2 on x86).
+#![cfg(any(feature = "gemmology", fast_gemm))]
+//! Cheat-proof parity for the accelerated int8 GEMM: gemmology (i8mm on ARM, AVX2
+//! on x86) natively, and the pure-Rust wasm SIMD128 kernel on `wasm32 + simd128`.
 //!
-//! The gemmology-backed GEMM must match the scalar [`ops::intgemm_affine`] — the
-//! kernel already validated against the marian oracle (`tests/int8_parity.rs`,
+//! The accelerated GEMM must match the scalar [`ops::intgemm_affine`] — the kernel
+//! already validated against the marian oracle (`tests/int8_parity.rs`,
 //! `tests/ops_parity.rs`). Two independent kernels agreeing, with an external
-//! oracle at the base, so the gemmology path is validated transitively without a
+//! oracle at the base, so the fast path is validated transitively without a
 //! tautology. Covered shapes include the transformer's inner dims and output
 //! widths that are *not* multiples of 8 (the shim's zero-padding path).
+//!
+//! Run natively with `cargo test`, and under a real wasm runtime with
+//! `wasm-pack test --node` (RUSTFLAGS `-C target-feature=+simd128`) — the wasm run
+//! proves the SIMD128 kernel is actually live, not silently scalar.
 
 use fxtranslate::gemm::{self, PreparedB};
 use fxtranslate::ops;
+
+// Under wasm the tests run through `wasm-bindgen-test` (Node/browser runner);
+// natively they are plain `#[test]`s. `wasm_test` applies both attributes so each
+// test compiles and runs in either environment without duplicating the body.
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen_test::wasm_bindgen_test;
+
+macro_rules! wasm_test {
+    ($(#[$meta:meta])* fn $name:ident() $body:block) => {
+        $(#[$meta])*
+        #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+        #[cfg_attr(not(target_arch = "wasm32"), test)]
+        fn $name() $body
+    };
+}
 
 /// A small linear-congruential PRNG (deterministic, no dev-dependency).
 struct Lcg(u64);
@@ -101,6 +121,20 @@ fn check(m: usize, k: usize, n: usize, seed: u64) -> bool {
 /// Set in CI (see .github/workflows/inference-rs.yml) to turn a silent scalar
 /// fallback into a test failure: on a target we claim to accelerate, the SIMD
 /// kernel must actually be compiled and exercised, not quietly skipped.
+///
+/// On wasm, environment variables don't thread through the `wasm-bindgen-test`
+/// runner, so the gate becomes compile-time: this test only compiles at all when
+/// `fast_gemm` is set (the crate gate at the top), and on wasm `fast_gemm` means
+/// the SIMD128 kernel is in — so "require SIMD" is unconditionally true here. If
+/// the wasm build had *not* enabled `simd128`, `backend()` would report `"scalar"`
+/// and `simd_backend_is_live_when_required` below would fail, which is exactly the
+/// cheat-proof guarantee we want.
+#[cfg(target_arch = "wasm32")]
+fn require_simd() -> bool {
+    true
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 fn require_simd() -> bool {
     std::env::var_os("FXTRANSLATE_REQUIRE_SIMD").is_some()
 }
@@ -112,7 +146,7 @@ fn require_scalar() -> bool {
     std::env::var_os("FXTRANSLATE_REQUIRE_SCALAR").is_some()
 }
 
-#[test]
+wasm_test! {
 fn matches_scalar_across_shapes() {
     // Transformer-shaped inner dims (k = 384/1536) are multiples of 16/32/64, so
     // they run on i8mm, AVX2, and AVX-512 alike. k=16 only clears the NEON/SSE
@@ -138,12 +172,14 @@ fn matches_scalar_across_shapes() {
         );
     }
 }
+}
 
-/// The cheat-proof gate: the parity above only means something if the "SIMD"
-/// kernel is a real SIMD kernel. When a backend is required, prove it isn't the
-/// scalar stub. Sourced from the compiled shim (xsimd's `Arch::name()`), so it
-/// can't be faked from Rust.
-#[test]
+// The cheat-proof gate: the parity above only means something if the "SIMD"
+// kernel is a real SIMD kernel. When a backend is required, prove it isn't the
+// scalar stub. Sourced from the compiled shim (xsimd's `Arch::name()`) natively,
+// or reported as "wasm-simd128" by the wasm kernel — so it can't be faked from
+// Rust.
+wasm_test! {
 fn simd_backend_is_live_when_required() {
     let backend = gemm::backend();
     eprintln!("gemm backend = {backend}");
@@ -162,6 +198,17 @@ fn simd_backend_is_live_when_required() {
              the portable build unexpectedly compiled a SIMD kernel"
         );
     }
+    // Under wasm the only accelerated kernel is the pure-Rust SIMD128 one, so pin
+    // the exact name: a green wasm run then *proves* `backend()=="wasm-simd128"`
+    // (the assert message surfaces the actual value if it were anything else),
+    // not merely that it isn't scalar.
+    #[cfg(target_arch = "wasm32")]
+    assert_eq!(
+        backend, "wasm-simd128",
+        "wasm build must run the SIMD128 kernel; got {backend:?} — was it built \
+         without `-C target-feature=+simd128`?"
+    );
+}
 }
 
 /// Whether a backend accumulates int8 products through a saturating int16 lane
@@ -173,12 +220,13 @@ fn backend_saturates(name: &str) -> bool {
     matches!(name, "avx2" | "ssse3" | "sse2")
 }
 
-/// Characterize the saturating vs. exact split on *full-range* inputs (the regime
-/// `check` deliberately avoids). This is the test that documents *why* the AVX2
-/// numbers differ from ARM/scalar — and, by extension, why Firefox's WASM engine
-/// (same `maddubs` path) can differ from this one. Exact backends must still match
-/// bit-close; saturating backends are only reported, not required to match.
-#[test]
+// Characterize the saturating vs. exact split on *full-range* inputs (the regime
+// `check` deliberately avoids). This is the test that documents *why* the AVX2
+// numbers differ from ARM/scalar — and, by extension, why Firefox's WASM engine
+// (same `maddubs` path) can differ from this one. Exact backends (including this
+// crate's wasm-simd128 kernel) must still match bit-close; saturating backends are
+// only reported, not required to match.
+wasm_test! {
 fn full_range_matches_only_on_exact_backends() {
     let (m, k, n) = (1, 384, 32000); // vocab-scale output projection: saturation is easy to hit
     let mut r = Lcg(0xF017);
@@ -213,6 +261,7 @@ fn full_range_matches_only_on_exact_backends() {
         );
     }
     // Saturating backend: divergence here is expected and documented, not a failure.
+}
 }
 
 /// Intra-op GEMM pool (feature `gemm-threads`, Option A) — cross-arch validation.
@@ -254,10 +303,11 @@ fn intra_op_pool_matches_scalar() {
     }
 }
 
-#[test]
+wasm_test! {
 fn rejects_k_not_multiple_of_register_width() {
     // The int8 register is 16 (i8mm/SSE), 32 (AVX2), or 64 (AVX-512) wide; k=24 is
     // a multiple of none, so the wrapper reports None and the caller keeps the
     // scalar kernel regardless of which backend is compiled.
     assert!(PreparedB::new(&vec![0i8; 3 * 24], 3, 24).is_none());
+}
 }

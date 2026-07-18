@@ -1,3 +1,4 @@
+#![cfg(not(target_arch = "wasm32"))] // native-only (filesystem fixtures / oracle); wasm runs gemm_parity
 //! Offline packaging tests: Remote Settings discovery + verified cache, driven by
 //! checked-in fixtures through the mockable `Fetch` trait. No network, no engine —
 //! these cover model resolution and download only; translation correctness is

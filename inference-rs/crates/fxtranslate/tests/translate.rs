@@ -1,3 +1,4 @@
+#![cfg(not(target_arch = "wasm32"))] // native-only (filesystem fixtures / oracle); wasm runs gemm_parity
 //! End-to-end greedy translation.
 //!
 //! The anchor: the traced en→fr run translates "Hello world." to

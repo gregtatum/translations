@@ -116,3 +116,10 @@ icu-segmenter = ["dep:icu_segmenter"]
 # Compiles src/gemmology_shim.cpp, but only under the `gemmology` feature (build.rs
 # early-returns otherwise). Build-only; no runtime dependency.
 cc = "1"
+
+# wasm-only dev dep: run `tests/gemm_parity.rs` under a real wasm runtime
+# (`wasm-pack test --node`) so the wasm SIMD128 kernel is proven live, not just
+# compiled. Native test runs don't need it, so it's target-scoped to keep the
+# native `cargo test` dependency graph unchanged.
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+wasm-bindgen-test = "0.3"

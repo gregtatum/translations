@@ -1,3 +1,4 @@
+#![cfg(not(target_arch = "wasm32"))] // native-only (filesystem fixtures / oracle); wasm runs gemm_parity
 //! Batched encoder parity (batch-invariance).
 //!
 //! The padded/masked batch path must reproduce the single-sentence encoder for
