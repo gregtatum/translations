@@ -1,0 +1,28 @@
+[package]
+name = "fxtranslate-wasm"
+version = "0.4.0"
+edition = "2021"
+description = "wasm-bindgen bindings for the fxtranslate engine (validation + npm; dev-only)."
+license = "MPL-2.0"
+# wasm binding/validation artifact — not part of the published core crate. Like
+# the oracle crate, keep it out of `cargo publish` so wasm-bindgen never lands in
+# the core `fxtranslate` dependency graph.
+publish = false
+
+[lib]
+name = "fxtranslate_wasm"
+path = "src/lib.rs"
+# wasm-bindgen needs a cdylib to emit the `.wasm`; keep `rlib` so the crate is
+# still usable/testable as a normal Rust dependency.
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# The engine, lean/pure-Rust config: no mmap, no net, no C++ toolchain, scalar
+# kernel. This is the default here so `wasm-pack build` (which passes no feature
+# flags) already produces the intended lean wasm build.
+fxtranslate = { path = "../fxtranslate", default-features = false, features = ["lean-embed"] }
+# The JS <-> Rust boundary: marshals `&str`/`Uint8Array`/`String` across wasm.
+wasm-bindgen = "0.2"
+# Routes Rust panics to `console.error` with a readable message + stack instead
+# of an opaque `unreachable` trap. Installed once in the `Translator` constructor.
+console_error_panic_hook = "0.1"
