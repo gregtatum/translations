@@ -2,12 +2,22 @@
 name = "fxtranslate-wasm"
 version = "0.4.0"
 edition = "2021"
-description = "wasm-bindgen bindings for the fxtranslate engine (validation + npm; dev-only)."
+description = "WebAssembly build of the fxtranslate neural machine-translation engine — single-threaded, SIMD128 int8. Models are supplied by the host, not bundled."
 license = "MPL-2.0"
-# wasm binding/validation artifact — not part of the published core crate. Like
-# the oracle crate, keep it out of `cargo publish` so wasm-bindgen never lands in
-# the core `fxtranslate` dependency graph.
+# Feeds the generated npm `pkg/package.json` "repository" field so the tarball
+# links back to source. wasm-pack copies this + description + license into the
+# package.json it emits.
+repository = "git+https://github.com/gregtatum/translations.git"
+# `publish = false` is a *cargo* directive: it keeps this crate off crates.io (like
+# the oracle crate, so wasm-bindgen never lands in the core `fxtranslate` graph). It
+# does NOT affect wasm-pack / npm — the npm package is produced and published (by the
+# user, when ready) independently of cargo.
 publish = false
+
+# wasm-pack copies a top-level README.md into the npm package if `readme` points at
+# one; name it explicitly so the packaged README is the npm-consumer doc, not a
+# fallback.
+readme = "README.md"
 
 [lib]
 name = "fxtranslate_wasm"
@@ -30,3 +40,9 @@ js-sys = "0.3"
 # Routes Rust panics to `console.error` with a readable message + stack instead
 # of an opaque `unreachable` trap. Installed once in the `Translator` constructor.
 console_error_panic_hook = "0.1"
+
+# wasm-pack runs `wasm-opt` on the release build. `-Oz` optimizes for size (the
+# real deliverable is the compressed .wasm; `-Oz` shaves ~24% off the raw module —
+# see notes/12-wasm.md "Binary-size results"). This is the shipped npm profile.
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = ["-Oz"]

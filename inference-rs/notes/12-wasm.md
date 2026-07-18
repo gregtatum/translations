@@ -633,6 +633,69 @@ Reproduce (adds the size table to the existing native size/validation output):
 inference-rs/scripts/release_build.py --wasm-size --skip-validation
 ```
 
+### Packaging (step 10 — filled)
+
+The wasm artifact is packaged for npm with **`wasm-pack`** (the plan's leaning —
+it gives the npm package + `.d.ts` + multi-target glue for free and did not fight
+the workspace layout). The published build is the **SIMD128** module:
+
+```
+cd crates/fxtranslate-wasm
+RUSTFLAGS="-C target-feature=+simd128" \
+    wasm-pack build --target bundler --no-default-features --scope gregtatum
+```
+
+**Target choice — `--target bundler`.** The general-purpose npm default; the
+emitted ES module is consumed directly by webpack / Rollup / Vite (the wasm is
+loaded by the bundler as an asset, no hand-written `init()`). The tradeoff: a
+`bundler` package does **not** run as-is under a raw `<script>` or bare
+`node require()` — consumers on those runtimes rebuild from source with
+`--target web` (native ESM, `await init()` yourself) or `--target nodejs`
+(CommonJS). Bundler maximizes reach for the common "npm + bundler" case, which is
+the plan's "general npm reach" goal; the README documents the other two targets so
+a consumer who needs them knows the exact command. All three use the same
+`-C target-feature=+simd128` SIMD128 kernel.
+
+**Models are excluded** (library-first stance): the package ships the ~143 KiB
+engine only; the host supplies model / vocab / shortlist bytes at
+`new Translator(...)`. Verified absent from the tarball.
+
+**Cargo metadata → `pkg/package.json`.** wasm-pack copies `description`,
+`license` (MPL-2.0), `repository`, and a top-level `README.md` from the crate's
+`Cargo.toml`/dir into the generated `pkg/package.json`; `--scope gregtatum` sets
+the npm scope. A `[package.metadata.wasm-pack.profile.release] wasm-opt = ["-Oz"]`
+pins the size-optimized `-Oz` pass (the shipped profile). The crate keeps
+`publish = false`, which is a *cargo* directive (off crates.io, like the oracle
+crate) and has no effect on the npm package. A `LICENSE` (MPL-2.0) copied into the
+crate dir is picked up by wasm-pack so the tarball ships the license text.
+
+**Dry-run tarball** (`npm pack --dry-run` / `npm publish --dry-run` from `pkg/` —
+**no real publish was run**; `wasm-pack publish` was not run; not logged into npm):
+
+```
+📦  @gregtatum/fxtranslate-wasm@0.4.0
+ 16.7 kB  LICENSE
+  4.3 kB  README.md
+ 11.9 kB  fxtranslate_wasm_bg.js       (wasm-bindgen JS glue)
+146.8 kB  fxtranslate_wasm_bg.wasm     (SIMD128 -Oz module, 143.3 KiB)
+  3.2 kB  fxtranslate_wasm.d.ts        (TypeScript types)
+  265  B  fxtranslate_wasm.js          (ESM entry → main)
+  655  B  package.json
+package size (packed/gzip): 77.6 kB   unpacked: 183.9 kB   total files: 7
+```
+
+`package.json` `main` = `fxtranslate_wasm.js`, `types` = `fxtranslate_wasm.d.ts`,
+`files` lists the `.wasm` + both JS glue files + `.d.ts`; the module self-reports
+`backend() == "wasm-simd128"` (the `.wasm` carries 444 SIMD128 opcodes incl.
+`i32x4.dot_i16x8_s`). No `*.bin` / `*.spm` / `*.s2t` model files anywhere in the
+tarball.
+
+**Name / version / publish are the USER's call.** The default set here —
+`@gregtatum/fxtranslate-wasm` @ `0.4.0` (the fork owner is `gregtatum`) — is only
+to prove the packaging builds and packs cleanly. The final npm name/scope, the
+version, and the **actual `npm publish`** await the user's go-ahead; this step is
+a dry-run only. `pkg/` and `js/node_modules/` stay gitignored (not committed).
+
 ## Build order
 
 1. `Weights::from_bytes` + `Engine::from_bytes` (+ shortlist-bytes). Unit-test on
@@ -713,5 +776,18 @@ high-water on **Firefox 153.0** (headless, geckodriver 0.37.0, driven by
 **100.00% vs Node-wasm** (bit-identical) and **99.69% vs native scalar** (the same
 four documented ≤ 1-ULP lines), and the ~31 MB model buffer loads in Firefox with
 no trouble — see "Browser parity (step 9)". The `--target web` page, harness, and
-WebDriver script live in `crates/fxtranslate-wasm/{web,js}/`. Next: step 10 (npm
-packaging).
+WebDriver script live in `crates/fxtranslate-wasm/{web,js}/`.
+
+Build order step 10 done: the wasm artifact is packaged for npm via wasm-pack
+(`--target bundler`, SIMD128, models excluded) and validated with a **dry-run**
+publish — a 7-file, 77.6 kB-packed / 183.9 kB-unpacked tarball
+(`@gregtatum/fxtranslate-wasm@0.4.0`, a placeholder name/version) carrying the
+143.3 KiB SIMD128 `.wasm` + JS glue + `.d.ts` + README + LICENSE, no model files.
+See "Packaging (step 10)". The final npm name/version and the real publish await
+the user; no real publish was run.
+
+**Steps 1–10 complete.** The WebAssembly plan is fully executed: byte
+constructors, lean `wasm32` build, the `fxtranslate-wasm` bindgen crate, Node
+driver, corpus parity, the live SIMD128 kernel, perf + binary-size numbers, the
+Firefox WebDriver browser row, and the npm package (dry-run validated; publish
+pending user go-ahead).
