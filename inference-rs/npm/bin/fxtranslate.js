@@ -13,8 +13,10 @@ const { nodeFetch } = require("../lib/fetch");
 const args = process.argv.slice(2);
 const io = processIo();
 
-// `list` fetches Remote Settings over the real Node `fetch`; the translator (for
-// `translate`, step 4) is not wired yet. The read-only cache verbs need no deps.
+// The shell injects the real Node `Fetch`; `run` builds the real (engine-backed)
+// translator from it on demand for `translate`, so both `list`/`models add` discovery
+// and translation hit the same live Remote Settings endpoint. Read-only cache verbs
+// ignore `deps` entirely.
 const deps = { fetch: nodeFetch() };
 
 run(args, io, deps)

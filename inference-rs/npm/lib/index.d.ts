@@ -47,10 +47,30 @@ export interface Io {
   noColor: boolean;
 }
 
-/** Dependencies injected by the shell in later steps (Fetch / Translator). */
+/** Transport the shell injects: text `get` (discovery) + streamed `download`. */
+export interface Fetch {
+  get(url: string): Promise<string>;
+  download(
+    url: string,
+    onProgress: (done: number, total: number | undefined) => void,
+  ): Promise<Uint8Array>;
+}
+
+/** A loaded model ready to translate lines (mirrors Rust `Session`). */
+export interface Session {
+  translate(text: string): string;
+  pivot(): string | undefined;
+}
+
+/** Resolves a `src`→`trg` pair into a ready {@link Session} (mirrors Rust `Translator`). */
+export interface Translator {
+  load(src: string, trg: string, cacheDir: string | undefined): Promise<Session>;
+}
+
+/** Dependencies injected by the shell: a {@link Fetch} and a {@link Translator}. */
 export interface Deps {
-  fetch?: unknown;
-  translator?: unknown;
+  fetch?: Fetch;
+  translator?: Translator;
 }
 
 /** Parse argv (without the program name) into a {@link Command}; throws {@link CliError}. */

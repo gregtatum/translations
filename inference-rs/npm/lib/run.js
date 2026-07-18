@@ -1,18 +1,20 @@
 // Parse argv, dispatch to the matching command, and execute it against `io`/`deps`
 // — the JS mirror of the Rust `run`/`dispatch` (crates/fxtranslate-cli/src/cli.rs).
 //
-// Read-only paths are implemented here (step 3): `list [lang] [--all]`,
-// `models list`, and `models info <pair>`, byte-for-byte against the Rust oracle.
-// The cache-writing / engine paths (`translate`, `models add`, `models rm`) stay
-// stubbed until step 4 — they emit a "not yet implemented" note and exit 1.
+// All commands are implemented: the read-only paths (`list`, `models list/info`)
+// and — as of step 4 — the cache-writing / engine paths (`translate`, `models
+// add`, `models rm`). The shell owns the async fetch + fs; the pure decisions
+// (routing, catalog, decode+verify, inference) come from the synchronous wasm core.
 
 const wasm = require("../wasm/fxtranslate_wasm.js");
 const { parse, CliError, USAGE, LIST_USAGE, MODELS_USAGE } = require("./cli");
 const { recordsUrl, nodeFetch } = require("./fetch");
-const { Cache } = require("./cache");
+const { Cache, ensureModel } = require("./cache");
+const { engineTranslator } = require("./translate");
 const {
   PREFERRED_HUB,
   humanBytes,
+  renderProgress,
   palette,
   scalarLen,
   padEnd,
@@ -23,26 +25,14 @@ const {
 } = require("./format");
 
 /**
- * The dependencies the shell injects — a `Fetch` for `list` (and, later, `models
- * add`) and a translator for `translate`. Mirrors the Rust `Deps` seam.
+ * The dependencies the shell injects — a `Fetch` (for `list`, `models add`, and the
+ * default translator's discovery) and a `Translator` for `translate`. Mirrors the
+ * Rust `Deps` seam; both default to real Node implementations.
  *
  * @typedef {object} Deps
  * @property {import("./fetch").Fetch} [fetch]
- * @property {unknown} [translator]
+ * @property {import("./translate").Translator} [translator]
  */
-
-/**
- * A command whose body needs an engine or a cache write — not implemented until
- * step 4. Emits the placeholder note to stderr and signals exit 1.
- *
- * @param {import("./io").Io} io
- * @param {string} what
- * @returns {number} exit code (always 1)
- */
-function notYetImplemented(io, what) {
-  io.stderr(`fxtranslate: \`${what}\` is not yet implemented in the npm CLI (step 4)\n`);
-  return 1;
-}
 
 /**
  * Parse and execute `args` against `io`/`deps`, returning the process exit code
@@ -89,11 +79,11 @@ async function run(args, io, deps = {}) {
       case "modelsInfo":
         return runModelsInfo(io, cmd.name, cmd.cacheDir);
       case "translate":
-        return notYetImplemented(io, "translate");
+        return await runTranslate(io, deps, cmd.src, cmd.trg, cmd.text, cmd.cacheDir);
       case "modelsAdd":
-        return notYetImplemented(io, "models add");
+        return await runModelsAdd(io, deps, cmd.src, cmd.trg, cmd.cacheDir);
       case "modelsRemove":
-        return notYetImplemented(io, "models rm");
+        return runModelsRemove(io, cmd.name, cmd.all, cmd.cacheDir);
       default: {
         /** @type {never} */
         const _never = cmd;
@@ -215,4 +205,193 @@ function runModelsInfo(io, name, cacheDir) {
   return 0;
 }
 
-module.exports = { run, notYetImplemented };
+/**
+ * The cache the `models`/`translate` verbs act on: an explicit `--cache-dir` or the
+ * platform default, with the download-progress line wired to stderr only when
+ * stderr is a TTY (the same gate Rust's `open_cache(..., io.stderr_is_tty)` uses).
+ * Mirrors Rust's `open_cache`.
+ *
+ * @param {string | undefined} cacheDir
+ * @param {boolean} progress
+ * @param {import("./io").Io} io
+ * @returns {Cache}
+ */
+function openCache(cacheDir, progress, io) {
+  const cache = new Cache(cacheDir);
+  if (progress) {
+    cache.withProgress((name, done, total) => io.stderr(renderProgress(name, done, total)));
+  }
+  return cache;
+}
+
+/**
+ * `models add <src> <trg>`: pre-download every file for the pair (both legs of a
+ * pivot) into the cache, without building an engine. The shell drives the sync core
+ * `resolveRoute` to decide direct-vs-pivot, then does the async download + verified
+ * atomic write per leg (via {@link ensureModel}). Status goes to stderr and names
+ * the resolved hop. Mirrors Rust's `run_models_add`.
+ *
+ * @param {import("./io").Io} io
+ * @param {Deps} deps
+ * @param {string} src
+ * @param {string} trg
+ * @param {string | undefined} cacheDir
+ * @returns {Promise<number>}
+ */
+async function runModelsAdd(io, deps, src, trg, cacheDir) {
+  const fetch = deps.fetch || nodeFetch();
+  const cache = openCache(cacheDir, io.stderrIsTty, io);
+  io.stderr(`[fxtranslate] downloading ${src}→${trg} model…\n`);
+
+  const body = await fetch.get(recordsUrl());
+  const records = JSON.parse(wasm.parseRecords(body));
+  const route = JSON.parse(wasm.resolveRoute(body, src, trg));
+  if (route.kind === "pivot") {
+    await ensureModel(fetch, cache, records, route.src, route.pivot);
+    await ensureModel(fetch, cache, records, route.pivot, route.trg);
+    io.stderr(`[fxtranslate] cached (${src}→${route.pivot}→${trg}, pivot).\n`);
+  } else {
+    await ensureModel(fetch, cache, records, route.src, route.trg);
+    io.stderr(`[fxtranslate] cached (${src}→${trg}).\n`);
+  }
+  return 0;
+}
+
+/**
+ * `models rm <pair>` / `--all`: delete one cached pair (or every pair), each removal
+ * reporting the space it reclaimed. Idempotent — removing an absent pair is a note,
+ * not an error. Byte-for-byte with Rust's `run_models_remove`.
+ *
+ * @param {import("./io").Io} io
+ * @param {string | undefined} name
+ * @param {boolean} all
+ * @param {string | undefined} cacheDir
+ * @returns {number}
+ */
+function runModelsRemove(io, name, all, cacheDir) {
+  const cache = new Cache(cacheDir);
+
+  if (all) {
+    const cached = cache.listCached();
+    if (cached.length === 0) {
+      io.stdout("No models cached; nothing to remove.\n");
+      return 0;
+    }
+    let freed = 0;
+    for (const c of cached) {
+      cache.removePair(c.name);
+      io.stdout(`Removed ${c.name} (${humanBytes(c.bytes)})\n`);
+      freed += c.bytes;
+    }
+    io.stderr(`[${cached.length} removed, ${humanBytes(freed)} reclaimed]\n`);
+    return 0;
+  }
+
+  // A specific pair: look it up first so we can report the reclaimed size.
+  const found = cache.listCached().find((c) => c.name === name);
+  if (found) {
+    cache.removePair(/** @type {string} */ (name));
+    io.stdout(`Removed ${name} (${humanBytes(found.bytes)})\n`);
+  } else {
+    io.stdout(`${name} is not cached.\n`);
+  }
+  return 0;
+}
+
+/**
+ * `translate <src> <trg> [text…]`: resolve+load the session, then translate either
+ * the arg text (one line), piped stdin (one translation per line), or an interactive
+ * TTY REPL. Status lines go to stderr so piped stdout carries only translations.
+ * Byte-for-byte with Rust's `run_translate` on the interface (status/prompt/EOF);
+ * the translated TEXT is tolerant (wasm libm), per notes/13.
+ *
+ * @param {import("./io").Io} io
+ * @param {Deps} deps
+ * @param {string} src
+ * @param {string} trg
+ * @param {string} text
+ * @param {string | undefined} cacheDir
+ * @returns {Promise<number>}
+ */
+async function runTranslate(io, deps, src, trg, text, cacheDir) {
+  const translator = deps.translator || engineTranslator(deps.fetch || nodeFetch(), io.stderrIsTty);
+  io.stderr(`[fxtranslate] resolving ${src}→${trg} model…\n`);
+  const session = await translator.load(src, trg, cacheDir);
+  const pivot = session.pivot();
+  if (pivot) {
+    io.stderr(`[fxtranslate] ready (${src}→${pivot}→${trg}, pivot).\n`);
+  } else {
+    io.stderr(`[fxtranslate] ready (${src}→${trg}).\n`);
+  }
+
+  if (text !== "") {
+    io.stdout(`${session.translate(text)}\n`);
+    return 0;
+  }
+
+  if (io.stdinIsTty) {
+    await repl(session, io, src, trg);
+    return 0;
+  }
+
+  // Pipe mode: one translation per input line (marian-style).
+  for await (const line of readLines(io.stdin)) {
+    io.stdout(`${session.translate(line)}\n`);
+  }
+  return 0;
+}
+
+/**
+ * Minimal interactive REPL: a prompt on stderr, a line in, its translation out,
+ * until EOF (Ctrl-D). Blank lines are skipped. Mirrors Rust's `repl` — the prompt
+ * (`src→trg» ` on stderr, no newline), the intro line, and the trailing newline at
+ * EOF are all byte-identical.
+ *
+ * @param {import("./translate").Session} session
+ * @param {import("./io").Io} io
+ * @param {string} src
+ * @param {string} trg
+ * @returns {Promise<void>}
+ */
+async function repl(session, io, src, trg) {
+  io.stderr(`Interactive ${src}→${trg}. Type a sentence and press Enter; Ctrl-D to quit.\n`);
+  io.stderr(`${src}→${trg}» `);
+  for await (const line of readLines(io.stdin)) {
+    const t = line.trim();
+    if (t !== "") {
+      io.stdout(`${session.translate(t)}\n`);
+    }
+    io.stderr(`${src}→${trg}» `);
+  }
+  io.stderr("\n"); // EOF closes the final prompt line
+}
+
+/**
+ * Yield `stdin` one line at a time, stripping only the trailing `\n` (and a
+ * preceding `\r`) — matching Rust's `BufRead::read_line` line splitting. A final
+ * line with no trailing newline is still yielded.
+ *
+ * @param {NodeJS.ReadableStream} stdin
+ * @returns {AsyncGenerator<string>}
+ */
+async function* readLines(stdin) {
+  let buf = "";
+  stdin.setEncoding?.("utf8");
+  for await (const chunk of stdin) {
+    buf += chunk;
+    let nl;
+    while ((nl = buf.indexOf("\n")) >= 0) {
+      let line = buf.slice(0, nl);
+      if (line.endsWith("\r")) {
+        line = line.slice(0, -1);
+      }
+      yield line;
+      buf = buf.slice(nl + 1);
+    }
+  }
+  if (buf.length > 0) {
+    yield buf.endsWith("\r") ? buf.slice(0, -1) : buf;
+  }
+}
+
+module.exports = { run };
