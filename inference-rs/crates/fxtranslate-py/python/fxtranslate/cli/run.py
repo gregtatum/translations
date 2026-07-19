@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from typing import Callable, Optional, TextIO
 
 from .. import discovery
-from .._fxtranslate import Cache, Translator
+from .._engine import Cache, Translator
 from . import parse as p
 from .format import (
     PREFERRED_HUB,

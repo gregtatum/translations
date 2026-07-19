@@ -1,7 +1,7 @@
 """Firefox Translations neural machine-translation engine (native compiled Rust).
 
 This package is a thin re-export of the compiled extension module
-``fxtranslate._fxtranslate`` (built by maturin from the ``fxtranslate-py`` crate),
+``fxtranslate._engine`` (built by maturin from the ``fxtranslate-py`` crate),
 so consumers write::
 
     from fxtranslate import Translator, discovery
@@ -14,6 +14,6 @@ exposes the pure model-discovery helpers (record parsing, route resolution, cata
 segmentation, verify+decompress).
 """
 
-from ._fxtranslate import Cache, Translator, discovery
+from ._engine import Cache, Translator, discovery
 
 __all__ = ["Cache", "Translator", "discovery"]

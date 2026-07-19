@@ -27,12 +27,12 @@ Repository = "https://github.com/gregtatum/translations"
 
 [tool.maturin]
 # The distribution and import name are both `fxtranslate`, matching the crates.io and
-# npm packages. The compiled module lives at the private `fxtranslate._fxtranslate`,
-# and `python/fxtranslate/__init__.py` re-exports its public surface so users can write
+# npm packages. The compiled module lives at the private `fxtranslate._engine`, and
+# `python/fxtranslate/__init__.py` re-exports its public surface so users can write
 # `from fxtranslate import Translator`. Wrapping a compiled submodule in a Python source
 # package follows maturin's guidance and leaves room for the `.pyi` stubs and the CLI
 # shell without needing a second wheel.
-module-name = "fxtranslate._fxtranslate"
+module-name = "fxtranslate._engine"
 python-source = "python"
 # Turn on `pyo3/extension-module` only for the wheel build — it omits linking
 # libpython, which is correct for a loadable extension but would break a plain

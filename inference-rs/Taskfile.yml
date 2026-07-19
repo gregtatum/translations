@@ -239,24 +239,33 @@ tasks:
 
   build-py-conformance:
     internal: true
-    desc: Editable-install the fxtranslate Python binding so the conformance harness can drive its CLI.
+    desc: Build the fxtranslate Python binding into a local .venv so conformance can drive it.
     summary: |
-      `maturin develop` installs the native fxtranslate extension (and the CLI console
-      script) into the active interpreter — the SAME python3 that runs the conformance
-      harness, so `Cli(name="python", prefix=[sys.executable, "-m", "fxtranslate"])`
-      resolves the module it just built. Unlike rs:build-py/rs:test-py (which hard-fail
-      on a missing maturin), this is a SOFT dep: without maturin it prints a note and
-      returns 0, so the harness SKIPs the python binding cleanly — exactly as it SKIPs
-      npm when the wasm core isn't built. The Rust + npm bindings still run.
+      Provisions the interpreter the conformance harness drives the python binding under.
+      Creates a project-local `.venv` (gitignored; maturin auto-discovers a `.venv` in the
+      current-or-parent dir, so no activation is needed) and installs the native
+      fxtranslate extension into it with `maturin develop`. The conformance task then runs
+      `scripts/conformance.py` with `.venv/bin/python3`, so the harness's
+      `find_spec("fxtranslate")` probe resolves the module just built and the python
+      binding is exercised — locally exactly as in CI, never SKIPped.
+
+      maturin is REQUIRED (like rs:build-py / rs:test-py): without it this fails with an
+      install hint rather than silently dropping python coverage.
     dir: '{{.TASKFILE_DIR}}'
     cmds:
       - |
         if ! command -v maturin >/dev/null 2>&1; then
-          echo "note: maturin not found — the conformance harness will SKIP the python binding.";
-          echo "  install it (pipx install maturin) to exercise the python CLI in conformance.";
-          exit 0;
+          echo "maturin is required by 'task rs:conformance' but was not found.";
+          echo "Install it with one of:";
+          echo "  pipx install maturin       # isolated, recommended";
+          echo "  pip install maturin        # into the active environment";
+          exit 1;
         fi
-        maturin develop -m crates/fxtranslate-py/Cargo.toml
+      # The binding has no python runtime deps (see pyproject), so a bare `python3 -m venv`
+      # is enough — no network, no pip installs. Reused across runs; `maturin develop`
+      # rebuilds the extension every run, so the venv never holds a stale build.
+      - '[ -d .venv ] || python3 -m venv .venv'
+      - maturin develop -m crates/fxtranslate-py/Cargo.toml
 
   build-py:
     desc: Build the fxtranslate Python wheel (native PyO3 extension) with maturin.
@@ -319,11 +328,12 @@ tasks:
       stdout/stderr/exit for help, errors, `list`, and `models list/info/rm`. Hermetic:
       a loopback records server + throwaway cache dirs, no network, no model downloads —
       so it is fast and lives in the default `task rs:check`. Deps build the CLIs it
-      drives: the Rust binary, the npm wasm core (npm/wasm/), and the Python binding
-      (maturin develop into the active interpreter — a soft dep that lets the harness
-      SKIP python when maturin is absent). The Rust binary builds into a dedicated
-      target dir (target/conformance) so its dev-profile build doesn't thrash rs:test's
-      test-profile cache in the shared target/ — see build-cli.
+      drives: the Rust binary, the npm wasm core (npm/wasm/), and the Python binding into
+      a local .venv (build-py-conformance). The harness runs under .venv/bin/python3, so
+      the python binding is always exercised — no venv juggling, and maturin is required.
+      The Rust binary builds into a dedicated target dir (target/conformance) so its
+      dev-profile build doesn't thrash rs:test's test-profile cache in the shared
+      target/ — see build-cli.
 
       Run just one binding with, e.g., `task rs:conformance -- --only python`.
 
@@ -332,7 +342,7 @@ tasks:
     deps: [build-cli, build-wasm, build-py-conformance]
     dir: '{{.TASKFILE_DIR}}'
     cmds:
-      - python3 {{.TASKFILE_DIR}}/scripts/conformance.py {{.CLI_ARGS}}
+      - '{{.TASKFILE_DIR}}/.venv/bin/python3 {{.TASKFILE_DIR}}/scripts/conformance.py {{.CLI_ARGS}}'
 
   conformance-corpus:
     desc: Pass B of the CLI conformance harness — corpus translation parity, tolerant.

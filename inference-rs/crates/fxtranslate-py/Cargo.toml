@@ -14,8 +14,15 @@ repository = "git+https://github.com/gregtatum/translations.git"
 # `publish.py` workspace loader already treats `publish = false` as "guarded".
 publish = false
 
+# The lib name must be `_engine` — matching both the `#[pymodule] fn _engine` (which
+# emits the `PyInit__engine` symbol Python imports) and `module-name =
+# "fxtranslate._engine"` in pyproject. It must NOT be `fxtranslate`: this crate depends
+# on the core crate whose lib is also named `fxtranslate`, so both would emit
+# `libfxtranslate.dylib` and collide in a shared target dir — maturin then grabs the
+# core cdylib (no PyInit symbol) and the extension fails to import. Naming it `_engine`
+# gives `lib_engine.dylib`, which never clashes.
 [lib]
-name = "fxtranslate"
+name = "_engine"
 path = "src/lib.rs"
 # PyO3 needs a `cdylib` to emit the Python extension module. Unlike the wasm crate
 # we deliberately do NOT keep an `rlib`: nothing in the workspace depends on this

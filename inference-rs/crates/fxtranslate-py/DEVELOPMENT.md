@@ -25,7 +25,7 @@ crates/fxtranslate-py/
 
 Two conventions here are deliberate, following maturin's guidance:
 
-- The compiled module is the private `fxtranslate._fxtranslate`, and `python/fxtranslate/__init__.py` re-exports its surface so users write `from fxtranslate import Translator`. Wrapping a compiled submodule in a Python source package is what makes room for `.pyi` stubs and the CLI shell without a second wheel.
+- The compiled module is the private `fxtranslate._engine`, and `python/fxtranslate/__init__.py` re-exports its surface so users write `from fxtranslate import Translator`. Wrapping a compiled submodule in a Python source package is what makes room for `.pyi` stubs and the CLI shell without a second wheel. (The lib is named `_engine`, not `fxtranslate`, so it doesn't collide with the core crate's `libfxtranslate.dylib` — see `Cargo.toml`.)
 - `pyproject.toml` declares `dynamic = ["version"]`, so maturin reads the version straight from `Cargo.toml` — the workspace publisher bumps that one place.
 
 The wheel is built with PyO3's `abi3-py38`, so one wheel per platform serves every CPython ≥ 3.8. The `pyo3/extension-module` feature is set **only** through maturin (`[tool.maturin] features`), never in `Cargo.toml`, so a plain `cargo build -p fxtranslate-py` still links (see the `Cargo.toml` comment).

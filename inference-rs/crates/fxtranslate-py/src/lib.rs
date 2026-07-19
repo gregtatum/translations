@@ -473,7 +473,7 @@ mod discovery {
         let m = PyModule::new(py, "discovery")?;
         // Fully-qualified name so tracebacks/tooling see the real dotted path rather
         // than a bare `discovery`.
-        m.setattr("__name__", "fxtranslate._fxtranslate.discovery")?;
+        m.setattr("__name__", "fxtranslate._engine.discovery")?;
         m.add_function(wrap_pyfunction!(parse_records, &m)?)?;
         m.add_function(wrap_pyfunction!(resolve_route, &m)?)?;
         m.add_function(wrap_pyfunction!(catalog, &m)?)?;
@@ -484,11 +484,11 @@ mod discovery {
         m.add_function(wrap_pyfunction!(fetch_records_body, &m)?)?;
         m.add_function(wrap_pyfunction!(add_models, &m)?)?;
         parent.add_submodule(&m)?;
-        // Make `from fxtranslate._fxtranslate.discovery import ...` importable, not
+        // Make `from fxtranslate._engine.discovery import ...` importable, not
         // just attribute access — register the submodule in `sys.modules`.
         py.import("sys")?
             .getattr("modules")?
-            .set_item("fxtranslate._fxtranslate.discovery", &m)?;
+            .set_item("fxtranslate._engine.discovery", &m)?;
         Ok(())
     }
 }
@@ -496,7 +496,7 @@ mod discovery {
 /// The compiled extension module. Users import the friendly `fxtranslate` package
 /// (`python/fxtranslate/__init__.py`), which re-exports this private submodule.
 #[pymodule]
-fn _fxtranslate(m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn _engine(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Translator>()?;
     m.add_class::<PyCache>()?;
     discovery::register(m)?;
