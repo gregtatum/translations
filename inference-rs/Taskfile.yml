@@ -186,19 +186,35 @@ tasks:
       - python3 {{.TASKFILE_DIR}}/scripts/release_build.py {{.CLI_ARGS}}
 
   publish:
-    desc: Publish the fxtranslate ecosystem — crates.io + npm — in lockstep, then tag.
+    desc: Publish the fxtranslate ecosystem — crates.io + npm + PyPI — in lockstep, then tag.
     summary: |
-      Bumps both publishable crates AND npm/package.json in lockstep on one shared
-      version, builds + tests, publishes the engine then the CLI to crates.io (that
-      order — the CLI pins the engine exactly), publishes the npm package (whose
-      prepublishOnly rebuilds the wasm core + runs parity), and creates + pushes the
-      fxtranslate-vX.Y.Z tag once everything is up. Re-runs are safe (already-published
-      crates and npm versions are skipped). Needs `cargo login`, `npm login`, a clean
-      tree, and should be on main. See inference-rs/RELEASING.md for the full checklist.
+      A resumable release orchestrator. Bumps both publishable crates AND
+      npm/package.json in lockstep on one shared version (the PyPI package reads its
+      version from its crate Cargo.toml, so it moves for free), builds + tests, publishes
+      the engine then the CLI to crates.io (that order — the CLI pins the engine exactly),
+      publishes the npm package (whose prepublishOnly rebuilds the wasm core + runs
+      parity), handles the PyPI leg (builds the sdist + local wheel; uploads with
+      --pypi-upload), and creates + pushes the fxtranslate-vX.Y.Z tag last, once every
+      registry is up — so the tag never marks a half-published release.
+
+      It runs as a two-pass status board like `task rs:check`: it first probes the
+      registries + git (read-only) to render what's done vs pending, then executes the
+      pending steps in order with stdout hidden, dumping the full log + a per-step healing
+      hint only on failure. Status is derived from the world, never stored, so re-runs are
+      self-healing: fix the one red row and re-run to resume (a bare run resumes the
+      manifest version; a bump level is refused mid-release, guarding a double-bump).
+      Already-published crates/npm/PyPI versions are skipped. Use --status for the
+      probe-only board, --dry-run to preview (renders the board, runs only the reversible
+      validate steps), and --watch-wheels to poll the CI-built wheel matrix to 5/5.
+
+      Needs `cargo login`, `npm login`, maturin + twine, a clean tree, and should be on
+      main. See inference-rs/RELEASING.md for the full checklist.
 
       Examples:
+        task rs:publish -- --status          # probe-only board: what's done vs pending
         task rs:publish -- patch --dry-run   # preview; changes nothing
         task rs:publish -- patch             # release for real (or: minor / major / --set X.Y.Z)
+        task rs:publish                       # resume an in-flight release (no bump)
     dir: '{{.TASKFILE_DIR}}'
     cmds:
       - python3 {{.TASKFILE_DIR}}/scripts/publish.py {{.CLI_ARGS}}
