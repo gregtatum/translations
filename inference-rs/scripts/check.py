@@ -10,16 +10,32 @@ while non-TTY runs report the first completed failure and stop the rest.
 
 Each entry in CHECKS is a task in this directory's Taskfile, namespaced under
 `rs:`. Invoked via `task rs:check`.
+
+The presentation (colors, the group-tree renderer, the failure-log dump) lives
+in the shared `statusboard` module so this board and the publish orchestrator
+read as one family; this file keeps the scheduler and the CHECKS list.
 """
 
 import os
-import re
 import signal
 import subprocess
 import sys
 import threading
 import time
 from typing import Optional
+
+from statusboard import (
+    IS_INTERACTIVE,
+    InteractiveRenderer,
+    Group,
+    Row,
+    color,
+    format_duration,
+    print_failures,
+    print_results,
+    status_glyph,
+    strip_ansi,
+)
 
 CHECKS = [
     {"task": "rs:lint-black", "label": "Lint Black"},
@@ -39,7 +55,6 @@ CHECKS = [
 MAX_CONCURRENT_HEAVY = 1
 _heavy_slots = threading.Semaphore(MAX_CONCURRENT_HEAVY)
 
-IS_INTERACTIVE = sys.stdout.isatty()
 LABEL_WIDTH = max(len(check["label"]) for check in CHECKS)
 
 # The interactive summary is grouped by how the checks are scheduled: the light
@@ -52,42 +67,6 @@ GROUPS = [
 ]
 # Column where the duration starts: tree connector ("├─ ") + glyph ("✓ ") + label.
 DURATION_COL = 5 + LABEL_WIDTH
-# Lines the live summary redraws in place: one header per group plus every check.
-RENDER_LINE_COUNT = len(GROUPS) + len(CHECKS)
-
-COLORS = {
-    "bold": "\x1b[1m",
-    "green": "\x1b[32m",
-    "red": "\x1b[31m",
-    "cyan": "\x1b[36m",
-    "dim": "\x1b[2m",
-    "reset": "\x1b[0m",
-}
-
-ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
-
-
-def format_duration(duration_ms: float) -> str:
-    return f"{duration_ms / 1000:.1f}s"
-
-
-def color(text: str, color_name: str) -> str:
-    if not IS_INTERACTIVE:
-        return text
-    return f"{COLORS[color_name]}{text}{COLORS['reset']}"
-
-
-def styled(text: str, *color_names: str) -> str:
-    if not IS_INTERACTIVE:
-        return text
-    prefix = "".join(COLORS[name] for name in color_names)
-    return f"{prefix}{text}{COLORS['reset']}"
-
-
-def status_glyph(result: Optional[dict], is_running: bool = False) -> str:
-    if not result:
-        return color("•", "dim") if is_running else color("·", "dim")
-    return color("✓", "green") if result["exit_code"] == 0 else color("x", "red")
 
 
 def format_row(check: dict, result: Optional[dict], is_running: bool = False) -> str:
@@ -187,9 +166,6 @@ class CheckProcess:
             self._proc.send_signal(sig)
 
 
-_has_rendered = False
-
-
 def group_duration_text(checks: list, results: dict, started_at: dict, now: float) -> str:
     starts = [started_at[check["task"]] for check in checks if check["task"] in started_at]
     if not starts:
@@ -202,48 +178,38 @@ def group_duration_text(checks: list, results: dict, started_at: dict, now: floa
     return color(format_duration((now - group_start) * 1000), "dim")
 
 
-def render_group_header(
-    title: str, checks: list, results: dict, started_at: dict, now: float
-) -> str:
-    left = title.ljust(DURATION_COL)
-    duration = group_duration_text(checks, results, started_at, now)
-    return f"{styled(left, 'bold')} {duration}".rstrip()
-
-
-def render_group_child(
-    check: dict, result: Optional[dict], is_running: bool, is_last: bool
-) -> str:
-    connector = "└─" if is_last else "├─"
-    label = check["label"].ljust(LABEL_WIDTH)
+def child_right_text(result: Optional[dict], is_running: bool) -> str:
     if is_running:
-        duration = color("running...", "dim")
-    elif result:
-        duration = format_duration(result["duration_ms"])
-    else:
-        duration = ""
-    left = f"{color(connector, 'dim')} {status_glyph(result, is_running)} {label}"
-    return f"{left} {duration}".rstrip()
+        return color("running...", "dim")
+    if result:
+        return format_duration(result["duration_ms"])
+    return ""
 
 
-def render_interactive(results: dict, running_tasks: set, started_at: dict) -> None:
-    global _has_rendered
-
-    if _has_rendered:
-        # Move the cursor back up to the top of the summary block to redraw it in place.
-        sys.stdout.write(f"\x1b[{RENDER_LINE_COUNT}F")
-
+def board_snapshot(results: dict, running_tasks: set, started_at: dict) -> tuple:
+    """The current group tree for the shared interactive renderer."""
     now = time.monotonic()
+    groups = []
     for title, checks in GROUPS:
-        header = render_group_header(title, checks, results, started_at, now)
-        sys.stdout.write(f"\x1b[2K{header}\n")
-        for index, check in enumerate(checks):
+        rows = []
+        for check in checks:
             result = results.get(check["task"])
             is_running = check["task"] in running_tasks
-            child = render_group_child(check, result, is_running, is_last=index == len(checks) - 1)
-            sys.stdout.write(f"\x1b[2K{child}\n")
-
-    sys.stdout.flush()
-    _has_rendered = True
+            rows.append(
+                Row(
+                    glyph=status_glyph(result, is_running),
+                    label=check["label"],
+                    right=child_right_text(result, is_running),
+                )
+            )
+        groups.append(
+            Group(
+                title=title,
+                rows=rows,
+                right=group_duration_text(checks, results, started_at, now),
+            )
+        )
+    return groups, LABEL_WIDTH, DURATION_COL
 
 
 def clean_task_output(result: dict) -> str:
@@ -252,60 +218,6 @@ def clean_task_output(result: dict) -> str:
         line for line in result["output"].split("\n") if not strip_ansi(line).startswith(prefix)
     ]
     return "\n".join(lines)
-
-
-def strip_ansi(text: str) -> str:
-    return ANSI_RE.sub("", text)
-
-
-def print_failures(results: list) -> None:
-    failures = [result for result in results if result["exit_code"] != 0]
-
-    if not failures:
-        return
-
-    if IS_INTERACTIVE:
-        print(styled("✖ Failures", "bold", "red"))
-        print(styled("──────────", "red"))
-    else:
-        print("FAILURES")
-
-    for result in failures:
-        label = result["label"]
-        task = result["task"]
-        exit_code = result["exit_code"]
-        cmd = f"task --silent --exit-code {task}"
-        print()
-        if IS_INTERACTIVE:
-            print(
-                f"{styled('┌─', 'red')} {styled(label, 'bold', 'red')} failed "
-                f"{styled(f'exit {exit_code}', 'red')}  "
-                f"{styled(f'run: task {task}', 'dim')}"
-            )
-            print(f"{styled('│', 'red')} {styled(cmd, 'dim')}")
-            print(styled("└─ output", "red"))
-        else:
-            print(f"FAIL {label} exit {exit_code} | run: task {task}")
-            print(f"cmd: {cmd}")
-            print("output:")
-        output = clean_task_output(result)
-        sys.stdout.write(output or "(no output)\n")
-        if output and not output.endswith("\n"):
-            sys.stdout.write("\n")
-
-    print()
-
-
-def print_results(results: list) -> None:
-    if not IS_INTERACTIVE or all(result["exit_code"] == 0 for result in results):
-        return
-
-    print(styled("◆ Results", "bold", "cyan"))
-    print(styled("─────────", "cyan"))
-
-    for result in results:
-        retry = "" if result["exit_code"] == 0 else f"  run: task {result['task']}"
-        print(f"{format_row(result, result)}{retry}")
 
 
 def run_interactive_checks(results_by_task: dict) -> None:
@@ -317,7 +229,10 @@ def run_interactive_checks(results_by_task: dict) -> None:
     started_at: dict = {task: start_time for task in running_tasks}
     render_lock = threading.Lock()
 
-    render_interactive(results_by_task, running_tasks, started_at)
+    renderer = InteractiveRenderer(
+        lambda: board_snapshot(results_by_task, running_tasks, started_at)
+    )
+    renderer.render()
 
     def watch(check: dict) -> None:
         if check.get("heavy"):
@@ -326,7 +241,7 @@ def run_interactive_checks(results_by_task: dict) -> None:
             with render_lock:
                 running_tasks.add(check["task"])
                 started_at.setdefault(check["task"], time.monotonic())
-                render_interactive(results_by_task, running_tasks, started_at)
+                renderer.render()
             result = CheckProcess(check).wait()
         finally:
             if check.get("heavy"):
@@ -334,11 +249,11 @@ def run_interactive_checks(results_by_task: dict) -> None:
         with render_lock:
             results_by_task[check["task"]] = result
             running_tasks.discard(check["task"])
-            render_interactive(results_by_task, running_tasks, started_at)
+            renderer.render()
 
     join_all(threading.Thread(target=watch, args=(check,)) for check in CHECKS)
 
-    if _has_rendered:
+    if renderer.has_rendered:
         print()
 
 
@@ -410,8 +325,8 @@ def main() -> None:
         results_by_task[check["task"]] for check in CHECKS if check["task"] in results_by_task
     ]
 
-    print_failures(results)
-    print_results(results)
+    print_failures(results, clean_output=clean_task_output)
+    print_results(results, lambda result: format_row(result, result))
 
     if any(result["exit_code"] != 0 for result in results):
         sys.exit(1)
