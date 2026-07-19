@@ -11,12 +11,17 @@ drift: everything bumps together and publishes together, or the run stops.
 
 The safety story is the reason this is a script and not a handful of commands. A
 registry upload is effectively permanent (it can only be yanked/deprecated, never
-replaced), and publishing several of them is not atomic. So the design is: do all the
-reversible work first (bump, build, test, validate packaging), then the irreversible
-uploads, and only once every upload has landed create the git tag — the one atomic step
-— so the tag can never mark a half-published release. That also makes a re-run the
-recovery path: an interrupted release is resumed by running the same command, because
-already-published artifacts are detected and skipped.
+replaced), and publishing several of them is not atomic. So the design is: verify auth
+and do all the reversible work first (bump, build, test, validate packaging), then the
+irreversible uploads, and only once every upload has landed create the git tag — the
+one atomic step — so the tag can never mark a half-published release.
+
+Interrupted-release recovery uses `--initial`, NOT a re-run of the bump. Once the bump
+is committed the manifests already carry the target version, so a fresh `patch`/`minor`
+would bump AGAIN and publish a version further along. `--initial` instead targets the
+version already in the manifests: it re-runs every step at that version, and because
+already-published crates and npm versions are detected and skipped, only the uploads
+that didn't land the first time — plus the tag and push — actually happen.
 
 `--dry-run` exercises the whole reversible half (including `cargo`/`npm` dry-run
 packaging) and prints the plan, touching no registry, file, or git ref. Operator setup,
@@ -24,11 +29,13 @@ the checklist, and first-time-publish notes live in RELEASING.md; run with -h fo
 """
 
 import argparse
+import json
 import re
 import shutil
 import subprocess
 import sys
 import tomllib
+import urllib.request
 from pathlib import Path
 
 WORKSPACE = Path(__file__).resolve().parent.parent  # inference-rs/
@@ -260,6 +267,21 @@ def git(*args: str) -> str:
     return r.stdout.strip()
 
 
+def check_npm_auth() -> None:
+    """Confirm npm is logged in BEFORE the first irreversible upload. Crates publish
+    first, so a logged-out release would otherwise push the crates to crates.io and only
+    then fail at npm — leaving a half-published release. npm also reports a logged-out
+    first publish as a bare 404 (it won't say "unauthorized" for a package you can't
+    see), so check `npm whoami` here and fail fast with a clear reason."""
+    if not shutil.which("npm"):
+        die("npm not found on PATH; it's needed to publish the npm package")
+    r = sh(["npm", "whoami"])
+    if r.returncode != 0:
+        die("not authenticated to npm — run `npm login` first (crates.io is published "
+            "first, so releasing while logged out would half-publish the release)")
+    log(f"npm authenticated as {r.stdout.strip()}")
+
+
 def preflight(allow_dirty: bool) -> None:
     if (
         not (WORKSPACE / ".git").exists()
@@ -277,12 +299,15 @@ def preflight(allow_dirty: bool) -> None:
 # --- publish steps -----------------------------------------------------------
 
 
-def validate_packaging(order: list[Crate]) -> list[str]:
+def validate_packaging(order: list[Crate], version: str) -> list[str]:
     """Dry-run packaging for each publishable crate (catches missing files, bad
     metadata). Uses the committed manifests — for a dependent crate this needs its
     workspace dependency already on crates.io, so a not-yet-published dep is reported,
-    not treated as fatal. Returns the names of crates whose `cargo publish --dry-run`
-    did not pass cleanly, so the caller can flag them in the summary."""
+    not treated as fatal. A crate whose `version` is already live on crates.io skips the
+    verify-compile (it obviously packages, and re-verifying it can fail on a stale
+    target/package copy of a dependency); its file list is still listed. Returns the
+    names of crates whose `cargo publish --dry-run` did not pass cleanly, so the caller
+    can flag them in the summary."""
     unclean: list[str] = []
     for c in order:
         log(f"cargo package --list -p {c.name}")
@@ -291,6 +316,9 @@ def validate_packaging(order: list[Crate]) -> list[str]:
             log(f"  (package --list reported: {r.stderr.strip().splitlines()[-1:] })")
         else:
             log(f"  {len(r.stdout.splitlines())} files would be packaged")
+        if already_published(c.name, version):
+            log(f"  {c.name} {version} already on crates.io; skipping publish verify")
+            continue
         log(f"cargo publish --dry-run -p {c.name}")
         # `--allow-dirty`: cleanliness is the real run's concern (preflight); a
         # dry-run must validate packaging regardless of unrelated working changes.
@@ -315,8 +343,52 @@ def validate_packaging(order: list[Crate]) -> list[str]:
     return unclean
 
 
-def publish_crate(crate: str) -> None:
-    """Publish one crate; treat 'already uploaded' as success so a re-run is safe."""
+def crate_index_path(name: str) -> str:
+    """The crates.io sparse-index path for `name` (its documented prefix layout)."""
+    n = name.lower()
+    if len(n) == 1:
+        return f"1/{n}"
+    if len(n) == 2:
+        return f"2/{n}"
+    if len(n) == 3:
+        return f"3/{n[0]}/{n}"
+    return f"{n[:2]}/{n[2:4]}/{n}"
+
+
+def already_published(name: str, version: str) -> bool:
+    """Whether `version` of `name` is a live (non-yanked) release on crates.io, per the
+    sparse index. This lets a re-run skip a crate WITHOUT invoking `cargo publish`, which
+    re-verifies by compiling the packaged crate — a step that can fail on an
+    already-shipped release (e.g. against a stale target/package copy of a dependency)
+    and wedge an otherwise-complete release. On any lookup error, return False so the
+    normal publish path still runs (fail open, never falsely skip)."""
+    url = f"https://index.crates.io/{crate_index_path(name)}"
+    try:
+        with urllib.request.urlopen(url, timeout=15) as resp:
+            body = resp.read().decode()
+    except Exception as e:  # noqa: BLE001 — any failure just means "don't skip"
+        log(f"  (crates.io index check for {name} {version} failed: {e}; will let cargo decide)")
+        return False
+    for line in body.splitlines():
+        if not line.strip():
+            continue
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if rec.get("vers") == version and not rec.get("yanked", False):
+            return True
+    return False
+
+
+def publish_crate(crate: str, version: str) -> None:
+    """Publish one crate. Skip cleanly if `version` is already live on crates.io — both
+    the belt-and-suspenders 'already uploaded' stderr check and an up-front index lookup,
+    so a recovery re-run never re-verifies (and can't fail on) a crate that already
+    shipped."""
+    if already_published(crate, version):
+        log(f"{crate} {version} is already on crates.io; skipping")
+        return
     log(f"cargo publish -p {crate}")
     # --allow-dirty packages the staged CHANGELOG.md copy, an intentional untracked
     # file (see stage_changelog); the version bump is already committed.
@@ -368,9 +440,14 @@ def publish_npm() -> None:
     if "previously published" in combined or "cannot publish over" in combined:
         log("  npm version is already on the registry; skipping")
         return
+    hint = ""
+    if "E401" in combined or "ENEEDAUTH" in combined or "E404" in combined:
+        # npm returns a bare 404 on a logged-out first publish; check_npm_auth should
+        # have caught this earlier, but say so plainly if it slips through.
+        hint = " — this looks like an auth failure; run `npm login` and re-run with --initial"
     die(
-        "npm publish failed (see above); crates already on crates.io stay up — "
-        "fix and re-run to publish npm, then the tag is created"
+        f"npm publish failed (see above){hint}. Crates already on crates.io stay up; "
+        "finish with `--initial` (publishes npm at the committed version, then tags)"
     )
 
 
@@ -479,7 +556,8 @@ def main() -> None:
         # then remove it — the tree is left as it was found.
         staged = stage_changelog(order)
         try:
-            unclean = validate_packaging(order)
+            # Dry-run validates the committed manifests, which are still at `old`.
+            unclean = validate_packaging(order, old)
         finally:
             cleanup_changelog(staged)
         validate_npm_packaging()  # dies on failure, so reaching here means npm is OK
@@ -503,6 +581,8 @@ def main() -> None:
 
     # --- real release ---
     preflight(args.allow_dirty)
+    # Verify npm auth up front, before any irreversible crates.io upload.
+    check_npm_auth()
     if bumping:
         rewrite_versions(crates, old, new, apply=True)
         rewrite_npm_version(old, new, apply=True)
@@ -521,7 +601,8 @@ def main() -> None:
     # them up, and the tag points at a tree with a single workspace changelog.
     staged = stage_changelog(order)
     try:
-        validate_packaging(order)
+        # After the bump the manifests are at `new` (== `old` on --initial).
+        validate_packaging(order, new)
 
         # Commit before publishing, so the published crates correspond to a committed
         # state (and the tag we create points at exactly what shipped). On `--initial`
@@ -542,7 +623,7 @@ def main() -> None:
 
         # crates.io first (not atomic, not reversible) ...
         for c in order:
-            publish_crate(c.name)
+            publish_crate(c.name, new)
         # ... then npm (also not reversible). Its prepublishOnly rebuilds the wasm core.
         publish_npm()
     finally:

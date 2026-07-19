@@ -42,7 +42,20 @@ Other flags: `--no-push` (commit + tag locally, push by hand), `--allow-dirty`, 
 
 ## Ordering and re-runs
 
-Publishing to crates.io then npm is **not atomic and not reversible** — an upload can only be yanked or deprecated. So the publisher uploads every registry first and creates the git tag **last**, once everything is up; the tag therefore never points at a half-published release. A run interrupted midway is recoverable: fix the cause and re-run the same command. Crates already on crates.io and an npm version already on the registry are detected and skipped, the remaining artifacts publish, then the tag lands.
+Publishing to crates.io then npm is **not atomic and not reversible** — an upload can only be yanked or deprecated. So the publisher checks auth, uploads every registry first, and creates the git tag **last**, once everything is up; the tag therefore never points at a half-published release.
+
+A run interrupted *after* the version bump was committed (e.g. crates published but npm failed) is completed with **`--initial`**, not a fresh bump:
+
+```console
+$ task rs:publish -- --initial      # publishes the already-committed version; do NOT re-run `patch`
+```
+
+`--initial` targets the version already in the manifests instead of bumping again (a re-run of `patch` would move 0.4.1 → 0.4.2 and publish a further version). Crates already on crates.io and an npm version already on the registry are detected and skipped, so only the uploads that didn't land, plus the tag and push, happen.
+
+## Troubleshooting
+
+- **`npm publish` fails with `404 Not Found - PUT .../fxtranslate`** — you're not logged in. npm reports a logged-out *first* publish as a 404 (it won't reveal a package you can't see). Run `npm login`, confirm with `npm whoami`, then complete the release with `--initial`. The publisher now checks `npm whoami` up front, so a logged-out release stops before touching crates.io.
+- **A crate's `cargo publish --dry-run` reports "failed to select a version for ... `=X.Y.Z`"** — expected during a bump: `fxtranslate-cli` pins the not-yet-published engine version. It resolves once the engine uploads (engine publishes first). The dry-run flags it as a note, not a failure.
 
 ## First-time publishing
 
