@@ -1,0 +1,36 @@
+[package]
+name = "fxtranslate-py"
+version = "0.4.1"
+edition = "2021"
+description = "Python (PyO3) build of the fxtranslate neural machine-translation engine — native compiled Rust, SIMD int8 GEMM, batteries-included model management."
+license = "MPL-2.0"
+# Fed into the wheel/sdist metadata via maturin so the PyPI project links back to
+# source (maturin reads this when pyproject omits an explicit `[project.urls]`
+# beyond the one it already declares).
+repository = "git+https://github.com/gregtatum/translations.git"
+# `publish = false` is a *cargo* directive: it keeps this crate off crates.io (like
+# the wasm and oracle crates). It does NOT affect maturin / PyPI — the wheel is
+# built and uploaded (by the user, when ready) independently of cargo. The
+# `publish.py` workspace loader already treats `publish = false` as "guarded".
+publish = false
+
+[lib]
+name = "fxtranslate"
+path = "src/lib.rs"
+# PyO3 needs a `cdylib` to emit the Python extension module. Unlike the wasm crate
+# we deliberately do NOT keep an `rlib`: nothing in the workspace depends on this
+# crate, and the binding tests run through Python (pytest), not `cargo test`.
+crate-type = ["cdylib"]
+
+[dependencies]
+# The engine in its native fast + batteries-included config. `net` implies
+# `download` implies `discovery`, so this single line turns on the gemmology SIMD
+# kernel, mmap, ICU4X sentence segmentation, Remote Settings discovery, the verified
+# cache, and the built-in `ureq`/rustls HTTP client — exactly the native-only
+# capabilities the wasm crate cannot have.
+fxtranslate = { path = "../fxtranslate", default-features = false, features = ["lean-embed", "gemmology", "mmap", "icu-segmenter", "net"] }
+# `abi3-py38` builds against CPython's stable ABI: one wheel per platform serves
+# every CPython >= 3.8. The `extension-module` feature is intentionally NOT set here
+# — maturin adds it via `pyo3/extension-module` in pyproject.toml. Setting it here
+# too would break plain `cargo build`/`cargo check` with undefined `_Py*` symbols.
+pyo3 = { version = "0.29", features = ["abi3-py38"] }

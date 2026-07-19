@@ -237,6 +237,59 @@ tasks:
     cmds:
       - npm run build:wasm
 
+  build-py:
+    desc: Build the fxtranslate Python wheel (native PyO3 extension) with maturin.
+    summary: |
+      Builds the fxtranslate-py crate into a Python wheel with maturin. The engine is
+      native compiled Rust (gemmology SIMD, mmap, built-in networked model management)
+      — the fast, batteries-included face of the engine, unlike the wasm npm build.
+      Pass `-- develop` for an editable install into the active venv instead of a
+      wheel; any extra args flow through to maturin.
+
+      Examples:
+        task rs:build-py                 # build a wheel into target/wheels/
+        task rs:build-py -- develop      # editable install into the active venv
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      # maturin is a separate tool, not confirmed installed — fail with an install
+      # hint rather than the bare `command not found`.
+      - |
+        if ! command -v maturin >/dev/null 2>&1; then
+          echo "maturin is required by 'task rs:build-py' but was not found.";
+          echo "Install it with one of:";
+          echo "  pipx install maturin       # isolated, recommended";
+          echo "  pip install maturin        # into the active environment";
+          exit 1;
+        fi
+      - |
+        if [ "{{.CLI_ARGS}}" = "develop" ]; then
+          maturin develop -m crates/fxtranslate-py/Cargo.toml;
+        else
+          maturin build -m crates/fxtranslate-py/Cargo.toml {{.CLI_ARGS}};
+        fi
+
+  test-py:
+    desc: Run the hermetic pytest suite for the fxtranslate Python binding.
+    summary: |
+      Installs the fxtranslate wheel into the active environment with `maturin develop`
+      and runs the offline pytest suite (crates/fxtranslate-py/tests) — binding-loads,
+      backend(), discovery over the recorded Remote Settings fixture, and error mapping.
+      No network, no real model. Deps on build-cli so the Rust oracle binary exists when
+      the opt-in translate-parity test is enabled (FXTRANSLATE_MODEL_DIR set).
+    dir: '{{.TASKFILE_DIR}}'
+    deps: [build-cli]
+    cmds:
+      - |
+        if ! command -v maturin >/dev/null 2>&1; then
+          echo "maturin is required by 'task rs:test-py' but was not found.";
+          echo "Install it with one of:";
+          echo "  pipx install maturin       # isolated, recommended";
+          echo "  pip install maturin        # into the active environment";
+          exit 1;
+        fi
+      - maturin develop -m crates/fxtranslate-py/Cargo.toml
+      - python3 -m pytest crates/fxtranslate-py/tests {{.CLI_ARGS}}
+
   conformance:
     desc: Pass A of the CLI conformance harness — interface parity, byte-exact, hermetic.
     summary: |

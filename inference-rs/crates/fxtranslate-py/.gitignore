@@ -1,0 +1,4 @@
+# maturin/twine build output — the sdist + wheel the publisher (scripts/publish.py)
+# builds into dist/ for `twine check`/`twine upload`; a build artifact, never committed.
+/dist/
+*.egg-info/
