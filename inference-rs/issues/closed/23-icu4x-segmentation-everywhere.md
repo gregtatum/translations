@@ -1,13 +1,24 @@
 # Use ICU4X sentence segmentation everywhere
 
-**Open, scoped.** Today the native CLI and the wasm/npm package segment with two
+**Closed, done.** Today the native CLI and the wasm/npm package segment with two
 *different* engines, so identical input can produce different sentence boundaries
 across the two artifacts. Unify on **one** engine — ICU4X (`icu_segmenter`) — for
 both, and delete the wiring that only exists to route around wasm being icu-free.
-Keep [`BasicSegmenter`](../crates/fxtranslate/src/segment.rs) available as an
+Keep [`BasicSegmenter`](../../crates/fxtranslate/src/segment.rs) available as an
 opt-out for size-sensitive or dependency-free builds. This is the foundation for
-[24-abbreviation-suppression.md](24-abbreviation-suppression.md); the prefix-table
-follow-up is [25-segmenter-prefix-tables.md](25-segmenter-prefix-tables.md).
+[24-abbreviation-suppression.md](../24-abbreviation-suppression.md); the prefix-table
+follow-up is [25-segmenter-prefix-tables.md](../25-segmenter-prefix-tables.md).
+
+**Resolution.** wasm now enables the `icu-segmenter` feature, so `translate_long`
+and `segmentSentences` both route through ICU4X — the same engine as the CLI. The
+icu-free comments are gone from `lib.rs`/`segment.rs`/the Cargo manifests; the
+single-engine + ICU4X≡Firefox rationale is recorded in `architecture.md` and both
+READMEs. A native≡wasm segmentation equality check over a corpus (exercising
+`U.S.`, `...`, CJK, and abbreviations where the engines diverge) lives in
+`crates/fxtranslate-wasm/tests/discovery_parity.rs`, proven under both `cargo test`
+and `wasm-pack test --node`. `BasicSegmenter` remains the `icu-segmenter`-off
+opt-out and that build links no ICU (verified via `cargo tree`). wasm module grew
+330 KB → 348 KB (+18 KB).
 
 ## Current state: two engines, one product
 

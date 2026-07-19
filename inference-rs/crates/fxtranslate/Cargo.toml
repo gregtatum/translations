@@ -41,7 +41,8 @@ ureq = { version = "2", optional = true }
 # Unicode (UAX #29) sentence segmentation for long-input translation (feature
 # `icu-segmenter`). Rule-based with bundled `compiled_data` — no runtime data
 # files, and CJK works without the large word-segmentation dictionaries (those are
-# only for word breaking). Optional so the lean/wasm engine stays icu-free.
+# only for word breaking). Optional so a size-sensitive build can drop ICU and
+# fall back to `BasicSegmenter`; the CLI and the wasm/npm build both enable it.
 icu_segmenter = { version = "2", optional = true }
 
 [features]
@@ -117,13 +118,17 @@ download = ["discovery", "dep:dirs"]
 net = ["download", "dep:ureq"]
 
 # Unicode sentence segmentation for `Engine::translate_long` / `translate_segmented`
-# via `icu_segmenter` (UAX #29, CJK-capable). Off by default: the segmentation
-# logic and the built-in `BasicSegmenter` fallback are always compiled; this only
-# swaps in the Unicode-correct segmenter. fxtranslate-cli enables it.
+# via `icu_segmenter` (UAX #29, CJK-capable). Off by default at the crate level: the
+# segmentation logic and the built-in `BasicSegmenter` fallback are always compiled;
+# this swaps in the Unicode-correct segmenter. Both fxtranslate-cli and
+# fxtranslate-wasm enable it, so the product ships one segmentation engine across
+# native and wasm/npm; leaving it off is the compile-time opt-out that drops the ICU
+# dependency entirely.
 # Binary-size impact (release, aarch64): +~18 KiB when ICU is already linked (the
 # CLI pulls it via `net`→idna→icu_normalizer); the segmenter code is ~380 B and
-# the rest is the UAX#29 sentence-break data. A lean build with no other ICU pays
-# for the shared ICU core too. Measured via `cargo bloat` / release binary diff.
+# the rest is the UAX#29 sentence-break data. In the lean wasm build (no other ICU)
+# the sentence-break tables add +~19 KiB wasm-opt'd. Measured via `cargo bloat` /
+# release binary diff and the wasm module size.
 icu-segmenter = ["dep:icu_segmenter"]
 
 [build-dependencies]

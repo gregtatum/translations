@@ -1,6 +1,6 @@
 # Non-breaking-prefix suppression on top of ICU4X (fix the abbreviation regression)
 
-**Open, scoped. Depends on [23-icu4x-segmentation-everywhere.md](23-icu4x-segmentation-everywhere.md).**
+**Open, scoped. Depends on [23-icu4x-segmentation-everywhere.md](closed/23-icu4x-segmentation-everywhere.md) (done).**
 ICU4X (and every `Intl.Segmenter`) over-splits abbreviations: `Dr. Smith went to
 Washington.` breaks into `["Dr.", "Smith went to Washington."]`. Add a thin,
 data-driven suppression layer over ICU4X's UAX #29 boundaries that merges back a

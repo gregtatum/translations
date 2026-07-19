@@ -58,6 +58,14 @@ the published tarball self-contained — `npm pack` bundles `wasm/`, and a consu
 `npm install fxtranslate` gets the engine without the Rust workspace. `wasm/` is a
 build artifact and is gitignored.
 
+Sentence segmentation (`segmentSentences`, and the long-input translate path) uses
+**ICU4X** (`icu_segmenter`, UAX #29) compiled into the wasm module — the same
+engine the native Rust CLI uses, so both split identical input at identical
+boundaries. It is also the engine family behind Firefox's `Intl.Segmenter`
+(Node/Chrome ship a different ICU via V8), so bundling our own pins segmentation
+to Firefox's behavior on every host. The rule-based sentence-break tables add
+~19 KB to the module — negligible against a ~150 MB model download.
+
 ## Types without a compile step
 
 The `.js` is authored with JSDoc and **ships as written** — there is no TypeScript

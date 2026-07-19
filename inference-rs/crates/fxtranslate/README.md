@@ -74,7 +74,7 @@ dependency (and wasm) stays lean — the default build pulls only `memmap2`.
 | `mmap` | `Engine::load_mmapped` — model tensors are views into a memory mapping (file-backed pages) instead of owned heap copies; on under `fast` | `memmap2` |
 | `download` | Remote Settings discovery (`remote`), verified local cache (`cache`), the pluggable `fetch::Fetch` client + retry/resume, language display names (`lang`), and the `src→trg`→`Engine` convenience (`loader`) | `tinyjson`, `ruzstd`, `sha2`, `dirs` (pure-Rust, no TLS/C) |
 | `net` | the built-in `fetch::NetworkFetch` (HTTPS via rustls); implies `download` | `ureq` |
-| `icu-segmenter` | Unicode (UAX #29) sentence segmentation for `Engine::translate_long`/`translate_segmented`, so long / multi-sentence input is split and translated per sentence instead of truncating; CJK-capable. Off by default — the built-in `BasicSegmenter` is the fallback | `icu_segmenter` (compiled data; **+~18 KiB** when `net`/ICU is already present, e.g. the CLI — larger on a lean build with no other ICU) |
+| `icu-segmenter` | Unicode (UAX #29) sentence segmentation for `Engine::translate_long`/`translate_segmented`, so long / multi-sentence input is split and translated per sentence instead of truncating; CJK-capable. The shipping products (CLI **and** wasm/npm) enable it, so they segment identically; off at the crate level, where it selects the built-in `BasicSegmenter` — the compile-time opt-out that links no ICU | `icu_segmenter` (compiled data; **+~18 KiB** when `net`/ICU is already present, e.g. the CLI — **+~19 KiB** in the lean wasm build with no other ICU) |
 
 An embedder that already has its own HTTP client (e.g. Firefox) enables just
 `download` and implements `fetch::Fetch` over its own stack, reusing discovery and

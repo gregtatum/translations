@@ -85,6 +85,34 @@ Greedy loop (`Engine::greedy`): seed the decoder with EOS, run one
 `decode_step` per position updating the four cell-state vectors, argmax the
 projection, stop at EOS or the length cap `min(2·srclen + 4, 256)`.
 
+### Sentence segmentation (preprocessing)
+
+The encoder runs on **one sentence at a time**: the model has a trained context
+window (`max-length-break`, 128 tokens) and feeding it a longer sequence makes
+the decoder emit EOS early and silently drop the tail. So arbitrary-length input
+(`Engine::translate_long`) is split into sentences first, each translated inside
+the window, then rejoined with the original inter-sentence whitespace
+(`segment::reassemble`) — mirroring the reference paths (marian's C++ `ssplit`,
+Firefox's JS `Intl.Segmenter`), which also split before the decoder.
+
+**One segmentation engine ships everywhere: ICU4X (`icu_segmenter`,
+`IcuSegmenter`).** Both the native CLI and the wasm/npm build enable the
+`icu-segmenter` feature, so identical input yields identical sentence boundaries
+across artifacts — a divergence we previously had when wasm fell back to the
+punctuation-based `BasicSegmenter` (it split `U.S.`, `...`, and `z. B.` where
+ICU4X does not). ICU4X's `SentenceSegmenter` is rule-based UAX #29 with bundled
+`compiled_data`: no dictionaries (those are only for space-less-script *word*
+breaking), CJK works, and the sentence-break tables add only ~19 KB (wasm-opt'd)
+to the wasm module — negligible against a ~150 MB model.
+
+Why ICU4X specifically: **Firefox's `Intl.Segmenter` is backed by ICU4X** (Rust),
+so compiling ICU4X into our own artifact pins segmentation to Firefox's engine
+family on every host — unlike Node/Chrome, whose `Intl.Segmenter` is ICU4C via
+V8, a different implementation. `BasicSegmenter` stays as a compile-time opt-out
+(`icu-segmenter` off) for size-sensitive or dependency-free builds; that build
+links no ICU at all. A runtime selector is deliberately not offered — it would
+link ICU in regardless, defeating the only reason to opt out.
+
 ---
 
 ## Encoder layer (standard Transformer)

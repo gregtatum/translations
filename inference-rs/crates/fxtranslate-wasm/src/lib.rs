@@ -14,7 +14,7 @@ use fxtranslate::cache::verify_and_decompress as core_verify_and_decompress;
 use fxtranslate::engine::{Engine, Phase};
 use fxtranslate::remote::{pairs as core_pairs, parse_records as core_parse_records, Record};
 use fxtranslate::route::{catalog as core_catalog, resolve_route as core_resolve_route, Route};
-use fxtranslate::segment::{BasicSegmenter, Segmenter};
+use fxtranslate::segment::{IcuSegmenter, Segmenter};
 use wasm_bindgen::prelude::*;
 
 /// A translation engine callable from JavaScript.
@@ -61,9 +61,9 @@ impl Translator {
         self.engine.translate(text)
     }
 
-    /// Translate `text` of arbitrary length: split into sentences (the built-in
-    /// segmenter — the wasm build is icu-free) and translate each within the
-    /// model's context window, rejoined with the original whitespace.
+    /// Translate `text` of arbitrary length: split into sentences with ICU4X
+    /// (UAX #29, the same engine the native CLI uses) and translate each within
+    /// the model's context window, rejoined with the original whitespace.
     pub fn translate_long(&self, text: &str) -> String {
         self.engine.translate_long(text)
     }
@@ -317,16 +317,17 @@ pub mod discovery {
         Ok(out)
     }
 
-    /// Split `text` into sentence units with the built-in (icu-free) segmenter and
-    /// return their trimmed content as a JSON string array.
+    /// Split `text` into sentence units with ICU4X (UAX #29) and return their
+    /// trimmed content as a JSON string array.
     ///
-    /// This is the same [`BasicSegmenter`] the wasm `Translator.translate_long`
-    /// drives, exposed so the JS shell can segment before batching. Whitespace
-    /// between sentences is not preserved here (the CLI reassembles from the source
-    /// with `reassemble`); this yields the sentence contents in order.
+    /// This is the same [`IcuSegmenter`] the wasm `Translator.translate_long`
+    /// drives, exposed so the JS shell can segment before batching and get the
+    /// exact boundaries the translate path will use. Whitespace between sentences
+    /// is not preserved here (the CLI reassembles from the source with
+    /// `reassemble`); this yields the sentence contents in order.
     #[wasm_bindgen(js_name = segmentSentences)]
     pub fn segment_sentences(text: &str) -> String {
-        let spans = BasicSegmenter.sentences(text);
+        let spans = IcuSegmenter::new().sentences(text);
         let sentences: Vec<String> = spans.iter().map(|s| s.of(text).to_string()).collect();
         json_str_array(&sentences)
     }

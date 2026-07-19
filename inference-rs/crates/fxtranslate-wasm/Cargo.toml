@@ -30,9 +30,13 @@ crate-type = ["cdylib", "rlib"]
 # The engine, lean/pure-Rust config: no mmap, no net, no C++ toolchain, scalar
 # kernel. `discovery` adds the pure record parsing / pivot routing / verify code
 # (tinyjson, ruzstd, sha2 — all wasm-safe) without pulling `ureq`/`dirs`/`mmap`.
-# This is the default here so `wasm-pack build` (which passes no feature flags)
-# already produces the intended lean wasm build.
-fxtranslate = { path = "../fxtranslate", default-features = false, features = ["lean-embed", "discovery"] }
+# `icu-segmenter` pins sentence segmentation to ICU4X so the npm/wasm artifact
+# splits identically to the native CLI (both UAX #29) — the +~19 KB (wasm-opt'd)
+# of rule-based sentence-break tables is negligible against a ~150 MB model, and
+# it is the same engine family Firefox's `Intl.Segmenter` uses. This is the
+# default here so `wasm-pack build` (which passes no feature flags) already
+# produces the intended ICU4X-segmenting wasm build.
+fxtranslate = { path = "../fxtranslate", default-features = false, features = ["lean-embed", "discovery", "icu-segmenter"] }
 # The JS <-> Rust boundary: marshals `&str`/`Uint8Array`/`String` across wasm.
 wasm-bindgen = "0.2"
 # Lets the perf harness pass a JS phase-boundary callback (a `Function`) that the

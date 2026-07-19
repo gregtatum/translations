@@ -7,10 +7,14 @@
 //! reference paths handle long text — the marian `translator-cli` (C++ `ssplit`)
 //! and Firefox (JS `Intl.Segmenter`), both of which split before the decoder.
 //!
-//! The segmenter is pluggable. [`BasicSegmenter`] is always compiled — a small
-//! punctuation splitter used when the `icu-segmenter` feature is off. With that
-//! feature on, [`IcuSegmenter`] provides Unicode-correct (UAX #29), CJK-capable
-//! segmentation; the CLI enables it. [`Engine::translate_segmented`] wires a
+//! The segmenter is pluggable. [`IcuSegmenter`] — Unicode-correct (UAX #29),
+//! CJK-capable segmentation — is the default engine everywhere the product
+//! ships: the native CLI and the wasm/npm build both enable the `icu-segmenter`
+//! feature, so identical input produces identical sentence boundaries across
+//! artifacts (and the same ICU4X family Firefox's `Intl.Segmenter` uses).
+//! [`BasicSegmenter`], a small dependency-free punctuation splitter, is always
+//! compiled and selected when `icu-segmenter` is off — a compile-time opt-out for
+//! size-sensitive or ICU-free builds. [`Engine::translate_segmented`] wires a
 //! segmenter to per-sentence translation + whitespace-preserving [`reassemble`].
 //!
 //! [`Engine::translate_segmented`]: crate::engine::Engine::translate_segmented
