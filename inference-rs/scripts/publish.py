@@ -1,45 +1,26 @@
 #!/usr/bin/env python3
 """
-Publish the fxtranslate crates to crates.io.
+Release the fxtranslate ecosystem as one unit: the Rust crates to crates.io and the
+npm package to the npm registry, on a single shared version.
 
-Bumps the workspace version, validates packaging, publishes the publishable crates
-in dependency order, and tags the release. `--dry-run` does everything read-only:
-it validates packaging and prints the exact plan without touching files, crates.io,
-or git.
+The three artifacts — the `fxtranslate` engine crate, the `fxtranslate-cli` crate, and
+the `fxtranslate` npm package — are all the same engine (the CLI pins the engine
+exactly; npm embeds it compiled to wasm). A version that shipped to one but not the
+others, or at different numbers, would be meaningless, so this refuses to let them
+drift: everything bumps together and publishes together, or the run stops.
 
-Versioning policy — LOCKSTEP. The workspace crates share one version and bump
-together, and fxtranslate-cli pins the engine exactly (`fxtranslate = "=X.Y.Z"`), so
-a CLI release always links the engine it was built and validated against. One number
-for the whole workspace is simpler to reason about than independent drift, and the
-CLI is useless without a matching engine anyway.
+The safety story is the reason this is a script and not a handful of commands. A
+registry upload is effectively permanent (it can only be yanked/deprecated, never
+replaced), and publishing several of them is not atomic. So the design is: do all the
+reversible work first (bump, build, test, validate packaging), then the irreversible
+uploads, and only once every upload has landed create the git tag — the one atomic step
+— so the tag can never mark a half-published release. That also makes a re-run the
+recovery path: an interrupted release is resumed by running the same command, because
+already-published artifacts are detected and skipped.
 
-Which crates publish is read from the manifests, not hard-coded: any workspace member
-without `publish = false` is published. Today that's `fxtranslate` (the engine) and
-`fxtranslate-cli`, published in that order (the CLI pins the engine exactly, so the
-engine must land on crates.io first); only the dev-only `fxtranslate-oracle` keeps
-the guard.
-
-Ordering — crates.io first, tag last. Publishing N crates to crates.io is not atomic
-(the engine can land, then the CLI fail), and an upload can't be taken back (only
-yanked). The git tag, by contrast, is a single atomic ref. So we publish every crate
-first and create + push the tag ONLY once they all succeed — the tag therefore never
-points at a half-published release. A re-run after a partial failure skips crates
-whose version is already on crates.io and proceeds to the rest, then tags.
-
-First release. `--initial` publishes the version already in the manifests without
-bumping — the normal bump/`--set` paths refuse `new == old`, so they can't perform
-the very first `X.Y.Z` release. It skips the version rewrite and the release commit
-(the manifests are already at the target version and committed); everything else —
-tests, packaging, publish order, tag, push — is identical.
-
-Usage:
-    inference-rs/scripts/publish.py --initial --dry-run # preview the first release at the manifest version
-    inference-rs/scripts/publish.py --initial           # first release, no bump
-    inference-rs/scripts/publish.py patch --dry-run     # preview a 0.1.0 -> 0.1.1 release
-    inference-rs/scripts/publish.py minor --dry-run
-    inference-rs/scripts/publish.py major
-    inference-rs/scripts/publish.py --set 1.2.3         # explicit version
-    inference-rs/scripts/publish.py patch               # real release (tests, publish, tag, push)
+`--dry-run` exercises the whole reversible half (including `cargo`/`npm` dry-run
+packaging) and prints the plan, touching no registry, file, or git ref. Operator setup,
+the checklist, and first-time-publish notes live in RELEASING.md; run with -h for flags.
 """
 
 import argparse
@@ -52,6 +33,8 @@ from pathlib import Path
 
 WORKSPACE = Path(__file__).resolve().parent.parent  # inference-rs/
 ROOT_MANIFEST = WORKSPACE / "Cargo.toml"
+NPM_DIR = WORKSPACE / "npm"  # the npm package (wasm core copied in by build:wasm)
+NPM_MANIFEST = NPM_DIR / "package.json"
 CHANGELOG = WORKSPACE / "CHANGELOG.md"  # one workspace changelog, copied into each crate
 TAG_PREFIX = "fxtranslate-v"  # bare `0.1.0` etc. are taken by old repo tags
 
@@ -152,13 +135,54 @@ def publish_order(crates: list[Crate]) -> list[Crate]:
 # --- versioning --------------------------------------------------------------
 
 
+NPM_VERSION = re.compile(r'^(?P<pre>\s*"version":\s*)"(?P<ver>[^"]+)"', re.MULTILINE)
+
+
+def npm_version() -> str:
+    """The npm package's declared version (the top-level `"version"` in package.json)."""
+    m = NPM_VERSION.search(NPM_MANIFEST.read_text())
+    if not m:
+        die(f"could not find a top-level \"version\" in {NPM_MANIFEST}")
+    return m.group("ver")
+
+
 def current_version(crates: list[Crate]) -> str:
-    """The single lockstep version — refuse to proceed if the crates have drifted."""
-    versions = {c.version for c in crates}
+    """The single lockstep version, shared by every crate AND the npm package — refuse
+    to proceed if they've drifted."""
+    parts = {c.name: c.version for c in crates}
+    parts["npm/fxtranslate"] = npm_version()
+    versions = set(parts.values())
     if len(versions) != 1:
-        detail = ", ".join(f"{c.name}={c.version}" for c in crates)
-        die(f"crate versions have drifted ({detail}); lockstep is required — reconcile first")
+        detail = ", ".join(f"{name}={v}" for name, v in parts.items())
+        die(f"versions have drifted ({detail}); ecosystem lockstep is required — reconcile first")
     return versions.pop()
+
+
+def rewrite_npm_version(old: str, new: str, apply: bool) -> list[str]:
+    """Set the npm package's version to `new` in package.json (the top-level `"version"`,
+    anchored to the JSON key — never a dependency spec) and, if present, in
+    package-lock.json (its two package-self `"version"` entries: the top-level and the
+    root `""` package, which precede every dependency). Returns human-readable
+    descriptions; only writes when `apply`."""
+    changes: list[str] = []
+
+    text = NPM_MANIFEST.read_text()
+    new_text, n = NPM_VERSION.subn(lambda m: f'{m.group("pre")}"{new}"', text, count=1)
+    if n != 1:
+        die(f'{NPM_MANIFEST.relative_to(WORKSPACE)}: could not find "version": "{old}" to bump')
+    if apply:
+        NPM_MANIFEST.write_text(new_text)
+    changes.append(f"{NPM_MANIFEST.relative_to(WORKSPACE)}: package version {old} -> {new}")
+
+    lock = NPM_DIR / "package-lock.json"
+    if lock.is_file():
+        lock_re = re.compile(rf'("version":\s*)"{re.escape(old)}"')
+        lock_text, n_lock = lock_re.subn(rf'\g<1>"{new}"', lock.read_text(), count=2)
+        if n_lock:
+            if apply:
+                lock.write_text(lock_text)
+            changes.append(f"npm/package-lock.json: {n_lock} package-self version {old} -> {new}")
+    return changes
 
 
 def bump(version: str, level: str) -> str:
@@ -253,11 +277,13 @@ def preflight(allow_dirty: bool) -> None:
 # --- publish steps -----------------------------------------------------------
 
 
-def validate_packaging(order: list[Crate]) -> None:
+def validate_packaging(order: list[Crate]) -> list[str]:
     """Dry-run packaging for each publishable crate (catches missing files, bad
     metadata). Uses the committed manifests — for a dependent crate this needs its
     workspace dependency already on crates.io, so a not-yet-published dep is reported,
-    not treated as fatal."""
+    not treated as fatal. Returns the names of crates whose `cargo publish --dry-run`
+    did not pass cleanly, so the caller can flag them in the summary."""
+    unclean: list[str] = []
     for c in order:
         log(f"cargo package --list -p {c.name}")
         r = sh(["cargo", "package", "--list", "-p", c.name, "--manifest-path", str(ROOT_MANIFEST)])
@@ -283,8 +309,10 @@ def validate_packaging(order: list[Crate]) -> None:
         if r.returncode != 0:
             tail = "\n".join(r.stderr.strip().splitlines()[-4:])
             log(f"  dry-run did not pass (fine if it needs a not-yet-published dep):\n{tail}")
+            unclean.append(c.name)
         else:
             log("  dry-run OK")
+    return unclean
 
 
 def publish_crate(crate: str) -> None:
@@ -306,6 +334,43 @@ def publish_crate(crate: str) -> None:
     die(
         f"publishing {crate} failed (see above); crates already published stay up — "
         f"fix and re-run to publish the rest, then the tag is created"
+    )
+
+
+def validate_npm_packaging() -> None:
+    """`npm publish --dry-run` from the npm package: runs the `prepublishOnly` hook
+    (rebuild wasm + typecheck + parity) and reports the exact tarball that would ship,
+    without touching the registry."""
+    if not shutil.which("npm"):
+        log("WARNING: npm not found on PATH; skipping npm dry-run")
+        return
+    log("npm publish --dry-run (runs prepublishOnly: build:wasm + typecheck + parity)")
+    r = subprocess.run(["npm", "publish", "--dry-run"], cwd=NPM_DIR, text=True)
+    if r.returncode != 0:
+        die("npm publish --dry-run failed; fix packaging before releasing")
+    log("  npm dry-run OK")
+
+
+def publish_npm() -> None:
+    """Publish the npm package. `npm publish` runs `prepublishOnly` first (rebuild wasm
+    + typecheck + parity), so the tarball is always built from a fresh, verified wasm
+    core. Treat 'cannot publish over previously published version' as success so a re-run
+    after a partial failure is safe (mirrors publish_crate)."""
+    if not shutil.which("npm"):
+        die("npm not found on PATH; install Node/npm or publish the npm package manually")
+    log("npm publish (in npm/)")
+    r = subprocess.run(["npm", "publish"], cwd=NPM_DIR, text=True, capture_output=True)
+    sys.stderr.write(r.stderr)
+    sys.stdout.write(r.stdout)
+    if r.returncode == 0:
+        return
+    combined = r.stderr + r.stdout
+    if "previously published" in combined or "cannot publish over" in combined:
+        log("  npm version is already on the registry; skipping")
+        return
+    die(
+        "npm publish failed (see above); crates already on crates.io stay up — "
+        "fix and re-run to publish npm, then the tag is created"
     )
 
 
@@ -399,6 +464,7 @@ def main() -> None:
     # `--initial` changes no versions, so there's nothing to rewrite or preview.
     if bumping:
         edits = rewrite_versions(crates, old, new, apply=False)
+        edits.extend(rewrite_npm_version(old, new, apply=False))
         log("version edits:")
         for e in edits:
             print(f"    {e}", file=sys.stderr)
@@ -413,22 +479,34 @@ def main() -> None:
         # then remove it — the tree is left as it was found.
         staged = stage_changelog(order)
         try:
-            validate_packaging(order)
+            unclean = validate_packaging(order)
         finally:
             cleanup_changelog(staged)
-        would = f"publish [{', '.join(c.name for c in order)}], then tag {tag} and push to {args.remote}"
-        log(
-            f"dry-run complete. A real run would: {would}."
-            if args.initial
-            else f"dry-run complete. A real run would: edit the manifests, commit, {would}."
-        )
+        validate_npm_packaging()  # dies on failure, so reaching here means npm is OK
+
+        # A clear verdict, so the dry-run ends with an unambiguous go / look-first signal
+        # rather than leaving the reader to infer it from the exit code.
+        real_cmd = f"task rs:publish -- {args.set_version and f'--set {args.set_version}' or args.level or '--initial'}"
+        steps = f"publish [{', '.join(c.name for c in order)}] to crates.io, publish fxtranslate to npm, then tag {tag} and push to {args.remote}"
+        plan = steps if args.initial else f"bump everything to {new}, commit, {steps}"
+        log("")
+        if unclean:
+            log(f"⚠  DRY RUN OK, WITH NOTES — the npm package validated; crate(s) [{', '.join(unclean)}] had")
+            log("   cargo dry-run notes above (usually just a dependency not on crates.io yet). Skim them,")
+            log(f"   but if the deps are expected to publish in-order this run is fine. Nothing was changed.")
+        else:
+            log("✓  DRY RUN PASSED — every crate and the npm package validated cleanly. Nothing was changed")
+            log("   (no files, no crates.io, no npm, no git).")
+        log(f"   To release {new}: {real_cmd}")
+        log(f"   That will: {plan}.")
         return
 
     # --- real release ---
     preflight(args.allow_dirty)
     if bumping:
         rewrite_versions(crates, old, new, apply=True)
-        log(f"bumped manifests to {new}")
+        rewrite_npm_version(old, new, apply=True)
+        log(f"bumped crate manifests + npm/package.json to {new}")
     else:
         log(f"initial release at {new}; manifests unchanged")
 
@@ -451,7 +529,10 @@ def main() -> None:
         # produced one, so the tag still lands on a clean tree.
         if bumping:
             manifests = [str(c.manifest.relative_to(WORKSPACE)) for c in crates]
-            git("add", *manifests, "Cargo.lock")
+            npm_files = ["npm/package.json"]
+            if (NPM_DIR / "package-lock.json").is_file():
+                npm_files.append("npm/package-lock.json")
+            git("add", *manifests, *npm_files, "Cargo.lock")
             git("commit", "-m", f"release: fxtranslate {new}")
             log(f"committed release bump for {new}")
         elif git("status", "--porcelain", "--", "Cargo.lock"):
@@ -462,10 +543,12 @@ def main() -> None:
         # crates.io first (not atomic, not reversible) ...
         for c in order:
             publish_crate(c.name)
+        # ... then npm (also not reversible). Its prepublishOnly rebuilds the wasm core.
+        publish_npm()
     finally:
         cleanup_changelog(staged)
 
-    # ... tag last (atomic), only now that every crate is up.
+    # ... tag last (atomic), only now that every crate AND npm are up.
     git("tag", "-a", tag, "-m", f"fxtranslate {new}")
     log(f"created tag {tag}")
 

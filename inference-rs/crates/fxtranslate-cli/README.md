@@ -2,7 +2,7 @@
 
 A command-line front end for [fxtranslate](https://crates.io/crates/fxtranslate), a Rust port of the [translation engine in Firefox](https://mozilla.github.io/translations/firefox-models/). It uses the same high-quality, lightweight, CPU-only models Firefox ships for on-device translation, and handles discovering, downloading, and caching them for you. Installing it gives you an `fxtranslate` binary that uses the native SIMD kernel where one is wired (aarch64 and x86_64) and a portable scalar fallback everywhere else — so the install never needs a C++ toolchain to succeed.
 
-For the engine itself, the developer API, and performance details, see the [main library](https://crates.io/crates/fxtranslate).
+For the engine itself, the developer API, and performance details, see the [main library](https://crates.io/crates/fxtranslate). Prefer Node? The same CLI and engine ship as the [`fxtranslate`](https://www.npmjs.com/package/fxtranslate) npm package (`npm install -g fxtranslate`), on one shared version.
 
 ## Install
 

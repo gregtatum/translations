@@ -186,12 +186,15 @@ tasks:
       - python3 {{.TASKFILE_DIR}}/scripts/release_build.py {{.CLI_ARGS}}
 
   publish:
-    desc: Publish the fxtranslate crates to crates.io (lockstep bump, engine then CLI, then tag).
+    desc: Publish the fxtranslate ecosystem — crates.io + npm — in lockstep, then tag.
     summary: |
-      Bumps both publishable crates in lockstep, builds + tests, publishes the engine
-      then the CLI (that order — the CLI pins the engine exactly), and creates + pushes
-      the fxtranslate-vX.Y.Z tag once both are up. Re-runs are safe (already-uploaded
-      crates are skipped). Needs `cargo login`, a clean tree, and should be on main.
+      Bumps both publishable crates AND npm/package.json in lockstep on one shared
+      version, builds + tests, publishes the engine then the CLI to crates.io (that
+      order — the CLI pins the engine exactly), publishes the npm package (whose
+      prepublishOnly rebuilds the wasm core + runs parity), and creates + pushes the
+      fxtranslate-vX.Y.Z tag once everything is up. Re-runs are safe (already-published
+      crates and npm versions are skipped). Needs `cargo login`, `npm login`, a clean
+      tree, and should be on main. See inference-rs/RELEASING.md for the full checklist.
 
       Examples:
         task rs:publish -- patch --dry-run   # preview; changes nothing

@@ -32,7 +32,8 @@
     "build:wasm": "bash scripts/build-wasm.sh",
     "typecheck": "tsc --noEmit",
     "check:parity": "node test/parity.js",
-    "test": "node test/parity.js"
+    "test": "node test/parity.js",
+    "prepublishOnly": "npm run build:wasm && npm run typecheck && npm run check:parity"
   },
   "engines": {
     "node": ">=18"

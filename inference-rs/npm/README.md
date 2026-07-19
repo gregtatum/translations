@@ -1,88 +1,98 @@
-# fxtranslate (npm)
+# fxtranslate
 
-Translate with Firefox Translations models — a Node **CLI** and **library** over
-the shared wasm inference core. The command-line interface is byte-for-byte
-compatible with the Rust `fxtranslate-cli` (the oracle): same subcommands, flags,
-help text, error strings, and exit codes.
+Translate with [Firefox Translations](https://mozilla.github.io/translations/firefox-models/) models from Node — a **command-line tool** and a **library**, powered by the same lightweight, CPU-only models Firefox ships for on-device translation. It discovers, downloads, and caches the models for you; no API keys, no network round-trips to a translation service, nothing leaves your machine after the model download.
 
-One package, two entry points:
+The engine is the Rust [`fxtranslate`](https://crates.io/crates/fxtranslate) crate compiled to WebAssembly, so translations match the native Rust CLI. The command-line interface is byte-for-byte compatible with the Rust [`fxtranslate-cli`](https://crates.io/crates/fxtranslate-cli): same subcommands, flags, help text, and exit codes. Prefer a native binary or a Rust dependency? See [Related packages](#related-packages).
 
-- **CLI** — `bin/fxtranslate.js`, exposed as the `fxtranslate` binary.
-- **Library** — `import { Translator, resolveRoute, catalog, modelPairs, parseRecords, segmentSentences, verifyAndDecompress } from "fxtranslate"`.
+## Command-line tool
 
-See `notes/13-cli-parity.md` in the repo for the full design (why the shell is
-native per language and only the pure decision logic is shared wasm).
-
-## Status
-
-Build-order **step 3**: on top of the step-2 skeleton (argument grammar, help
-text, error strings, exit codes), the **read-only command bodies** are now
-implemented and proven byte-identical to the Rust CLI — `list [lang] [--all]`
-(fetch Remote Settings → wasm `catalog`/`modelPairs` → native formatter),
-`models list`, and `models info <pair>` (native `fs` cache reader over the same
-on-disk layout and default root the Rust CLI uses). `npm run check:parity` runs
-all three groups against the Rust oracle: hermetic grammar/help/error, hermetic
-`models list`/`info` against a built fixture cache, and live `list` against
-Remote Settings. The cache-*writing* / engine paths (`translate`, `models add`,
-`models rm`) remain stubbed (note to stderr, exit 1) pending step 4.
-
-## Layout
-
-```
-npm/
-  bin/fxtranslate.js     CLI entry (thin shim: argv + terminal Io → run). Mirrors main.rs.
-  lib/
-    index.js             library entry — re-exports the wasm core + JS shell surface
-    index.d.ts           hand-maintained consumer types (re-exports the wasm .d.ts)
-    cli.js               arg grammar + help routing + error strings (ports Rust `parse`)
-    usage.js             USAGE / MODELS_USAGE / LIST_USAGE, byte-for-byte from cli.rs
-    run.js               parse → dispatch → exit code (ports Rust `run`/`dispatch`)
-    io.js                the host I/O + terminal contract (mirrors Rust `Io`)
-    fetch.js             the Node `Fetch` (global fetch) + Remote Settings records URL
-    cache.js             the fs cache reader (root/listCached/pairFiles); mirrors cache.rs
-    format.js            list/models view formatters, byte-for-byte from cli.rs
-    lang.js              tag → display-name table, ported from lang.rs
-  scripts/build-wasm.sh  builds the wasm core and copies pkg/ → wasm/
-  test/parity.js         interface-parity check vs the Rust oracle (grammar + cache + live list)
-  tsconfig.json          non-publishing `tsc --noEmit` config (JSDoc type check)
-  wasm/                  copied-in wasm core artifacts (gitignored; run build:wasm)
+```console
+$ npm install -g fxtranslate
 ```
 
-## The wasm core (copied, not referenced)
+```console
+# List supported languages (or filter to one); --all shows the raw model pairs:
+$ fxtranslate list
+$ fxtranslate list es
+$ fxtranslate list --all
 
-The shared inference + discovery/routing/verify/segment core lives in the sibling
-Rust crate `crates/fxtranslate-wasm`. `npm run build:wasm` runs
-`wasm-pack build --target nodejs` there and **copies** the generated `pkg/`
-artifacts into `npm/wasm/`. Copying (rather than referencing the sibling) keeps
-the published tarball self-contained — `npm pack` bundles `wasm/`, and a consumer
-`npm install fxtranslate` gets the engine without the Rust workspace. `wasm/` is a
-build artifact and is gitignored.
+# Translate a phrase. The model for the pair is discovered, downloaded, and
+# cached on first use, then reused from disk on subsequent runs.
+$ fxtranslate translate en es "The weather is nice today."
+El clima es agradable hoy.
 
-Sentence segmentation (`segmentSentences`, and the long-input translate path) uses
-**ICU4X** (`icu_segmenter`, UAX #29) compiled into the wasm module — the same
-engine the native Rust CLI uses, so both split identical input at identical
-boundaries. It is also the engine family behind Firefox's `Intl.Segmenter`
-(Node/Chrome ship a different ICU via V8), so bundling our own pins segmentation
-to Firefox's behavior on every host. The rule-based sentence-break tables add
-~19 KB to the module — negligible against a ~150 MB model download.
+$ fxtranslate translate en de "Knowledge is power."
+Wissen ist Macht.
 
-## Types without a compile step
+$ fxtranslate translate es en "Buenos días, ¿cómo estás?"
+Good morning, how are you?
 
-The `.js` is authored with JSDoc and **ships as written** — there is no TypeScript
-transpile step in the publish path. Two things give consumers and tooling types:
+# Neither side is English? It pivots through English automatically.
+$ fxtranslate translate es fr "Buenos días."
+Bonjour.
+```
 
-- **Local checks:** `npm run typecheck` runs `tsc --noEmit` over the JSDoc + the
-  hand-written `.d.ts`. It validates types (and catches `.d.ts` drift against the
-  wasm-generated engine types) without emitting anything.
-- **Packaged types:** `lib/index.d.ts` is the `types` entry. It re-exports the
-  wasm-pack-generated `wasm/fxtranslate_wasm.d.ts` for the engine surface (so the
-  engine types can't drift from the build) and hand-describes the small JS shell
-  surface (`parse`, `run`, `processIo`, `Command`, `Io`, `CliError`).
+Every Firefox Translations model translates to or from English, so each direction is its own model (`en → es` and `es → en` are separate downloads). A pair where neither side is English — like `es → fr` — is served by **pivoting**: it runs `es → en` then `en → fr` automatically, so the full cartesian product of languages works. That's also why `list` shows *languages* by default rather than raw model pairs.
 
-## Scripts
+With no text argument, `translate` reads from stdin — one translation per line when piped, or an interactive prompt on a terminal:
 
-- `npm run build:wasm` — build + copy the wasm core into `wasm/`.
-- `npm run typecheck` — `tsc --noEmit` over the JSDoc (no transpile).
-- `npm run check:parity` / `npm test` — run the Rust oracle and this CLI over
-  every no-I/O case and assert byte-identical stdout, stderr, and exit code.
-  Requires the oracle: `cargo build -p fxtranslate-cli`.
+```console
+# Pipe mode: one line in, one translation out.
+$ echo "The library opens at nine in the morning." | fxtranslate translate en fr
+La bibliothèque ouvre à neuf heures du matin.
+
+# Interactive prompt (Ctrl-D to quit).
+$ fxtranslate translate en es
+Interactive en→es. Type a sentence and press Enter; Ctrl-D to quit.
+en→es» ...
+```
+
+Status lines (model resolution, download progress) are written to stderr, so piped stdout carries only the translations.
+
+## Library
+
+```console
+$ npm install fxtranslate
+```
+
+```js
+import { Translator } from "fxtranslate";
+import { readFileSync } from "node:fs";
+
+// You supply the model triple: the marian `.bin` and the source/target
+// SentencePiece vocabularies (the same file for most pairs; only CJK pairs
+// differ). Pass the source vocab twice for a shared-vocab pair.
+const model = readFileSync("en-es/model.bin");
+const vocab = readFileSync("en-es/vocab.spm");
+
+const translator = new Translator(model, vocab, vocab);
+console.log(translator.translate("The weather is nice today."));
+// El clima es agradable hoy.
+
+// translate_long segments multi-sentence / long input and translates each part
+// within the model's context window, instead of truncating.
+console.log(translator.translate_long(longArticleText));
+```
+
+The library also re-exports the pure discovery/routing helpers the CLI is built on — `resolveRoute`, `catalog`, `modelPairs`, `parseRecords`, `segmentSentences`, and `verifyAndDecompress` — for building your own model-management flow. Types ship in the box (`fxtranslate` is authored with JSDoc and a hand-maintained `.d.ts`).
+
+## The models
+
+`fxtranslate` uses the models Firefox ships. They're discovered through Mozilla's Remote Settings and downloaded from Firefox's CDN, then cached under the platform-native cache directory — `~/Library/Caches/fxtranslate/models` on macOS, `$XDG_CACHE_HOME/fxtranslate/models` on Linux, `%LOCALAPPDATA%\fxtranslate\models` on Windows — one subdirectory per language pair. Override the CLI's location with `--cache-dir <DIR>`.
+
+**That hosting is provisioned for Firefox, not for third-party traffic**, and neither the endpoints nor the availability of any particular model are a stable contract for downstream projects. This package is a convenient way to try the engine; if you're shipping a product on top of it, mirror the model files you depend on, serve them from infrastructure you control, and load them with the `Translator` constructor.
+
+## Related packages
+
+The same engine is published across ecosystems on one shared version, so you can pick the artifact that fits:
+
+- **[`fxtranslate`](https://crates.io/crates/fxtranslate)** (crates.io) — the Rust engine library. Native SIMD int8 kernel, optional built-in model management.
+- **[`fxtranslate-cli`](https://crates.io/crates/fxtranslate-cli)** (crates.io) — the native Rust CLI. Same interface as this package's `fxtranslate` binary, installed with `cargo install fxtranslate-cli`.
+
+## Contributing
+
+Building the wasm core, the conformance strategy that keeps this package byte-identical to the Rust CLI, and how to run the parity harness are documented in [DEVELOPMENT.md](./DEVELOPMENT.md).
+
+## License
+
+[MPL-2.0](./LICENSE). The engine is a Rust port of the [Firefox Translations](https://github.com/mozilla/translations) inference engine.
