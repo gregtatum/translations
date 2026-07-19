@@ -22,7 +22,6 @@ rm -rf "$dest"
 mkdir -p "$dest"
 # Copy only the artifacts the package needs at runtime + for types.
 cp "$crate/pkg/fxtranslate_wasm.js" \
-   "$crate/pkg/fxtranslate_wasm_bg.js" \
    "$crate/pkg/fxtranslate_wasm.d.ts" \
    "$crate/pkg/fxtranslate_wasm_bg.wasm" \
    "$crate/pkg/fxtranslate_wasm_bg.wasm.d.ts" \
