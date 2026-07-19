@@ -1,0 +1,141 @@
+name: pypi-wheels
+
+# Backfills the per-platform binary wheel matrix on PyPI after a tagged release.
+#
+# The operator's local `task rs:publish` ships the sdist + the release machine's own
+# platform wheel and then creates the `fxtranslate-vX.Y.Z` tag last, once every
+# registry is up. This workflow fires on that tag and fills in the rest: prebuilt
+# abi3 wheels for Linux (x86_64 + aarch64), macOS (x86_64 + arm64), and Windows
+# (x86_64), plus an sdist for single provenance. Because the crate is `abi3-py38`
+# it is one wheel per platform (not one per Python minor). Everything uploads with
+# `--skip-existing`, so it coexists with the operator-uploaded sdist + local wheel for
+# the same version and a re-run never errors on an already-present file.
+#
+# The gemmology feature compiles a C++17 SIMD kernel where one exists for the
+# target (manylinux images and the GitHub macOS/Windows runners provide the C++
+# toolchain); where no SIMD kernel exists the core `build.rs` falls back to the
+# portable scalar kernel without failing, so every leg still produces a working
+# wheel.
+#
+# One-time operator prerequisite (cannot be scripted from here): configure a PyPI
+# Trusted Publisher for the `fxtranslate` project pointing at this repo, the
+# workflow filename `pypi-wheels.yml`, and the `pypi` environment. See
+# inference-rs/RELEASING.md. Without that, switch the publish job to the commented
+# `PYPI_API_TOKEN` fallback.
+
+on:
+  push:
+    tags: ['fxtranslate-v*']
+  # Manual trigger for testing the matrix without cutting a release.
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build-wheels:
+    name: wheel (${{ matrix.label }})
+    runs-on: ${{ matrix.runs-on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { label: linux-x86_64, runs-on: ubuntu-latest, target: x86_64, manylinux: auto }
+          # aarch64 manylinux is cross-built inside maturin-action's manylinux
+          # container (its documented `target: aarch64` + `manylinux` pattern);
+          # the action pulls the cross toolchain, no host emulation needed.
+          - { label: linux-aarch64, runs-on: ubuntu-latest, target: aarch64, manylinux: auto }
+          - { label: macos-x86_64, runs-on: macos-13, target: x86_64 }
+          - { label: macos-arm64, runs-on: macos-14, target: aarch64 }
+          - { label: windows-x86_64, runs-on: windows-latest, target: x64 }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build wheel
+        uses: PyO3/maturin-action@v1
+        with:
+          command: build
+          target: ${{ matrix.target }}
+          manylinux: ${{ matrix.manylinux }}
+          args: --release -m inference-rs/crates/fxtranslate-py/Cargo.toml --out dist
+      # Positive proof the stable-ABI feature didn't silently regress: every
+      # produced wheel filename must contain `abi3` (e.g. cp38-abi3-<platform>).
+      - name: Assert wheels are abi3
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          wheels=(dist/*.whl)
+          if [ ${#wheels[@]} -eq 0 ]; then
+            echo "no wheels produced in dist/" >&2
+            exit 1
+          fi
+          for whl in "${wheels[@]}"; do
+            echo "checking $whl"
+            case "$whl" in
+              *abi3*) ;;
+              *) echo "ERROR: $whl is not an abi3 wheel" >&2; exit 1 ;;
+            esac
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.label }}
+          path: dist/*.whl
+
+  build-sdist:
+    # Build the sdist once for single provenance; uploaded alongside the wheels
+    # with --skip-existing so it coexists with the operator's local sdist upload.
+    name: sdist
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build sdist
+        uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          args: -m inference-rs/crates/fxtranslate-py/Cargo.toml --out dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: dist/*.tar.gz
+
+  publish:
+    name: publish to PyPI
+    needs: [build-wheels, build-sdist]
+    runs-on: ubuntu-latest
+    # A named environment lets pypi.org's Trusted Publisher config scope to it, and
+    # optionally gate the upload behind required reviewers.
+    environment: pypi
+    permissions:
+      # Required for PyPI Trusted Publishing (OIDC) — no long-lived token in CI.
+      id-token: write
+    steps:
+      # Gather every matrix artifact (wheels + sdist) into dist/ before the single
+      # publish step. `merge-multiple` flattens the per-leg artifact dirs.
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: wheels-*
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: sdist
+          path: dist
+      - name: List artifacts to publish
+        run: ls -l dist
+      # Preferred path: Trusted Publishing (OIDC). No secret needed — the id-token
+      # permission above plus the one-time pypi.org Trusted Publisher config
+      # authenticate the upload. `skip-existing` makes re-runs and overlap with the
+      # operator's local sdist/wheel upload idempotent.
+      - name: Publish to PyPI (Trusted Publishing / OIDC)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true
+      # Fallback for environments without Trusted Publishing: comment out the OIDC
+      # step above and use a PYPI_API_TOKEN repo secret instead. Same action, same
+      # skip-existing idempotency; the token replaces the OIDC handshake.
+      #
+      # - name: Publish to PyPI (API token fallback)
+      #   uses: pypa/gh-action-pypi-publish@release/v1
+      #   with:
+      #     password: ${{ secrets.PYPI_API_TOKEN }}
+      #     skip-existing: true

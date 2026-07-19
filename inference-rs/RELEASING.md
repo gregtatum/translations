@@ -15,7 +15,7 @@ One command drives all four artifacts: [`scripts/publish.py`](./scripts/publish.
 - **npm auth** — `npm login`, with publish rights to `fxtranslate` (`npm whoami` confirms the account).
 - **wasm toolchain** — `wasm-pack` and the `wasm32-unknown-unknown` target (`rustup target add wasm32-unknown-unknown`); the npm publish rebuilds the wasm core.
 - **PyPI toolchain** — `maturin` and `twine` (`pipx install maturin twine`); the PyPI leg builds the sdist + local wheel with maturin and validates/uploads with twine.
-- **PyPI auth** — a PyPI API token in `~/.pypirc` or the `TWINE_*` env vars (`TWINE_USERNAME`/`TWINE_PASSWORD`/`TWINE_API_KEY`); or, preferred once CI lands, trusted publishing (OIDC). The one-time pypi.org project setup for the CI/OIDC path belongs to the wheel-matrix follow-up, not this release path — a token is enough for the human-run upload.
+- **PyPI auth** — a PyPI API token in `~/.pypirc` or the `TWINE_*` env vars (`TWINE_USERNAME`/`TWINE_PASSWORD`/`TWINE_API_KEY`). That covers the operator-run `task rs:publish` upload; the CI wheel workflow uploads via Trusted Publishing (OIDC) instead, whose one-time setup is documented under **Binary wheels (CI)** below.
 - **A clean tree on `main`, pushed to the `gregtatum` remote.** `origin` is upstream mozilla/translations; releases go to the fork, which is the publisher's default remote.
 
 ## Preview, then publish
@@ -77,7 +77,21 @@ $ task rs:publish -- --initial      # publishes the already-committed version; d
 
 A package that has never been released is published by its first lockstep run like any other — its version starts wherever the ecosystem's shared version is at that release, with no back-fill of intermediate versions. The crates used `publish.py --initial` for their very first crates.io upload (publish the manifest version without bumping); npm needs no equivalent, since a first `npm publish` simply claims the name. The npm package is public and unscoped, so no `--access public` is required unless the name is later moved under a scope.
 
-PyPI is the same: a first `twine upload` (via `--pypi-upload`, or the printed finish commands) **claims the PyPI name**. Note the first real release ships **an sdist + the release machine's local-platform wheel only** — everyone can `pip install` from the sdist (compiling from source), and the release machine's platform also gets a binary wheel; the full binary-wheel matrix for other platforms is backfilled by CI on the tag (a follow-up).
+PyPI is the same: a first `twine upload` (via `--pypi-upload`, or the printed finish commands) **claims the PyPI name**. Note the first real release ships **an sdist + the release machine's local-platform wheel only** — everyone can `pip install` from the sdist (compiling from source), and the release machine's platform also gets a binary wheel; the full binary-wheel matrix for other platforms is backfilled by CI on the tag (see below).
+
+## Binary wheels (CI)
+
+`task rs:publish` ships the sdist plus the release machine's own platform wheel, then creates the `fxtranslate-vX.Y.Z` tag last, once every registry is up. Pushing that tag triggers the `.github/workflows/pypi-wheels.yml` workflow, which builds and uploads the full per-platform binary wheel matrix — Linux `x86_64` + `aarch64`, macOS `x86_64` + `arm64`, and Windows `x86_64` — so most users get a fast SIMD wheel with no toolchain instead of compiling from the sdist. The crate is `abi3-py38`, so it is one wheel per platform (every CPython ≥ 3.8), not one per Python minor. The workflow also rebuilds the sdist for single provenance, uploads everything with `--skip-existing` (idempotent — it coexists with the operator's local sdist + wheel upload for the same version), and asserts every wheel is `abi3` before publishing. It can also be run manually from the Actions tab (`workflow_dispatch`) to test the matrix without cutting a release.
+
+**One-time PyPI setup (do this once, by hand — it cannot be scripted).** The workflow uploads via **Trusted Publishing (OIDC)**, so it carries no long-lived token. On [pypi.org](https://pypi.org/manage/project/fxtranslate/settings/publishing/), add a **Trusted Publisher** for the `fxtranslate` project pointing at:
+
+- **Owner / repository**: `gregtatum/translations`
+- **Workflow filename**: `pypi-wheels.yml`
+- **Environment**: `pypi`
+
+Until that is configured, the OIDC upload will fail; the workflow documents a commented `PYPI_API_TOKEN` fallback (a repo secret) for environments without trusted publishing. Optionally add a GitHub Actions environment named `pypi` with required reviewers for a manual approval gate before the upload.
+
+After a release, confirm the wheels land: check the [PyPI page](https://pypi.org/project/fxtranslate/) (or `pip index versions fxtranslate`) shows the new version with wheels for each platform, and glance at the workflow run under the repo's Actions tab.
 
 ## Manual npm publish
 
