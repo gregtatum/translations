@@ -45,7 +45,13 @@ jobs:
           # aarch64 manylinux is cross-built inside maturin-action's manylinux
           # container (its documented `target: aarch64` + `manylinux` pattern);
           # the action pulls the cross toolchain, no host emulation needed.
-          - { label: linux-aarch64, runs-on: ubuntu-latest, target: aarch64, manylinux: auto }
+          #
+          # ring (via ureq's rustls TLS) assembles ARMv8 `.S` files whose
+          # asm_base.h hard-errors unless the preprocessor defines __ARM_ARCH; the
+          # manylinux cross gcc doesn't set it, so we force it. maturin-action does
+          # not forward a step-level `env:` into its container — the var must ride
+          # in on `docker-options` with `-e`.
+          - { label: linux-aarch64, runs-on: ubuntu-latest, target: aarch64, manylinux: auto, docker-options: "-e CFLAGS_aarch64_unknown_linux_gnu=-D__ARM_ARCH=8" }
           - { label: macos-x86_64, runs-on: macos-13, target: x86_64 }
           - { label: macos-arm64, runs-on: macos-14, target: aarch64 }
           - { label: windows-x86_64, runs-on: windows-latest, target: x64 }
@@ -57,6 +63,9 @@ jobs:
           command: build
           target: ${{ matrix.target }}
           manylinux: ${{ matrix.manylinux }}
+          # Empty for non-container legs (macOS/Windows have no Docker step, so it
+          # is simply ignored there); set only for linux-aarch64, see the matrix.
+          docker-options: ${{ matrix.docker-options || '' }}
           args: --release -m inference-rs/crates/fxtranslate-py/Cargo.toml --out dist
       # Positive proof the stable-ABI feature didn't silently regress: every
       # produced wheel filename must contain `abi3` (e.g. cp38-abi3-<platform>).
