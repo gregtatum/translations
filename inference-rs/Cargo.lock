@@ -254,7 +254,7 @@ dependencies = [
 
 [[package]]
 name = "fxtranslate"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "cc",
  "dirs",
@@ -269,14 +269,14 @@ dependencies = [
 
 [[package]]
 name = "fxtranslate-cli"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "fxtranslate",
 ]
 
 [[package]]
 name = "fxtranslate-oracle"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "dhat",
  "fxtranslate",
@@ -285,7 +285,7 @@ dependencies = [
 
 [[package]]
 name = "fxtranslate-wasm"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "console_error_panic_hook",
  "fxtranslate",
