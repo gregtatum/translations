@@ -70,6 +70,16 @@ tasks:
       tests skip unless a trace was recorded (task rs:translate-reference -- … --trace).
     dir: '{{.TASKFILE_DIR}}'
     cmds:
+      # nextest is a separate binary, not part of the default toolchain — fail with an
+      # install hint rather than the bare `error: no such command: nextest`.
+      - |
+        if ! command -v cargo-nextest >/dev/null 2>&1; then
+          echo "cargo-nextest is required by 'task rs:test' but was not found.";
+          echo "Install it with one of:";
+          echo "  cargo binstall cargo-nextest   # prebuilt, fast";
+          echo "  cargo install cargo-nextest    # from source";
+          exit 1;
+        fi
       - cargo nextest run --workspace {{.CLI_ARGS}}
       - cargo test --workspace --doc {{.CLI_ARGS}}
 

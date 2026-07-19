@@ -36,6 +36,10 @@ them from anywhere in the repo. `task rs:` lists them all; the ones you'll reach
 | `task rs:test` / `task rs:check` | Workspace tests / all checks incl. the C++ engine build. |
 | `task rs:release` | Release build + binary-size characterization + artifact validation. |
 
+`task rs:test` runs the workspace tests through [cargo-nextest](https://nexte.st) (a single global
+parallel pool — ~2× faster than `cargo test` here). Install it once with `cargo binstall cargo-nextest`
+(or `cargo install cargo-nextest`); the task prints an install hint if it's missing.
+
 ## The oracle: how correctness is validated
 
 The reference C++ engine is the source of truth. It builds and runs natively on Apple Silicon
