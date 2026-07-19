@@ -237,6 +237,27 @@ tasks:
     cmds:
       - npm run build:wasm
 
+  build-py-conformance:
+    internal: true
+    desc: Editable-install the fxtranslate Python binding so the conformance harness can drive its CLI.
+    summary: |
+      `maturin develop` installs the native fxtranslate extension (and the CLI console
+      script) into the active interpreter — the SAME python3 that runs the conformance
+      harness, so `Cli(name="python", prefix=[sys.executable, "-m", "fxtranslate"])`
+      resolves the module it just built. Unlike rs:build-py/rs:test-py (which hard-fail
+      on a missing maturin), this is a SOFT dep: without maturin it prints a note and
+      returns 0, so the harness SKIPs the python binding cleanly — exactly as it SKIPs
+      npm when the wasm core isn't built. The Rust + npm bindings still run.
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - |
+        if ! command -v maturin >/dev/null 2>&1; then
+          echo "note: maturin not found — the conformance harness will SKIP the python binding.";
+          echo "  install it (pipx install maturin) to exercise the python CLI in conformance.";
+          exit 0;
+        fi
+        maturin develop -m crates/fxtranslate-py/Cargo.toml
+
   build-py:
     desc: Build the fxtranslate Python wheel (native PyO3 extension) with maturin.
     summary: |
@@ -293,18 +314,22 @@ tasks:
   conformance:
     desc: Pass A of the CLI conformance harness — interface parity, byte-exact, hermetic.
     summary: |
-      Runs every registered fxtranslate CLI (the Rust reference and the npm binding)
-      against committed goldens and asserts byte-identical stdout/stderr/exit for
-      help, errors, `list`, and `models list/info/rm`. Hermetic: a loopback records
-      server + throwaway cache dirs, no network, no model downloads — so it is fast
-      and lives in the default `task rs:check`. Deps build both CLIs it drives: the
-      Rust binary and the npm wasm core (npm/wasm/). The Rust binary builds into a
-      dedicated target dir (target/conformance) so its dev-profile build doesn't
-      thrash rs:test's test-profile cache in the shared target/ — see build-cli.
+      Runs every registered fxtranslate CLI (the Rust reference, the npm binding, and
+      the native Python binding) against committed goldens and asserts byte-identical
+      stdout/stderr/exit for help, errors, `list`, and `models list/info/rm`. Hermetic:
+      a loopback records server + throwaway cache dirs, no network, no model downloads —
+      so it is fast and lives in the default `task rs:check`. Deps build the CLIs it
+      drives: the Rust binary, the npm wasm core (npm/wasm/), and the Python binding
+      (maturin develop into the active interpreter — a soft dep that lets the harness
+      SKIP python when maturin is absent). The Rust binary builds into a dedicated
+      target dir (target/conformance) so its dev-profile build doesn't thrash rs:test's
+      test-profile cache in the shared target/ — see build-cli.
+
+      Run just one binding with, e.g., `task rs:conformance -- --only python`.
 
       Regenerate goldens from the oracle with:
         scripts/conformance.py --update-goldens
-    deps: [build-cli, build-wasm]
+    deps: [build-cli, build-wasm, build-py-conformance]
     dir: '{{.TASKFILE_DIR}}'
     cmds:
       - python3 {{.TASKFILE_DIR}}/scripts/conformance.py {{.CLI_ARGS}}

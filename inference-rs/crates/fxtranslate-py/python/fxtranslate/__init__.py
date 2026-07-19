@@ -14,6 +14,6 @@ exposes the pure model-discovery helpers (record parsing, route resolution, cata
 segmentation, verify+decompress).
 """
 
-from ._fxtranslate import Translator, discovery
+from ._fxtranslate import Cache, Translator, discovery
 
-__all__ = ["Translator", "discovery"]
+__all__ = ["Cache", "Translator", "discovery"]

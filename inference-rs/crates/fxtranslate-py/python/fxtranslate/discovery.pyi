@@ -41,11 +41,29 @@ def segment_sentences(text: str) -> List[str]:
     """Split ``text`` into sentence units (ICU4X, UAX #29)."""
     ...
 
-def verify_and_decompress(
-    compressed: bytes, expected_sha256_hex: Optional[str] = ...
-) -> bytes:
+def verify_and_decompress(compressed: bytes, expected_sha256_hex: Optional[str] = ...) -> bytes:
     """Decompress a zstd attachment and (optionally) verify its SHA-256.
 
     Raises :class:`ValueError` on a decode failure or hash mismatch.
     """
+    ...
+
+def records_url() -> str:
+    """The Remote Settings records endpoint — the live production URL, or the
+    ``FXTRANSLATE_RECORDS_URL`` override when set."""
+    ...
+
+def fetch_records_body() -> str:
+    """Fetch the raw Remote Settings ``records`` response body (the text the
+    ``catalog``/``model_pairs``/``parse_records`` helpers accept), honoring the
+    ``FXTRANSLATE_RECORDS_URL`` override. Raises :class:`ValueError` on failure."""
+    ...
+
+def add_models(
+    src: str, trg: str, cache_dir: Optional[str] = ..., progress: bool = ...
+) -> Dict[str, str]:
+    """Pre-download every file for ``src``→``trg`` (both legs of a pivot) into the
+    cache without building an engine — the ``fxtranslate models add`` path. Returns
+    the resolved route (``{"kind": "direct"|"pivot", ...}``). Raises
+    :class:`ValueError` on resolution/download failure."""
     ...

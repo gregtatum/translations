@@ -19,11 +19,14 @@
 //! [`Engine::from_bytes`]: fxtranslate::engine::Engine::from_bytes
 //! [`loader::load_translation`]: fxtranslate::loader::load_translation
 
-use fxtranslate::cache::{verify_and_decompress as core_verify_and_decompress, Cache};
+use fxtranslate::cache::{verify_and_decompress as core_verify_and_decompress, Cache as CoreCache};
 use fxtranslate::engine::{Engine, Translation};
-use fxtranslate::fetch::NetworkFetch;
-use fxtranslate::loader::load_translation;
-use fxtranslate::remote::{pairs as core_pairs, parse_records as core_parse_records, Record};
+use fxtranslate::fetch::{Fetch, NetworkFetch};
+use fxtranslate::loader::{ensure_route_files, load_translation};
+use fxtranslate::remote::{
+    pairs as core_pairs, parse_records as core_parse_records, records_url as core_records_url,
+    Record,
+};
 use fxtranslate::route::{catalog as core_catalog, resolve_route as core_resolve_route, Route};
 use fxtranslate::segment::{IcuSegmenter, Segmenter};
 use pyo3::exceptions::PyValueError;
@@ -129,8 +132,8 @@ impl Translator {
         cache_dir: Option<&str>,
     ) -> PyResult<Translator> {
         let cache = match cache_dir {
-            Some(dir) => Cache::with_root(dir),
-            None => Cache::locate(),
+            Some(dir) => CoreCache::with_root(dir),
+            None => CoreCache::locate(),
         };
         let fetch = NetworkFetch::new();
         let translation =
@@ -166,6 +169,87 @@ impl Translator {
     /// for the crate whose `build.rs` compiled the shim.
     fn backend(&self) -> String {
         fxtranslate::gemm::backend().to_string()
+    }
+}
+
+/// Open a core [`CoreCache`] at an explicit root or the platform default — the
+/// mirror of the CLI's `open_cache` / `EngineTranslator::load` cache resolution. The
+/// `--cache-dir` override points at the cache root directly (not re-suffixed with
+/// `fxtranslate/models`), matching the native and npm CLIs.
+fn open_cache(cache_dir: Option<&str>) -> CoreCache {
+    match cache_dir {
+        Some(dir) => CoreCache::with_root(dir),
+        None => CoreCache::locate(),
+    }
+}
+
+/// The verified model cache, exposed so the Python CLI's `models` verbs read and
+/// prune it through the same core [`CoreCache`] the native CLI uses — rather than
+/// re-porting the on-disk layout, size accounting, and path guards (the npm shell
+/// re-ports them only because its wasm core cannot touch the filesystem; the native
+/// Python binding has no such constraint).
+#[pyclass(name = "Cache", unsendable)]
+struct PyCache {
+    inner: CoreCache,
+}
+
+#[pymethods]
+impl PyCache {
+    /// Open the cache at `cache_dir`, or the platform-native default when omitted.
+    #[new]
+    #[pyo3(signature = (cache_dir = None))]
+    fn new(cache_dir: Option<&str>) -> PyCache {
+        PyCache {
+            inner: open_cache(cache_dir),
+        }
+    }
+
+    /// The cache root directory as a string — the `Cache:` line `models list` prints.
+    #[getter]
+    fn root(&self) -> String {
+        self.inner.root().display().to_string()
+    }
+
+    /// Every cached pair as a `list[dict]` of `{"name", "bytes"}`, sorted by name —
+    /// the rows `models list` / `rm --all` render. A missing root yields `[]`.
+    fn list_cached<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyList>> {
+        let cached = self.inner.list_cached().map_err(PyValueError::new_err)?;
+        let dicts: Vec<Bound<'py, pyo3::types::PyDict>> = cached
+            .iter()
+            .map(|c| {
+                let d = pyo3::types::PyDict::new(py);
+                d.set_item("name", &c.name)?;
+                d.set_item("bytes", c.bytes)?;
+                Ok(d)
+            })
+            .collect::<PyResult<_>>()?;
+        PyList::new(py, dicts)
+    }
+
+    /// The cached files of pair `name` as a `list[tuple[name, bytes, path]]`, sorted
+    /// by name — the rows `models info` renders. An absent pair yields `[]`.
+    fn pair_files<'py>(&self, py: Python<'py>, name: &str) -> PyResult<Bound<'py, PyList>> {
+        let files = self.inner.pair_files(name).map_err(PyValueError::new_err)?;
+        let tuples: Vec<Bound<'py, pyo3::types::PyTuple>> = files
+            .iter()
+            .map(|(n, bytes, path)| {
+                pyo3::types::PyTuple::new(
+                    py,
+                    [
+                        n.into_pyobject(py)?.into_any(),
+                        bytes.into_pyobject(py)?.into_any(),
+                        path.display().to_string().into_pyobject(py)?.into_any(),
+                    ],
+                )
+            })
+            .collect::<PyResult<_>>()?;
+        PyList::new(py, tuples)
+    }
+
+    /// Delete the `name` pair directory. Idempotent: `True` if removed, `False` if it
+    /// was not cached. Mirrors the core `Cache::remove_pair`.
+    fn remove_pair(&self, name: &str) -> PyResult<bool> {
+        self.inner.remove_pair(name).map_err(PyValueError::new_err)
     }
 }
 
@@ -285,6 +369,70 @@ mod discovery {
         PyList::new(py, tuples)
     }
 
+    /// The Remote Settings records endpoint the native client would hit — the live
+    /// production URL, or the `FXTRANSLATE_RECORDS_URL` override when set (so the
+    /// conformance harness can point `list` at a loopback fixture). Mirrors the CLI's
+    /// `remote::records_url`.
+    #[pyfunction]
+    fn records_url() -> String {
+        core_records_url()
+    }
+
+    /// Fetch the raw Remote Settings `records` response body over the built-in HTTP
+    /// client, returning it as text (the input the `catalog`/`model_pairs`/`parse_records`
+    /// helpers take). Honors the `FXTRANSLATE_RECORDS_URL` override via
+    /// [`records_url`]. Raises `ValueError` on a transport error or non-UTF-8 body.
+    #[pyfunction]
+    fn fetch_records_body(py: Python<'_>) -> PyResult<String> {
+        py.detach(|| {
+            let fetch = NetworkFetch::new();
+            let body = fetch
+                .get(&core_records_url())
+                .map_err(PyValueError::new_err)?;
+            String::from_utf8(body)
+                .map_err(|e| PyValueError::new_err(format!("records not UTF-8: {e}")))
+        })
+    }
+
+    /// Pre-download every file for `src`→`trg` (both legs of a pivot) into the cache,
+    /// without building an engine — the `fxtranslate models add` path. Wraps the core
+    /// [`ensure_route_files`]; `progress` (set by the CLI when stderr is a TTY) draws
+    /// the in-place download line the core renders to stderr. Returns the resolved
+    /// route as a dict (`{"kind": "direct"|"pivot", ...}`) so the caller can report
+    /// the pivot hop. Raises `ValueError` on resolution/download failure.
+    #[pyfunction]
+    #[pyo3(signature = (src, trg, cache_dir = None, progress = false))]
+    fn add_models<'py>(
+        py: Python<'py>,
+        src: &str,
+        trg: &str,
+        cache_dir: Option<&str>,
+        progress: bool,
+    ) -> PyResult<Bound<'py, PyDict>> {
+        let cache = open_cache(cache_dir).with_progress(progress);
+        let route = py.detach(|| {
+            let fetch = NetworkFetch::new();
+            ensure_route_files(&fetch, &cache, src, trg)
+                .map(|(route, _files)| route)
+                .map_err(PyValueError::new_err)
+        })?;
+        let d = PyDict::new(py);
+        match route {
+            Route::Direct { src, trg } => {
+                d.set_item("kind", "direct")?;
+                d.set_item("src", src)?;
+                d.set_item("trg", trg)?;
+            }
+            Route::Pivot { src, pivot, trg } => {
+                d.set_item("kind", "pivot")?;
+                d.set_item("src", src)?;
+                d.set_item("pivot", pivot)?;
+                d.set_item("trg", trg)?;
+            }
+        }
+        Ok(d)
+    }
+
     /// Split `text` into sentence units with ICU4X (UAX #29) and return their
     /// trimmed content as a `list[str]`.
     ///
@@ -332,6 +480,9 @@ mod discovery {
         m.add_function(wrap_pyfunction!(model_pairs, &m)?)?;
         m.add_function(wrap_pyfunction!(segment_sentences, &m)?)?;
         m.add_function(wrap_pyfunction!(verify_and_decompress, &m)?)?;
+        m.add_function(wrap_pyfunction!(records_url, &m)?)?;
+        m.add_function(wrap_pyfunction!(fetch_records_body, &m)?)?;
+        m.add_function(wrap_pyfunction!(add_models, &m)?)?;
         parent.add_submodule(&m)?;
         // Make `from fxtranslate._fxtranslate.discovery import ...` importable, not
         // just attribute access — register the submodule in `sys.modules`.
@@ -347,6 +498,7 @@ mod discovery {
 #[pymodule]
 fn _fxtranslate(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Translator>()?;
+    m.add_class::<PyCache>()?;
     discovery::register(m)?;
     Ok(())
 }

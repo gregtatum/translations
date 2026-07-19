@@ -16,6 +16,12 @@ description = "Firefox Translations neural machine-translation engine — native
 readme = "README.md"
 dynamic = ["version"]
 
+[project.scripts]
+# `pip install fxtranslate` installs a `fxtranslate` console script whose help/usage/
+# error output is byte-identical to the Rust `fxtranslate-cli`. `python -m fxtranslate`
+# runs the same `main` (see python/fxtranslate/__main__.py).
+fxtranslate = "fxtranslate.cli:main"
+
 [project.urls]
 Repository = "https://github.com/gregtatum/translations"
 

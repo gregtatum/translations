@@ -210,7 +210,17 @@ def main() -> None:
         if not cli.available():
             print(f"\n{cli.name}: SKIP (binary missing: {cli.prefix})")
             continue
-        runtime = "rust-native" if cli.is_oracle else "npm-wasm" if cli.name == "npm" else cli.name
+        runtime = (
+            "rust-native"
+            if cli.is_oracle
+            else (
+                "npm-wasm"
+                if cli.name == "npm"
+                else "python-native"
+                if cli.name == "python"
+                else cli.name
+            )
+        )
         got = translate(cli, args.source, args.target, lines)
         matches, n, diffs = rate_and_diffs(golden, got)
         rate = matches / n if n else 0.0

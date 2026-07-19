@@ -56,6 +56,14 @@ GOLDENS_DIR = FIXTURES_DIR / "goldens"
 RUST_BIN = CRATE_DIR / "target" / "conformance" / "debug" / "fxtranslate"
 NPM_BIN = CRATE_DIR / "npm" / "bin" / "fxtranslate.js"
 
+# The Python binding is invoked as `python -m fxtranslate` (no PATH assumptions —
+# it works from the editable/wheel install the maturin-develop dep produces). The
+# same interpreter running this harness runs the CLI, so its editable install is the
+# one exercised. `Cli.available()` special-cases this `-m` form: it probes that the
+# compiled `fxtranslate` module actually imports, so a missing `maturin develop`
+# SKIPs cleanly (like npm skips without its wasm build) rather than failing.
+PY_MODULE = "fxtranslate"
+
 # Placeholder substituted for the throwaway cache dir's absolute path in captured
 # output, so goldens stay byte-portable across machines and CI.
 CACHE_SENTINEL = b"<CACHE_DIR>"
@@ -76,9 +84,22 @@ class Cli:
     env: dict[str, str] = field(default_factory=dict)
 
     def available(self) -> bool:
-        """A CLI is runnable iff its script/binary file exists. The launcher
-        (`node`, `python3`) is on PATH; the argv element that ends in a source
-        suffix (or has none, i.e. the compiled binary) is the file to check."""
+        """A CLI is runnable iff its entry point is present. Three forms:
+
+        * `python -m <module>` — probe that `<module>` imports in the same
+          interpreter running this harness (the compiled `fxtranslate` extension the
+          maturin-develop dep builds), so a missing build SKIPs like npm does.
+        * a `.js`/`.py` script — its file must exist.
+        * the compiled Rust binary — the first argv element must exist.
+        """
+        if "-m" in self.prefix:
+            module = self.prefix[self.prefix.index("-m") + 1]
+            import importlib.util
+
+            try:
+                return importlib.util.find_spec(module) is not None
+            except (ImportError, ValueError):
+                return False
         target = next(
             (p for p in self.prefix if p.endswith((".js", ".py"))),
             self.prefix[0],
@@ -89,7 +110,7 @@ class Cli:
 REGISTRY = [
     Cli(name="rust", prefix=[str(RUST_BIN)], is_oracle=True),
     Cli(name="npm", prefix=["node", str(NPM_BIN)]),
-    # Python binding lands here later: Cli(name="python", prefix=["python3", str(PY_BIN)]).
+    Cli(name="python", prefix=[sys.executable, "-m", PY_MODULE]),
 ]
 
 
