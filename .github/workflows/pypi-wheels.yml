@@ -102,6 +102,10 @@ jobs:
     name: publish to PyPI
     needs: [build-wheels, build-sdist]
     runs-on: ubuntu-latest
+    # Only upload on a real tag push. A manual workflow_dispatch run builds and
+    # validates the full wheel matrix but must never touch PyPI, so it stops after
+    # the build jobs.
+    if: github.event_name == 'push'
     # A named environment lets pypi.org's Trusted Publisher config scope to it, and
     # optionally gate the upload behind required reviewers.
     environment: pypi
