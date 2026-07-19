@@ -88,6 +88,7 @@ The same engine is published across ecosystems on one shared version, so you can
 
 - **[`fxtranslate`](https://crates.io/crates/fxtranslate)** (crates.io) — the Rust engine library. Native SIMD int8 kernel, optional built-in model management.
 - **[`fxtranslate-cli`](https://crates.io/crates/fxtranslate-cli)** (crates.io) — the native Rust CLI. Same interface as this package's `fxtranslate` binary, installed with `cargo install fxtranslate-cli`.
+- **[`fxtranslate`](https://pypi.org/project/fxtranslate/)** (PyPI) — the Python library (native compiled engine, batteries-included model management), installed with `pip install fxtranslate`.
 
 ## Contributing
 

@@ -1,13 +1,20 @@
 #!/usr/bin/env python3
 """
-Release the fxtranslate ecosystem as one unit: the Rust crates to crates.io and the
-npm package to the npm registry, on a single shared version.
+Release the fxtranslate ecosystem as one unit: the Rust crates to crates.io, the
+npm package to the npm registry, and the Python package to PyPI, on a single shared
+version.
 
-The three artifacts — the `fxtranslate` engine crate, the `fxtranslate-cli` crate, and
-the `fxtranslate` npm package — are all the same engine (the CLI pins the engine
-exactly; npm embeds it compiled to wasm). A version that shipped to one but not the
-others, or at different numbers, would be meaningless, so this refuses to let them
-drift: everything bumps together and publishes together, or the run stops.
+The four artifacts — the `fxtranslate` engine crate, the `fxtranslate-cli` crate, the
+`fxtranslate` npm package, and the `fxtranslate` PyPI package — are all the same engine
+(the CLI pins the engine exactly; npm embeds it compiled to wasm; PyPI compiles it into
+a native extension). A version that shipped to one but not the others, or at different
+numbers, would be meaningless, so this refuses to let them drift: everything bumps
+together and publishes together, or the run stops.
+
+The PyPI leg has one twist: wheels are per-platform. The first release ships an sdist
+plus the release machine's local-platform wheel; the full binary-wheel matrix is
+backfilled by CI on the tag. The actual PyPI upload is left to the human by default
+(the crates.io + npm push is fully automated); pass `--pypi-upload` to include it.
 
 The safety story is the reason this is a script and not a handful of commands. A
 registry upload is effectively permanent (it can only be yanked/deprecated, never
@@ -30,6 +37,7 @@ the checklist, and first-time-publish notes live in RELEASING.md; run with -h fo
 
 import argparse
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -42,6 +50,13 @@ WORKSPACE = Path(__file__).resolve().parent.parent  # inference-rs/
 ROOT_MANIFEST = WORKSPACE / "Cargo.toml"
 NPM_DIR = WORKSPACE / "npm"  # the npm package (wasm core copied in by build:wasm)
 NPM_MANIFEST = NPM_DIR / "package.json"
+PY_DIR = WORKSPACE / "crates" / "fxtranslate-py"  # the PyPI package (maturin/PyO3 wheel)
+# The py crate's Cargo.toml is the single version source: pyproject declares
+# `dynamic = ["version"]`, so maturin reads the crate version at build time and
+# `rewrite_versions` already bumps it in lockstep (it's a workspace member). No
+# separate pyproject version string exists to rewrite or drift-check.
+PY_MANIFEST = PY_DIR / "Cargo.toml"
+PY_DIST = PY_DIR / "dist"  # gitignored; where the dry-run/release build drops the sdist + wheel
 CHANGELOG = WORKSPACE / "CHANGELOG.md"  # one workspace changelog, copied into each crate
 TAG_PREFIX = "fxtranslate-v"  # bare `0.1.0` etc. are taken by old repo tags
 
@@ -149,7 +164,7 @@ def npm_version() -> str:
     """The npm package's declared version (the top-level `"version"` in package.json)."""
     m = NPM_VERSION.search(NPM_MANIFEST.read_text())
     if not m:
-        die(f"could not find a top-level \"version\" in {NPM_MANIFEST}")
+        die(f'could not find a top-level "version" in {NPM_MANIFEST}')
     return m.group("ver")
 
 
@@ -277,9 +292,38 @@ def check_npm_auth() -> None:
         die("npm not found on PATH; it's needed to publish the npm package")
     r = sh(["npm", "whoami"])
     if r.returncode != 0:
-        die("not authenticated to npm — run `npm login` first (crates.io is published "
-            "first, so releasing while logged out would half-publish the release)")
+        die(
+            "not authenticated to npm — run `npm login` first (crates.io is published "
+            "first, so releasing while logged out would half-publish the release)"
+        )
     log(f"npm authenticated as {r.stdout.strip()}")
+
+
+def check_pypi_publish_readiness() -> None:
+    """Confirm the PyPI toolchain is present BEFORE any irreversible upload, in the same
+    up-front block as check_npm_auth. Because the operator owns the actual PyPI upload
+    (default: the release does everything except the push), this is a readiness/tooling
+    check, not a credential login: `maturin` builds the sdist + wheel and `twine` uploads
+    them, so both must be on PATH — die with an install hint if either is missing. A
+    missing PyPI credential source is only a WARNING, not fatal: a dry-run (and the
+    default no-upload release) still does all its reversible work, and the operator supplies
+    creds for the actual `twine upload` (or `--pypi-upload`) themselves."""
+    missing = [t for t in ("maturin", "twine") if not shutil.which(t)]
+    if missing:
+        die(
+            f"{' and '.join(missing)} not found on PATH; needed to build/upload the PyPI "
+            "package. Install with `pipx install maturin twine`"
+        )
+    # A credential source lets `twine upload` authenticate. None of these being set isn't
+    # fatal (the operator may configure creds later, or only ever run the default no-upload
+    # release), but warn so a would-be `--pypi-upload` run isn't surprised at the push.
+    has_pypirc = (Path.home() / ".pypirc").is_file()
+    has_env = any(os.environ.get(v) for v in ("TWINE_USERNAME", "TWINE_PASSWORD", "TWINE_API_KEY"))
+    if not (has_pypirc or has_env):
+        log(
+            "WARNING: no PyPI credential source found (~/.pypirc or TWINE_USERNAME/"
+            "TWINE_PASSWORD/TWINE_API_KEY); a `twine upload` (or --pypi-upload) will need one"
+        )
 
 
 def preflight(allow_dirty: bool) -> None:
@@ -451,6 +495,95 @@ def publish_npm() -> None:
     )
 
 
+def validate_pypi_packaging() -> None:
+    """Build the PyPI sdist + local-platform wheel and validate their metadata, without
+    touching the registry — the PyPI analogue of validate_npm_packaging. `maturin build
+    --sdist` produces both the source distribution (installs everywhere, compiling from
+    source) and one binary wheel for this machine's platform (the first release ships
+    exactly these; CI backfills the rest of the wheel matrix on the tag). `twine check`
+    then validates the packaged metadata and README rendering. Reports the artifact
+    filenames that would ship, mirroring how the npm leg reports its tarball; dies on
+    failure, matching validate_npm_packaging."""
+    if not shutil.which("maturin") or not shutil.which("twine"):
+        log("WARNING: maturin/twine not found on PATH; skipping PyPI dry-run")
+        return
+    log("maturin build --sdist (builds the sdist + this platform's wheel into dist/)")
+    r = subprocess.run(
+        ["maturin", "build", "--sdist", "-m", str(PY_MANIFEST), "-o", str(PY_DIST)],
+        text=True,
+    )
+    if r.returncode != 0:
+        die("maturin build failed; fix the PyPI packaging before releasing")
+    artifacts = sorted(PY_DIST.glob("*"))
+    sdists = [a.name for a in artifacts if a.suffix == ".gz"]
+    wheels = [a.name for a in artifacts if a.suffix == ".whl"]
+    for name in sdists:
+        log(f"  sdist:  {name}")
+    for name in wheels:
+        log(f"  wheel:  {name} (this platform only; CI backfills the rest on the tag)")
+    log("twine check dist/*")
+    r = subprocess.run(["twine", "check", *[str(a) for a in artifacts]], text=True)
+    if r.returncode != 0:
+        die("twine check failed; fix the PyPI packaging before releasing")
+    log("  PyPI dry-run OK")
+
+
+def publish_pypi(upload: bool) -> None:
+    """Build the PyPI sdist + local wheel and, only when `upload` is set, push them to
+    PyPI. Ordered AFTER crates.io and npm in the real release (all uploads before the
+    tag). By default (`upload` False) this does the reversible half only — build + `twine
+    check` — and prints the exact two commands to finish the PyPI leg by hand, because
+    "the human handles the actual upload" with their own configured credentials while the
+    crates.io + npm release stays fully automated. With `--pypi-upload` a fully-authorized
+    operator does it in one shot: `twine upload --skip-existing`, which treats a version
+    that's already on PyPI as success (the pragmatic equivalent of publish_crate's index
+    skip and publish_npm's 'previously published' handling), so an `--initial` recovery
+    re-run only uploads what didn't land."""
+    if not shutil.which("maturin") or not shutil.which("twine"):
+        die("maturin/twine not found on PATH; install with `pipx install maturin twine`")
+    log("maturin build --release --sdist (sdist + this platform's wheel into dist/)")
+    r = subprocess.run(
+        ["maturin", "build", "--release", "--sdist", "-m", str(PY_MANIFEST), "-o", str(PY_DIST)],
+        text=True,
+    )
+    if r.returncode != 0:
+        die("maturin build failed; PyPI leg not attempted")
+    artifacts = sorted(PY_DIST.glob("*"))
+    log("twine check dist/*")
+    r = subprocess.run(["twine", "check", *[str(a) for a in artifacts]], text=True)
+    if r.returncode != 0:
+        die("twine check failed; PyPI leg not attempted")
+
+    if not upload:
+        log("PyPI upload is opt-in (default off); the release did everything except the push.")
+        log("To finish the PyPI leg, run (with your PyPI credentials configured):")
+        log("    maturin build --release --sdist -m crates/fxtranslate-py/Cargo.toml -o dist")
+        log("    twine upload dist/*")
+        log("(or re-run this publisher with --pypi-upload to do it in one shot)")
+        return
+
+    log("twine upload --skip-existing dist/*")
+    r = subprocess.run(
+        ["twine", "upload", "--skip-existing", *[str(a) for a in artifacts]],
+        text=True,
+        capture_output=True,
+    )
+    sys.stderr.write(r.stderr)
+    sys.stdout.write(r.stdout)
+    if r.returncode == 0:
+        return
+    combined = r.stderr + r.stdout
+    if "already exists" in combined or "File already exists" in combined:
+        # --skip-existing normally exits 0 on a duplicate; belt-and-suspenders in case a
+        # mirror reports it as an error, so an --initial recovery re-run stays safe.
+        log("  PyPI already has this version; treating as already published")
+        return
+    die(
+        "twine upload failed (see above). Crates and npm already up stay up; finish with "
+        "`--initial --pypi-upload` (uploads with --skip-existing, then tags)"
+    )
+
+
 def stage_changelog(order: list[Crate]) -> list[Path]:
     """Copy the one workspace CHANGELOG.md into each publishable crate directory so it
     ships in the `.crate` (cargo only packages files under a crate's own root, so a
@@ -509,6 +642,12 @@ def main() -> None:
         "--remote", default="gregtatum", help="git remote to push to (default: gregtatum)"
     )
     ap.add_argument("--no-push", action="store_true", help="commit + tag locally but don't push")
+    ap.add_argument(
+        "--pypi-upload",
+        action="store_true",
+        help="also upload the PyPI package (default: off — the release does everything "
+        "except the PyPI push and prints the finish commands; needs PyPI credentials)",
+    )
     args = ap.parse_args()
 
     if sum([bool(args.level), bool(args.set_version), args.initial]) != 1:
@@ -561,28 +700,42 @@ def main() -> None:
         finally:
             cleanup_changelog(staged)
         validate_npm_packaging()  # dies on failure, so reaching here means npm is OK
+        validate_pypi_packaging()  # dies on failure, so reaching here means PyPI is OK
 
         # A clear verdict, so the dry-run ends with an unambiguous go / look-first signal
         # rather than leaving the reader to infer it from the exit code.
         real_cmd = f"task rs:publish -- {args.set_version and f'--set {args.set_version}' or args.level or '--initial'}"
-        steps = f"publish [{', '.join(c.name for c in order)}] to crates.io, publish fxtranslate to npm, then tag {tag} and push to {args.remote}"
+        steps = (
+            f"publish [{', '.join(c.name for c in order)}] to crates.io, publish fxtranslate to "
+            f"npm, publish fxtranslate sdist + local wheel to PyPI, then tag {tag} and push to "
+            f"{args.remote}"
+        )
         plan = steps if args.initial else f"bump everything to {new}, commit, {steps}"
         log("")
         if unclean:
-            log(f"⚠  DRY RUN OK, WITH NOTES — the npm package validated; crate(s) [{', '.join(unclean)}] had")
-            log("   cargo dry-run notes above (usually just a dependency not on crates.io yet). Skim them,")
-            log(f"   but if the deps are expected to publish in-order this run is fine. Nothing was changed.")
+            log(
+                f"⚠  DRY RUN OK, WITH NOTES — the npm and PyPI packages validated; crate(s) [{', '.join(unclean)}] had"
+            )
+            log(
+                "   cargo dry-run notes above (usually just a dependency not on crates.io yet). Skim them,"
+            )
+            log(
+                f"   but if the deps are expected to publish in-order this run is fine. Nothing was changed."
+            )
         else:
-            log("✓  DRY RUN PASSED — every crate and the npm package validated cleanly. Nothing was changed")
-            log("   (no files, no crates.io, no npm, no git).")
+            log("✓  DRY RUN PASSED — every crate, the npm package, and the PyPI package validated")
+            log(
+                "   cleanly. Nothing was changed (no files, no crates.io, no npm, no PyPI, no git)."
+            )
         log(f"   To release {new}: {real_cmd}")
         log(f"   That will: {plan}.")
         return
 
     # --- real release ---
     preflight(args.allow_dirty)
-    # Verify npm auth up front, before any irreversible crates.io upload.
+    # Verify npm auth and PyPI tooling up front, before any irreversible crates.io upload.
     check_npm_auth()
+    check_pypi_publish_readiness()
     if bumping:
         rewrite_versions(crates, old, new, apply=True)
         rewrite_npm_version(old, new, apply=True)
@@ -626,6 +779,9 @@ def main() -> None:
             publish_crate(c.name, new)
         # ... then npm (also not reversible). Its prepublishOnly rebuilds the wasm core.
         publish_npm()
+        # ... then PyPI (also not reversible). Off by default: builds + twine-checks the
+        # sdist + local wheel and prints the finish commands, unless --pypi-upload opts in.
+        publish_pypi(args.pypi_upload)
     finally:
         cleanup_changelog(staged)
 

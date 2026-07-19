@@ -5,14 +5,17 @@ The ecosystem ships on **one shared version**, in lockstep:
 - `fxtranslate` — the engine — on [crates.io](https://crates.io/crates/fxtranslate)
 - `fxtranslate-cli` — the native CLI — on [crates.io](https://crates.io/crates/fxtranslate-cli)
 - `fxtranslate` — the Node CLI + library — on [npm](https://www.npmjs.com/package/fxtranslate)
+- `fxtranslate` — the Python library — on [PyPI](https://pypi.org/project/fxtranslate/)
 
-One command drives all three: [`scripts/publish.py`](./scripts/publish.py), wrapped as `task rs:publish`. It bumps every crate manifest and `npm/package.json` to the same version, builds and tests, publishes the crates in dependency order, publishes the npm package (rebuilding its wasm core first), and creates + pushes a single `fxtranslate-vX.Y.Z` tag once everything is up.
+One command drives all four artifacts: [`scripts/publish.py`](./scripts/publish.py), wrapped as `task rs:publish`. It bumps every crate manifest and `npm/package.json` to the same version (the PyPI package's version is read from its crate `Cargo.toml`, so it moves for free), builds and tests, publishes the crates in dependency order, publishes the npm package (rebuilding its wasm core first), handles the PyPI leg (builds the sdist + local wheel, and uploads it with `--pypi-upload`), and creates + pushes a single `fxtranslate-vX.Y.Z` tag once everything is up.
 
 ## Prerequisites
 
 - **crates.io auth** — `cargo login` (a crates.io API token).
 - **npm auth** — `npm login`, with publish rights to `fxtranslate` (`npm whoami` confirms the account).
 - **wasm toolchain** — `wasm-pack` and the `wasm32-unknown-unknown` target (`rustup target add wasm32-unknown-unknown`); the npm publish rebuilds the wasm core.
+- **PyPI toolchain** — `maturin` and `twine` (`pipx install maturin twine`); the PyPI leg builds the sdist + local wheel with maturin and validates/uploads with twine.
+- **PyPI auth** — a PyPI API token in `~/.pypirc` or the `TWINE_*` env vars (`TWINE_USERNAME`/`TWINE_PASSWORD`/`TWINE_API_KEY`); or, preferred once CI lands, trusted publishing (OIDC). The one-time pypi.org project setup for the CI/OIDC path belongs to the wheel-matrix follow-up, not this release path — a token is enough for the human-run upload.
 - **A clean tree on `main`, pushed to the `gregtatum` remote.** `origin` is upstream mozilla/translations; releases go to the fork, which is the publisher's default remote.
 
 ## Preview, then publish
@@ -20,14 +23,26 @@ One command drives all three: [`scripts/publish.py`](./scripts/publish.py), wrap
 Everything stays read-only until `--dry-run` is dropped.
 
 ```console
-# Preview: validate crate packaging and the npm tarball, touch nothing.
+# Preview: validate crate packaging, the npm tarball, and the PyPI sdist + wheel; touch nothing.
 $ task rs:publish -- patch --dry-run       # or: minor / major / --set X.Y.Z
 
-# Release: bump → build+test → publish crates → publish npm → tag → push.
+# Release: bump → build+test → publish crates → publish npm → PyPI leg → tag → push.
 $ task rs:publish -- patch
+
+# Release, including the PyPI upload in one shot (needs PyPI credentials configured):
+$ task rs:publish -- patch --pypi-upload
 ```
 
-The bump level (`patch` | `minor` | `major`) or `--set X.Y.Z` sets the next shared version. The dry-run validates the crates with `cargo publish --dry-run` and the npm package with `npm publish --dry-run` — the latter runs the `prepublishOnly` hook (rebuild wasm + typecheck + parity), so it is a faithful preview and correspondingly slow.
+The bump level (`patch` | `minor` | `major`) or `--set X.Y.Z` sets the next shared version. The dry-run validates the crates with `cargo publish --dry-run`, the npm package with `npm publish --dry-run` (the latter runs the `prepublishOnly` hook — rebuild wasm + typecheck + parity — so it is a faithful preview and correspondingly slow), and the PyPI package by building the sdist + local wheel with `maturin build --sdist` and validating them with `twine check`.
+
+**The PyPI upload is gated.** By default `task rs:publish` does everything *except* the PyPI push: it builds the sdist + local wheel, runs `twine check`, and prints the exact two commands to finish the leg by hand —
+
+```console
+$ maturin build --release --sdist -m crates/fxtranslate-py/Cargo.toml -o dist
+$ twine upload dist/*
+```
+
+— so the crates.io + npm release stays fully automated while the actual PyPI push uses the human's configured credentials. Pass `--pypi-upload` to have the publisher do the upload too (`twine upload --skip-existing`, so a re-run is safe).
 
 Other flags: `--no-push` (commit + tag locally, push by hand), `--allow-dirty`, `--skip-tests`, `--remote <name>`.
 
@@ -35,22 +50,23 @@ Other flags: `--no-push` (commit + tag locally, push by hand), `--allow-dirty`, 
 
 - [ ] `git status` clean, on `main`, on the `gregtatum` remote.
 - [ ] `cargo login` and `npm login` done (`npm whoami` confirms).
+- [ ] `maturin` and `twine` installed (`pipx install maturin twine`), and PyPI auth configured (`~/.pypirc` / `TWINE_*`).
 - [ ] `CHANGELOG.md` updated for the new version.
-- [ ] `task rs:publish -- <level> --dry-run` — review the version edits, the crate file lists, and the **npm tarball contents** (it must include `wasm/fxtranslate_wasm_bg.wasm`).
-- [ ] `task rs:publish -- <level>` — real release.
-- [ ] Confirm: `cargo info fxtranslate` / `fxtranslate-cli` and `npm view fxtranslate version` show the new version, and the `fxtranslate-vX.Y.Z` tag is on the fork.
+- [ ] `task rs:publish -- <level> --dry-run` — review the version edits, the crate file lists, the **npm tarball contents** (it must include `wasm/fxtranslate_wasm_bg.wasm`), and the **PyPI artifacts** (the sdist + one local wheel, both passing `twine check`).
+- [ ] `task rs:publish -- <level>` — real release (add `--pypi-upload` to include the PyPI push, or finish it by hand with the printed commands).
+- [ ] Confirm: `cargo info fxtranslate` / `fxtranslate-cli`, `npm view fxtranslate version`, and `pip index versions fxtranslate` (or the [PyPI page](https://pypi.org/project/fxtranslate/)) show the new version, and the `fxtranslate-vX.Y.Z` tag is on the fork.
 
 ## Ordering and re-runs
 
-Publishing to crates.io then npm is **not atomic and not reversible** — an upload can only be yanked or deprecated. So the publisher checks auth, uploads every registry first, and creates the git tag **last**, once everything is up; the tag therefore never points at a half-published release.
+Publishing to crates.io, then npm, then PyPI is **not atomic and not reversible** — an upload can only be yanked or deprecated. So the publisher checks auth/tooling, uploads every registry first (crates.io → npm → PyPI), and creates the git tag **last**, once everything is up; the tag therefore never points at a half-published release. (With the default no-`--pypi-upload` run, the PyPI push is deferred to the human; the tag is still created after the crates + npm uploads, and the printed commands complete the PyPI leg.)
 
-A run interrupted *after* the version bump was committed (e.g. crates published but npm failed) is completed with **`--initial`**, not a fresh bump:
+A run interrupted *after* the version bump was committed (e.g. crates published but npm or PyPI failed) is completed with **`--initial`**, not a fresh bump:
 
 ```console
 $ task rs:publish -- --initial      # publishes the already-committed version; do NOT re-run `patch`
 ```
 
-`--initial` targets the version already in the manifests instead of bumping again (a re-run of `patch` would move 0.4.1 → 0.4.2 and publish a further version). Crates already on crates.io and an npm version already on the registry are detected and skipped, so only the uploads that didn't land, plus the tag and push, happen.
+`--initial` targets the version already in the manifests instead of bumping again (a re-run of `patch` would move 0.4.1 → 0.4.2 and publish a further version). Crates already on crates.io and an npm version already on the registry are detected and skipped; the PyPI leg re-runs with `twine upload --skip-existing` (add `--pypi-upload`), so a version already on PyPI is left alone — only the uploads that didn't land, plus the tag and push, happen.
 
 ## Troubleshooting
 
@@ -60,6 +76,8 @@ $ task rs:publish -- --initial      # publishes the already-committed version; d
 ## First-time publishing
 
 A package that has never been released is published by its first lockstep run like any other — its version starts wherever the ecosystem's shared version is at that release, with no back-fill of intermediate versions. The crates used `publish.py --initial` for their very first crates.io upload (publish the manifest version without bumping); npm needs no equivalent, since a first `npm publish` simply claims the name. The npm package is public and unscoped, so no `--access public` is required unless the name is later moved under a scope.
+
+PyPI is the same: a first `twine upload` (via `--pypi-upload`, or the printed finish commands) **claims the PyPI name**. Note the first real release ships **an sdist + the release machine's local-platform wheel only** — everyone can `pip install` from the sdist (compiling from source), and the release machine's platform also gets a binary wheel; the full binary-wheel matrix for other platforms is backfilled by CI on the tag (a follow-up).
 
 ## Manual npm publish
 

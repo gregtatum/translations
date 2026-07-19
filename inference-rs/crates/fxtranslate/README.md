@@ -4,7 +4,7 @@
 
 ## Usage
 
-The [fxtranslate-cli](https://crates.io/crates/fxtranslate-cli) lets you quickly try out the translations system. It installs an `fxtranslate` binary that uses the native SIMD kernel where one is wired (aarch64 and x86_64) and a portable scalar fallback everywhere else, so the install never needs a C++ toolchain to succeed. The engine and CLI are also available for Node as the [`fxtranslate`](https://www.npmjs.com/package/fxtranslate) npm package (WebAssembly core), released on the same shared version.
+The [fxtranslate-cli](https://crates.io/crates/fxtranslate-cli) lets you quickly try out the translations system. It installs an `fxtranslate` binary that uses the native SIMD kernel where one is wired (aarch64 and x86_64) and a portable scalar fallback everywhere else, so the install never needs a C++ toolchain to succeed. The same engine also ships for Node as the [`fxtranslate`](https://www.npmjs.com/package/fxtranslate) npm package (WebAssembly core) and for Python as the [`fxtranslate`](https://pypi.org/project/fxtranslate/) PyPI package (native compiled engine), all released on the same shared version.
 
 ```console
 $ cargo install fxtranslate-cli
