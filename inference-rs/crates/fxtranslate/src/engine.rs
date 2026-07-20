@@ -126,6 +126,53 @@ pub struct BlockCounts {
     pub tokens: usize,
 }
 
+/// One source or target token with its span in the relevant string.
+///
+/// Offsets are **UTF-16 code-unit** offsets (DOM string space), so a JS HTML
+/// layer can slice the string directly without re-encoding. Source-token spans
+/// index into [`Aligned::source_normalized`]; target-token spans index into
+/// [`Aligned::target_text`]. See [`Engine::translate_aligned`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Token {
+    /// Vocabulary id.
+    pub id: u32,
+    /// Start offset (UTF-16 code units), inclusive.
+    pub begin: usize,
+    /// End offset (UTF-16 code units), exclusive.
+    pub end: usize,
+}
+
+/// One translated sentence plus everything a tag-transfer (HTML) layer needs to
+/// move inline tags from source to target: token spans on both sides and the
+/// per-target-token soft alignment over the source.
+///
+/// Additive to the plain-text path — [`Engine::translate`] / `translate_long`
+/// are untouched; this is produced only when a caller asks for it via
+/// [`Engine::translate_aligned`].
+#[derive(Clone, Debug)]
+pub struct Aligned {
+    /// Detokenized target string, byte-identical to [`Engine::translate`].
+    pub target_text: String,
+    /// Source tokens in order, **including** the trailing EOS (a zero-length span
+    /// at the end of `source_normalized`). Spans index into `source_normalized`.
+    pub source_tokens: Vec<Token>,
+    /// Target tokens in order, **including** the terminal EOS (a zero-length span
+    /// at the end of `target_text`). Spans index into `target_text`.
+    pub target_tokens: Vec<Token>,
+    /// Soft alignment `[trg tok][src tok]` = P(src | trg), head 0 of the last
+    /// decoder layer's cross-attention — exactly marian's `SoftAlignment`. Row
+    /// `t` corresponds to `target_tokens[t]`; row length == `source_tokens.len()`
+    /// (including the source EOS column). `alignments.len() ==
+    /// target_tokens.len()`.
+    pub alignments: Vec<Vec<f32>>,
+    /// The SPM-normalized source text the source spans index into. For the en-fr
+    /// vocab the charsmap is **non-identity** (NFKC-style: ligatures, full-width
+    /// forms, combining marks, `<0xA0>` whitespace are rewritten), so this differs
+    /// from the raw input; it is returned so the caller resolves source spans
+    /// without re-implementing normalization.
+    pub source_normalized: String,
+}
+
 /// Encoder output for a batch of sentences: `[batch, seq, dim]` row-major, padded
 /// to `seq` = the batch's max source length. `lens[b]` is sentence `b`'s true
 /// length, so callers ignore the pad rows.
@@ -412,6 +459,135 @@ impl Engine {
             prev = next;
         }
         out
+    }
+
+    /// Translate one sentence and return token-level [`Aligned`] output for a
+    /// tag-transfer (HTML) layer: source/target token spans plus the per-target
+    /// soft alignment over the source (head 0, last decoder layer — marian's
+    /// `SoftAlignment`).
+    ///
+    /// The target text is byte-identical to [`translate`](Engine::translate); the
+    /// alignment rows are captured on a duplicate of the greedy loop so the plain
+    /// hot path keeps no alignment branch. Like `translate`, this is the raw
+    /// single-sequence path (no sentence segmentation): input past the model's
+    /// context window truncates. For alignment over long/multi-sentence input, run
+    /// this per segment as `translate_long` does for plain text.
+    pub fn translate_aligned(&self, text: &str) -> Aligned {
+        let d = self.config.dim_emb;
+        let (source_normalized, src_offsets) = self.src_vocab.encode_with_offsets(text);
+        // Source ids fed to the encoder = the encoded ids plus EOS, matching the
+        // plain path (`encode_with_eos`). The EOS has no source span (zero-length
+        // at end); the alignment rows include the EOS column.
+        let eos_src = self.src_vocab.eos_id();
+        let mut src_ids: Vec<u32> = src_offsets.iter().map(|(id, _)| *id).collect();
+        src_ids.push(eos_src);
+        let seq = src_ids.len();
+
+        // Source tokens with UTF-16 offsets into `source_normalized`.
+        let u16_src = Utf16Map::new(&source_normalized);
+        let mut source_tokens: Vec<Token> = src_offsets
+            .iter()
+            .map(|(id, r)| Token {
+                id: *id,
+                begin: u16_src.at(r.start),
+                end: u16_src.at(r.end),
+            })
+            .collect();
+        let end16 = u16_src.at(source_normalized.len());
+        source_tokens.push(Token {
+            id: eos_src,
+            begin: end16,
+            end: end16,
+        });
+
+        let context = self.encode(&src_ids);
+        let eos = self.trg_vocab.eos_id();
+        let mut cells = vec![vec![0.0f32; d]; self.config.dec_depth + 1];
+        let max_len = ((2.0 * seq as f32).ceil() as usize + 4).min(256);
+        let candidates = self
+            .shortlist
+            .as_ref()
+            .map(|s| s.candidates(&src_ids, self.shared_vocab));
+
+        let mut out_ids = Vec::new();
+        let mut alignments: Vec<Vec<f32>> = Vec::new();
+        let mut prev = eos;
+        for step in 0..max_len {
+            let mut align_row = vec![0.0f32; seq];
+            let top =
+                self.decode_step_aligned(prev, step, &context, seq, &mut cells, &mut align_row);
+            let next = self.project_argmax(&top, candidates.as_deref());
+            // The alignment row is captured for the token emitted at this step;
+            // marian includes the terminal EOS row too, so keep it.
+            alignments.push(align_row);
+            if next == eos {
+                out_ids.push(eos);
+                break;
+            }
+            out_ids.push(next);
+            prev = next;
+        }
+
+        // Detokenize with per-target-token spans. `out_ids` carries the emitted
+        // tokens plus (when it terminated) the EOS; decode ignores EOS text but
+        // keeps its aligned slot, so target_tokens lines up with `alignments`.
+        let (target_text, trg_ranges) = self.trg_vocab.decode_with_offsets(&out_ids);
+        let u16_trg = Utf16Map::new(&target_text);
+        let target_tokens: Vec<Token> = out_ids
+            .iter()
+            .zip(&trg_ranges)
+            .map(|(&id, r)| Token {
+                id,
+                begin: u16_trg.at(r.start),
+                end: u16_trg.at(r.end),
+            })
+            .collect();
+
+        Aligned {
+            target_text,
+            source_tokens,
+            target_tokens,
+            alignments,
+            source_normalized,
+        }
+    }
+
+    /// One decoder step that also captures head 0 of the **last** decoder layer's
+    /// cross-attention softmax into `align_row` (`[seq]`, P(src | this trg token)
+    /// — marian's alignment). Mirrors [`decode_step`](Engine::decode_step)
+    /// exactly; only the last layer's context block routes through the capturing
+    /// [`multihead_capture`](Engine::multihead_capture), so the produced tokens
+    /// are identical to the plain path.
+    fn decode_step_aligned(
+        &self,
+        prev_id: u32,
+        pos: usize,
+        context: &[f32],
+        seq: usize,
+        cells: &mut [Vec<f32>],
+        align_row: &mut [f32],
+    ) -> Vec<f32> {
+        let mut x = self.embed(&[prev_id], pos, Side::Target);
+        let last = self.config.dec_depth;
+        for layer in 1..=self.config.dec_depth {
+            let p = format!("decoder_l{layer}");
+            let cand = self.weights.affine(&format!("{p}_rnn_W"), &x, 1, None);
+            let gate =
+                self.weights
+                    .affine(&format!("{p}_rnn_Wf"), &x, 1, Some(&format!("{p}_rnn_bf")));
+            let c = ops::highway(&cells[layer], &cand, &gate);
+            cells[layer] = c.clone();
+            let h = ops::relu(&c);
+            let x_self = self.postnorm(&h, &x, 1, &format!("{p}_rnn_ffn"));
+            let attn = if layer == last {
+                self.multihead_capture(&format!("{p}_context"), &x_self, context, 1, seq, align_row)
+            } else {
+                self.multihead(&format!("{p}_context"), &x_self, context, 1, seq)
+            };
+            let x_ctx = self.postnorm(&attn, &x_self, 1, &format!("{p}_context_Wo"));
+            x = self.ffn(&format!("{p}_ffn"), &x_ctx, 1);
+        }
+        x
     }
 
     /// Pick the next token for each active row of one decode step, updating
@@ -1053,6 +1229,78 @@ impl Engine {
         )
     }
 
+    /// [`multihead`](Engine::multihead) with `q_len == 1`, additionally copying
+    /// **head 0**'s post-softmax score row (the alignment `P(src | trg)` for this
+    /// single query) into `align_row` (`[kv_len]`). Used only by the aligned
+    /// decode path for the last decoder layer's cross-attention; the arithmetic is
+    /// identical to `multihead`, so the attention output — and thus the emitted
+    /// token — is unchanged. `align_row.len()` must be `kv_len`.
+    fn multihead_capture(
+        &self,
+        prefix: &str,
+        q_in: &[f32],
+        kv_in: &[f32],
+        q_len: usize,
+        kv_len: usize,
+        align_row: &mut [f32],
+    ) -> Vec<f32> {
+        let d = self.config.dim_emb;
+        let h = self.config.heads;
+        let dk = d / h;
+        let scale = 1.0 / (dk as f32).sqrt();
+
+        let q = self.weights.affine(
+            &format!("{prefix}_Wq"),
+            q_in,
+            q_len,
+            Some(&format!("{prefix}_bq")),
+        );
+        let k = self.weights.affine(
+            &format!("{prefix}_Wk"),
+            kv_in,
+            kv_len,
+            Some(&format!("{prefix}_bk")),
+        );
+        let v = self.weights.affine(
+            &format!("{prefix}_Wv"),
+            kv_in,
+            kv_len,
+            Some(&format!("{prefix}_bv")),
+        );
+
+        let mut joined = vec![0.0f32; q_len * d];
+        let mut scores = vec![0.0f32; kv_len];
+        for head in 0..h {
+            let off = head * dk;
+            for i in 0..q_len {
+                let qh = &q[i * d + off..i * d + off + dk];
+                for j in 0..kv_len {
+                    let kh = &k[j * d + off..j * d + off + dk];
+                    let dot: f32 = qh.iter().zip(kh).map(|(&a, &b)| a * b).sum();
+                    scores[j] = dot * scale;
+                }
+                ops::softmax_in_place(&mut scores, 1, kv_len);
+                // Capture head 0's alignment row (q_len == 1 in the decoder).
+                if head == 0 && i == 0 {
+                    align_row.copy_from_slice(&scores);
+                }
+                let out = &mut joined[i * d + off..i * d + off + dk];
+                for (j, &w) in scores.iter().enumerate() {
+                    let vh = &v[j * d + off..j * d + off + dk];
+                    for c in 0..dk {
+                        out[c] += w * vh[c];
+                    }
+                }
+            }
+        }
+        self.weights.affine(
+            &format!("{prefix}_Wo"),
+            &joined,
+            q_len,
+            Some(&format!("{prefix}_bo")),
+        )
+    }
+
     /// Batched multi-head attention over `[batch, q_len, dim]` / `[batch, kv_len,
     /// dim]`. `kv_lens[b]` is sentence `b`'s valid key count; keys at positions
     /// `>= kv_lens[b]` are masked (scored −∞ → zero weight), so a query never
@@ -1294,6 +1542,37 @@ fn active_rows(done: &[bool], max_len: &[usize], step: usize) -> Vec<usize> {
         .collect()
 }
 
+/// Maps byte offsets in a string to UTF-16 code-unit offsets, the DOM string
+/// space a JS tag-transfer layer works in. Built once per string; `at(byte)`
+/// looks up any byte offset that lands on (or past) a char boundary, so the SPM
+/// span endpoints (always char boundaries in the normalized/decoded text) resolve
+/// directly. A byte offset in the interior of a multi-byte char clamps to that
+/// char's start — SPM never produces such offsets, so this only guards misuse.
+struct Utf16Map {
+    /// `prefix[b]` = UTF-16 code units in the string's first `b` bytes, for every
+    /// char-boundary byte offset `b`; non-boundary bytes copy the last boundary.
+    prefix: Vec<usize>,
+}
+
+impl Utf16Map {
+    fn new(s: &str) -> Utf16Map {
+        let mut prefix = vec![0usize; s.len() + 1];
+        let mut units = 0usize;
+        let mut last = 0usize;
+        for (b, ch) in s.char_indices() {
+            prefix[last..=b].fill(units);
+            units += ch.len_utf16();
+            last = b + ch.len_utf8();
+        }
+        prefix[last..=s.len()].fill(units);
+        Utf16Map { prefix }
+    }
+
+    fn at(&self, byte: usize) -> usize {
+        self.prefix[byte.min(self.prefix.len() - 1)]
+    }
+}
+
 /// Index of the maximum element (first on ties).
 fn argmax(v: &[f32]) -> u32 {
     let mut best = 0usize;
@@ -1318,4 +1597,26 @@ fn argmax_restricted(logits: &[f32], candidates: &[u32]) -> u32 {
         }
     }
     best
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Utf16Map;
+
+    #[test]
+    fn utf16_map_handles_astral_and_multibyte() {
+        // "aé😀b": 'a'=1 byte/1 u16, 'é'=2 bytes/1 u16, '😀'=4 bytes/2 u16,
+        // 'b'=1 byte/1 u16.
+        let s = "aé😀b";
+        let m = Utf16Map::new(s);
+        // Char-boundary byte offsets -> cumulative UTF-16 code units.
+        assert_eq!(m.at(0), 0); // before 'a'
+        assert_eq!(m.at(1), 1); // after 'a' (before 'é')
+        assert_eq!(m.at(3), 2); // after 'é' (before '😀')
+        assert_eq!(m.at(7), 4); // after '😀' (before 'b'): 1+1+2
+        assert_eq!(m.at(s.len()), 5); // after 'b'
+                                      // Slicing the UTF-16 view by these offsets recovers the substrings.
+        let u: Vec<u16> = s.encode_utf16().collect();
+        assert_eq!(String::from_utf16_lossy(&u[m.at(3)..m.at(7)]), "😀");
+    }
 }

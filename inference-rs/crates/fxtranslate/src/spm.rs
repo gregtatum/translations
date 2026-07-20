@@ -16,6 +16,7 @@
 //! is bit-identical to the reference `spm_encode` (see `tests/spm_oracle.rs`).
 
 use std::collections::HashMap;
+use std::ops::Range;
 
 /// The whitespace marker SentencePiece substitutes for spaces (U+2581).
 const SPACE: char = '\u{2581}';
@@ -155,6 +156,35 @@ impl SpmVocab {
         ids
     }
 
+    /// Apply this vocab's SentencePiece normalization (`precompiled_charsmap` +
+    /// whitespace handling) to `text`, returning the normalized string that
+    /// tokenization actually runs over. The byte offsets from
+    /// [`encode_with_offsets`](Self::encode_with_offsets) index into *this*
+    /// string, not the raw input — for the en-fr vocab the charsmap is
+    /// non-identity (NFKC-style: ligatures, full-width forms, combining marks and
+    /// `<0xA0>` whitespace are all rewritten), so raw and normalized differ. A
+    /// caller that needs to map source tokens back to characters should work in
+    /// this normalized space.
+    pub fn normalize(&self, text: &str) -> String {
+        self.normalizer.normalize(text)
+    }
+
+    /// Like [`encode`](Self::encode), but also returns each token id's byte range
+    /// in the **normalized** text (the string [`normalize`](Self::normalize)
+    /// produces). The id sequence is byte-identical to `encode`; the ranges are
+    /// the Viterbi segmentation boundaries. A byte-fallback character that
+    /// expands into several `<0xNN>` pieces gives every byte piece the range of
+    /// the whole original character, so the ranges still tile the normalized
+    /// string in order (each token's `start` is the previous token's `end`).
+    ///
+    /// No EOS is appended (there is no source span for EOS); a caller emitting a
+    /// source EOS token should give it a zero-length range at the string end.
+    pub fn encode_with_offsets(&self, text: &str) -> (String, Vec<(u32, Range<usize>)>) {
+        let norm = self.normalizer.normalize(text);
+        let tokens = self.viterbi_with_offsets(&norm);
+        (norm, tokens)
+    }
+
     /// Viterbi max-score segmentation of `norm`, matching SentencePiece's
     /// unigram lattice (`unigram_model.cc` `PopulateNodes`/`Encode`). Normal and
     /// user-defined pieces are matched as substrings at UTF-8 char boundaries; a
@@ -163,6 +193,18 @@ impl SpmVocab {
     /// `<0xNN>` byte pieces (byte fallback), or emitted as `<unk>` if the model
     /// ships no byte pieces.
     fn viterbi(&self, norm: &str) -> Vec<u32> {
+        self.viterbi_with_offsets(norm)
+            .into_iter()
+            .map(|(id, _)| id)
+            .collect()
+    }
+
+    /// [`viterbi`](Self::viterbi) with each emitted id's byte range in `norm`.
+    /// The id sequence is identical to `viterbi`; this additionally surfaces the
+    /// `back[]` segmentation offsets the lattice already computes. Byte-fallback
+    /// pieces of one unknown character all carry that character's range, so the
+    /// ranges tile `norm` contiguously in emission order.
+    fn viterbi_with_offsets(&self, norm: &str) -> Vec<(u32, Range<usize>)> {
         let n = norm.len();
         let neg_inf = f32::NEG_INFINITY;
         let mut best_score = vec![neg_inf; n + 1];
@@ -208,36 +250,39 @@ impl SpmVocab {
             }
         }
 
-        // Backtrack, expanding unknown characters into byte pieces.
+        // Backtrack, expanding unknown characters into byte pieces. Each emitted
+        // id carries the byte range `[prev, pos)` of the lattice edge that
+        // produced it; byte-fallback pieces share the whole character's range.
         let bytes = norm.as_bytes();
-        let mut ids = Vec::new();
+        let mut out: Vec<(u32, Range<usize>)> = Vec::new();
         let mut pos = n;
         while pos > 0 {
             let (prev, id) = back[pos];
             if prev == usize::MAX {
                 break;
             }
+            let span = prev..pos;
             if id == self.unk_id {
                 // Byte fallback: emit `<0xNN>` for each byte of the character,
                 // or `<unk>` if the model has no byte pieces. Pushed reversed;
-                // the final `ids.reverse()` restores order.
+                // the final `out.reverse()` restores order.
                 let mut any_byte = false;
                 for &b in bytes[prev..pos].iter().rev() {
                     if let Some(bid) = self.byte_pieces[b as usize] {
-                        ids.push(bid);
+                        out.push((bid, span.clone()));
                         any_byte = true;
                     }
                 }
                 if !any_byte {
-                    ids.push(self.unk_id);
+                    out.push((self.unk_id, span.clone()));
                 }
             } else {
-                ids.push(id);
+                out.push((id, span));
             }
             pos = prev;
         }
-        ids.reverse();
-        ids
+        out.reverse();
+        out
     }
 
     /// The piece string for an id.
@@ -264,6 +309,73 @@ impl SpmVocab {
             out.push_str(self.piece(id));
         }
         out.replace(SPACE, " ").trim_start().to_string()
+    }
+
+    /// Like [`decode`](Self::decode), but also returns each input id's byte range
+    /// in the returned string. The string is byte-identical to `decode`. Control
+    /// and unknown pieces contribute no text, so their range is empty (a
+    /// zero-length span at the position they would have occupied) — this keeps the
+    /// returned vector aligned one-to-one with `ids`, so a caller can index it by
+    /// target-token position (e.g. to attach an alignment row to a target token).
+    ///
+    /// The `▁`→space rewrite and the leading-space trim are applied consistently:
+    /// a piece's range covers exactly the bytes it produced in the final string,
+    /// so the ranges tile the output in order.
+    pub fn decode_with_offsets(&self, ids: &[u32]) -> (String, Vec<Range<usize>>) {
+        // Build the raw concatenation and each id's byte range within it.
+        let mut raw = String::new();
+        let mut raw_ranges: Vec<Range<usize>> = Vec::with_capacity(ids.len());
+        for &id in ids {
+            let start = raw.len();
+            let t = self
+                .types
+                .get(id as usize)
+                .copied()
+                .unwrap_or(PieceType::Normal);
+            if !(t == PieceType::Control || t == PieceType::Unknown) {
+                raw.push_str(self.piece(id));
+            }
+            raw_ranges.push(start..raw.len());
+        }
+
+        // Rewrite `▁` (3 bytes) → " " (1 byte), building a map from each raw byte
+        // offset to its offset in the converted (pre-trim) string. `conv[b]` =
+        // converted offset of raw byte `b`; length raw.len()+1. Bytes are copied
+        // verbatim (a multi-byte UTF-8 char passes through unchanged), so building
+        // the buffer as bytes and validating once at the end preserves the text.
+        let raw_bytes = raw.as_bytes();
+        let mut converted: Vec<u8> = Vec::with_capacity(raw.len());
+        let mut conv = vec![0usize; raw.len() + 1];
+        let mut b = 0usize;
+        while b < raw.len() {
+            conv[b] = converted.len();
+            if raw_bytes[b..].starts_with(SPACE_BYTES) {
+                converted.push(b' ');
+                // The 2 continuation bytes of `▁` map to the same offset.
+                conv[b + 1] = converted.len();
+                conv[b + 2] = converted.len();
+                b += SPACE_BYTES.len();
+            } else {
+                converted.push(raw_bytes[b]);
+                b += 1;
+            }
+        }
+        conv[raw.len()] = converted.len();
+        let converted = String::from_utf8(converted).expect("piece bytes stay valid UTF-8");
+
+        // `trim_start()` drops leading Unicode whitespace; shift every mapped
+        // offset left by the trimmed byte count, clamped to the trimmed range so a
+        // token entirely inside the trimmed prefix collapses to a zero-length span
+        // at 0. The result is byte-identical to `decode`.
+        let trimmed = converted.trim_start();
+        let cut = converted.len() - trimmed.len();
+        let out = trimmed.to_string();
+        let shift = |off: usize| off.saturating_sub(cut).min(out.len());
+        let ranges = raw_ranges
+            .into_iter()
+            .map(|r| shift(conv[r.start])..shift(conv[r.end]))
+            .collect();
+        (out, ranges)
     }
 }
 
@@ -568,6 +680,47 @@ mod tests {
         let n = Normalizer::from_spec(&[]);
         assert_eq!(n.normalize("Hello world."), "\u{2581}Hello\u{2581}world.");
         assert_eq!(n.normalize("  a  b  "), "\u{2581}a\u{2581}b");
+    }
+
+    #[test]
+    fn decode_offsets_tile_output() {
+        // Build a tiny synthetic vocab so the test is self-contained (no model
+        // file): pieces "▁he", "llo", "▁world", plus a control piece.
+        let vocab = SpmVocab {
+            pieces: vec![
+                "<ctrl>".into(),
+                "\u{2581}he".into(),
+                "llo".into(),
+                "\u{2581}world".into(),
+            ],
+            types: vec![
+                PieceType::Control,
+                PieceType::Normal,
+                PieceType::Normal,
+                PieceType::Normal,
+            ],
+            scores: vec![0.0; 4],
+            by_piece: HashMap::new(),
+            eos_id: 0,
+            unk_id: 0,
+            max_piece_bytes: 8,
+            min_score: 0.0,
+            normalizer: Normalizer::from_spec(&[]),
+            byte_pieces: Box::new([None; 256]),
+        };
+        let ids = [0u32, 1, 2, 3]; // <ctrl> ▁he llo ▁world
+        let (text, ranges) = vocab.decode_with_offsets(&ids);
+        // Byte-identical to decode(): leading space trimmed, ▁ -> space.
+        assert_eq!(text, vocab.decode(&ids));
+        assert_eq!(text, "hello world");
+        // One range per id, aligned; control piece is empty.
+        assert_eq!(ranges.len(), 4);
+        assert_eq!(&text[ranges[0].clone()], ""); // control
+        assert_eq!(&text[ranges[1].clone()], "he");
+        assert_eq!(&text[ranges[2].clone()], "llo");
+        assert_eq!(&text[ranges[3].clone()], " world");
+        // Ranges tile the output contiguously in order.
+        assert_eq!(ranges[3].end, text.len());
     }
 
     #[test]

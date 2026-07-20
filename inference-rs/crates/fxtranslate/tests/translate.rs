@@ -263,6 +263,67 @@ fn from_bytes_matches_load() {
     }
 }
 
+/// `translate_aligned` is additive: its `target_text` must be byte-identical to
+/// `translate`, and the token/alignment contract must be internally consistent
+/// (spans slice their string; rows are distributions of the right shape). Parity
+/// of the alignment *values* against marian lives in the oracle crate
+/// (`alignment_parity.rs`); here we lock the contract shape and the M1 equality.
+#[test]
+fn translate_aligned_matches_translate_and_is_well_formed() {
+    let Some(engine) = engine() else { return };
+    for src in [
+        "Hello world.",
+        "The cat sat on the mat.",
+        "I love programming.",
+    ] {
+        let plain = engine.translate(src);
+        let a = engine.translate_aligned(src);
+
+        // M1: alignment path must not change the plain-text output.
+        assert_eq!(a.target_text, plain, "aligned target_text for {src:?}");
+
+        // Source spans (UTF-16) tile source_normalized; last token is EOS
+        // (zero-length span at the end).
+        let src_u16: Vec<u16> = a.source_normalized.encode_utf16().collect();
+        assert!(!a.source_tokens.is_empty());
+        let eos = a.source_tokens.last().unwrap();
+        assert_eq!(eos.begin, eos.end, "source EOS span is empty");
+        assert_eq!(
+            eos.end,
+            src_u16.len(),
+            "source EOS at end of normalized text"
+        );
+        let mut cursor = 0usize;
+        for t in &a.source_tokens[..a.source_tokens.len() - 1] {
+            assert_eq!(t.begin, cursor, "source spans are contiguous");
+            assert!(t.end >= t.begin && t.end <= src_u16.len());
+            cursor = t.end;
+        }
+
+        // Target spans (UTF-16) index target_text; last token is EOS.
+        let trg_u16: Vec<u16> = a.target_text.encode_utf16().collect();
+        assert_eq!(
+            a.target_tokens.len(),
+            a.alignments.len(),
+            "one alignment row per target token"
+        );
+        let trg_eos = a.target_tokens.last().unwrap();
+        assert_eq!(trg_eos.begin, trg_eos.end, "target EOS span is empty");
+        assert_eq!(trg_eos.end, trg_u16.len());
+
+        // Every alignment row is a distribution over all source tokens (incl. EOS).
+        for (t, row) in a.alignments.iter().enumerate() {
+            assert_eq!(
+                row.len(),
+                a.source_tokens.len(),
+                "row {t} width == source token count"
+            );
+            let sum: f32 = row.iter().sum();
+            assert!((sum - 1.0).abs() < 1e-4, "row {t} sums to {sum}");
+        }
+    }
+}
+
 /// Source ids for "Hello world." + EOS, matching the trace.
 fn engine_src_ids() -> Vec<u32> {
     vec![17169, 564, 264, 0]
