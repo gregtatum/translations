@@ -275,6 +275,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "fxtranslate-gecko"
+version = "0.4.2"
+dependencies = [
+ "fxtranslate",
+]
+
+[[package]]
 name = "fxtranslate-oracle"
 version = "0.4.2"
 dependencies = [

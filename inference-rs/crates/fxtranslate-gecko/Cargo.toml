@@ -1,0 +1,33 @@
+[package]
+name = "fxtranslate-gecko"
+version = "0.4.2"
+edition = "2021"
+description = "C-ABI glue crate exposing the fxtranslate neural machine-translation engine to Firefox/Gecko C++ (the third binding, mirroring the wasm and PyO3 crates)."
+license = "MPL-2.0"
+repository = "https://github.com/gregtatum/translations"
+# `publish = false`: this is a Gecko-internal glue crate, never a crates.io
+# artifact (like the wasm/py/oracle crates). It is vendored into Firefox under
+# third_party/rust and linked via toolkit/library/rust/shared, not published.
+publish = false
+
+[lib]
+name = "fxtranslate_gecko"
+path = "src/lib.rs"
+# `staticlib` is what Firefox links (gkrust is itself a staticlib that pulls this
+# in through toolkit/library/rust/shared). `rlib` lets the in-crate integration
+# test (tests/ffi_parity.rs) call the same C ABI in-process to prove byte-exact
+# parity against the standalone engine.
+crate-type = ["staticlib", "rlib"]
+
+[dependencies]
+# The engine in the exact config the Firefox build uses:
+#   - default-features = false: no `fast` default (drops `mmap` — Firefox feeds
+#     bytes, not a file path; the worker hands decompressed ArrayBuffers).
+#   - lean-embed + gemmology: the production numeric config (SIMD int8 GEMM,
+#     lean embeddings) the enfr trace was validated under. Compile-time SIMD
+#     selection: aarch64 -> i8mm+neon64, x86_64 -> avx2, else scalar.
+#   - icu-segmenter: translate_long segments in-engine (ICU4X UAX#29). Firefox
+#     no longer sentence-splits in JS, so segmentation must ship here.
+# Deliberately NOT enabled: mmap (no file path), net/download/dirs (Firefox owns
+# HTTP + Remote Settings + the model cache), threads/gemm-threads (later perf lever).
+fxtranslate = { path = "../fxtranslate", default-features = false, features = ["lean-embed", "gemmology", "icu-segmenter"] }
