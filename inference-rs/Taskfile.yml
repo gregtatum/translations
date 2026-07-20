@@ -216,6 +216,10 @@ tasks:
         task rs:publish -- patch             # release for real (or: minor / major / --set X.Y.Z)
         task rs:publish                       # resume an in-flight release (no bump)
     dir: '{{.TASKFILE_DIR}}'
+    # Wire stdin through to the terminal: the npm publish step prompts for a 2FA
+    # one-time password when the account requires it, and without this Task leaves
+    # the command's stdin disconnected, so the prompt can never reach the operator.
+    interactive: true
     cmds:
       - python3 {{.TASKFILE_DIR}}/scripts/publish.py {{.CLI_ARGS}}
 

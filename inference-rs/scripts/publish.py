@@ -799,23 +799,32 @@ def prompt_otp(reason: str) -> Optional[str]:
 
     npm requires the code interactively, but the board has captured stdout and is redrawing
     in place, so a plain `input()` prompt would be swallowed by the capture and tangle with
-    the render. Talk to `/dev/tty` directly instead — that bypasses the capture and reaches
-    the human. Flags `_board_interrupted` so the execute loop reprints a fresh board under
-    the prompt. Returns the stripped code, or None if there's no usable terminal or the
-    operator entered a blank line (abort), so the caller can fail with a clear message
-    instead of hanging."""
+    the render. Reach the operator's terminal directly: prefer `/dev/tty` (the controlling
+    terminal, which bypasses the capture); if it can't be opened, fall back to the real
+    stdin/stderr (`sys.__stdin__`/`sys.__stderr__`, the originals the capture shadows) when
+    stdin is itself a terminal. Flags `_board_interrupted` so the execute loop reprints a
+    fresh board under the prompt. Returns the stripped code, or None if there's no reachable
+    terminal or the operator entered a blank line (abort), so the caller can fail with a
+    clear message instead of hanging."""
     global _board_interrupted
+    close_after: Optional[object] = None
     try:
-        tty = open("/dev/tty", "r+")
+        reader = writer = open("/dev/tty", "r+")
+        close_after = reader
     except OSError:
-        return None
+        stdin = sys.__stdin__
+        if stdin is None or not stdin.isatty():
+            return None  # no reachable terminal (piped/CI) — caller fails with a hint
+        reader = stdin
+        writer = sys.__stderr__ or sys.__stdout__
     _board_interrupted = True
     try:
-        tty.write(f"\n{reason}\n  npm one-time password (2FA code, blank to abort): ")
-        tty.flush()
-        line = tty.readline()
+        writer.write(f"\n{reason}\n  npm one-time password (2FA code, blank to abort): ")
+        writer.flush()
+        line = reader.readline()
     finally:
-        tty.close()
+        if close_after is not None:
+            close_after.close()
     return line.strip() or None
 
 
@@ -847,7 +856,7 @@ def publish_npm() -> None:
             log("  npm version is already on the registry; skipping")
             return
         needs_otp = "EOTP" in combined or "one-time password" in combined
-        if needs_otp and IS_INTERACTIVE and attempts < 3:
+        if needs_otp and attempts < 3:
             attempts += 1
             reason = (
                 "npm requires a one-time password (2FA) to publish this package."
