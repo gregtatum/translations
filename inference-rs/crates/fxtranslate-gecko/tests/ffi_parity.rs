@@ -16,8 +16,9 @@ use std::ptr;
 
 use fxtranslate::engine::Engine;
 use fxtranslate_gecko::{
-    fxtranslate_backend, fxtranslate_engine_free, fxtranslate_engine_new, fxtranslate_last_error,
-    fxtranslate_string_free, fxtranslate_translate, FxEngine,
+    fxtranslate_aligned_free, fxtranslate_backend, fxtranslate_engine_free, fxtranslate_engine_new,
+    fxtranslate_last_error, fxtranslate_string_free, fxtranslate_translate,
+    fxtranslate_translate_aligned, FxAligned, FxEngine,
 };
 
 // Same layout / skip-if-absent convention the oracle tests use (paths are
@@ -249,6 +250,131 @@ fn null_and_empty_inputs_are_clean_errors() {
     unsafe {
         fxtranslate_string_free(ptr::null_mut(), 0);
         fxtranslate_engine_free(ptr::null_mut());
+    }
+}
+
+/// The aligned C ABI matches the standalone engine and returns a well-formed
+/// struct-of-arrays: text equals `translate_aligned().target_text` (and, for a
+/// single sentence, `translate_long`), the token counts match the matrix
+/// dimensions, and every alignment row is a distribution.
+#[test]
+fn c_abi_aligned_matches_standalone_and_is_well_formed() {
+    let Some((model, vocab, shortlist)) = load_enfr_bytes() else {
+        eprintln!("skipping ffi_parity (aligned): en-fr model absent");
+        return;
+    };
+
+    // translate_aligned is the single-sequence path, so use single sentences.
+    let inputs = &[
+        "Hello, world!",
+        "Firefox is a web browser developed by Mozilla.",
+    ];
+
+    for &text in inputs {
+        let direct = Engine::from_bytes(&model, &vocab, &vocab)
+            .expect("direct from_bytes")
+            .with_shortlist_bytes(&shortlist)
+            .translate_aligned(text);
+
+        // Single-sentence: the aligned target equals the plain translate_long.
+        let plain = direct_translate(&model, &vocab, &shortlist, text);
+        assert_eq!(
+            direct.target_text, plain,
+            "aligned target_text must equal translate_long for a single sentence: {text:?}"
+        );
+
+        // SAFETY: valid buffers; drive the aligned C ABI end to end.
+        unsafe {
+            let engine = fxtranslate_engine_new(
+                model.as_ptr(),
+                model.len(),
+                vocab.as_ptr(),
+                vocab.len(),
+                vocab.as_ptr(),
+                vocab.len(),
+                shortlist.as_ptr(),
+                shortlist.len(),
+            );
+            assert!(!engine.is_null(), "aligned engine_new null: {}", last_error());
+
+            let mut out: *mut FxAligned = ptr::null_mut();
+            let rc = fxtranslate_translate_aligned(engine, text.as_ptr(), text.len(), &mut out);
+            assert_eq!(rc, 0, "translate_aligned rc {rc}: {}", last_error());
+            assert!(!out.is_null(), "translate_aligned gave null on rc==0");
+
+            let a = &*out;
+
+            // text == standalone target_text.
+            let ffi_text =
+                String::from_utf8(std::slice::from_raw_parts(a.text_ptr, a.text_len).to_vec())
+                    .expect("aligned text is UTF-8");
+            assert_eq!(ffi_text, direct.target_text, "aligned C ABI text diverged: {text:?}");
+
+            // source_normalized round-trips.
+            let ffi_src_norm = String::from_utf8(
+                std::slice::from_raw_parts(a.src_norm_ptr, a.src_norm_len).to_vec(),
+            )
+            .expect("aligned src_norm is UTF-8");
+            assert_eq!(ffi_src_norm, direct.source_normalized, "src_norm diverged: {text:?}");
+
+            // Token counts match the standalone shape and the matrix dims.
+            assert_eq!(a.src_tokens_len, direct.source_tokens.len(), "src token count");
+            assert_eq!(a.trg_tokens_len, direct.target_tokens.len(), "trg token count");
+            assert_eq!(a.align_rows, a.trg_tokens_len, "rows == trg tokens");
+            assert_eq!(a.align_cols, a.src_tokens_len, "cols == src tokens");
+
+            // Token spans mirror the engine (usize -> u32).
+            let src_toks = std::slice::from_raw_parts(a.src_tokens_ptr, a.src_tokens_len);
+            for (ffi, eng) in src_toks.iter().zip(&direct.source_tokens) {
+                assert_eq!(ffi.id, eng.id, "src token id");
+                assert_eq!(ffi.begin as usize, eng.begin, "src token begin");
+                assert_eq!(ffi.end as usize, eng.end, "src token end");
+            }
+            let trg_toks = std::slice::from_raw_parts(a.trg_tokens_ptr, a.trg_tokens_len);
+            for (ffi, eng) in trg_toks.iter().zip(&direct.target_tokens) {
+                assert_eq!(ffi.id, eng.id, "trg token id");
+                assert_eq!(ffi.begin as usize, eng.begin, "trg token begin");
+                assert_eq!(ffi.end as usize, eng.end, "trg token end");
+            }
+
+            // Every alignment row is a valid distribution summing to ~1, and the
+            // flat matrix matches the standalone nested rows exactly.
+            let flat = std::slice::from_raw_parts(a.align_ptr, a.align_rows * a.align_cols);
+            for r in 0..a.align_rows {
+                let row = &flat[r * a.align_cols..(r + 1) * a.align_cols];
+                let sum: f32 = row.iter().sum();
+                assert!(
+                    (sum - 1.0).abs() < 1e-3,
+                    "alignment row {r} sum {sum} not ~1 for {text:?}"
+                );
+                assert_eq!(row, direct.alignments[r].as_slice(), "flat row {r} != nested");
+            }
+
+            fxtranslate_aligned_free(out);
+            fxtranslate_engine_free(engine);
+        }
+    }
+}
+
+/// The aligned path fails cleanly on bad inputs: a null out-pointer and a null
+/// engine both return nonzero without panicking, and freeing null is a no-op.
+#[test]
+fn c_abi_aligned_bad_inputs_are_clean_errors() {
+    // Null out-pointer: nonzero rc, no crash.
+    let rc = unsafe { fxtranslate_translate_aligned(ptr::null_mut(), ptr::null(), 0, ptr::null_mut()) };
+    assert_ne!(rc, 0, "null out must be a nonzero rc");
+
+    // Null engine with a valid out-pointer: nonzero rc, *out left null.
+    let mut out: *mut FxAligned = 1 as *mut FxAligned;
+    let rc = unsafe {
+        fxtranslate_translate_aligned(ptr::null_mut(), ptr::null(), 0, &mut out)
+    };
+    assert_ne!(rc, 0, "null engine must be a nonzero rc");
+    assert!(out.is_null(), "null engine must leave *out null");
+
+    // Freeing null is a no-op.
+    unsafe {
+        fxtranslate_aligned_free(ptr::null_mut());
     }
 }
 

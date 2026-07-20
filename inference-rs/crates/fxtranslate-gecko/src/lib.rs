@@ -35,7 +35,7 @@ use std::cell::RefCell;
 use std::os::raw::c_int;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
-use fxtranslate::engine::Engine;
+use fxtranslate::engine::{Aligned, Engine};
 
 /// Opaque handle the C++ side holds as a `void*`. Never dereferenced by C++.
 ///
@@ -342,32 +342,239 @@ pub unsafe extern "C" fn fxtranslate_backend(out_ptr: *mut u8, out_cap: usize) -
     full_len
 }
 
-// ============================================================================
-// M2-ready shape — RESERVED, NOT IMPLEMENTED (see 01-binding-and-build.md §4
-// "M2-ready shape"). Defined here as commented-out signatures so the seam
-// (engine ↔ JS HTML handler = plain text + alignments) is not designed out. M2
-// needs `translate(text) -> { text, alignments }` for the DOMParser HTML layer;
-// whether fxtranslate can populate FxAlignment at all is Workstream B's gate
-// (cross-attention head vs greenfield). Do NOT build this now.
-//
-// /// Token-level source<->target alignment for one translated unit. Placeholder
-// /// shape gated by Workstream B (does fxtranslate emit alignments today?).
-// #[repr(C)]
-// pub struct FxAlignment {
-//     pub src_token_start: u32,
-//     pub src_token_len: u32,
-//     pub trg_token_start: u32,
-//     pub trg_token_len: u32,
-//     // + probability/weight if the cross-attention head yields one.
-// }
-//
-// /// Translate + emit alignments. out_text_* freed via fxtranslate_string_free;
-// /// out_align_* freed via a future fxtranslate_alignments_free(ptr, count).
-// #[no_mangle]
-// pub unsafe extern "C" fn fxtranslate_translate_aligned(
-//     engine: *mut FxEngine,
-//     text_ptr: *const u8, text_len: usize,
-//     out_text_ptr: *mut *mut u8, out_text_len: *mut usize,
-//     out_align_ptr: *mut *mut FxAlignment, out_align_count: *mut usize,
-// ) -> c_int;
-// ============================================================================
+/// One token: vocab id plus a `[begin, end)` span in **UTF-16 code units**.
+///
+/// C-ABI mirror of [`fxtranslate::engine::Token`]. The Rust `Token` uses `usize`
+/// offsets; here they are `u32` (a DOM string is bounded well under `u32::MAX`
+/// UTF-16 units). Source-token spans index into `FxAligned::src_norm_*`; target
+/// spans index into `FxAligned::text_*`.
+#[repr(C)]
+pub struct FxToken {
+    pub id: u32,
+    /// Start offset (UTF-16 code units), inclusive.
+    pub begin: u32,
+    /// End offset (UTF-16 code units), exclusive.
+    pub end: u32,
+}
+
+/// Struct-of-arrays result of [`fxtranslate_translate_aligned`]: the target text,
+/// the SPM-normalized source, both token arrays, and the soft-alignment matrix.
+///
+/// Every pointer is a Rust heap allocation owned by this struct; the whole thing
+/// is reclaimed in one call to [`fxtranslate_aligned_free`]. The C++ side reads
+/// the fields, builds its own owned copies (WebIDL dictionary), then frees. All
+/// fields are `pub(crate)`-private to C++ (opaque struct in the header would lose
+/// the layout); they are `#[repr(C)]` so the header can name every field.
+///
+/// The alignment matrix is flattened row-major: `align_ptr[r * align_cols + c]` is
+/// `P(source_tokens[c] | target_tokens[r])`. `align_rows == trg_tokens_len` and
+/// `align_cols == src_tokens_len`.
+#[repr(C)]
+pub struct FxAligned {
+    /// Detokenized target text (UTF-8). Token spans in `trg_tokens` are UTF-16
+    /// offsets into this string.
+    pub text_ptr: *mut u8,
+    pub text_len: usize,
+    /// SPM-normalized source text (UTF-8). `src_tokens` spans are UTF-16 offsets
+    /// into this string.
+    pub src_norm_ptr: *mut u8,
+    pub src_norm_len: usize,
+    /// Source tokens (incl. trailing EOS), in order.
+    pub src_tokens_ptr: *mut FxToken,
+    pub src_tokens_len: usize,
+    /// Target tokens (incl. terminal EOS), in order.
+    pub trg_tokens_ptr: *mut FxToken,
+    pub trg_tokens_len: usize,
+    /// Flat row-major `[align_rows * align_cols]` soft alignment, `[trg][src]`.
+    pub align_ptr: *mut f32,
+    pub align_rows: usize,
+    pub align_cols: usize,
+}
+
+/// Saturating `usize -> u32` for UTF-16 offsets. A DOM string can't reach
+/// `u32::MAX` code units in practice; saturate rather than wrap so a pathological
+/// input degrades to a clamped span instead of a corrupt (wrapped) one.
+fn u32_saturate(v: usize) -> u32 {
+    u32::try_from(v).unwrap_or(u32::MAX)
+}
+
+/// Convert an engine [`Aligned`] into an owned, heap-allocated [`FxAligned`] whose
+/// pointers C++ can read and which [`fxtranslate_aligned_free`] reclaims.
+fn aligned_into_ffi(a: Aligned) -> *mut FxAligned {
+    // Strings: hand out (ptr, len) with cap == len so free can rebuild the Vec.
+    fn string_into_raw(s: String) -> (*mut u8, usize) {
+        let mut bytes = s.into_bytes();
+        bytes.shrink_to_fit();
+        debug_assert_eq!(bytes.len(), bytes.capacity());
+        let len = bytes.len();
+        let ptr = bytes.as_mut_ptr();
+        std::mem::forget(bytes);
+        (ptr, len)
+    }
+
+    fn tokens_into_raw(toks: Vec<fxtranslate::engine::Token>) -> (*mut FxToken, usize) {
+        let mut v: Vec<FxToken> = toks
+            .into_iter()
+            .map(|t| FxToken {
+                id: t.id,
+                begin: u32_saturate(t.begin),
+                end: u32_saturate(t.end),
+            })
+            .collect();
+        v.shrink_to_fit();
+        debug_assert_eq!(v.len(), v.capacity());
+        let len = v.len();
+        let ptr = v.as_mut_ptr();
+        std::mem::forget(v);
+        (ptr, len)
+    }
+
+    let align_rows = a.alignments.len();
+    let align_cols = a.source_tokens.len();
+    // Flatten the alignment matrix row-major. Each row's length == source_tokens
+    // (the engine contract), so the flat buffer is exactly rows*cols.
+    let mut flat: Vec<f32> = Vec::with_capacity(align_rows * align_cols);
+    for row in &a.alignments {
+        debug_assert_eq!(row.len(), align_cols);
+        flat.extend_from_slice(row);
+    }
+    flat.shrink_to_fit();
+    debug_assert_eq!(flat.len(), flat.capacity());
+    let align_len = flat.len();
+    let align_ptr = flat.as_mut_ptr();
+    std::mem::forget(flat);
+    let _ = align_len; // len is reconstructible as rows*cols in free.
+
+    let (text_ptr, text_len) = string_into_raw(a.target_text);
+    let (src_norm_ptr, src_norm_len) = string_into_raw(a.source_normalized);
+    let (src_tokens_ptr, src_tokens_len) = tokens_into_raw(a.source_tokens);
+    let (trg_tokens_ptr, trg_tokens_len) = tokens_into_raw(a.target_tokens);
+
+    Box::into_raw(Box::new(FxAligned {
+        text_ptr,
+        text_len,
+        src_norm_ptr,
+        src_norm_len,
+        src_tokens_ptr,
+        src_tokens_len,
+        trg_tokens_ptr,
+        trg_tokens_len,
+        align_ptr,
+        align_rows,
+        align_cols,
+    }))
+}
+
+/// Translate `text` (a UTF-8 sentence/unit) and write a heap-allocated
+/// [`FxAligned`] to `*out`. Returns 0 on success, nonzero on error.
+///
+/// Uses [`Engine::translate_aligned`] — the **single-sequence** aligned path (no
+/// UAX#29 sentence segmentation, unlike [`fxtranslate_translate`]); the M2 HTML
+/// layer segments and calls this per unit. On success `*out` owns everything and
+/// MUST be freed with [`fxtranslate_aligned_free`]. On error `*out` is set null and
+/// the reason is retrievable via [`fxtranslate_last_error`].
+///
+/// # Safety
+///
+/// `engine` must be a live handle from [`fxtranslate_engine_new`]. `text_ptr`/
+/// `text_len` must describe a readable buffer (or be `(null, 0)`). `out` must be a
+/// non-null, writable pointer.
+#[no_mangle]
+pub unsafe extern "C" fn fxtranslate_translate_aligned(
+    engine: *mut FxEngine,
+    text_ptr: *const u8,
+    text_len: usize,
+    out: *mut *mut FxAligned,
+) -> c_int {
+    clear_last_error();
+
+    if out.is_null() {
+        set_last_error("translate_aligned: null out pointer");
+        return 1;
+    }
+    // SAFETY: non-null checked directly above.
+    unsafe {
+        *out = std::ptr::null_mut();
+    }
+
+    if engine.is_null() {
+        set_last_error("translate_aligned: null engine handle");
+        return 1;
+    }
+
+    let result = catch_unwind(AssertUnwindSafe(|| {
+        // SAFETY: non-null checked above; caller contracts the handle is live and
+        // thread-confined. We borrow, never take ownership.
+        let engine = unsafe { &(*engine).engine };
+        let bytes = slice_from_raw(text_ptr, text_len, "text")?;
+        let text = std::str::from_utf8(bytes).map_err(|e| format!("text is not UTF-8: {e}"))?;
+        Ok::<Aligned, String>(engine.translate_aligned(text))
+    }));
+
+    match result {
+        Ok(Ok(aligned)) => {
+            let ptr = aligned_into_ffi(aligned);
+            // SAFETY: out non-null checked above.
+            unsafe {
+                *out = ptr;
+            }
+            0
+        }
+        Ok(Err(msg)) => {
+            set_last_error(msg);
+            2
+        }
+        Err(payload) => {
+            set_last_error(format!(
+                "panic during translate_aligned: {}",
+                panic_message(&*payload)
+            ));
+            3
+        }
+    }
+}
+
+/// Free an [`FxAligned`] returned by [`fxtranslate_translate_aligned`]: drops both
+/// strings, both token arrays, the flat alignment matrix, and the box itself.
+/// Passing null is a no-op. Freeing the same pointer twice is undefined behavior.
+///
+/// # Safety
+///
+/// `ptr` must originate from a single [`fxtranslate_translate_aligned`] call and
+/// not have been freed already.
+#[no_mangle]
+pub unsafe extern "C" fn fxtranslate_aligned_free(ptr: *mut FxAligned) {
+    if ptr.is_null() {
+        return;
+    }
+    let _ = catch_unwind(AssertUnwindSafe(|| unsafe {
+        // Reclaim the box, then each allocation it points at, rebuilding every Vec
+        // with cap == len (we shrank to fit before forgetting each one).
+        let a = Box::from_raw(ptr);
+        if !a.text_ptr.is_null() {
+            drop(Vec::from_raw_parts(a.text_ptr, a.text_len, a.text_len));
+        }
+        if !a.src_norm_ptr.is_null() {
+            drop(Vec::from_raw_parts(a.src_norm_ptr, a.src_norm_len, a.src_norm_len));
+        }
+        if !a.src_tokens_ptr.is_null() {
+            drop(Vec::from_raw_parts(
+                a.src_tokens_ptr,
+                a.src_tokens_len,
+                a.src_tokens_len,
+            ));
+        }
+        if !a.trg_tokens_ptr.is_null() {
+            drop(Vec::from_raw_parts(
+                a.trg_tokens_ptr,
+                a.trg_tokens_len,
+                a.trg_tokens_len,
+            ));
+        }
+        if !a.align_ptr.is_null() {
+            let n = a.align_rows * a.align_cols;
+            drop(Vec::from_raw_parts(a.align_ptr, n, n));
+        }
+        // `a` (the Box) drops here.
+    }));
+}

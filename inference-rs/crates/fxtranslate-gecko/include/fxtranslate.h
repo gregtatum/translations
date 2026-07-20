@@ -94,25 +94,65 @@ size_t fxtranslate_backend(uint8_t* out_ptr, size_t out_cap);
 
 /*
  * ===========================================================================
- * M2-ready shape — RESERVED, NOT IMPLEMENTED (see 01-binding-and-build.md §4).
- * Declared here so the plain-text + alignments seam is not designed out. M2
- * returns { text, alignments } to the JS DOMParser HTML layer. Whether the engine
- * can populate FxAlignment at all is Workstream B's feasibility gate.
- *
- * typedef struct FxAlignment {
- *   uint32_t src_token_start;
- *   uint32_t src_token_len;
- *   uint32_t trg_token_start;
- *   uint32_t trg_token_len;
- *   // + probability/weight if the cross-attention head yields one.
- * } FxAlignment;
- *
- * int32_t fxtranslate_translate_aligned(
- *     FxEngine* engine, const uint8_t* text_ptr, size_t text_len,
- *     uint8_t** out_text_ptr, size_t* out_text_len,
- *     FxAlignment** out_align_ptr, size_t* out_align_count);
+ * M2 token-alignment shape (S8a). translate_aligned emits, per translated unit,
+ * the target text, the SPM-normalized source, both token arrays, and the soft
+ * cross-attention alignment matrix — everything the JS HTML tag-transfer layer
+ * needs. The whole struct-of-arrays result is one allocation freed in one call.
  * ===========================================================================
  */
+
+/*
+ * One token: vocab id plus a [begin, end) span in UTF-16 code units. Source-token
+ * spans index into FxAligned.src_norm_ptr; target-token spans index into
+ * FxAligned.text_ptr. (Offsets are u32; a DOM string is bounded well under
+ * UINT32_MAX code units — the Rust side saturates rather than wraps.)
+ */
+typedef struct FxToken {
+  uint32_t id;
+  uint32_t begin; /* UTF-16 code units, inclusive */
+  uint32_t end;   /* UTF-16 code units, exclusive */
+} FxToken;
+
+/*
+ * Struct-of-arrays result of fxtranslate_translate_aligned. Every pointer is a
+ * Rust heap allocation owned by this struct; the whole thing is reclaimed in one
+ * call to fxtranslate_aligned_free. Strings are UTF-8, NOT NUL-terminated (use the
+ * paired _len). The alignment matrix is flat row-major:
+ *   align_ptr[r * align_cols + c] = P(source_tokens[c] | target_tokens[r])
+ * with align_rows == trg_tokens_len and align_cols == src_tokens_len.
+ */
+typedef struct FxAligned {
+  uint8_t* text_ptr; /* target text (UTF-8) */
+  size_t text_len;
+  uint8_t* src_norm_ptr; /* SPM-normalized source (UTF-8) */
+  size_t src_norm_len;
+  FxToken* src_tokens_ptr; /* source tokens, incl. trailing EOS */
+  size_t src_tokens_len;
+  FxToken* trg_tokens_ptr; /* target tokens, incl. terminal EOS */
+  size_t trg_tokens_len;
+  float* align_ptr; /* flat [align_rows * align_cols], [trg][src] */
+  size_t align_rows;
+  size_t align_cols;
+} FxAligned;
+
+/*
+ * Translate a UTF-8 unit and emit token alignments. On success returns 0 and
+ * writes an owned FxAligned* to *out (free it with fxtranslate_aligned_free). On
+ * error returns nonzero, sets *out = NULL, and records a last-error.
+ *
+ * Uses the single-sequence aligned path (Engine::translate_aligned) — NO sentence
+ * segmentation, unlike fxtranslate_translate. The HTML layer segments upstream and
+ * calls this once per unit.
+ */
+int32_t fxtranslate_translate_aligned(FxEngine* engine, const uint8_t* text_ptr,
+                                      size_t text_len, FxAligned** out);
+
+/*
+ * Free an FxAligned* returned by fxtranslate_translate_aligned: releases both
+ * strings, both token arrays, the alignment matrix, and the struct itself. NULL is
+ * a no-op. Do not free the same pointer twice.
+ */
+void fxtranslate_aligned_free(FxAligned* ptr);
 
 #ifdef __cplusplus
 }  /* extern "C" */
