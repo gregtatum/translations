@@ -205,7 +205,7 @@ tasks:
       manifest version; a bump level is refused mid-release, guarding a double-bump).
       Already-published crates/npm/PyPI versions are skipped. Use --status for the
       probe-only board, --dry-run to preview (renders the board, runs only the reversible
-      validate steps), and --watch-wheels to poll the CI-built wheel matrix to 5/5.
+      validate steps), and --watch-wheels to poll the CI-built wheel matrix to 4/4.
 
       Needs `cargo login`, `npm login`, maturin + twine, a clean tree, and should be on
       main. See inference-rs/RELEASING.md for the full checklist.

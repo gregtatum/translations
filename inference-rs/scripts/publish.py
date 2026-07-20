@@ -45,13 +45,13 @@ what's green, and retries what isn't.
      run stops. Uploads stay strictly serialized.
 
 The board ends with one STATUS-ONLY leg, "CI wheels": the release ships the sdist plus the
-release machine's own-platform wheel, but the full 5-platform binary-wheel matrix is built
+release machine's own-platform wheel, but the full 4-platform binary-wheel matrix is built
 by CI (.github/workflows/pypi-wheels.yml), triggered by the tag push. The local machine
 can't build the matrix, so this leg is never executed — its probe just counts how many of
-the five wheels have landed on PyPI and the board shows `(N/5)` (green at 5/5). Pass
+the four wheels have landed on PyPI and the board shows `(N/4)` (green at 4/4). Pass
 `--watch-wheels` to poll PyPI after a successful push until the matrix completes (or a
 timeout elapses); a timeout is not a release failure — the wheels are a CI backfill — so it
-just prints the current `(N/5)` and the Actions link.
+just prints the current `(N/4)` and the Actions link.
 
 ## Resume semantics: derive the target version, refuse the double-bump
 
@@ -526,16 +526,18 @@ def pypi_published(version: str) -> bool:
     return bool(files)
 
 
-# The five per-platform binary wheels CI (.github/workflows/pypi-wheels.yml) backfills on
-# the tag push. Each bucket is (label, matcher) so the covered count and the missing list
-# are both DERIVED from this one list — never five hardcoded checks. The matchers run on the
-# lowercased wheel filename's platform tag. The subtlety: `x86_64` appears in BOTH the linux
-# manylinux tag and the macOS tag, so an x86_64 bucket MUST also discriminate on the
-# `linux`/`macosx` substring or the two would cross-match. Windows uses `win_amd64`.
+# The per-platform binary wheels CI (.github/workflows/pypi-wheels.yml) backfills on the tag
+# push. Each bucket is (label, matcher) so the covered count and the missing list are both
+# DERIVED from this one list — never a hardcoded count. Keep this list and the workflow's
+# matrix in lockstep: dropping or adding a leg here moves the board's `N/M` total for free.
+# The matchers run on the lowercased wheel filename's platform tag. The subtlety: `x86_64`
+# appears in BOTH the linux manylinux tag and the macOS tag, so an x86_64 bucket MUST also
+# discriminate on the `linux`/`macosx` substring or the two would cross-match. Windows uses
+# `win_amd64`. No macos-x86_64 (Intel) bucket: that wheel leg was dropped from the workflow
+# because the macos-13 runner builds it too slowly to gate the release on.
 WHEEL_MATRIX: list[tuple[str, Callable[[str], bool]]] = [
     ("linux-x86_64", lambda n: "linux" in n and "x86_64" in n),
     ("linux-aarch64", lambda n: "linux" in n and "aarch64" in n),
-    ("macos-x86_64", lambda n: "macosx" in n and "x86_64" in n),
     ("macos-arm64", lambda n: "macosx" in n and "arm64" in n),
     ("windows-x86_64", lambda n: "win_amd64" in n or ("win" in n and "amd64" in n)),
 ]
@@ -547,7 +549,7 @@ def _wheel_filenames(version: str) -> list[str]:
     Uses the JSON API file list (reused from `_pypi_release_files`), keeping only wheel
     entries (`packagetype == "bdist_wheel"`, or a `.whl` suffix as a fallback). Returns an
     empty list when the version is absent or the fetch failed — the caller treats that as
-    0/5, never a crash."""
+    0/4, never a crash."""
     files = _pypi_release_files(version) or []
     names: list[str] = []
     for f in files:
@@ -558,11 +560,11 @@ def _wheel_filenames(version: str) -> list[str]:
 
 
 def wheel_matrix_coverage(version: str) -> tuple[int, list[str]]:
-    """How many of the five platform buckets have at least one wheel on PyPI for `version`,
+    """How many of the platform buckets have at least one wheel on PyPI for `version`,
     plus the labels still missing. Each wheel filename is classified into the first bucket
     whose matcher accepts it (a wheel belongs to exactly one platform), and a bucket counts
     as covered once any wheel lands in it. Fails open: an absent version or a failed fetch
-    yields `(0, [all five labels])`, so the board shows 0/5 rather than crashing."""
+    yields `(0, [all bucket labels])`, so the board shows 0/4 rather than crashing."""
     names = _wheel_filenames(version)
     covered: set[str] = set()
     for name in names:
@@ -582,7 +584,7 @@ WHEELS_ACTIONS_URL = (
     f"https://github.com/gregtatum/translations/actions/workflows/{WHEELS_WORKFLOW_FILE}"
 )
 WHEELS_HINT = (
-    f"the {WHEELS_WORKFLOW_FILE} workflow builds the 5 per-platform wheels on the "
+    f"the {WHEELS_WORKFLOW_FILE} workflow builds the 4 per-platform wheels on the "
     f"{TAG_PREFIX}X.Y.Z tag push and backfills the matrix on PyPI; watch the run at "
     f"{WHEELS_ACTIONS_URL} or re-dispatch it with `gh workflow run {WHEELS_WORKFLOW_FILE}` "
     f'(or the Actions tab\'s "Run workflow")'
@@ -590,12 +592,12 @@ WHEELS_HINT = (
 
 
 def wheel_matrix_probe(version: str) -> Status:
-    """Read-only probe for the CI-built wheel matrix: DONE at 5/5, else PENDING with an
-    `(N/5)` detail. This leg is STATUS-ONLY — the local machine cannot build the matrix
+    """Read-only probe for the CI-built wheel matrix: DONE at 4/4, else PENDING with an
+    `(N/4)` detail. This leg is STATUS-ONLY — the local machine cannot build the matrix
     (only the release machine's own-platform wheel), so there is nothing to "run"; CI
-    builds all five on the tag push and this just reports how many have landed. At 0/5 the
+    builds them all on the tag push and this just reports how many have landed. At 0/4 the
     detail says the build is expected after the push / once CI finishes; in between it notes
-    the backfill is in progress. Fails open to 0/5 (never crashes the board)."""
+    the backfill is in progress. Fails open to 0/4 (never crashes the board)."""
     covered, _missing = wheel_matrix_coverage(version)
     total = WHEEL_MATRIX_TOTAL
     if covered >= total:
@@ -606,7 +608,7 @@ def wheel_matrix_probe(version: str) -> Status:
 
 
 # --watch-wheels polling cadence. PyPI and CI are not instant (the matrix compiles a C++
-# SIMD kernel across five runners), so poll gently and cap the total wait; on timeout the
+# SIMD kernel across several runners), so poll gently and cap the total wait; on timeout the
 # wheels are simply left to backfill — the release itself already succeeded.
 WHEEL_POLL_INTERVAL_S = 30
 WHEEL_WATCH_TIMEOUT_S = 30 * 60
@@ -621,8 +623,8 @@ def watch_wheels(
     interval_s: float = WHEEL_POLL_INTERVAL_S,
     timeout_s: float = WHEEL_WATCH_TIMEOUT_S,
 ) -> None:
-    """Poll the wheel matrix for `version` after a successful push until it reaches 5/5 or
-    `timeout_s` elapses, re-rendering the board (TTY) or printing periodic `(N/5)` lines
+    """Poll the wheel matrix for `version` after a successful push until it reaches 4/4 or
+    `timeout_s` elapses, re-rendering the board (TTY) or printing periodic `(N/4)` lines
     (non-TTY) between polls. `wheel_step` is the status-only board row whose probe status is
     refreshed each poll so the re-rendered board reflects the live count.
 
@@ -979,7 +981,7 @@ class Step:
     # A status-only step is NEVER executed: its row is rendered purely from its probe. The
     # CI-wheels leg is the one case — the local machine can't build the platform-wheel
     # matrix (CI does, on the tag push), so running it could only ever misreport. The
-    # scheduler renders it from its probe (DONE at 5/5, else a neutral pending `(N/5)` row)
+    # scheduler renders it from its probe (DONE at 4/4, else a neutral pending `(N/4)` row)
     # and skips it; it can never show a red-x or a green-PASS from execution.
     status_only: bool = False
     # A step whose probe is DONE has nothing to run; a step that always runs (build,
@@ -1369,13 +1371,13 @@ def build_steps(args, crates, order, old, new, target, bumping) -> list[Step]:
     )
 
     # CI wheels: a STATUS-ONLY leg, after the tag push. The local machine ships only its
-    # own-platform wheel; the full 5-platform binary matrix is built by CI
+    # own-platform wheel; the full 4-platform binary matrix is built by CI
     # (.github/workflows/pypi-wheels.yml), triggered by the `fxtranslate-vX.Y.Z` tag this
     # release just pushed. So there is nothing to run here — the step's `run_fn` never
     # builds or uploads; the scheduler renders the row straight from the probe, which counts
-    # how many of the five wheels have landed on PyPI (`(N/5)`). It shows DONE (green) only
-    # at 5/5, and a neutral pending `(N/5)` row otherwise. `--watch-wheels` polls this same
-    # probe after the push until it reaches 5/5 or times out; without it the board just
+    # how many of the wheels have landed on PyPI (`(N/4)`). It shows DONE (green) only
+    # at 4/4, and a neutral pending `(N/4)` row otherwise. `--watch-wheels` polls this same
+    # probe after the push until it reaches 4/4 or times out; without it the board just
     # reflects the current count from the single probe pass.
     steps.append(
         Step(
@@ -1409,7 +1411,7 @@ def probe_all(steps: list[Step]) -> None:
 def _glyph_for(step: Step) -> str:
     """The board glyph for a step from its probe status / execution state."""
     if step.status_only:
-        # Rendered purely from the probe: green ✓ at DONE (5/5), else a neutral dim `·`.
+        # Rendered purely from the probe: green ✓ at DONE (4/4), else a neutral dim `·`.
         # Never a red x or a green PASS — a status-only leg is never executed.
         st = step.status
         if st is not None and st.state == DONE:
@@ -1435,7 +1437,7 @@ def _glyph_for(step: Step) -> str:
 
 def _right_for(step: Step) -> str:
     if step.status_only:
-        # Just the probe detail (e.g. "5/5" or "(3/5) — CI is backfilling the matrix"),
+        # Just the probe detail (e.g. "4/4" or "(3/4) — CI is backfilling the matrix"),
         # with no execution duration and no "(dry-run)" note (it is never executed).
         return step.status.detail if step.status else ""
     if step.running:
@@ -1479,7 +1481,7 @@ def render_static(steps: list[Step], header: str, header_right: str) -> None:
         for s in members:
             st = s.status
             if s.status_only:
-                # Rendered from the probe: DONE at 5/5, else a neutral "WAIT" — it waits on
+                # Rendered from the probe: DONE at 4/4, else a neutral "WAIT" — it waits on
                 # CI (the tag push builds the matrix); it is never an operator to-do or run.
                 tag = "DONE" if st and st.state == DONE else "WAIT"
             elif s.preview:
@@ -1548,7 +1550,7 @@ def execute_in_order(
             continue
         # A status-only step (the CI-wheels leg) is NEVER executed — the local machine can't
         # build the platform-wheel matrix, so its row is rendered straight from its probe:
-        # a neutral pending `(N/5)` here, and DONE (skipped just above) once CI reaches 5/5.
+        # a neutral pending `(N/4)` here, and DONE (skipped just above) once CI reaches 4/4.
         # It never runs to a false green or a red x. This precedes the dry-run preview branch
         # so it stays a plain pending row (not a "(dry-run)" preview) in a dry-run too.
         if step.status_only:
@@ -1696,7 +1698,7 @@ def main() -> None:
     ap.add_argument(
         "--watch-wheels",
         action="store_true",
-        help="after a successful release, poll PyPI until the 5-platform wheel matrix that "
+        help="after a successful release, poll PyPI until the 4-platform wheel matrix that "
         "CI builds on the tag push is complete (or a timeout elapses); Ctrl-C exits cleanly",
     )
     ap.add_argument(
