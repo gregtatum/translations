@@ -116,11 +116,24 @@ PY_DIR = WORKSPACE / "crates" / "fxtranslate-py"  # the PyPI package (maturin/Py
 PY_MANIFEST = PY_DIR / "Cargo.toml"
 PY_DIST = PY_DIR / "dist"  # gitignored; where the dry-run/release build drops the sdist + wheel
 CHANGELOG = WORKSPACE / "CHANGELOG.md"  # one workspace changelog, copied into each crate
+
+# Isolated target dir for packaging/publish verify builds. `cargo publish` compiles the
+# standalone packaged crate with default features only — for `fxtranslate` that drops
+# `net`/`download`/`discovery`, producing an rlib without the `cache`/`fetch`/`lang`/
+# `loader`/`remote` modules. Kept out of the main `target/` so it can't shadow the
+# full-featured build the `cargo build + test` step relies on.
+PACKAGE_TARGET = WORKSPACE / "target" / "package-verify"
 TAG_PREFIX = "fxtranslate-v"  # bare `0.1.0` etc. are taken by old repo tags
 PYPI_NAME = "fxtranslate"  # the PyPI distribution name
 PYPI_JSON_URL = f"https://pypi.org/pypi/{PYPI_NAME}/json"
 
 SEMVER = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
+
+
+def cargo_verify_env() -> dict:
+    """Environment for the packaging/publish `cargo` invocations: the base environment with
+    `CARGO_TARGET_DIR` redirected to the isolated verify dir (see PACKAGE_TARGET)."""
+    return {**os.environ, "CARGO_TARGET_DIR": str(PACKAGE_TARGET)}
 
 
 def log(msg: str) -> None:
@@ -688,7 +701,10 @@ def validate_packaging(order: list[Crate], version: str) -> list[str]:
     unclean: list[str] = []
     for c in order:
         log(f"cargo package --list -p {c.name}")
-        r = sh(["cargo", "package", "--list", "-p", c.name, "--manifest-path", str(ROOT_MANIFEST)])
+        r = sh(
+            ["cargo", "package", "--list", "-p", c.name, "--manifest-path", str(ROOT_MANIFEST)],
+            env=cargo_verify_env(),
+        )
         if r.returncode != 0:
             log(f"  (package --list reported: {r.stderr.strip().splitlines()[-1:] })")
         else:
@@ -709,7 +725,8 @@ def validate_packaging(order: list[Crate], version: str) -> list[str]:
                 c.name,
                 "--manifest-path",
                 str(ROOT_MANIFEST),
-            ]
+            ],
+            env=cargo_verify_env(),
         )
         if r.returncode != 0:
             tail = "\n".join(r.stderr.strip().splitlines()[-4:])
@@ -735,6 +752,7 @@ def publish_crate(crate: str, version: str) -> None:
         ["cargo", "publish", "--allow-dirty", "-p", crate, "--manifest-path", str(ROOT_MANIFEST)],
         text=True,
         capture_output=True,
+        env=cargo_verify_env(),
     )
     sys.stdout.write(r.stdout or "")
     sys.stderr.write(r.stderr or "")
