@@ -1060,6 +1060,11 @@ class Step:
     probe_fn: Callable[[], Status]
     run_fn: Callable[[], None]
     hint: str = ""
+    # Right-column detail after a successful run. A world-derived step's pending detail is
+    # a placeholder ("pending", "not committed") that contradicts the ✓ once it has run;
+    # set this to the DONE-probe wording so skipped and just-run rows read alike. None
+    # keeps the probe detail (build + test, packaging: sensible either way).
+    done_detail: Optional[str] = None
     # Whether this step's run body is reversible enough to actually execute during a
     # dry-run. Only the two reversible steps (cargo build + test, packaging validation)
     # set this True; every other step is shown as a neutral PREVIEW row in a dry-run
@@ -1279,6 +1284,7 @@ def build_steps(args, crates, order, old, new, target, bumping) -> list[Step]:
                 pending=(f"{old} → {new}" if bumping else "not bumped"),
             ),
             run_fn=do_bump,
+            done_detail=f"{target} in manifests",
             hint=f"the bump edits every manifest + package.json to {target}",
         )
     )
@@ -1355,6 +1361,7 @@ def build_steps(args, crates, order, old, new, target, bumping) -> list[Step]:
                 pending="not committed",
             ),
             run_fn=do_commit,
+            done_detail=f"{target} committed",
             hint=f"stages the manifests + npm files + Cargo.lock and commits `release: fxtranslate {target}`",
         )
     )
@@ -1372,6 +1379,7 @@ def build_steps(args, crates, order, old, new, target, bumping) -> list[Step]:
                     pending="pending",
                 ),
                 run_fn=(lambda name=c.name: publish_crate(name, target)),
+                done_detail=f"{target} live",
                 hint=(
                     "cargo publish failed — if it's auth, run `cargo login` (crates.io has "
                     "no whoami probe, so it fails here); already-published crates stay up, "
@@ -1388,6 +1396,7 @@ def build_steps(args, crates, order, old, new, target, bumping) -> list[Step]:
                 lambda: npm_published(target), done=f"{target} live", pending="pending"
             ),
             run_fn=publish_npm,
+            done_detail=f"{target} live",
             hint="if auth: run `npm login`; then re-run `task rs:publish` to resume",
         )
     )
@@ -1403,6 +1412,7 @@ def build_steps(args, crates, order, old, new, target, bumping) -> list[Step]:
                 pending="pending" if args.pypi_upload else "pending (upload opt-in)",
             ),
             run_fn=lambda: publish_pypi(args.pypi_upload),
+            done_detail=f"{target} live" if args.pypi_upload else "built; upload opt-in",
             hint=(
                 "configure ~/.pypirc or TWINE_* and re-run with --pypi-upload; or finish "
                 "by hand with `maturin build --release --sdist ... && twine upload dist/*`"
@@ -1424,6 +1434,7 @@ def build_steps(args, crates, order, old, new, target, bumping) -> list[Step]:
             group="Tag & push",
             probe_fn=bool_probe(lambda: local_tag_exists(tag), done="exists", pending="pending"),
             run_fn=do_tag,
+            done_detail="exists",
             hint="the tag is created only after every upload lands, so it never marks a half-release",
         )
     )
@@ -1453,6 +1464,7 @@ def build_steps(args, crates, order, old, new, target, bumping) -> list[Step]:
             group="Tag & push",
             probe_fn=push_probe,
             run_fn=do_push,
+            done_detail=f"on {args.remote}",
             hint=f"check your push access to `{args.remote}`, then re-run to push branch + tag",
         )
     )
@@ -1533,7 +1545,10 @@ def _right_for(step: Step) -> str:
         detail = step.status.detail if step.status else ""
         return color(f"{detail} (dry-run)".strip(), "dim")
     if step.result is not None:
-        return f"{step.status.detail} {format_duration(step.result['duration_ms'])}".strip()
+        detail = step.done_detail if step.done_detail is not None else (
+            step.status.detail if step.status else ""
+        )
+        return f"{detail} {format_duration(step.result['duration_ms'])}".strip()
     return step.status.detail if step.status else ""
 
 
