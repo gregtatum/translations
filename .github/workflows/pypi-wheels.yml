@@ -5,8 +5,9 @@ name: pypi-wheels
 # The operator's local `task rs:publish` ships the sdist + the release machine's own
 # platform wheel and then creates the `fxtranslate-vX.Y.Z` tag last, once every
 # registry is up. This workflow fires on that tag and fills in the rest: prebuilt
-# abi3 wheels for Linux (x86_64 + aarch64), macOS (x86_64 + arm64), and Windows
-# (x86_64), plus an sdist for single provenance. Because the crate is `abi3-py38`
+# abi3 wheels for Linux (x86_64 + aarch64), macOS (arm64), and Windows
+# (x86_64), plus an sdist for single provenance. Intel macOS installs from the
+# sdist; see the matrix for why there is no macos-x86_64 wheel leg. Because the crate is `abi3-py38`
 # it is one wheel per platform (not one per Python minor). Everything uploads with
 # `--skip-existing`, so it coexists with the operator-uploaded sdist + local wheel for
 # the same version and a re-run never errors on an already-present file.
@@ -52,7 +53,11 @@ jobs:
           # not forward a step-level `env:` into its container — the var must ride
           # in on `docker-options` with `-e`.
           - { label: linux-aarch64, runs-on: ubuntu-latest, target: aarch64, manylinux: auto, docker-options: "-e CFLAGS_aarch64_unknown_linux_gnu=-D__ARM_ARCH=8" }
-          - { label: macos-x86_64, runs-on: macos-13, target: x86_64 }
+          # No macOS x86_64 (Intel) leg: the only Intel runner (macos-13) builds
+          # the full release dep tree + gemmology C++ kernel too slowly to be
+          # dependable, and it would gate the publish job. Intel Mac users install
+          # from the sdist. Re-add a `{ label: macos-x86_64, runs-on: macos-13,
+          # target: x86_64 }` entry here if a prebuilt Intel wheel is needed again.
           - { label: macos-arm64, runs-on: macos-14, target: aarch64 }
           - { label: windows-x86_64, runs-on: windows-latest, target: x64 }
     steps:
