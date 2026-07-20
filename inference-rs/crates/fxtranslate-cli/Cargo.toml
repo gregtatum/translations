@@ -1,6 +1,6 @@
 [package]
 name = "fxtranslate-cli"
-version = "0.4.1"
+version = "0.4.2"
 edition = "2021"
 description = "Batteries-included CLI for Firefox Translations models: discover, download/cache, and translate (stdin/pipe or interactive) — powered by the fxtranslate engine."
 license = "MPL-2.0"
@@ -28,4 +28,4 @@ path = "src/lib.rs"
 # path is still opt-in via `--features fxtranslate/fast`.
 # `icu-segmenter` adds Unicode sentence segmentation so long / multi-sentence input
 # is split and translated per sentence instead of truncating (see engine::segment).
-fxtranslate = { version = "=0.4.1", path = "../fxtranslate", features = ["net", "icu-segmenter"] }
+fxtranslate = { version = "=0.4.2", path = "../fxtranslate", features = ["net", "icu-segmenter"] }

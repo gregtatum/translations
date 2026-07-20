@@ -1,6 +1,6 @@
 [package]
 name = "fxtranslate-py"
-version = "0.4.1"
+version = "0.4.2"
 edition = "2021"
 description = "Python (PyO3) build of the fxtranslate neural machine-translation engine — native compiled Rust, SIMD int8 GEMM, batteries-included model management."
 license = "MPL-2.0"

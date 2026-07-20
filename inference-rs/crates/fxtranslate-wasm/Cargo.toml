@@ -1,6 +1,6 @@
 [package]
 name = "fxtranslate-wasm"
-version = "0.4.1"
+version = "0.4.2"
 edition = "2021"
 description = "WebAssembly build of the fxtranslate neural machine-translation engine — single-threaded, SIMD128 int8. Models are supplied by the host, not bundled."
 license = "MPL-2.0"
