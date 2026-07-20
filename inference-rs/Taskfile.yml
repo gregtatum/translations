@@ -386,6 +386,31 @@ tasks:
     cmds:
       - python3 {{.TASKFILE_DIR}}/scripts/conformance_translate.py {{.CLI_ARGS}}
 
+  capture-bergamot-goldens:
+    desc: Capture plain-text translation goldens from the REAL Bergamot WASM engine.
+    summary: |
+      Freezes "what Bergamot does today" as a diffable artifact so the native engine
+      can be gated against it (plan 03 §2/§3b, gate M1.3). Runs the actual shipping
+      Bergamot engine (Marian compiled to wasm, the same bergamot-translator.js
+      vendored into Firefox) through the committed legacy Node harness under
+      inference/wasm/tests, feeding the SAME NLLB en->fr source corpus that Pass B
+      uses (corpora/nllb-en-fr.txt) as plain text (html:false). Writes
+      artifacts/goldens/bergamot/plain/<src>-<trg>.jsonl ({src,tgt} per line) plus a
+      MODELS.lock of the model sha256s the goldens were captured against.
+
+      Requires a one-time build of the Bergamot wasm engine and the model dirs
+      symlinked into inference/wasm/tests/models/ (the script prints how). The engine
+      build needs emscripten 3.1.8 and CMAKE_POLICY_VERSION_MINIMUM=3.5 (modern cmake
+      dropped compat with the vendored Eigen), the same env this Taskfile already uses
+      for build-spm-encode.
+
+      Examples:
+        task rs:capture-bergamot-goldens                 # en->fr, 200 lines
+        task rs:capture-bergamot-goldens -- --lines 50   # quick slice
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - python3 {{.TASKFILE_DIR}}/scripts/capture_bergamot_goldens.py {{.CLI_ARGS}}
+
   make-blocks:
     desc: Group the NLLB corpus into paragraph-sized blocks for the block benchmark.
     summary: |
