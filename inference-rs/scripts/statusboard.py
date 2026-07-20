@@ -146,6 +146,13 @@ class InteractiveRenderer:
         sys.stdout.flush()
         self._rendered_lines = len(lines)
 
+    def reset(self) -> None:
+        """Forget the last frame's line count so the NEXT render prints a fresh block
+        instead of moving the cursor up to redraw in place. Call this after something
+        (an interactive prompt, say) has written below the board and moved the cursor,
+        so the in-place redraw would otherwise land in the wrong spot."""
+        self._rendered_lines = 0
+
     @property
     def has_rendered(self) -> bool:
         return self._rendered_lines > 0

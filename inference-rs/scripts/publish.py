@@ -58,12 +58,17 @@ just prints the current `(N/4)` and the Actions link.
 The one piece of "state" is the target version, and it lives in the manifests, not a
 sidecar. A re-run of `patch` would otherwise bump AGAIN (0.4.1 -> 0.4.2 -> 0.4.3), so:
 
-  - manifest version is fully published on crates.io -> the tree is at a clean released
+  - the release tag for the manifest version exists -> the tree is at a clean released
     state. A bare re-run has nothing to do ("specify patch|minor|major to start a
     release"); a bump arg starts a new release.
-  - manifest version is NOT yet fully published -> a release for V is in flight. A bare
+  - no release tag for the manifest version -> a release for V is in flight. A bare
     re-run (or `--resume`) resumes it at V; a bump arg is refused ("a release for V is in
     flight; re-run without a level to resume, or --set to override").
+
+The tag is the completion marker (not "crates are on crates.io") precisely because it is
+created only after every upload lands: npm or PyPI can fail after the crates publish (an
+npm 2FA/EOTP failure, say), so a crates.io-only gate would wrongly call that "released"
+and refuse the resume that should finish the npm/tag steps.
 
 This replaces the old `--initial` flag and its double-bump footgun; resume is the
 no-argument path.
@@ -128,6 +133,11 @@ PYPI_NAME = "fxtranslate"  # the PyPI distribution name
 PYPI_JSON_URL = f"https://pypi.org/pypi/{PYPI_NAME}/json"
 
 SEMVER = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
+
+# Set by the npm OTP prompt (prompt_otp): the operator typed below the live board, so the
+# cursor has moved and the execute loop must reprint a fresh board under the prompt rather
+# than redraw in place over it. Read/cleared by execute_in_order. See prompt_otp.
+_board_interrupted = False
 
 
 def cargo_verify_env() -> dict:
@@ -784,32 +794,82 @@ def validate_npm_packaging() -> None:
     log("  npm dry-run OK")
 
 
+def prompt_otp(reason: str) -> Optional[str]:
+    """Read an npm one-time password (2FA code) straight from the controlling terminal.
+
+    npm requires the code interactively, but the board has captured stdout and is redrawing
+    in place, so a plain `input()` prompt would be swallowed by the capture and tangle with
+    the render. Talk to `/dev/tty` directly instead — that bypasses the capture and reaches
+    the human. Flags `_board_interrupted` so the execute loop reprints a fresh board under
+    the prompt. Returns the stripped code, or None if there's no usable terminal or the
+    operator entered a blank line (abort), so the caller can fail with a clear message
+    instead of hanging."""
+    global _board_interrupted
+    try:
+        tty = open("/dev/tty", "r+")
+    except OSError:
+        return None
+    _board_interrupted = True
+    try:
+        tty.write(f"\n{reason}\n  npm one-time password (2FA code, blank to abort): ")
+        tty.flush()
+        line = tty.readline()
+    finally:
+        tty.close()
+    return line.strip() or None
+
+
 def publish_npm() -> None:
     """Publish the npm package. `npm publish` runs `prepublishOnly` first (rebuild wasm
     + typecheck + parity), so the tarball is always built from a fresh, verified wasm
     core. Treat 'cannot publish over previously published version' as success so a re-run
-    after a partial failure is safe (mirrors publish_crate)."""
+    after a partial failure is safe (mirrors publish_crate).
+
+    npm 2FA: when the account requires a one-time password to publish, the first attempt
+    fails with EOTP AFTER it has already built and packed the tarball. Rather than dying
+    (the old behaviour — there was no way to supply the code), prompt the operator for the
+    TOTP code on the terminal and retry with `--otp`. The retry adds `--ignore-scripts`:
+    the tarball is already built, so re-running prepublishOnly's wasm rebuild would only
+    burn seconds of the ~30s code window. A typo/expired code re-prompts (a few tries)."""
     if not shutil.which("npm"):
         fail("npm not found on PATH; install Node/npm or publish the npm package manually")
     log("npm publish (in npm/)")
-    r = subprocess.run(["npm", "publish"], cwd=NPM_DIR, text=True, capture_output=True)
-    sys.stderr.write(r.stderr or "")
-    sys.stdout.write(r.stdout or "")
-    if r.returncode == 0:
-        return
-    combined = r.stderr + r.stdout
-    if "previously published" in combined or "cannot publish over" in combined:
-        log("  npm version is already on the registry; skipping")
-        return
-    hint = ""
-    if "E401" in combined or "ENEEDAUTH" in combined or "E404" in combined:
-        # npm returns a bare 404 on a logged-out first publish; the npm-auth step should
-        # have caught this earlier, but say so plainly if it slips through.
-        hint = " — this looks like an auth failure; run `npm login` and re-run to resume"
-    fail(
-        f"npm publish failed (see above){hint}. Crates already on crates.io stay up; "
-        "re-run `task rs:publish` (resumes at the committed version, then tags)"
-    )
+    cmd = ["npm", "publish"]
+    attempts = 0
+    while True:
+        r = subprocess.run(cmd, cwd=NPM_DIR, text=True, capture_output=True)
+        sys.stderr.write(r.stderr or "")
+        sys.stdout.write(r.stdout or "")
+        if r.returncode == 0:
+            return
+        combined = r.stderr + r.stdout
+        if "previously published" in combined or "cannot publish over" in combined:
+            log("  npm version is already on the registry; skipping")
+            return
+        needs_otp = "EOTP" in combined or "one-time password" in combined
+        if needs_otp and IS_INTERACTIVE and attempts < 3:
+            attempts += 1
+            reason = (
+                "npm requires a one-time password (2FA) to publish this package."
+                if attempts == 1
+                else "That code didn't work (typo or expired) — enter a fresh one."
+            )
+            code = prompt_otp(reason)
+            if code:
+                log(f"npm publish --otp=*** --ignore-scripts (2FA retry {attempts})")
+                cmd = ["npm", "publish", "--otp", code, "--ignore-scripts"]
+                continue
+        hint = ""
+        if "E401" in combined or "ENEEDAUTH" in combined or "E404" in combined:
+            # npm returns a bare 404 on a logged-out first publish; the npm-auth step
+            # should have caught this earlier, but say so plainly if it slips through.
+            hint = " — this looks like an auth failure; run `npm login` and re-run to resume"
+        elif needs_otp:
+            hint = " — npm needs a valid 2FA one-time password; re-run and enter a fresh code"
+        fail(
+            f"npm publish failed (see above){hint}. Crates already on crates.io stay up; "
+            "re-run `task rs:publish` (resumes at the committed version, then tags)"
+        )
 
 
 def validate_pypi_packaging() -> None:
@@ -1548,6 +1608,16 @@ def print_step_failure(step: Step, err: StepError, dry_run: bool) -> None:
     print(f"{nxt} fix the above, then re-run `{resume}` (green rows are skipped)")
 
 
+def _reset_board_if_interrupted(renderer: "InteractiveRenderer") -> None:
+    """If a step's run() prompted the operator on the terminal (the npm OTP), the cursor
+    is no longer at the board's top-left, so an in-place redraw would land wrong. Drop the
+    renderer's line memory so the next frame prints a fresh board under the prompt."""
+    global _board_interrupted
+    if _board_interrupted:
+        renderer.reset()
+        _board_interrupted = False
+
+
 def execute_in_order(
     steps: list[Step], header: str, header_right: Callable[[], str], dry_run: bool
 ) -> int:
@@ -1602,6 +1672,7 @@ def execute_in_order(
             step.running = False
             step.failed = True
             if renderer:
+                _reset_board_if_interrupted(renderer)
                 renderer.render()
                 print()
             else:
@@ -1610,6 +1681,7 @@ def execute_in_order(
             return 1
         step.running = False
         if renderer:
+            _reset_board_if_interrupted(renderer)
             renderer.render()
         else:
             print(f"PASS {step.label}", flush=True)
@@ -1619,22 +1691,36 @@ def execute_in_order(
     return 0
 
 
-def crates_fully_published(order: list[Crate], version: str) -> bool:
-    """Whether every publishable crate's `version` is live on crates.io. Per the design,
-    crates.io is the gate for "fully published" (the released-vs-in-flight distinction
-    that drives resume): the crates are the fully-automated, irreversible core, while the
-    PyPI upload is opt-in and npm is derivable from them."""
-    return all(already_published(c.name, version) for c in order)
+def release_complete(target: str, args) -> bool:
+    """Whether the release for `target` has fully landed — the signal that drives the
+    released-vs-in-flight distinction (and so resume / the double-bump guard).
+
+    The git tag is the marker, NOT "the crates are on crates.io". By design the tag is
+    created only AFTER every upload (crates.io, then npm, then the PyPI leg) has succeeded
+    — the one atomic step that can never mark a half-published release. crates.io alone is
+    too weak: npm or PyPI can fail after the crates publish (an EOTP 2FA failure, say),
+    leaving every crate live but the release genuinely in-flight, tag uncreated. Gating on
+    crates.io there wrongly reports "fully published" and refuses the resume that should
+    finish the npm/PyPI/tag steps.
+
+    With a push (the default) the tag must be on the remote; --no-push counts a local tag.
+    Either way: tag present -> a bare re-run has nothing to do; tag absent -> resume the
+    remaining steps."""
+    tag = f"{TAG_PREFIX}{target}"
+    if args.no_push:
+        return local_tag_exists(tag)
+    return remote_tag_exists(args.remote, tag)
 
 
-def resolve_release(args, crates, order, dry_run: bool = False) -> tuple[str, str, str, bool]:
+def resolve_release(args, crates, dry_run: bool = False) -> tuple[str, str, str, bool]:
     """Resolve what this invocation should do, deriving the target version from the
-    manifests (never a state file) and enforcing the resume rules:
+    manifests (never a state file) and enforcing the resume rules (see release_complete
+    for why the tag, not crates.io, is the "released" signal):
 
-      - manifests fully published on crates.io -> clean released state. A bump arg (or
+      - manifest version's release tag exists -> clean released state. A bump arg (or
         --set) starts a NEW release; a bare run has nothing to do.
-      - manifests NOT fully published -> a release for V is in flight. A bare run (or
-        --resume) resumes at V; a bump arg is REFUSED (the double-bump guard).
+      - no release tag for the manifest version -> a release for V is in flight. A bare
+        run (or --resume) resumes at V; a bump arg is REFUSED (the double-bump guard).
 
     Returns `(old, new, target, bumping)` where `target` is the version the board
     operates on and `bumping` is whether a bump+commit still needs to happen.
@@ -1646,12 +1732,12 @@ def resolve_release(args, crates, order, dry_run: bool = False) -> tuple[str, st
     """
     old = current_version(crates)
     wants_bump = bool(args.level) or bool(args.set_version)
-    released = crates_fully_published(order, old)
+    released = release_complete(old, args)
 
     if wants_bump and not released and not dry_run:
         die(
-            f"a release for {old} is in flight (not fully published on crates.io); re-run "
-            f"without a level to resume it, or --set to override the target version"
+            f"a release for {old} is in flight (its {TAG_PREFIX}{old} tag isn't present "
+            f"yet); re-run without a level to resume it, or --set to override the target"
         )
 
     if not wants_bump:
@@ -1740,7 +1826,7 @@ def main() -> None:
     # everything, render, and exit — no execute pass at all.
     if args.status:
         target = current_version(crates)
-        released = crates_fully_published(order, target)
+        released = release_complete(target, args)
         old, new, bumping = target, target, False
         header = f"◆ fxtranslate {target}"
         header_right = "released" if released else "in-flight release"
@@ -1757,7 +1843,7 @@ def main() -> None:
             cleanup()
         return
 
-    old, new, target, bumping = resolve_release(args, crates, order, dry_run=args.dry_run)
+    old, new, target, bumping = resolve_release(args, crates, dry_run=args.dry_run)
 
     readme_report(crates, old)
 
