@@ -51,6 +51,7 @@ fn main() -> ExitCode {
         Some("trace") => inspect_trace(&args[1..]),
         Some("replay") => replay(&args[1..]),
         Some("encode") => encode(&args[1..]),
+        Some("dump") => dump(&args[1..]),
         _ => {
             eprintln!("usage:");
             eprintln!(
@@ -61,6 +62,9 @@ fn main() -> ExitCode {
             eprintln!("  fxtranslate-oracle replay <trace-path> <model.bin>");
             eprintln!(
                 "  fxtranslate-oracle encode <vocab.spm>   (stdin lines -> space-separated ids)"
+            );
+            eprintln!(
+                "  fxtranslate-oracle dump <model.bin> <src.spm> <trg.spm> \"<text>\"   (reference tensors -> onnx/testdata/)"
             );
             ExitCode::FAILURE
         }
@@ -95,6 +99,105 @@ fn encode(args: &[String]) -> ExitCode {
         println!("{}", joined.join(" "));
     }
     ExitCode::SUCCESS
+}
+
+/// `dump <model.bin> <src.spm> <trg.spm> "<text>"` — run the int8 engine on `text`
+/// and write reference tensors for the clean-room ONNX exporter cross-check into
+/// `onnx/testdata/`: the encoder context (`inferrs_encoder.f32`, raw LE f32,
+/// `[seq, dim]` row-major), the first decode step's full-vocab logits
+/// (`inferrs_logits.f32`, raw LE f32), and metadata (`inferrs_meta.json`). The
+/// engine runs the int8 `.bin` model — this is the int8 cross-check, not a
+/// bit-close golden.
+fn dump(args: &[String]) -> ExitCode {
+    let [model_path, src_vocab, trg_vocab, text] = args else {
+        eprintln!("usage: fxtranslate-oracle dump <model.bin> <src.spm> <trg.spm> \"<text>\"");
+        return ExitCode::FAILURE;
+    };
+
+    let engine = match Engine::load(model_path, src_vocab, trg_vocab) {
+        Ok(e) => e,
+        Err(e) => {
+            eprintln!("failed to load engine: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let trg = match fxtranslate::spm::SpmVocab::load(trg_vocab) {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("failed to load target vocab '{trg_vocab}': {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+
+    let (context, seq, logits, src_ids) = engine.dump_reference(text);
+    let dim = context.len() / seq;
+    let vocab = logits.len();
+    let argmax = logits
+        .iter()
+        .enumerate()
+        .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+        .map(|(i, _)| i)
+        .unwrap_or(0);
+
+    let out_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../onnx/testdata")
+        .canonicalize()
+        .unwrap_or_else(|_| {
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../onnx/testdata")
+        });
+    if let Err(e) = std::fs::create_dir_all(&out_dir) {
+        eprintln!("failed to create {}: {e}", out_dir.display());
+        return ExitCode::FAILURE;
+    }
+
+    let enc_bytes: Vec<u8> = context.iter().flat_map(|v| v.to_le_bytes()).collect();
+    let log_bytes: Vec<u8> = logits.iter().flat_map(|v| v.to_le_bytes()).collect();
+    let ids_json: Vec<String> = src_ids.iter().map(u32::to_string).collect();
+    let meta = format!(
+        "{{\"text\": {}, \"src_ids\": [{}], \"encoder_shape\": [{seq}, {dim}], \"logits_len\": {vocab}}}\n",
+        json_string(text),
+        ids_json.join(", "),
+    );
+
+    for (name, bytes) in [
+        ("inferrs_encoder.f32", enc_bytes),
+        ("inferrs_logits.f32", log_bytes),
+        ("inferrs_meta.json", meta.into_bytes()),
+    ] {
+        let path = out_dir.join(name);
+        if let Err(e) = std::fs::write(&path, &bytes) {
+            eprintln!("failed to write {}: {e}", path.display());
+            return ExitCode::FAILURE;
+        }
+    }
+
+    println!("wrote reference tensors to {}", out_dir.display());
+    println!("src_ids: {:?}", src_ids);
+    println!("encoder_shape: [{seq}, {dim}]");
+    println!(
+        "first-step argmax: id {argmax} (piece {:?}), logits_len {vocab}",
+        trg.piece(argmax as u32)
+    );
+    ExitCode::SUCCESS
+}
+
+/// Minimal JSON string escaping for the metadata `text` field.
+fn json_string(s: &str) -> String {
+    let mut out = String::with_capacity(s.len() + 2);
+    out.push('"');
+    for c in s.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04x}", c as u32)),
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+    out
 }
 
 /// `replay <trace> <model>` — recompute a recorded trace node-by-node and report

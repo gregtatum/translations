@@ -1161,6 +1161,23 @@ impl Engine {
         self.weights.full_logits(h)
     }
 
+    /// Dump reference tensors for the clean-room ONNX exporter cross-check: run the
+    /// int8 engine on `text` and return the encoder context (`[seq, dim]` row-major),
+    /// `seq`, the first decode step's full-vocab logits (`[vocab]`), and the source
+    /// token ids used (spm subwords + EOS, no BOS). The first step seeds the decoder
+    /// with the target EOS at position 0 over zeroed SSRU cells, matching [`greedy`].
+    pub fn dump_reference(&self, text: &str) -> (Vec<f32>, usize, Vec<f32>, Vec<u32>) {
+        let d = self.config.dim_emb;
+        let src_ids = self.src_vocab.encode_with_eos(text);
+        let seq = src_ids.len();
+        let context = self.encode(&src_ids);
+        let eos = self.trg_vocab.eos_id();
+        let mut cells = vec![vec![0.0f32; d]; self.config.dec_depth + 1];
+        let top = self.decode_step(eos, 0, &context, seq, &mut cells);
+        let logits = self.project(&top);
+        (context, seq, logits, src_ids)
+    }
+
     // --- shared sublayers ----------------------------------------------------
 
     /// Multi-head attention. `q_in` is `[q_len, dim]`, `kv_in` is `[kv_len, dim]`.
