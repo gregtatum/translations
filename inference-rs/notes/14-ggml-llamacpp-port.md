@@ -6,11 +6,19 @@ We're evaluating whether the bespoke Marian/Bergamot translation models can run 
 **llama.cpp** (with weights in **GGUF** format) instead of the `inference-rs` engine
 in this repo.
 
-The motivation is **maintenance reduction, not speed.** The Gecko AI Runtime is
-already integrating llama.cpp for other AI features. If translation can ride on that
+The motivation is **maintenance reduction, not speed.** llama.cpp is **already a
+shipping backend** in the Gecko AI Runtime — `toolkit/components/ml` dispatches a
+`llama.cpp` backend through `content/backends/LlamaCppPipeline.mjs` to a native
+`LlamaRunner` (its own C++ generation loop, text-generation / OpenAI-compatible),
+verified in `~/dev/firefox`. If translation can ride on that
 same runtime, we may not need to ship the bespoke Rust engine (`fxtranslate` crate +
 its C ABI + build integration + wasm/bindings + ongoing sync) into Firefox at all.
 The question this note answers is: *"What would it take, and is it worth it?"*
+
+(Caveat: `LlamaRunner` today is a decoder-only *text-generation* path. Riding it for
+translation needs both the new encoder-decoder arch *inside* llama.cpp **and**
+`LlamaRunner` taught to do the `llama_encode`→`llama_decode` two-phase call — Gecko-
+side work on top of the arch itself.)
 
 Two things are explicitly **off the table** and one is explicitly **on the table**:
 
