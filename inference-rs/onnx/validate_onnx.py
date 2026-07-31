@@ -1,0 +1,119 @@
+"""Numeric gate: ONNX graphs vs the numpy float golden.
+
+Checks encoder context, the first decode steps' logits and states, and the
+end-to-end greedy translation string against ``numpy_ref``. All tensor diffs
+must be <= 1e-4.
+"""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+import numpy as np
+import onnx
+import onnxruntime as ort
+
+import model_npz as M
+import numpy_ref as R
+import tokenizer as T
+from host_loop import Translator
+
+_MODELS = Path(__file__).resolve().parent / "models"
+_TOL = 1e-4
+
+_SENTENCES = [
+    "Hello, world. This is a test of the translation engine.",
+    "The quick brown fox jumps over the lazy dog near the river.",
+]
+
+
+def _status(ok: bool) -> str:
+    return "PASS" if ok else "FAIL"
+
+
+def _encoder_sessions():
+    prov = ["CPUExecutionProvider"]
+    return (
+        ort.InferenceSession(str(_MODELS / "encoder.onnx"), providers=prov),
+        ort.InferenceSession(str(_MODELS / "decode_step.onnx"), providers=prov),
+    )
+
+
+def check_encoder(enc, text: str) -> bool:
+    src = np.asarray(T.encode_source(text), dtype=np.int64)
+    outs = {o.name: v for o, v in zip(enc.get_outputs(), enc.run(None, {"src_ids": src}))}
+    ref = R.encode(list(src))
+    diff = np.abs(outs["context"] - ref)
+    ok = diff.max() <= _TOL
+    print(f"  encoder context  max={diff.max():.3e} mean={diff.mean():.3e}  [{_status(ok)}]")
+    return ok
+
+
+def check_decode_steps(enc, dec, text: str, n_steps: int = 3) -> bool:
+    src = list(np.asarray(T.encode_source(text), dtype=np.int64))
+    context = R.encode(src)
+    cross_kv = R.precompute_cross_kv(context)
+    enc_out = {o.name: v for o, v in zip(enc.get_outputs(), enc.run(None, {"src_ids": np.asarray(src, dtype=np.int64)}))}
+    cross = {}
+    for i in range(M.DEC_DEPTH):
+        cross[f"cross_k_{i}"] = enc_out[f"cross_k_{i}"]
+        cross[f"cross_v_{i}"] = enc_out[f"cross_v_{i}"]
+
+    onnx_states = {f"decoder_state_{i}": np.zeros(M.DIM, dtype=np.float32) for i in range(M.DEC_DEPTH)}
+    ref_states = [np.zeros(M.DIM, dtype=np.float32) for _ in range(M.DEC_DEPTH)]
+
+    ok = True
+    prev = T.eos_id
+    for pos in range(n_steps):
+        feed = {
+            "prev_token": np.array([prev], dtype=np.int64),
+            "pe_vec": R._PE[pos].astype(np.float32),
+            **cross,
+            **onnx_states,
+        }
+        res = {o.name: v for o, v in zip(dec.get_outputs(), dec.run(None, feed))}
+        ref_logits, ref_states = R.decode_step(prev, pos, cross_kv, ref_states)
+
+        ld = np.abs(res["logits"] - ref_logits).max()
+        sd = max(np.abs(res[f"new_decoder_state_{i}"] - ref_states[i]).max() for i in range(M.DEC_DEPTH))
+        step_ok = ld <= _TOL and sd <= _TOL
+        ok = ok and step_ok
+        print(f"  decode step {pos}  logits_max={ld:.3e} state_max={sd:.3e}  [{_status(step_ok)}]")
+
+        onnx_states = {f"decoder_state_{i}": res[f"new_decoder_state_{i}"] for i in range(M.DEC_DEPTH)}
+        prev = int(np.argmax(ref_logits))  # drive both identically off the golden argmax
+    return ok
+
+
+def check_e2e(translator: Translator, text: str) -> bool:
+    onnx_str = translator.translate(text)
+    ref_str = R.translate(text)
+    ok = onnx_str == ref_str
+    print(f"  onnx: {onnx_str}")
+    print(f"  ref : {ref_str}")
+    print(f"  end-to-end string match  [{_status(ok)}]")
+    return ok
+
+
+def main() -> int:
+    onnx.checker.check_model(onnx.load(str(_MODELS / "encoder.onnx")))
+    onnx.checker.check_model(onnx.load(str(_MODELS / "decode_step.onnx")))
+    print("onnx.checker: both graphs OK")
+
+    enc, dec = _encoder_sessions()
+    translator = Translator()
+
+    all_ok = True
+    for text in _SENTENCES:
+        print(f"\nsentence: {text!r}")
+        all_ok &= check_encoder(enc, text)
+        all_ok &= check_decode_steps(enc, dec, text)
+        all_ok &= check_e2e(translator, text)
+
+    print(f"\nOVERALL: {_status(all_ok)}")
+    return 0 if all_ok else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

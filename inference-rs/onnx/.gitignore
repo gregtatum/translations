@@ -1,0 +1,5 @@
+# Generated artifacts — regenerate with export_encoder.py / export_decoder.py / quantize.py
+models/
+# Reference tensors — regenerate with the oracle `dump` subcommand + numpy_ref.py
+testdata/
+__pycache__/
