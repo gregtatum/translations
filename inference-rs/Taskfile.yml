@@ -506,3 +506,141 @@ tasks:
         poetry run python -W ignore
         {{.TASKFILE_DIR}}/scripts/translate_reference.py
         {{.CLI_ARGS}}
+
+  # ONNX export evaluation (route B of notes/15-onnx-port.md). A clean-room Python
+  # converter rebuilds the en-fr student as ONNX graphs, validates them against a
+  # numpy float golden and the inference-rs engine, and quantizes to int8. Lives in
+  # onnx/; heavier deps (onnxruntime) go in the project-local .venv, not poetry.
+
+  onnx-venv:
+    internal: true
+    desc: Provision the .venv with the ONNX evaluation's Python dependencies.
+    summary: |
+      Ensures the project-local .venv (the same one rs:conformance uses) exists and has
+      the onnx/requirements.txt deps — onnx, onnxruntime, sentencepiece, sacrebleu —
+      installed. They are kept out of the repo poetry env because onnxruntime is heavy
+      and only this evaluation needs it. Idempotent: the pip install is skipped once the
+      deps import. Every rs:onnx-* python task depends on this, so the flow runs
+      hermetically under .venv/bin/python3, mirroring rs:conformance.
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - '[ -d .venv ] || python3 -m venv .venv'
+      - |
+        if ! .venv/bin/python3 -c "import onnx, onnxruntime, sentencepiece, sacrebleu" 2>/dev/null; then
+          .venv/bin/python3 -m pip install --disable-pip-version-check -r onnx/requirements.txt
+        fi
+
+  onnx-download-model:
+    desc: Download the en-fr float student .npz + vocabs for the ONNX eval (from GCS).
+    summary: |
+      Fetches the pre-quantization float student model the ONNX converter reads —
+      final.model.npz.best-chrf.npz (+ .decoder.yml) and vocab.en/fr.spm — into
+      data/models/en-fr/student-finetuned/, where onnx/model_npz.py looks. Resolves the
+      latest en-fr student-finetuned run via the model registry (a GCS object listing),
+      verifies each file's md5, and skips files already present (a cheap no-op once the
+      model is in place — which is why every model-reading rs:onnx-* task depends on it).
+
+      Unlike rs:download-model (the quantized intgemm .bin from Remote Settings), this is
+      the float .npz on the public prod GCS bucket. Runs under poetry so the shared
+      pipeline.common.downloads helper is importable.
+    deps: [poetry-install-utils]
+    dir: '{{.ROOT_DIR}}'
+    # No {{.CLI_ARGS}}: this pair is en-fr (the ONNX POC), and CLI_ARGS is global to the
+    # `task` invocation — so forwarding it would leak a parent task's args (e.g. the text
+    # from rs:onnx-translate) into this download when it runs as a dependency.
+    cmds:
+      - >-
+        PYTHONPATH=$(pwd) poetry run python -W ignore
+        {{.TASKFILE_DIR}}/scripts/download_onnx_model.py
+        --models-dir {{.MODELS_DIR}}
+
+  onnx-export:
+    desc: Build the float32 ONNX encoder + decode-step graphs from the student .npz.
+    summary: |
+      Rebuilds onnx/models/encoder.onnx and decode_step.onnx from the en-fr student float
+      .npz (data/models/en-fr/student-finetuned/, fetched by rs:onnx-download-model). These
+      float graphs are the dev scaffold validated by rs:onnx-validate; rs:onnx-quantize
+      turns them into the shipped int8 artifact. Run this first — the other onnx tasks read
+      the graphs it writes.
+    deps: [onnx-venv, onnx-download-model]
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - .venv/bin/python3 onnx/export_encoder.py
+      - .venv/bin/python3 onnx/export_decoder.py
+
+  onnx-quantize:
+    desc: Dynamic-int8 quantize the float ONNX graphs (→ onnx/models/*.int8.onnx).
+    summary: |
+      Runs onnxruntime.quantization.quantize_dynamic over the float graphs to produce the
+      int8 versions and prints the size table. Needs rs:onnx-export to have run first.
+    deps: [onnx-venv]
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - .venv/bin/python3 onnx/quantize.py
+
+  onnx-translate:
+    desc: Translate text through the exported ONNX graphs (float, or --int8).
+    summary: |
+      Drives the encoder-once + greedy decode-loop engine over onnxruntime. Text is passed
+      as a positional argument or piped over stdin (translated line by line); --int8
+      selects the quantized graphs. Needs rs:onnx-export (and rs:onnx-quantize for --int8).
+
+      Examples:
+        task rs:onnx-translate -- "Hello, world."
+        task rs:onnx-translate -- --int8 "Hello, world."
+        echo "Hello world." | task rs:onnx-translate
+    deps: [onnx-venv, onnx-download-model]
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - .venv/bin/python3 onnx/engine.py {{.CLI_ARGS}}
+
+  onnx-dump:
+    desc: Dump inference-rs reference tensors for the ONNX cross-check (→ onnx/testdata/).
+    summary: |
+      Runs the int8 inference-rs engine (via the fxtranslate-oracle `dump` subcommand) on a
+      sentence and writes the encoder context + first-step logits + metadata into
+      onnx/testdata/. These are the reference tensors rs:onnx-validate's Gate 1 checks the
+      numpy golden against — the engine is ground truth, as everywhere else in inference-rs.
+      Uses the enfr int8 model with the student split vocabs (the same pairing rs:onnx-quality
+      uses). Builds the oracle in release on demand.
+
+      Examples:
+        task rs:onnx-dump
+        task rs:onnx-dump -- "The quick brown fox."
+    deps: [onnx-download-model]
+    dir: '{{.TASKFILE_DIR}}'
+    vars:
+      MODEL: '{{.MODELS_DIR}}/enfr/model.enfr.intgemm.alphas.bin'
+      SRC_SPM: '{{.MODELS_DIR}}/en-fr/student-finetuned/vocab.en.spm'
+      TRG_SPM: '{{.MODELS_DIR}}/en-fr/student-finetuned/vocab.fr.spm'
+      TEXT: '{{.CLI_ARGS | default "Hello, world. This is a test of the translation engine."}}'
+    cmds:
+      - cargo run --quiet --release -p fxtranslate-oracle -- dump {{.MODEL}} {{.SRC_SPM}} {{.TRG_SPM}} "{{.TEXT}}"
+
+  onnx-validate:
+    desc: Validate the ONNX graphs — numeric gate vs numpy + cross-check vs inference-rs.
+    summary: |
+      Runs both feasibility gates from notes/15. Gate 2 (validate_onnx.py): every ONNX
+      tensor vs the numpy float golden within 1e-4, plus end-to-end string match. Gate 1
+      (validate_numpy.py): the numpy golden vs the inference-rs int8 reference tensors
+      (argmax must agree; ~1% tensor diff is expected int8 noise). Needs rs:onnx-export;
+      Gate 1 also needs rs:onnx-dump to have written onnx/testdata/ (it is skipped with a
+      hint if those are missing).
+    deps: [onnx-venv, onnx-download-model]
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - .venv/bin/python3 onnx/validate_onnx.py
+      - .venv/bin/python3 onnx/validate_numpy.py
+
+  onnx-quality:
+    desc: Quality + rough perf of the ONNX engines vs inference-rs over a corpus.
+    summary: |
+      Translates ~50 varied English sentences through float ONNX, int8 ONNX, and the
+      inference-rs int8 engine, and reports chrF / exact-match / token-overlap for each
+      engine pair (float ONNX is the anchor) plus indicative per-sentence wall-clock. Needs
+      rs:onnx-export + rs:onnx-quantize, and the oracle binary
+      (cargo build --release -p fxtranslate-oracle).
+    deps: [onnx-venv, onnx-download-model]
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - .venv/bin/python3 onnx/quality.py

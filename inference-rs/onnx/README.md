@@ -24,28 +24,37 @@ confounding variable; the shipped artifact is the int8 graph.
 - `model_npz.py`, `tokenizer.py` — validated npz/config + SentencePiece support.
 - `numpy_ref.py` — float32 forward pass (the bit-close golden).
 - `export_encoder.py`, `export_decoder.py` — ONNX graph builders → `models/*.onnx`.
-- `host_loop.py` — ORT sessions + greedy loop. `translate(text, int8=False)`;
-  CLI `--int8` selects the quantized graphs.
+- `engine.py` — the ONNX translation engine: both ORT sessions + the greedy decode
+  loop (the loop runs in the driver, not in-graph). `translate(text, int8=False)`;
+  the CLI translates a positional argument or stdin, with `--int8` for the quantized graphs.
 - `quantize.py` — `onnxruntime.quantization.quantize_dynamic` → `models/*.int8.onnx`.
 - `quality.py` — engine-vs-engine quality + rough perf.
 - `validate_numpy.py` (Gate 1), `validate_onnx.py` (Gate 2).
+- `requirements.txt` — the eval's Python deps (installed into the project `.venv`).
 
 ## How to run
 
-Use the repo venv: `../.venv/bin/python`.
+Driven through the Taskfile (namespaced `rs:onnx-*`, like the other inference-rs tasks);
+run from anywhere in the repo. The first run provisions the deps into the project-local
+`.venv` (`rs:onnx-venv`) and fetches the float student model from GCS into
+`data/models/en-fr/student-finetuned/` (`rs:onnx-download-model`) — both are dependencies
+of the tasks below, so you don't call them directly, but the model download is also
+available on its own:
 
 ```sh
-python export_encoder.py && python export_decoder.py   # build float graphs
-python host_loop.py                                    # float translate (fixed sentence)
-python validate_numpy.py                               # Gate 1
-python validate_onnx.py                                # Gate 2
-python quantize.py                                     # → models/*.int8.onnx
-python host_loop.py --int8                             # int8 translate
-python quality.py                                      # quality + perf table
+task rs:onnx-download-model         # fetch the float student .npz + vocabs (auto-run below)
+task rs:onnx-export                 # build the float32 graphs from the student .npz
+task rs:onnx-translate -- "Hello."  # float translate (positional text or stdin)
+task rs:onnx-dump                   # write inference-rs reference tensors → testdata/
+task rs:onnx-validate               # Gate 2 (vs numpy) + Gate 1 (vs inference-rs)
+task rs:onnx-quantize               # → models/*.int8.onnx
+task rs:onnx-translate -- --int8 "Hello."   # int8 translate
+task rs:onnx-quality                # chrF / overlap + rough perf table
 ```
 
-`quality.py` needs the oracle built:
-`cargo build --release -p fxtranslate-oracle` (run from `inference-rs/`).
+`rs:onnx-quality` and `rs:onnx-dump` use the inference-rs engine as ground truth; they
+build the release oracle (`fxtranslate-oracle`) on demand. To run a script directly for
+debugging, use the same interpreter the tasks do: `../.venv/bin/python3 engine.py`.
 
 ## Validation results
 

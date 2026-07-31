@@ -116,5 +116,10 @@ should be on `main`. `--no-push` tags locally without pushing.
 - [`crates/fxtranslate/README.md`](./crates/fxtranslate/README.md) — engine + CLI usage, library API, performance.
 - [pivot-translations.md](./pivot-translations.md) — how non-English pairs (`es → fr`) are served by pivoting through English: route resolution, memory, the `list` views, and the cheat-proof audit.
 - [gemm-backends.md](./gemm-backends.md) — the int8 GEMM backends and how they diverge per architecture.
-- `notes/` — the design and build-out history (`01`–`10`): the parity bar and plan, the model
-  architecture, the memory/perf approach, and the final comparisons.
+- [onnx/README.md](./onnx/README.md) — the clean-room **ONNX export evaluation** (route B of note `15`): a
+  Python converter that rebuilds the en-fr student as ONNX graphs and validates them against the engine.
+  Driven by the `rs:onnx-*` tasks (`download-model`, `export`, `quantize`, `translate`, `dump`, `validate`, `quality`);
+  `download-model` fetches the float student `.npz` from GCS (auto-run as a dependency).
+- `notes/` — the design and build-out history: the parity bar and plan, the model architecture, the
+  memory/perf approach, the final comparisons (`01`–`10`), and the runtime-consolidation evaluations —
+  llama.cpp/GGUF (`14`) and ONNX/ORT (`15`).

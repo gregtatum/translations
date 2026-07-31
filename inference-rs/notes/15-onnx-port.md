@@ -30,10 +30,16 @@ and passes every feasibility gate below. Summary of what shipped and what it pro
 - **Converter** (`onnx/`): `model_npz.py` (float `.npz` reader), `numpy_ref.py`
   (independent numpy float forward — encoder + SSRU decode step + greedy loop, used
   as the bit-close golden), `export_encoder.py` / `export_decoder.py` (ONNX graph
-  builders, opset 17), `host_loop.py` (ORT encoder-once + greedy decode-loop),
-  `quantize.py` (ORT dynamic int8), `validate_*.py` / `quality.py`. Full arch spec
-  captured in `onnx/SPEC.md`. Added a small `dump` subcommand to `fxtranslate-oracle`
-  (+ `Engine::dump_reference`) to emit int8 reference tensors.
+  builders, opset 17), `engine.py` (the ONNX translation engine: ORT encoder-once +
+  greedy decode-loop), `quantize.py` (ORT dynamic int8), `validate_*.py` / `quality.py`.
+  Full arch spec captured in `onnx/SPEC.md`. Added a small `dump` subcommand to
+  `fxtranslate-oracle` (+ `Engine::dump_reference`) to emit int8 reference tensors. The
+  whole flow is driven through the Taskfile as `task rs:onnx-{export,quantize,translate,dump,validate,quality}`
+  (deps installed into the project `.venv` by `rs:onnx-venv`), consistent with the other
+  inference-rs tasks. `rs:onnx-download-model` fetches the float student `.npz` + vocabs
+  from the public prod GCS bucket (resolving the latest en-fr `student-finetuned` run via
+  the registry listing, md5-verified) into `data/models/en-fr/student-finetuned/`; it is a
+  dependency of the model-reading tasks, so the flow is a fresh-checkout one-liner.
 - **Gate 1 (graph correct, independent):** numpy-float vs `inference-rs` int8 —
   first-step argmax agrees (16060 `▁Bonjour`), encoder mean diff ~2.9% (int8 noise).
   numpy ref produces correct French, confirming the architecture reading.
@@ -41,7 +47,7 @@ and passes every feasibility gate below. Summary of what shipped and what it pro
   **3e-6**, decode logits/states max **~4e-5**; end-to-end ORT translation string is
   identical to the golden. `onnx.checker` clean. **No custom ops, no Loop/Scan.**
   The Sin/posrange landmine was sidestepped by baking PE as a constant (encoder) and
-  passing a host-computed PE vector as a graph input (decoder).
+  passing a precomputed PE vector as a graph input (decoder).
 - **Gate 2 (quantization quality):** ORT dynamic QInt8 (per-tensor, QDQ) → 213MB→124MB
   (1.72×; capped by the tied `Wemb` staying float for the `Gather`). On 50 sentences,
   int8-ONNX vs float-ONNX **chrF 98.4** — *closer to float than the production intgemm
@@ -60,7 +66,7 @@ graph is later required.
 
 **Feasibility verdict: exporting these models to ONNX is feasible.** The model is a
 standard transformer encoder + an SSRU decoder whose every op maps to stock ONNX
-ops, and the autoregressive recurrence is host-driven, so no ONNX `Loop`/`Scan`
+ops, and the autoregressive recurrence is driven by the caller, so no ONNX `Loop`/`Scan`
 control flow is needed. The open question is *which tool emits the graph*, not
 *whether the graph is expressible.*
 
@@ -74,7 +80,7 @@ true at once and must not be conflated:
      `decode_first()`, `decode_next()`; `decode_next(…, decoder_state_0, …) →
      logits, decoder_state_0, …` threads the SSRU cell state as **explicit graph
      inputs/outputs** (`decoderState->getStates()` → `d.output`,`d.cell`, lines
-     90–96). Host drives the token loop; no control flow in the graph.
+     90–96). The caller drives the token loop; no control flow in the graph.
    - The SSRU gate op is explicitly handled:
      `expression_graph_onnx_serialization.cpp:317` expands `highway` → `sigmoid` →
      Mul/Add/Sub, with the tell-tale comment (line 208) *"The only sigmoid in the
@@ -127,7 +133,7 @@ one-liner.
   is less mature than Python (mostly boilerplate, not hard). Needs a float `.npz`
   reader (numpy zip).
 - **Rejected: PyTorch + `torch.onnx.export`.** No off-the-shelf SSRU `nn.Module`;
-  tracing unrolls Python loops so you'd export a single step and host-loop anyway —
+  tracing unrolls Python loops so you'd export a single step and loop in the driver anyway —
   adds a reimplementation surface, buys nothing over A/B/C.
 
 **Recommended de-risking order:** start with a *minimal* clean-room build (route B or
@@ -145,12 +151,12 @@ Marian/`inference-rs`.
 ## Graph shape (a solved pattern)
 
 - **Single-step decoder graph; SSRU state as graph inputs/outputs; generation loop
-  in host code. No ONNX Loop/Scan.** This is exactly the established ORT seq2seq
+  in the driver. No ONNX Loop/Scan.** This is exactly the established ORT seq2seq
   pattern (HF optimum ships `encoder_model.onnx` + `decoder_model.onnx` +
   `decoder_with_past_model.onnx`, threading `past_key_values` as graph I/O). Our
   "past" is the SSRU cell vector per layer instead of a KV cache — simpler. Marian's
   `decode_next` already produces exactly this shape. Loop/Scan would only be needed
-  if the whole generation loop had to live inside one graph (no host driver) — not
+  if the whole generation loop had to live inside one graph (no external driver) — not
   our case.
 - **All ops are standard main-domain ONNX ops** (Sigmoid, Mul, Sub, Add, Relu,
   MatMul, Gather, Softmax, LayerNormalization). `LayerNormalization` became standard
@@ -245,7 +251,7 @@ documented for the browser.
 2. **CPU perf, full-vocab.** Same as note 14 gate #1 — full-vocab both sides
    (shortlist is off in production; see note 14). Benchmark ORT CPU (dynamic int8)
    vs `inference-rs`; benchmark Apple Silicon int8 specifically.
-3. **Tokenizer parity** — identical to note 14 (SPM normalization vs the host
+3. **Tokenizer parity** — identical to note 14 (SPM normalization vs the
    tokenizer used in the ORT pipeline).
 4. **Integration target = the transformers.js contract.** The ml component drives
    seq2seq through transformers.js for *both* `onnx` and `onnx-native`, and it
@@ -259,7 +265,7 @@ documented for the browser.
 |---|---|---|
 | Conversion | Emit graph (revive C++ exporter, or clean-room Python/Rust builder) | Write a new arch + GGUF converter from scratch |
 | Runtime changes | **None** — stock ORT runs standard ops; no fork, no upstream | New `LLM_ARCH_MARIAN` inside the runtime (upstream or patch) |
-| SSRU handling | State as graph I/O, host loop | Elementwise over recurrent memory, in-graph |
+| SSRU handling | State as graph I/O, driver loop | Elementwise over recurrent memory, in-graph |
 | Already in Gecko | `onnx` + `onnx-native` backends in `toolkit/components/ml` (default `onnx-native`) | `llama.cpp` backend in the same component (native `LlamaRunner`) |
 | Generation loop | **transformers.js (JS)** for both wasm + native | `LlamaRunner` native C++ loop |
 | Where the SSRU "custom glue" lives | **JS** — transformers.js can't drive `decoder_state_*` → patch it or bypass it | **C++** — the new arch + `LlamaRunner`/llama.cpp encoder-decoder support |
