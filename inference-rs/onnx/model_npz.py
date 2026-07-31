@@ -15,6 +15,8 @@ import numpy as np
 
 # Repo root is three levels up: onnx/ -> inference-rs/ -> translations/
 _REPO_ROOT = Path(__file__).resolve().parents[2]
+# The float student model, fetched from GCS by `task rs:onnx-download-model` (a dependency
+# of the rs:onnx-* tasks). See scripts/download_onnx_model.py.
 _MODEL_DIR = _REPO_ROOT / "data" / "models" / "en-fr" / "student-finetuned"
 
 NPZ_PATH = _MODEL_DIR / "final.model.npz.best-chrf.npz"
