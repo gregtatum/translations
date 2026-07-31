@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Cross-check numpy float reference against inference-rs int8 dumps.
 
 Reads ``testdata/inferrs_meta.json`` + ``inferrs_encoder.f32`` +
@@ -15,7 +16,7 @@ from pathlib import Path
 
 import numpy as np
 
-import model_npz as M
+import model_npz as npz
 import numpy_ref as ref
 
 _TESTDATA = Path(__file__).resolve().parent / "testdata"
@@ -48,8 +49,10 @@ def main() -> int:
 
     context = ref.encode(src_ids)
     logits0, _ = ref.decode_step(
-        M.EOS_ID, 0, ref.precompute_cross_kv(context),
-        [np.zeros(M.DIM, dtype=np.float32) for _ in range(M.DEC_DEPTH)],
+        npz.EOS_ID,
+        0,
+        ref.precompute_cross_kv(context),
+        [np.zeros(npz.DIM, dtype=np.float32) for _ in range(npz.DEC_DEPTH)],
     )
 
     enc_max, enc_mean = _diffs(context, ref_enc)

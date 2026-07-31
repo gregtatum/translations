@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Build and save ``models/decode_step.onnx``.
 
 One autoregressive decoder step per the SPEC decode_step contract: embed the
@@ -15,7 +16,7 @@ import numpy as np
 import onnx
 from onnx import TensorProto, helper, numpy_helper
 
-import model_npz as M
+import model_npz as npz
 
 _MODELS = Path(__file__).resolve().parent / "models"
 
@@ -38,7 +39,7 @@ class _Graph:
         return name
 
     def weight(self, w_name: str) -> str:
-        return self.const(w_name, M.weight(w_name))
+        return self.const(w_name, npz.weight(w_name))
 
     def add(self, op: str, inputs: list[str], hint: str, **attrs) -> str:
         out = self.name(hint)
@@ -59,7 +60,7 @@ def _layer_norm(g: _Graph, x: str, scale: str, bias: str, hint: str) -> str:
         [x, g.weight(scale), g.weight(bias)],
         hint,
         axis=-1,
-        epsilon=M.EPS,
+        epsilon=npz.EPS,
     )
 
 
@@ -68,7 +69,7 @@ def _cross_attn(g: _Graph, q: str, k: str, v: str, hint: str) -> str:
 
     Softmax over the source axis; scale 1/sqrt(48); returns ``[1,384]``.
     """
-    h, dk = M.HEADS, M.HEAD_DIM
+    h, dk = npz.HEADS, npz.HEAD_DIM
     q_shape = g.const("cross_q_shape", np.array([1, h, dk], dtype=np.int64))
     kv_shape = g.const("cross_kv_shape", np.array([-1, h, dk], dtype=np.int64))
 
@@ -80,7 +81,7 @@ def _cross_attn(g: _Graph, q: str, k: str, v: str, hint: str) -> str:
     vh = g.add("Transpose", [vh], f"{hint}_v_t", perm=[1, 0, 2])  # [8,seq,48]
 
     scores = g.add("MatMul", [qh, kh], f"{hint}_scores")  # [8,1,seq]
-    scale = g.const("attn_scale", np.array(M.ATTN_SCALE, dtype=np.float32))
+    scale = g.const("attn_scale", np.array(npz.ATTN_SCALE, dtype=np.float32))
     scores = g.add("Mul", [scores, scale], f"{hint}_scaled")
     attn = g.add("Softmax", [scores], f"{hint}_softmax", axis=-1)
     ctx = g.add("MatMul", [attn, vh], f"{hint}_ctx")  # [8,1,48]
@@ -111,7 +112,9 @@ def _dec_layer(g: _Graph, u: str, p: str, layer: int) -> tuple[str, str]:
     attn = _cross_attn(g, q, f"cross_k_{layer}", f"cross_v_{layer}", f"{p}_cross")
     attn = _linear(g, attn, f"{p}_context_Wo", f"{p}_context_bo", f"{p}_co")
     res = g.add("Add", [attn, x_self], f"{p}_ctx_res")
-    x_ctx = _layer_norm(g, res, f"{p}_context_Wo_ln_scale", f"{p}_context_Wo_ln_bias", f"{p}_ctx_ln")
+    x_ctx = _layer_norm(
+        g, res, f"{p}_context_Wo_ln_scale", f"{p}_context_Wo_ln_bias", f"{p}_ctx_ln"
+    )
 
     # FFN
     h = _linear(g, x_ctx, f"{p}_ffn_W1", f"{p}_ffn_b1", f"{p}_ffn1")
@@ -126,41 +129,51 @@ def build() -> onnx.ModelProto:
     g = _Graph()
 
     # embed prev_token: sqrt(d)*Wemb[id] + pe_vec  -> [1,384]
-    wemb = g.const("Wemb", M.wemb())
+    wemb = g.const("Wemb", npz.wemb())
     emb = g.add("Gather", [wemb, "prev_token"], "emb", axis=0)  # [1,384] (prev_token is [1])
-    scale = g.const("embed_scale", np.array(M.EMBED_SCALE, dtype=np.float32))
+    scale = g.const("embed_scale", np.array(npz.EMBED_SCALE, dtype=np.float32))
     emb = g.add("Mul", [emb, scale], "emb_scaled")
     # pe_vec is [384]; broadcast-add
     u = g.add("Add", [emb, "pe_vec"], "u0")
 
     new_states = []
-    for layer in range(M.DEC_DEPTH):
+    for layer in range(npz.DEC_DEPTH):
         u, c_t = _dec_layer(g, u, f"decoder_l{layer + 1}", layer)
         new_states.append(c_t)
 
     # tied output projection: u @ Wemb^T + logit_bias  -> [1,32000]
-    wemb_t = g.const("Wemb_T", np.ascontiguousarray(M.wemb().T))  # [384,32000]
+    wemb_t = g.const("Wemb_T", np.ascontiguousarray(npz.wemb().T))  # [384,32000]
     logits = g.add("MatMul", [u, wemb_t], "logits_mm")
-    logits = g.add("Add", [logits, g.const("logit_bias", M.logit_bias())], "logits_b")
+    logits = g.add("Add", [logits, g.const("logit_bias", npz.logit_bias())], "logits_b")
     # squeeze [1,32000] -> [32000]
     sq_axes = g.const("sq0", np.array([0], dtype=np.int64))
     g.nodes.append(helper.make_node("Squeeze", [logits, sq_axes], ["logits"]))
 
     # emit new states squeezed to [384]
-    outputs = [helper.make_tensor_value_info("logits", TensorProto.FLOAT, [M.VOCAB])]
+    outputs = [helper.make_tensor_value_info("logits", TensorProto.FLOAT, [npz.VOCAB])]
     for layer, c_t in enumerate(new_states):
         g.nodes.append(helper.make_node("Squeeze", [c_t, sq_axes], [f"new_decoder_state_{layer}"]))
-        outputs.append(helper.make_tensor_value_info(f"new_decoder_state_{layer}", TensorProto.FLOAT, [M.DIM]))
+        outputs.append(
+            helper.make_tensor_value_info(
+                f"new_decoder_state_{layer}", TensorProto.FLOAT, [npz.DIM]
+            )
+        )
 
     inputs = [
         helper.make_tensor_value_info("prev_token", TensorProto.INT64, [1]),
-        helper.make_tensor_value_info("pe_vec", TensorProto.FLOAT, [M.DIM]),
+        helper.make_tensor_value_info("pe_vec", TensorProto.FLOAT, [npz.DIM]),
     ]
-    for i in range(M.DEC_DEPTH):
-        inputs.append(helper.make_tensor_value_info(f"cross_k_{i}", TensorProto.FLOAT, ["seq", M.DIM]))
-        inputs.append(helper.make_tensor_value_info(f"cross_v_{i}", TensorProto.FLOAT, ["seq", M.DIM]))
-    for i in range(M.DEC_DEPTH):
-        inputs.append(helper.make_tensor_value_info(f"decoder_state_{i}", TensorProto.FLOAT, [M.DIM]))
+    for i in range(npz.DEC_DEPTH):
+        inputs.append(
+            helper.make_tensor_value_info(f"cross_k_{i}", TensorProto.FLOAT, ["seq", npz.DIM])
+        )
+        inputs.append(
+            helper.make_tensor_value_info(f"cross_v_{i}", TensorProto.FLOAT, ["seq", npz.DIM])
+        )
+    for i in range(npz.DEC_DEPTH):
+        inputs.append(
+            helper.make_tensor_value_info(f"decoder_state_{i}", TensorProto.FLOAT, [npz.DIM])
+        )
 
     graph = helper.make_graph(g.nodes, "decode_step", inputs, outputs, g.inits)
     model = helper.make_model(graph, opset_imports=[helper.make_opsetid("", 17)])

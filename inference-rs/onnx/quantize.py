@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Dynamic int8 quantization of the exported float32 ONNX graphs.
 
 Runs ``onnxruntime.quantization.quantize_dynamic`` over ``encoder.onnx`` and
@@ -55,7 +56,9 @@ def main() -> int:
         total_after += after
         print(f"{dst_name:<24}{before:>12.1f}{after:>12.1f}{before / after:>9.2f}x")
 
-    print(f"{'TOTAL':<24}{total_before:>12.1f}{total_after:>12.1f}{total_before / total_after:>9.2f}x")
+    print(
+        f"{'TOTAL':<24}{total_before:>12.1f}{total_after:>12.1f}{total_before / total_after:>9.2f}x"
+    )
     print(f"size reduction: {100 * (1 - total_after / total_before):.1f}%")
     return 0
 

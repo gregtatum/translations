@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Build and save ``models/encoder.onnx``.
 
 The encoder graph embeds+scales source ids, adds a precomputed rotor PE, runs
@@ -15,8 +16,8 @@ import numpy as np
 import onnx
 from onnx import TensorProto, helper, numpy_helper
 
-import model_npz as M
-from numpy_ref import _build_pe
+import model_npz as npz
+from numpy_ref import build_pe
 
 _MODELS = Path(__file__).resolve().parent / "models"
 _MAX_SEQ = 256
@@ -42,7 +43,7 @@ class _Graph:
         return name
 
     def weight(self, w_name: str) -> str:
-        return self.const(w_name, M.weight(w_name))
+        return self.const(w_name, npz.weight(w_name))
 
     def add(self, op: str, inputs: list[str], hint: str, **attrs) -> str:
         out = self.name(hint)
@@ -63,7 +64,7 @@ def _layer_norm(g: _Graph, x: str, scale: str, bias: str, hint: str) -> str:
         [x, g.weight(scale), g.weight(bias)],
         hint,
         axis=-1,
-        epsilon=M.EPS,
+        epsilon=npz.EPS,
     )
 
 
@@ -73,7 +74,7 @@ def _multihead(g: _Graph, q: str, k: str, v: str, seq: str, hint: str) -> str:
     Reshape to ``[seq,8,48]`` then transpose to ``[8,seq,48]``, score with
     scale 1/sqrt(48), softmax over the key axis, join heads back to ``[seq,384]``.
     """
-    h, dk = M.HEADS, M.HEAD_DIM
+    h, dk = npz.HEADS, npz.HEAD_DIM
     # shape [seq, 8, 48]
     hd_shape = g.const(f"{hint}_hdshape", np.array([-1, h, dk], dtype=np.int64))
     perm = dict(perm=[1, 0, 2])
@@ -87,7 +88,7 @@ def _multihead(g: _Graph, q: str, k: str, v: str, seq: str, hint: str) -> str:
     vh = heads(v, "v")
     kh_t = g.add("Transpose", [kh], f"{hint}_kt", perm=[0, 2, 1])  # [8,48,seq]
     scores = g.add("MatMul", [qh, kh_t], f"{hint}_scores")  # [8,seq,seq]
-    scale = g.const("attn_scale", np.array(M.ATTN_SCALE, dtype=np.float32))
+    scale = g.const("attn_scale", np.array(npz.ATTN_SCALE, dtype=np.float32))
     scores = g.add("Mul", [scores, scale], f"{hint}_scaled")
     attn = g.add("Softmax", [scores], f"{hint}_softmax", axis=-1)
     ctx = g.add("MatMul", [attn, vh], f"{hint}_ctx")  # [8,seq,48]
@@ -118,9 +119,9 @@ def build() -> onnx.ModelProto:
     src_ids = "src_ids"  # int64 [seq]
 
     # embedding: sqrt(d) * Wemb[id] + PE(pos)
-    wemb = g.const("Wemb", M.wemb())
+    wemb = g.const("Wemb", npz.wemb())
     emb = g.add("Gather", [wemb, src_ids], "emb", axis=0)  # [seq,384]
-    scale = g.const("embed_scale", np.array(M.EMBED_SCALE, dtype=np.float32))
+    scale = g.const("embed_scale", np.array(npz.EMBED_SCALE, dtype=np.float32))
     emb = g.add("Mul", [emb, scale], "emb_scaled")
 
     # seq = shape(src_ids)[0]
@@ -128,26 +129,30 @@ def build() -> onnx.ModelProto:
     zero = g.const("i0", np.array([0], dtype=np.int64))
     seq = g.add("Slice", [shape, zero, g.const("i1", np.array([1], dtype=np.int64)), zero], "seq")
 
-    pe_table = g.const("pe_table", _build_pe(_MAX_SEQ))  # [max_seq,384]
+    pe_table = g.const("pe_table", build_pe(_MAX_SEQ))  # [max_seq,384]
     pe = g.add("Slice", [pe_table, zero, seq, zero], "pe_slice")  # [seq,384]
     x = g.add("Add", [emb, pe], "x0")
 
-    for layer in range(1, M.ENC_DEPTH + 1):
+    for layer in range(1, npz.ENC_DEPTH + 1):
         x = _enc_layer(g, x, f"encoder_l{layer}", seq)
     context = x
 
-    outputs = [helper.make_tensor_value_info("context", TensorProto.FLOAT, ["seq", M.DIM])]
+    outputs = [helper.make_tensor_value_info("context", TensorProto.FLOAT, ["seq", npz.DIM])]
     output_names = [("context", context)]
 
     # fold per-decoder-layer cross K/V
-    for layer in range(M.DEC_DEPTH):
+    for layer in range(npz.DEC_DEPTH):
         p = f"decoder_l{layer + 1}"
         k = _linear(g, context, f"{p}_context_Wk", f"{p}_context_bk", f"{p}_ck")
         v = _linear(g, context, f"{p}_context_Wv", f"{p}_context_bv", f"{p}_cv")
         output_names.append((f"cross_k_{layer}", k))
         output_names.append((f"cross_v_{layer}", v))
-        outputs.append(helper.make_tensor_value_info(f"cross_k_{layer}", TensorProto.FLOAT, ["seq", M.DIM]))
-        outputs.append(helper.make_tensor_value_info(f"cross_v_{layer}", TensorProto.FLOAT, ["seq", M.DIM]))
+        outputs.append(
+            helper.make_tensor_value_info(f"cross_k_{layer}", TensorProto.FLOAT, ["seq", npz.DIM])
+        )
+        outputs.append(
+            helper.make_tensor_value_info(f"cross_v_{layer}", TensorProto.FLOAT, ["seq", npz.DIM])
+        )
 
     # rename internal outputs to the public names via Identity
     for public, internal in output_names:

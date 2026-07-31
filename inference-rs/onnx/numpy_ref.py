@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Float32 numpy reference forward pass (the bit-close golden).
 
 Implements the SPEC exactly: tied+scaled embeddings with a precomputed rotor PE
@@ -14,19 +15,20 @@ from pathlib import Path
 
 import numpy as np
 
-import model_npz as M
-import tokenizer as T
+import model_npz as npz
+import tokenizer as tok
 
 _TESTDATA = Path(__file__).resolve().parent / "testdata"
 
 
 # --- primitives ---------------------------------------------------------------
 
+
 def layer_norm(x: np.ndarray, scale: np.ndarray, bias: np.ndarray) -> np.ndarray:
     """Marian LayerNorm: biased (÷d) variance, eps inside sqrt."""
     mean = x.mean(axis=-1, keepdims=True)
     var = ((x - mean) ** 2).mean(axis=-1, keepdims=True)
-    return (x - mean) / np.sqrt(var + M.EPS) * scale + bias
+    return (x - mean) / np.sqrt(var + npz.EPS) * scale + bias
 
 
 def relu(x: np.ndarray) -> np.ndarray:
@@ -59,11 +61,11 @@ def multihead(q: np.ndarray, k: np.ndarray, v: np.ndarray) -> np.ndarray:
     """
     tq = q.shape[0]
     tk = k.shape[0]
-    h, dk = M.HEADS, M.HEAD_DIM
+    h, dk = npz.HEADS, npz.HEAD_DIM
     qh = q.reshape(tq, h, dk).transpose(1, 0, 2)  # [h,tq,dk]
     kh = k.reshape(tk, h, dk).transpose(1, 0, 2)  # [h,tk,dk]
     vh = v.reshape(tk, h, dk).transpose(1, 0, 2)  # [h,tk,dk]
-    scores = np.einsum("htd,hsd->hts", qh, kh) * M.ATTN_SCALE  # [h,tq,tk]
+    scores = np.einsum("htd,hsd->hts", qh, kh) * npz.ATTN_SCALE  # [h,tq,tk]
     attn = softmax(scores, axis=-1)
     ctx = np.einsum("hts,hsd->htd", attn, vh)  # [h,tq,dk]
     return ctx.transpose(1, 0, 2).reshape(tq, h * dk)
@@ -71,8 +73,9 @@ def multihead(q: np.ndarray, k: np.ndarray, v: np.ndarray) -> np.ndarray:
 
 # --- positional encoding (rotor form, precomputed constant) -------------------
 
-def _build_pe(max_seq: int) -> np.ndarray:
-    d = M.DIM
+
+def build_pe(max_seq: int) -> np.ndarray:
+    d = npz.DIM
     half = d // 2  # 192
     c = np.arange(d)
     freq = np.power(1e-4, (c % half) / (half - 1))  # (c mod 192)/191
@@ -81,21 +84,22 @@ def _build_pe(max_seq: int) -> np.ndarray:
     return np.sin(pos * freq[None, :] + offs[None, :]).astype(np.float32)
 
 
-_PE = _build_pe(256)
+PE = build_pe(256)
 
 
 def embed(ids: list[int], start_pos: int = 0) -> np.ndarray:
     """sqrt(d)*Wemb[id] + PE(pos), scaling BEFORE adding PE."""
-    x = M.EMBED_SCALE * M.wemb()[ids]  # [seq,384]
-    pe = _PE[start_pos : start_pos + len(ids)]
+    x = npz.EMBED_SCALE * npz.wemb()[ids]  # [seq,384]
+    pe = PE[start_pos : start_pos + len(ids)]
     return (x + pe).astype(np.float32)
 
 
 # --- encoder ------------------------------------------------------------------
 
+
 def _enc_layer(x: np.ndarray, p: str) -> np.ndarray:
     def w(n: str) -> np.ndarray:
-        return M.weight(f"{p}_{n}")
+        return npz.weight(f"{p}_{n}")
 
     q = linear(x, w("self_Wq"), w("self_bq"))
     k = linear(x, w("self_Wk"), w("self_bk"))
@@ -112,25 +116,27 @@ def _enc_layer(x: np.ndarray, p: str) -> np.ndarray:
 def encode(src_ids: list[int]) -> np.ndarray:
     """Encode source ids to context ``[seq, 384]`` (no final LN, no mask)."""
     x = embed(list(src_ids))
-    for layer in range(1, M.ENC_DEPTH + 1):
+    for layer in range(1, npz.ENC_DEPTH + 1):
         x = _enc_layer(x, f"encoder_l{layer}")
     return x
 
 
 # --- decoder cross-attention K/V precompute -----------------------------------
 
+
 def precompute_cross_kv(context: np.ndarray) -> list[tuple[np.ndarray, np.ndarray]]:
     """K/V per decoder layer from the encoder context; computed once."""
     kv = []
-    for layer in range(1, M.DEC_DEPTH + 1):
+    for layer in range(1, npz.DEC_DEPTH + 1):
         p = f"decoder_l{layer}"
-        k = linear(context, M.weight(f"{p}_context_Wk"), M.weight(f"{p}_context_bk"))
-        v = linear(context, M.weight(f"{p}_context_Wv"), M.weight(f"{p}_context_bv"))
+        k = linear(context, npz.weight(f"{p}_context_Wk"), npz.weight(f"{p}_context_bk"))
+        v = linear(context, npz.weight(f"{p}_context_Wv"), npz.weight(f"{p}_context_bv"))
         kv.append((k, v))
     return kv
 
 
 # --- decoder step -------------------------------------------------------------
+
 
 def decode_step(
     prev_token: int,
@@ -146,11 +152,11 @@ def decode_step(
     u = embed([prev_token], start_pos=pos)[0]  # [384]
     new_states: list[np.ndarray] = []
 
-    for layer in range(1, M.DEC_DEPTH + 1):
+    for layer in range(1, npz.DEC_DEPTH + 1):
         p = f"decoder_l{layer}"
 
         def w(n: str) -> np.ndarray:
-            return M.weight(f"{p}_{n}")
+            return npz.weight(f"{p}_{n}")
 
         # SSRU cell: highway gate weights OLD cell with g, candidate with (1-g).
         cand = u @ w("rnn_W")  # no bias
@@ -172,39 +178,41 @@ def decode_step(
         f = linear(h, w("ffn_W2"), w("ffn_b2"))
         u = layer_norm(f + x_ctx, w("ffn_ffn_ln_scale"), w("ffn_ffn_ln_bias"))
 
-    logits = u @ M.wemb().T + M.logit_bias()  # tied output projection
+    logits = u @ npz.wemb().T + npz.logit_bias()  # tied output projection
     return logits.astype(np.float32), new_states
 
 
 # --- greedy loop --------------------------------------------------------------
 
+
 def greedy(src_ids: list[int]) -> list[int]:
-    """Host greedy loop: seed prev=eos, states=zeros, stop on eos."""
+    """Greedy decode loop: seed prev=eos, states=zeros, stop on eos."""
     context = encode(src_ids)
     cross_kv = precompute_cross_kv(context)
-    states = [np.zeros(M.DIM, dtype=np.float32) for _ in range(M.DEC_DEPTH)]
+    states = [np.zeros(npz.DIM, dtype=np.float32) for _ in range(npz.DEC_DEPTH)]
 
     seq = len(src_ids)
     max_len = min(math.ceil(2 * seq) + 4, 256)
 
     out: list[int] = []
-    prev = T.eos_id
+    prev = tok.eos_id
     for pos in range(max_len):
         logits, states = decode_step(prev, pos, cross_kv, states)
-        tok = int(np.argmax(logits))
-        if tok == T.eos_id:
+        token = int(np.argmax(logits))
+        if token == tok.eos_id:
             break
-        out.append(tok)
-        prev = tok
+        out.append(token)
+        prev = token
     return out
 
 
 def translate(text: str) -> str:
     """Encode, greedily decode, and detokenize."""
-    return T.decode_ids(greedy(T.encode_source(text)))
+    return tok.decode_ids(greedy(tok.encode_source(text)))
 
 
 # --- CLI ----------------------------------------------------------------------
+
 
 def _main(argv: list[str]) -> None:
     ap = argparse.ArgumentParser(description="numpy float reference translation")
@@ -217,19 +225,22 @@ def _main(argv: list[str]) -> None:
         text = f"<ids: {args.ids}>"
     else:
         text = args.text or "Hello, world. This is a test of the translation engine."
-        src_ids = T.encode_source(text)
+        src_ids = tok.encode_source(text)
 
     print(f"text:    {text}")
     print(f"src_ids: {src_ids}")
 
     context = encode(src_ids)
-    logits0, _ = decode_step(T.eos_id, 0, precompute_cross_kv(context), [
-        np.zeros(M.DIM, dtype=np.float32) for _ in range(M.DEC_DEPTH)
-    ])
+    logits0, _ = decode_step(
+        tok.eos_id,
+        0,
+        precompute_cross_kv(context),
+        [np.zeros(npz.DIM, dtype=np.float32) for _ in range(npz.DEC_DEPTH)],
+    )
 
     out_ids = greedy(src_ids)
     print(f"out_ids: {out_ids}")
-    print(f"translation: {T.decode_ids(out_ids)}")
+    print(f"translation: {tok.decode_ids(out_ids)}")
 
     _TESTDATA.mkdir(exist_ok=True)
     np.save(_TESTDATA / "numpy_encoder.npy", context)

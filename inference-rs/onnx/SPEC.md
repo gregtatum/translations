@@ -64,7 +64,7 @@ offs[c] = floor(c / 192) * (pi/2)                 # 0 for c<192 (sin), pi/2 for 
 PE(pos)[c] = sin(pos * freq[c] + offs[c])
 ```
 Precompute the whole `[max_seq, 384]` PE table as an f32 constant/initializer and add a
-slice; or pass the host-computed PE vector as a graph input. Never emit a live `Sin` op
+slice; or pass a precomputed PE vector as a graph input. Never emit a live `Sin` op
 (known marian-exporter divergence bug).
 
 ## Encoder layer (post-norm), for L in 1..6, prefix `encoder_l{L}`
@@ -120,10 +120,10 @@ eos_id (0)**; **no BOS**. Decoder seeds with target EOS (id 0) at pos 0. Stop on
 ## decode_step graph contract
 
 - run ONCE: encoder -> context; then per-layer cross_k_i, cross_v_i (each [seq,384]).
-- INPUTS/step: prev_token (int64), pos (or host PE vector), cross_k_0..3, cross_v_0..3,
+- INPUTS/step: prev_token (int64), pos (or precomputed PE vector), cross_k_0..3, cross_v_0..3,
   decoder_state_0..3 ([384] each, init zeros).
 - OUTPUTS/step: logits [32000], decoder_state_0..3 (new c_t).
-- host loop: greedy argmax, feed states back, cap max_len = min(ceil(2*seq)+4, 256).
+- driver loop: greedy argmax, feed states back, cap max_len = min(ceil(2*seq)+4, 256).
 
 ## Reference extraction (inference-rs int8 cross-check)
 
@@ -144,7 +144,7 @@ ids. int8-precision reference: expect argmax agreement + ~1% tensor diff vs nump
 - `tokenizer.py`  — sentencepiece wrap (encode + eos, no bos)
 - `numpy_ref.py`  — float32 forward: encoder, decode_step, greedy loop (the bit-close golden)
 - `export_encoder.py`, `export_decoder.py` — ONNX graph builders
-- `host_loop.py`  — ORT sessions + greedy generation
+- `engine.py`  — ORT sessions + greedy generation (the ONNX translation engine)
 - `quantize.py`   — ORT quantize_dynamic
 - `validate.py`   — numeric diffs + quality
 - `testdata/`     — reference tensors from inference-rs

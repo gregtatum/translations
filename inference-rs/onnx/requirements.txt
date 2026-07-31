@@ -1,0 +1,9 @@
+# Python dependencies for the ONNX export/evaluation (inference-rs/onnx/, route B
+# of notes/15-onnx-port.md). Installed into the project-local .venv by
+# `task rs:onnx-*` (see the onnx-venv task in Taskfile.yml). Kept out of the repo
+# poetry env on purpose: onnxruntime is heavy and only this evaluation needs it.
+numpy>=1.24
+onnx>=1.16
+onnxruntime>=1.17        # I8MM QGEMM kernels on ARM ship by default since >=1.17
+sentencepiece>=0.2       # SentencePiece tokenizer parity with the engine
+sacrebleu>=2.4           # chrF for the quality gate (quality.py)

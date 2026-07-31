@@ -1,6 +1,7 @@
+#!/usr/bin/env python3
 """Quality gate: float ONNX vs int8 ONNX vs inference-rs intgemm int8.
 
-The float ONNX path (``host_loop``) is the high-quality reference. We measure how
+The float ONNX path (``engine``) is the high-quality reference. We measure how
 much int8 quantization degrades it and whether ORT's dynamic int8 is competitive
 with inference-rs's production intgemm int8.
 
@@ -26,7 +27,7 @@ from pathlib import Path
 
 from sacrebleu.metrics import CHRF
 
-import host_loop
+import engine
 from model_npz import _REPO_ROOT
 
 _ORACLE = _REPO_ROOT / "inference-rs" / "target" / "release" / "fxtranslate-oracle"
@@ -49,7 +50,7 @@ def load_dev_set() -> list[str]:
 def onnx_translate(sentences: list[str], int8: bool) -> tuple[list[str], float]:
     out, t0 = [], time.perf_counter()
     for s in sentences:
-        out.append(host_loop.translate(s, int8=int8))
+        out.append(engine.translate(s, int8=int8))
     return out, (time.perf_counter() - t0) / len(sentences)
 
 
@@ -82,7 +83,9 @@ def pair_stats(hyp: list[str], ref: list[str]) -> tuple[float, float, float]:
 
 def main() -> int:
     if not _ORACLE.exists():
-        print(f"oracle binary not found: {_ORACLE}\nbuild it: cargo build --release -p fxtranslate-oracle")
+        print(
+            f"oracle binary not found: {_ORACLE}\nbuild it: cargo build --release -p fxtranslate-oracle"
+        )
         return 1
 
     src = load_dev_set()
@@ -110,8 +113,8 @@ def main() -> int:
 
     fixed = "Hello, world. This is a test of the translation engine."
     print(f"\nfixed sentence:\n  src : {fixed}")
-    print(f"  flt : {host_loop.translate(fixed, int8=False)}")
-    print(f"  int8: {host_loop.translate(fixed, int8=True)}")
+    print(f"  flt : {engine.translate(fixed, int8=False)}")
+    print(f"  int8: {engine.translate(fixed, int8=True)}")
     return 0
 
 
