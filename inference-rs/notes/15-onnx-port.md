@@ -22,6 +22,40 @@ For the model architecture (encoder-decoder, SSRU decoder, ~32–50k SPM vocab) 
 notes 05 and 14. For where the float models live on GCS see note 14's
 "Where to get the models" (the same `student-finetuned/…best-*.npz`).
 
+## Update (2026-07-31) — route B built and validated end-to-end (en-fr)
+
+The clean-room Python converter (route B) is implemented in `inference-rs/onnx/`
+and passes every feasibility gate below. Summary of what shipped and what it proved:
+
+- **Converter** (`onnx/`): `model_npz.py` (float `.npz` reader), `numpy_ref.py`
+  (independent numpy float forward — encoder + SSRU decode step + greedy loop, used
+  as the bit-close golden), `export_encoder.py` / `export_decoder.py` (ONNX graph
+  builders, opset 17), `host_loop.py` (ORT encoder-once + greedy decode-loop),
+  `quantize.py` (ORT dynamic int8), `validate_*.py` / `quality.py`. Full arch spec
+  captured in `onnx/SPEC.md`. Added a small `dump` subcommand to `fxtranslate-oracle`
+  (+ `Engine::dump_reference`) to emit int8 reference tensors.
+- **Gate 1 (graph correct, independent):** numpy-float vs `inference-rs` int8 —
+  first-step argmax agrees (16060 `▁Bonjour`), encoder mean diff ~2.9% (int8 noise).
+  numpy ref produces correct French, confirming the architecture reading.
+- **Gate 1 (graph correct, bit-close):** ONNX-float vs numpy-float — encoder max
+  **3e-6**, decode logits/states max **~4e-5**; end-to-end ORT translation string is
+  identical to the golden. `onnx.checker` clean. **No custom ops, no Loop/Scan.**
+  The Sin/posrange landmine was sidestepped by baking PE as a constant (encoder) and
+  passing a host-computed PE vector as a graph input (decoder).
+- **Gate 2 (quantization quality):** ORT dynamic QInt8 (per-tensor, QDQ) → 213MB→124MB
+  (1.72×; capped by the tied `Wemb` staying float for the `Gather`). On 50 sentences,
+  int8-ONNX vs float-ONNX **chrF 98.4** — *closer to float than the production intgemm
+  engine is* (chrF 97.4). Rough single-thread wall-clock: int8 ONNX ~9.8 ms/sent vs
+  float ONNX ~16.6 ms/sent (indicative only, not a tuned benchmark; the real perf gate
+  vs `inference-rs`/gemmology is still open — see gate #2 below).
+
+Net: **the SSRU-as-graph-I/O plan works exactly as predicted.** Remaining open items
+are the ones that were always the real cost (below): a rigorous CPU/Apple-Silicon perf
+comparison vs the tuned `gemmology` path (gate #2), tokenizer parity at scale (gate #3),
+and the transformers.js/SSRU generation glue in Firefox (gate #4). Route A (reviving
+the C++ exporter) is now clearly unnecessary unless bit-fidelity to Marian's exact
+graph is later required.
+
 ## Headline — ONNX export is feasible, but it's a project, not a one-liner
 
 **Feasibility verdict: exporting these models to ONNX is feasible.** The model is a
