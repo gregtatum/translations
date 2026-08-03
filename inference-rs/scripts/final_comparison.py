@@ -149,6 +149,13 @@ def main() -> None:
         default="int8",
         help="ONNX graph precision to benchmark (default int8, comparable to rs/marian int8)",
     )
+    ap.add_argument(
+        "--onnx-threads",
+        type=int,
+        default=1,
+        help="ORT intra-op threads for the ONNX row (default 1 = single, matching the native "
+        "rows; 0 = ORT default/multithreaded — trades memory for decode speed)",
+    )
     args = ap.parse_args()
 
     _s, _t, _l, config = common.resolve_config(args.models_dir, args.source, args.target)
@@ -206,6 +213,7 @@ def main() -> None:
             )
             sys.exit(f"[final] ONNX graphs missing: {', '.join(missing)} (build them: {hint})")
         onnx_cmd = [str(VENV_PY), str(ONNX_BLOCKBENCH), "--blocks", str(blocks)]
+        onnx_cmd += ["--threads", str(args.onnx_threads)]
         if args.onnx_precision == "int8":
             onnx_cmd.append("--int8")
 
@@ -279,10 +287,11 @@ def main() -> None:
             f"{med(d['settled']):>13.0f}{med(d['peak']):>10.0f}"
         )
 
+    onnx_tlabel = "ORT-default threads" if args.onnx_threads == 0 else f"{args.onnx_threads}t"
     row("inference-rs (rust, fast)", rs)
     row("marian block-bench (native)", mar)
     if args.onnx:
-        row(f"ONNX ORT ({args.onnx_precision}, .venv)", onx)
+        row(f"ONNX ORT ({args.onnx_precision}, {onnx_tlabel})", onx)
     print(
         f"{FIREFOX['label']:28}{FIREFOX['words_per_second']:>9.0f}"
         f"{FIREFOX['tokens_per_second']:>10.0f}{FIREFOX['translate_s']:>13.2f}"
@@ -330,6 +339,10 @@ def main() -> None:
     if args.onnx:
         print(
             "  - ONNX ORT caveats (read the row with these in mind):\n"
+            f"    * threads: this ONNX row used {onnx_tlabel} (the native rows are always 1\n"
+            "      thread). ORT multithreading trades memory (per-thread arenas) for decode\n"
+            "      speed; toggle with --onnx-threads (0 = ORT default). inference-rs is\n"
+            "      single-threaded and memory-optimized by design.\n"
             "    * the decoder is block-batched (padded + masked, like rs/marian); the\n"
             "      encoder still runs once per sentence, so the block isn't batched fully\n"
             "      end to end. int8 is ORT dynamic QDQ, not intgemm.\n"

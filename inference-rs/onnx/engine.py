@@ -39,11 +39,15 @@ class Engine:
     """
 
     def __init__(self, int8: bool = False, threads: int = 1) -> None:
-        # Pin ORT to a fixed thread count (default 1) so perf numbers are comparable to the
-        # single-threaded native rs/marian baselines rather than ORT's machine-dependent default.
+        # threads > 0 pins ORT's intra-op parallelism to that many threads; threads == 0 leaves
+        # ORT's default (a thread pool sized to the machine — the multithreaded config). Default
+        # 1 so perf numbers are comparable to the single-threaded native rs/marian baselines; set
+        # 0 to measure the speed/memory tradeoff of ORT multithreading (inference-rs is
+        # single-threaded and memory-optimized on purpose). See notes/16.
         opts = ort.SessionOptions()
-        opts.intra_op_num_threads = threads
-        opts.inter_op_num_threads = 1
+        if threads > 0:
+            opts.intra_op_num_threads = threads
+            opts.inter_op_num_threads = 1
         providers = ["CPUExecutionProvider"]
         suffix = ".int8.onnx" if int8 else ".onnx"
         self.encoder = ort.InferenceSession(
@@ -166,11 +170,17 @@ def _main(argv: list[str]) -> None:
         help="Text to translate. If omitted, translate stdin line by line (a sample sentence on a TTY).",
     )
     parser.add_argument("--int8", action="store_true", help="Use the quantized int8 graphs")
+    parser.add_argument(
+        "--threads",
+        type=int,
+        default=1,
+        help="ORT intra-op threads (default 1; 0 = ORT default / multithreaded)",
+    )
     args = parser.parse_args(argv)
 
     # Load the sessions once, then translate the positional text, or each stdin
     # line in turn — the same interface as `fxtranslate-oracle translate`.
-    engine = Engine(int8=args.int8)
+    engine = Engine(int8=args.int8, threads=args.threads)
     if args.text is not None:
         print(engine.translate(args.text))
     elif not sys.stdin.isatty():

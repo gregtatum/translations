@@ -655,8 +655,13 @@ tasks:
         - block-bench built: task inference-build
         - en-ru base v3.0 intgemm model: task rs:download-model -- en ru --version 3.0
 
+      ONNX threading is a toggle: --onnx-threads 1 (default) is single-threaded and comparable
+      to the native rows; --onnx-threads 0 uses ORT's default multithreaded pool (faster decode,
+      more memory — inference-rs is single-threaded and memory-optimized by design).
+
       Examples:
         task rs:onnx-perf
+        task rs:onnx-perf -- --onnx-threads 0        # ORT multithreaded
         task rs:onnx-perf -- --onnx-precision float
         task rs:onnx-perf -- --runs 6
     dir: '{{.ROOT_DIR}}'

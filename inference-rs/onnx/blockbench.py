@@ -41,7 +41,12 @@ def main(argv: list[str]) -> int:
         "--blocks", default=None, help="block file (blank-line separated); else stdin"
     )
     parser.add_argument("--int8", action="store_true", help="use the quantized int8 graphs")
-    parser.add_argument("--threads", type=int, default=1, help="ORT intra-op threads (default 1)")
+    parser.add_argument(
+        "--threads",
+        type=int,
+        default=1,
+        help="ORT intra-op threads (default 1; 0 = ORT default / multithreaded)",
+    )
     args = parser.parse_args(argv)
 
     blocks = read_blocks(args.blocks)

@@ -240,11 +240,32 @@ overhead wouldn't apply — a compiled/embedded-ORT harness is needed before the
 a fair peer to the native engines. Speed is genuinely encouraging; memory is unproven until
 measured natively.
 
+**Threading — where the speed and memory actually come from.** The ONNX row is pinned to one
+ORT intra-op thread by default (`--onnx-threads`, `0` = ORT's default multithreaded pool), to
+match the single-threaded native engines. Toggling it answers whether ORT's win is threads:
+
+| ONNX int8 | words/s | settled MiB |
+|---|---:|---:|
+| 1 thread (default) | 2367 | 444 |
+| ORT-default (multi) | 2576 | 455 |
+
+Multithreading adds only **~9% speed and ~11 MiB** — so it is *not* the source of ONNX's lead:
+even single-threaded, ONNX is **1.85× inference-rs**, which is kernel-driven (ORT/MLAS
+`MatMulInteger` beats gemmology on this small model). Nor is threading the memory story — of the
+~310 MiB gap over inference-rs's 131, only ~11 is thread arenas; the rest is the Python + ORT
+process (interpreter, sessions, the float `Wemb` in the int8 graph). This model's tiny per-step
+matmuls and its latency-bound autoregressive loop leave little for threads to exploit. Net: the
+speed is real and single-threaded; the memory figure is a Python/ORT-process artifact, not a
+thread-count knob — which is why the native-ORT memory harness (below) is the honest next gate.
+That the two numbers differ at all also confirms the thread pinning is effective (no OpenMP
+override silently multithreading the "1-thread" runs).
+
 ## Open questions / to confirm
 
-- **Memory under a native ORT harness.** The 406 MiB is Python+ORT, not the shippable cost. The
-  next real gate is an embedded/C++ ORT harness (or a `RUSAGE`-attributed teardown) to get a
-  memory number comparable to the native engines — the current column overstates ONNX's cost.
+- **Memory under a native ORT harness.** The ~444 MiB is Python+ORT, not the shippable cost (the
+  threading A/B above shows only ~11 MiB of it is thread arenas). The next real gate is an
+  embedded/C++ ORT harness (or a `RUSAGE`-attributed teardown) to get a memory number comparable
+  to the native engines — the current column overstates ONNX's cost.
 - **Batched encoder.** The decoder is batched; the encoder still runs per sentence. Batching it
   (padded [B,Smax,DIM] with a self-attention mask) is the remaining lever toward a fully
   block-batched, production-shaped ONNX path.
