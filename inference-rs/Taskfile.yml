@@ -640,6 +640,29 @@ tasks:
       - .venv/bin/python3 onnx/validate_onnx.py
       - .venv/bin/python3 onnx/validate_numpy.py
 
+  onnx-perf:
+    desc: Apples-to-apples block perf — ONNX vs inference-rs vs marian vs Firefox.
+    summary: |
+      Runs scripts/final_comparison.py with the ONNX engine added as a fourth subject:
+      the same Frankenstein block corpus and the same en-ru base model through inference-rs
+      (rust), marian block-bench (native), and the ONNX engine (onnx/blockbench.py under
+      .venv), plus the pasted Firefox Wasm perftest numbers. Reports words/s, tokens/s,
+      translate s, init ms, and settled/peak RSS per engine, model load excluded, ORT pinned
+      single-threaded. --onnx-precision float benchmarks the float graphs instead of int8.
+
+      Prerequisites (the script errors with a hint if any are missing):
+        - ONNX graphs built: task rs:onnx-quantize (int8) — chains export + download-model
+        - block-bench built: task inference-build
+        - en-ru base v3.0 intgemm model: task rs:download-model -- en ru --version 3.0
+
+      Examples:
+        task rs:onnx-perf
+        task rs:onnx-perf -- --onnx-precision float
+        task rs:onnx-perf -- --runs 6
+    dir: '{{.ROOT_DIR}}'
+    cmds:
+      - python3 {{.TASKFILE_DIR}}/scripts/final_comparison.py --onnx {{.CLI_ARGS}}
+
   onnx-quality:
     desc: Quality + rough perf of the ONNX engines vs inference-rs over a corpus.
     summary: |

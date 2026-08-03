@@ -38,6 +38,11 @@ REPO = CRATE.parent
 BIN = CRATE / "target/release/fxtranslate-oracle"
 BLOCK_BENCH = REPO / "inference/build/src/app/block-bench"
 DEFAULT_BLOCKS = CRATE / "corpora/frankenstein-en.blocks.txt"
+# The ONNX engine runs under the project .venv (onnxruntime lives there, not in poetry);
+# blockbench.py emits the same [block] spans as the native tools. See notes/16.
+VENV_PY = CRATE / ".venv/bin/python3"
+ONNX_BLOCKBENCH = CRATE / "onnx/blockbench.py"
+ONNX_MODELS = CRATE / "onnx/models"
 
 # Firefox "Full-Page Translations Base Model" (en→ru), medians of the 5-run
 # perftest the user provided. wordCount/tokenCount are the page's source totals.
@@ -133,6 +138,17 @@ def main() -> None:
     ap.add_argument("--runs", type=int, default=4)
     ap.add_argument("--warmup", type=int, default=1)
     ap.add_argument("--interval", type=float, default=0.02, help="rss sample interval (s)")
+    ap.add_argument(
+        "--onnx",
+        action="store_true",
+        help="add the ONNX engine (onnx/blockbench.py under .venv) as a fourth subject",
+    )
+    ap.add_argument(
+        "--onnx-precision",
+        choices=["int8", "float"],
+        default="int8",
+        help="ONNX graph precision to benchmark (default int8, comparable to rs/marian int8)",
+    )
     args = ap.parse_args()
 
     _s, _t, _l, config = common.resolve_config(args.models_dir, args.source, args.target)
@@ -177,10 +193,27 @@ def main() -> None:
     tmpcfg = marian_config(config)
     marian_cmd = [str(BLOCK_BENCH), "--model-config-paths", str(tmpcfg)]
 
+    onnx_cmd = None
+    if args.onnx:
+        suffix = ".int8.onnx" if args.onnx_precision == "int8" else ".onnx"
+        needed = [ONNX_MODELS / f"encoder{suffix}", ONNX_MODELS / f"decode_step{suffix}"]
+        missing = [p.name for p in needed if not p.exists()]
+        if not VENV_PY.exists():
+            sys.exit(f"[final] .venv python not found at {VENV_PY} (run: task rs:onnx-export)")
+        if missing:
+            hint = (
+                "task rs:onnx-quantize" if args.onnx_precision == "int8" else "task rs:onnx-export"
+            )
+            sys.exit(f"[final] ONNX graphs missing: {', '.join(missing)} (build them: {hint})")
+        onnx_cmd = [str(VENV_PY), str(ONNX_BLOCKBENCH), "--blocks", str(blocks)]
+        if args.onnx_precision == "int8":
+            onnx_cmd.append("--int8")
+
     # Accumulators across runs.
     keys = ["wps", "tps", "translate_s", "init_ms", "settled", "peak"]
     rs = {k: [] for k in keys}
     mar = {k: [] for k in keys}
+    onx = {k: [] for k in keys}
     src_tokens = None
     try:
         for i in range(args.warmup + args.runs):
@@ -210,6 +243,20 @@ def main() -> None:
                 mar["init_ms"].append((wall - compute_s) * 1000.0)
                 mar["settled"].append(settled)
                 mar["peak"].append(peak)
+
+            # ONNX engine (onnx/blockbench.py under .venv; reads --blocks, no stdin)
+            if onnx_cmd:
+                wall, err, samples = run_sampled(onnx_cmd, None, args.interval)
+                spans = parse_blocks(err)
+                compute_s = sum(s["encode_ms"] + s["decode_ms"] for s in spans) / 1000.0
+                settled, peak = rss_settled_peak(samples, wall)
+                if i >= args.warmup:
+                    onx["wps"].append(src_words / compute_s)
+                    onx["tps"].append(src_tokens / compute_s)
+                    onx["translate_s"].append(compute_s)
+                    onx["init_ms"].append((wall - compute_s) * 1000.0)
+                    onx["settled"].append(settled)
+                    onx["peak"].append(peak)
     finally:
         tmpcfg.unlink(missing_ok=True)
 
@@ -234,6 +281,8 @@ def main() -> None:
 
     row("inference-rs (rust, fast)", rs)
     row("marian block-bench (native)", mar)
+    if args.onnx:
+        row(f"ONNX ORT ({args.onnx_precision}, .venv)", onx)
     print(
         f"{FIREFOX['label']:28}{FIREFOX['words_per_second']:>9.0f}"
         f"{FIREFOX['tokens_per_second']:>10.0f}{FIREFOX['translate_s']:>13.2f}"
@@ -248,6 +297,12 @@ def main() -> None:
         f"  marian native vs Firefox Wasm: {mw / fw:.2f}x\n"
         f"  inference-rs vs marian native: {rw / mw:.2f}x"
     )
+    if args.onnx:
+        ow = med(onx["wps"])
+        print(
+            f"  ONNX ORT vs Firefox Wasm     : {ow / fw:.2f}x\n"
+            f"  ONNX ORT vs inference-rs     : {ow / rw:.2f}x  (ONNX/rs; <1 = ONNX slower)"
+        )
     print(
         "\nnotes:\n"
         "  - Same en→ru BASE model (dim-emb 512, ffn 2048, SSRU dec) and same\n"
@@ -272,6 +327,17 @@ def main() -> None:
             FIREFOX["token_count"],
         )
     )
+    if args.onnx:
+        print(
+            "  - ONNX ORT caveats (read the row with these in mind):\n"
+            "    * no within-block batching yet — it decodes a block's sentences one at a\n"
+            "      time, while rs/marian batch a block into one padded decode, so the work\n"
+            "      shapes differ; batching the ONNX path would likely raise its number\n"
+            "      further. int8 is ORT dynamic QDQ, not intgemm.\n"
+            "    * RSS is the whole Python+onnxruntime process (interpreter + ORT arenas),\n"
+            "      so settled/peak carry overhead the native single-binary tools don't.\n"
+            "    * init ms includes Python startup + ORT session load, not just model load."
+        )
 
 
 if __name__ == "__main__":
