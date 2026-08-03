@@ -48,7 +48,9 @@ def version_key(record: dict) -> tuple:
         return (0,)
 
 
-def pick_record(records: list[dict], file_type: str, src: str, trg: str):
+def pick_record(
+    records: list[dict], file_type: str, src: str, trg: str, version: str | None = None
+):
     matches = [
         r
         for r in records
@@ -58,6 +60,14 @@ def pick_record(records: list[dict], file_type: str, src: str, trg: str):
     ]
     if not matches:
         return None
+    if version is not None:
+        pinned = [r for r in matches if str(r.get("version")) == version]
+        if pinned:
+            return pinned[0]
+        # A pinned version usually only names the model; vocab/lex may not share it (their
+        # contents are often version-independent), so fall back to latest with a note.
+        have = ", ".join(sorted(str(r.get("version")) for r in matches))
+        print(f"[rs] no '{file_type}' for {src}-{trg} at v{version} (have {have}); using latest")
     matches.sort(key=version_key, reverse=True)
     if len(matches) > 1:
         versions = ", ".join(str(r.get("version")) for r in matches)
@@ -140,15 +150,19 @@ def write_config(
     return config_path
 
 
-def require(records: list[dict], file_type: str, src: str, trg: str, dest_dir: Path) -> str:
-    record = pick_record(records, file_type, src, trg)
+def require(
+    records: list[dict], file_type: str, src: str, trg: str, dest_dir: Path, version: str | None
+) -> str:
+    record = pick_record(records, file_type, src, trg, version)
     if not record:
         raise SystemExit(f"[rs] No '{file_type}' record found for {src}-{trg}")
     return download_and_decompress(record, dest_dir).name
 
 
-def optional(records: list[dict], file_type: str, src: str, trg: str, dest_dir: Path):
-    record = pick_record(records, file_type, src, trg)
+def optional(
+    records: list[dict], file_type: str, src: str, trg: str, dest_dir: Path, version: str | None
+):
+    record = pick_record(records, file_type, src, trg, version)
     return download_and_decompress(record, dest_dir).name if record else None
 
 
@@ -168,24 +182,32 @@ def main() -> None:
         default=DEFAULT_COLLECTION,
         help=f"Remote Settings collection (default: {DEFAULT_COLLECTION})",
     )
+    parser.add_argument(
+        "--version",
+        default=None,
+        help="Pin the model version (default: latest). Use to match a specific production "
+        "model — e.g. the en-ru `base` v3.0 the ONNX eval and notes/09 benchmark use, now "
+        "that latest is base-memory v3.1.",
+    )
     args = parser.parse_args()
 
     src, trg = args.source.lower(), args.target.lower()
+    version = args.version
     dest_dir = Path(args.models_dir) / f"{src}{trg}"
     dest_dir.mkdir(parents=True, exist_ok=True)
 
     records = fetch_records(args.collection)
 
-    model = require(records, "model", src, trg, dest_dir)
+    model = require(records, "model", src, trg, dest_dir, version)
     # Shared vocab ships one `vocab`; split vocab (CJK) ships `srcvocab`/`trgvocab`.
-    shared = optional(records, "vocab", src, trg, dest_dir)
+    shared = optional(records, "vocab", src, trg, dest_dir, version)
     if shared is not None:
         src_vocab = trg_vocab = shared
     else:
         print("[rs] no shared 'vocab'; fetching split srcvocab/trgvocab")
-        src_vocab = require(records, "srcvocab", src, trg, dest_dir)
-        trg_vocab = require(records, "trgvocab", src, trg, dest_dir)
-    lex = optional(records, "lex", src, trg, dest_dir)
+        src_vocab = require(records, "srcvocab", src, trg, dest_dir, version)
+        trg_vocab = require(records, "trgvocab", src, trg, dest_dir, version)
+    lex = optional(records, "lex", src, trg, dest_dir, version)
 
     config_path = write_config(dest_dir, src, trg, model, src_vocab, trg_vocab, lex)
     print(
