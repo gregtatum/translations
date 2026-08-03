@@ -33,7 +33,50 @@ Goal: move inference-rs toward ORT's throughput while holding settled RSS at ~13
 staying token-identical to the marian oracle. Realistic framing: MLAS is a very mature kernel
 library; we may not fully match it, but the levers below are concrete and independently useful.
 
-## Where the time goes (grounded in the profile)
+## Profile update (2026-08-03, en-ru base) — what it changed
+
+I ran `scripts/perf.py en ru --samply --blocks` and symbolicated the rs profile (9881 samples,
+single thread, nllb block corpus). It **partly confirms and partly overturns** the priorities I
+first sketched from the older en-fr profile. Self-time:
+
+| self-time | symbol | note |
+|---:|---|---|
+| **73.2%** | `gemmology …Shift::Multiply<i8mm<neon64>>` | the int8 kernel — confirms it dominates |
+| **~11.8%** | `std::thread::local::LocalKey::with` | **pure overhead**, not compute (see below) |
+| 4.5% | `Engine::encode_batch` | encoder glue (packing/copies) |
+| 3.9% | `ops::layer_normalization` | scalar, SIMD-able |
+| 1.5% | `Engine::decode_step_batch` | |
+
+Inclusive regions (disjoint call subtrees): **encoder 43.5%**, **output projection 28.8%**,
+**decoder layers 14.9%**. So decode-side ≈ 44% (projection 28.8% + layers 14.9%) and encoder ≈
+44% — roughly **half the wall-clock is the encoder**, and within the decode side the single
+32000-wide projection costs ~2× the two SSRU layers combined (dec-depth 2).
+
+Three revisions to the plan:
+
+1. **The kernel is the lever (73%), across *both* large-`m` encoder and small-`m` decode.** My
+   first draft framed the kernel gap as a small-`m` decoder problem. It isn't — the encoder is
+   large-`m` and also ~44% of time, all in the same gemmology kernel. So **H2 (kernel efficiency
+   vs MLAS) is the primary lever**, and the microbench must span large `m` too, not just `m`=1–4.
+
+2. **New top lever, wasn't in the draft: ~11.8% self-time is macOS thread-local access.**
+   `LocalKey::with` is called from `Weights::affine` (47.8% of that time), `full_logits_batch_into`
+   (28.8%), and `select_active` (10.6%) — i.e. the reusable activation-quant scratch buffer is a
+   `thread_local!`, and macOS's `tlv_get_addr` (lazy-init guard per access) is slow. At small `m`
+   with ~8 affines/layer this is hit constantly. **Fix: hold the scratch as an `Engine` field (or
+   thread it explicitly) instead of a thread-local.** Zero numerical risk, ~10%+ on the table —
+   the highest ROI, lowest risk item, and it's not even a GEMM change.
+
+3. **Demote H1 (fused argmax).** On this model `project_argmax` barely registers (~0%); the
+   projection's 28.8% is the GEMM itself, not the argmax writeback. H1's premise was the older
+   profile's 6% argmax bucket. Still maybe worth the logit-writeback bandwidth, but the ceiling
+   is small here — do it opportunistically, not first.
+
+Net: the profile **did change my mind** — start with the thread-local overhead (free ~10%) and
+the kernel microbench (which gates the biggest 73% lever), not with fused argmax. Everything
+below stands, reordered accordingly (see the revised sequence).
+
+## Where the time goes (older en-fr profile, for shape context)
 
 From [notes/08](./08-perf-analysis.md), profiled via samply on the block path. GEMM is ~96% of
 self-time. The dominant shapes per decode step (`engine.rs` `decode_step_batch` →
@@ -92,6 +135,19 @@ must be justified against the oracle and the parity stance ([wasm-parity]).
 ## Levers (roughly in priority order)
 
 Each: mechanism → how to measure → expected payoff → memory/correctness risk.
+
+### H0 — Kill the macOS thread-local overhead in the affine hot path (measured 11.8%)
+The reusable activation-quant scratch buffer is reached through a `thread_local!`
+(`LocalKey::with` shows 11.8% self-time, from `Weights::affine`, `full_logits_batch_into`,
+`select_active`). macOS resolves `__thread` via `tlv_get_addr` with a per-access lazy-init
+guard — cheap on Linux, not here — and the decode step hits it on every affine.
+- **Mechanism:** move the scratch to an `Engine`/`Weights` field (or pass it down explicitly) so
+  the buffer is a plain field access, not a thread-local resolve. Keep it single-owner (the
+  engine is used single-threaded).
+- **Measure:** `LocalKey::with` self-time should go to ~0; re-run words/s.
+- **Payoff:** up to ~10% for free — highest ROI, lowest risk, not a GEMM change.
+- **Risk:** none numerically (same buffer, same math). Watch that it doesn't add a per-call
+  allocation; it should be a reused field.
 
 ### H1 — Fuse argmax into the output projection (kill the 16 MB×float writeback)
 Greedy decoding needs only `argmax` over the 32000 logits, but `full_logits` materializes the
@@ -160,15 +216,21 @@ arenas/scratch) — the opposite of the product goal. **Not a near-term lever.**
 single-document latency use-case needs it, expose it as an explicit opt-in, off by default, and
 measure the RSS cost — but expect ~9%, not the 1.85×.
 
-## Suggested sequence
+## Suggested sequence (revised after the profile)
 
-1. Re-profile en-ru base (dec-depth 2); confirm the projection + small-`m` attention split.
-2. Shape-exact microbench gemmology vs MLAS → decide whether the gap is kernel (H2) or graph
-   (H3/H4). This decision gates the effort split.
-3. Land **H1** (fused argmax) — low risk, high ROI, memory-negative.
-4. Land **H4** (fused QKV / SSRU) — bit-identical, memory-neutral, sets up H2/H3.
-5. Land **H3** (fused quant/dequant epilogue) — compounding across all affines.
-6. If the microbench indicts the kernel, invest in **H2** (skinny-`m` kernel).
+1. **H0 — kill the thread-local overhead.** Free ~10%, zero risk, do it first.
+2. **Kernel microbench, large *and* small `m`.** gemmology vs standalone ORT `MatMulInteger` at
+   the encoder shapes (large `m`, k=512, n=512/2048) and the decode shapes (`m`=1–4, n up to
+   32000). This gates the 73% lever: if MLAS wins per-shape it's the kernel (**H2**); if it
+   ties, the remaining gap is graph overhead (**H3/H4**).
+3. **H4 — fused QKV / SSRU GEMMs.** Bit-identical, memory-neutral; fewer, wider GEMMs help both
+   the kernel (bigger `n`) and per-call overhead. Applies to encoder self-attention too (~44%).
+4. **H3 — fused quant/dequant+bias epilogue.** Compounds across every affine in both encoder
+   and decoder.
+5. **H2 — kernel work** (skinny-`m` and/or better packing) if the microbench indicts gemmology.
+   This is the effortful lever but it's 73% of time and spans encoder + decoder.
+6. **H1 / H6** opportunistically — fused argmax (small ceiling here) and SIMD layernorm (3.9%)
+   + quant passes.
 7. Re-run the four-way (`task rs:onnx-perf`) and update notes/16's table; keep settled RSS ≤
    ~131 MiB throughout.
 
