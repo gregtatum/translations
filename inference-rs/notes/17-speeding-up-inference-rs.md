@@ -106,8 +106,45 @@ kernel is already near roofline.)
 bandwidth-bound, there's little kernel headroom; the ~1.85× must be the *glue* ORT avoids by
 running one fused graph per decode step — per-affine activation quant (~12%, H0), the fresh
 `Vec` every `affine` returns, FFI crossings, and many separate small ops (dequant/bias/layernorm)
-that never fuse. So: cut per-affine overhead (fuse quant→matmul→dequant+bias, reuse output
-buffers) and issue fewer/wider GEMMs — not rewrite the kernel.
+that never fuse.
+
+## Micro-levers tried — the bit-identical avenue is nearly exhausted (2026-08-03)
+
+I prototyped the two cheapest glue levers, each bit-identical (parity tests green) and A/B'd on
+the same corpus:
+
+| lever | result | verdict |
+|---|---|---|
+| SIMD `prepare_a_into` (NEON, H0/H6) | **+1.7%** (1570→1596) | reverted — not worth carrying `unsafe` for ~1.7% |
+| dedupe shared-activation quant across QKV + SSRU (H0/H4) | **+0.5%** (noise) | reverted — adds per-call allocs, no measurable gain |
+
+Both target the ~12% quant; both barely move because the quant is **memory-bound** (stream f32
+in, u8 out) and small next to the 73% kernel. And the headline fusion — **fused QKV/SSRU
+GEMMs (H4) — is blocked outright**: each weight has its own per-tensor int8 dequant scale
+(`Wq/Wk/Wv` share the *activation* mult but not the weight mult), and gemmology applies one
+scale per matmul, so concatenating them into one GEMM would need re-quantizing to a shared
+scale — diverging from marian's int8 and breaking oracle token-identity. `dequant+bias` is
+*already* fused into the gemmology epilogue.
+
+**Conclusion: there is no meaningful *bit-identical, single-thread* win left.** The kernel is at
+roofline, the glue is memory-bound and minor, and cross-weight fusion is incompatible with
+per-tensor int8 + token-identity. ORT's 1.85× comes precisely from *not* being so constrained:
+it runs one fused graph and its own (dynamic, fusion-friendly) quantization. To materially close
+the gap, the next move is a **strategic fork, not another micro-opt**:
+
+- **(a) Relax token-identity, keep quality.** Adopt a fusion-friendly quantization (shared or
+  per-channel scales so QKV/SSRU fuse into one GEMM) and validate by **chrF vs the oracle**
+  instead of exact tokens — the project already accepts small explained divergences elsewhere
+  ([wasm-parity]). This is the only path that unlocks the fused-GEMM win.
+- **(b) Do less work.** Shortlist the 32000-wide projection (H5) — the biggest single GEMM —
+  accepting its output change; chrF-validated.
+- **(c) Accept the position.** inference-rs is already 0.96× marian, ~3× Firefox Wasm, at
+  **131 MiB — a third of ORT's 444**. If the memory win is the product goal, matching ORT's
+  speed may not be worth trading it away. This is a legitimate stopping point.
+
+My recommendation: **(c) as the default**, with **(a)** scoped as a separate experiment only if
+a concrete need for ORT-class single-thread speed appears. Chasing it with more bit-identical
+micro-opts is not productive — this section is the evidence for stopping that line.
 
 ## Where the time goes (older en-fr profile, for shape context)
 
@@ -249,22 +286,24 @@ arenas/scratch) — the opposite of the product goal. **Not a near-term lever.**
 single-document latency use-case needs it, expose it as an explicit opt-in, off by default, and
 measure the RSS cost — but expect ~9%, not the 1.85×.
 
-## Suggested sequence (revised after the profile)
+## Suggested sequence (revised after the microbench + micro-lever results)
 
-1. **Kernel microbench — DONE.** Verdict: gemmology is already near roofline; the gap is glue,
-   not the kernel. **H2 (kernel rewrite) is demoted** to "only if a fair IOBinding-based MLAS
-   microbench later shows real kernel headroom" (unlikely).
-2. **H3 + H0 — collapse the per-affine overhead.** Fuse activation-quant → int matmul →
-   dequant+bias into the gemmology epilogue (one pass, no separate `prepare_a_into`), and
-   **reuse the affine output buffer** — `Weights::affine` currently `let mut out = Vec::new()`
-   and returns it, allocating per call. This is the biggest overhead bucket and the closest
-   analogue to what ORT's fused graph does. Bit-identical, memory-neutral.
-3. **H4 — fused QKV / SSRU GEMMs.** Fewer, wider GEMMs cut per-call overhead further and help
-   the kernel (bigger `n`); applies to the encoder self-attention too (~44% of time).
-4. **H6 — SIMD layernorm (3.9%)** and any remaining scalar quant/dequant.
-5. **H1 — fused argmax**, opportunistically (small ceiling on this model).
-6. Re-run the four-way (`task rs:onnx-perf`) and update notes/16's table; keep settled RSS ≤
-   ~131 MiB throughout.
+1. **Kernel microbench — DONE.** gemmology is near roofline; the gap is glue, not the kernel.
+   H2 (kernel rewrite) demoted.
+2. **Bit-identical glue micro-opts — DONE, negative.** SIMD quant (+1.7%, unsafe) and shared-
+   activation dedup (+0.5%, noise) both reverted (see "Micro-levers tried"). Fused QKV/SSRU
+   GEMMs are blocked by per-tensor int8 scales under token-identity. **The bit-identical avenue
+   is exhausted at the ~1–2% level.**
+3. **Decision point — strategic fork, not a micro-opt.** Pick (c) accept the position (default:
+   0.96× marian, ~3× Wasm, ⅓ ORT's memory), or (a) relax token-identity to chrF-equivalence so
+   fusion (and a fusion-friendly quant) becomes legal, or (b) shortlist the projection. Only (a)
+   and (b) can materially move single-thread throughput, and both trade exact-token parity.
+4. If (a)/(b) is chosen: prototype behind a feature flag, validate by chrF vs the oracle, and
+   re-run the four-way (`task rs:onnx-perf`), keeping settled RSS ≤ ~131 MiB. Otherwise, close
+   this line of work.
+
+The H0–H6 lever descriptions below are kept for reference, but note that H0/H4 were tried and
+didn't pay (step 2), so treat them as background, not a to-do list.
 
 ## Guardrail summary (pin this)
 
