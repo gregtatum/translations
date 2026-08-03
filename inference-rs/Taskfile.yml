@@ -531,35 +531,38 @@ tasks:
         fi
 
   onnx-download-model:
-    desc: Download the en-fr float student .npz + vocabs for the ONNX eval (from GCS).
+    desc: Resolve + download the production en-ru float student .npz + vocab (from GCS).
     summary: |
-      Fetches the pre-quantization float student model the ONNX converter reads —
-      final.model.npz.best-chrf.npz (+ .decoder.yml) and vocab.en/fr.spm — into
-      data/models/en-fr/student-finetuned/, where onnx/model_npz.py looks. Resolves the
-      latest en-fr student-finetuned run via the model registry (a GCS object listing),
-      verifies each file's md5, and skips files already present (a cheap no-op once the
-      model is in place — which is why every model-reading rs:onnx-* task depends on it).
+      Resolves the float student model behind a *production* Firefox model and downloads it
+      into data/models/onnx/en-ru/, where onnx/model_npz.py looks. Rather than guess a
+      training run, it matches hashes: the Remote Settings model record's decompressedHash
+      (sha256 of the shipped intgemm bin) against each GCS run's exported/metadata.json — so
+      the float .npz is provably the one behind the shipped model. It also writes a
+      resolved.json with the marian modelConfig (dims/depths) the converter reads.
 
-      Unlike rs:download-model (the quantized intgemm .bin from Remote Settings), this is
-      the float .npz on the public prod GCS bucket. Runs under poetry so the shared
-      pipeline.common.downloads helper is importable.
+      Pinned to RS version 3.0 (the en-ru `base` architecture) so the comparison lines up
+      with the existing rs/marian headline numbers (notes/09); the current production en-ru
+      is base-memory (v3.1) — drop --version to target it. See notes/16. Runs under poetry
+      so the shared RS + download helpers are importable.
     deps: [poetry-install-utils]
     dir: '{{.ROOT_DIR}}'
-    # No {{.CLI_ARGS}}: this pair is en-fr (the ONNX POC), and CLI_ARGS is global to the
+    # No {{.CLI_ARGS}}: the pair/version are pinned here, and CLI_ARGS is global to the
     # `task` invocation — so forwarding it would leak a parent task's args (e.g. the text
     # from rs:onnx-translate) into this download when it runs as a dependency.
     cmds:
       - >-
         PYTHONPATH=$(pwd) poetry run python -W ignore
         {{.TASKFILE_DIR}}/scripts/download_onnx_model.py
+        en ru --version 3.0
         --models-dir {{.MODELS_DIR}}
 
   onnx-export:
     desc: Build the float32 ONNX encoder + decode-step graphs from the student .npz.
     summary: |
-      Rebuilds onnx/models/encoder.onnx and decode_step.onnx from the en-fr student float
-      .npz (data/models/en-fr/student-finetuned/, fetched by rs:onnx-download-model). These
-      float graphs are the dev scaffold validated by rs:onnx-validate; rs:onnx-quantize
+      Rebuilds onnx/models/encoder.onnx and decode_step.onnx from the resolved production
+      float .npz (data/models/onnx/en-ru/, fetched by rs:onnx-download-model), with all dims
+      read from its resolved.json modelConfig. These float graphs are the dev scaffold
+      validated by rs:onnx-validate; rs:onnx-quantize
       turns them into the shipped int8 artifact. Run this first — the other onnx tasks read
       the graphs it writes.
     deps: [onnx-venv, onnx-download-model]
@@ -601,8 +604,13 @@ tasks:
       sentence and writes the encoder context + first-step logits + metadata into
       onnx/testdata/. These are the reference tensors rs:onnx-validate's Gate 1 checks the
       numpy golden against — the engine is ground truth, as everywhere else in inference-rs.
-      Uses the enfr int8 model with the student split vocabs (the same pairing rs:onnx-quality
-      uses). Builds the oracle in release on demand.
+      Uses the en-ru `base` int8 model with its shared vocab — the same base v3.0 the ONNX
+      graphs are built from, so the int8 reference and the float graphs pair up. Builds the
+      oracle in release on demand.
+
+      The int8 bin must be the base (v3.0) intgemm model at data/models/enru/ (get it with
+      `task rs:download-model -- en ru`, which currently resolves the newer base-memory
+      v3.1 — see notes/16; a matching-version fetch is a follow-up).
 
       Examples:
         task rs:onnx-dump
@@ -610,9 +618,9 @@ tasks:
     deps: [onnx-download-model]
     dir: '{{.TASKFILE_DIR}}'
     vars:
-      MODEL: '{{.MODELS_DIR}}/enfr/model.enfr.intgemm.alphas.bin'
-      SRC_SPM: '{{.MODELS_DIR}}/en-fr/student-finetuned/vocab.en.spm'
-      TRG_SPM: '{{.MODELS_DIR}}/en-fr/student-finetuned/vocab.fr.spm'
+      MODEL: '{{.MODELS_DIR}}/enru/model.enru.intgemm.alphas.bin'
+      SRC_SPM: '{{.MODELS_DIR}}/onnx/en-ru/vocab.spm'
+      TRG_SPM: '{{.MODELS_DIR}}/onnx/en-ru/vocab.spm'
       TEXT: '{{.CLI_ARGS | default "Hello, world. This is a test of the translation engine."}}'
     cmds:
       - cargo run --quiet --release -p fxtranslate-oracle -- dump {{.MODEL}} {{.SRC_SPM}} {{.TRG_SPM}} "{{.TEXT}}"

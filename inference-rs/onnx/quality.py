@@ -28,12 +28,14 @@ from pathlib import Path
 from sacrebleu.metrics import CHRF
 
 import engine
-from model_npz import _REPO_ROOT
+from model_npz import _REPO_ROOT, SRC_SPM_PATH, TGT_SPM_PATH
 
 _ORACLE = _REPO_ROOT / "inference-rs" / "target" / "release" / "fxtranslate-oracle"
-_INT8_BIN = _REPO_ROOT / "data" / "models" / "enfr" / "model.enfr.intgemm.alphas.bin"
-_SRC_SPM = _REPO_ROOT / "data" / "models" / "en-fr" / "student-finetuned" / "vocab.en.spm"
-_TGT_SPM = _REPO_ROOT / "data" / "models" / "en-fr" / "student-finetuned" / "vocab.fr.spm"
+# The intgemm int8 bin for the same production model the ONNX graphs are built from
+# (en-ru base v3.0); its vocab is the resolved model's vocab (shared for en-ru).
+_INT8_BIN = _REPO_ROOT / "data" / "models" / "enru" / "model.enru.intgemm.alphas.bin"
+_SRC_SPM = SRC_SPM_PATH
+_TGT_SPM = TGT_SPM_PATH
 _CORPUS = _REPO_ROOT / "inference-rs" / "corpora" / "nllb-en-fr.txt"
 
 _N = 50
