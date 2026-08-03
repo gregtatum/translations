@@ -53,57 +53,93 @@ class Engine:
             str(_MODELS / f"decode_step{suffix}"), opts, providers=providers
         )
 
-    def greedy_timed(self, src_ids: list[int]) -> tuple[list[int], float, float]:
-        """Greedy decode returning (ids, encode_ms, decode_ms).
-
-        encode_ms is the single encoder pass; decode_ms is the whole autoregressive loop.
-        Both exclude model load (the sessions are already built), matching the encode/decode
-        split the inference-rs and block-bench `[block]` spans report.
-        """
+    def _encode(self, src_ids: list[int]) -> list[tuple[np.ndarray, np.ndarray]]:
+        """Run the encoder for one sentence, returning per-layer cross (K, V), each [seq,DIM]."""
         src = np.asarray(src_ids, dtype=np.int64)
-        t = time.perf_counter()
-        enc_out = self.encoder.run(None, {"src_ids": src})
-        encode_ms = (time.perf_counter() - t) * 1000.0
-        enc = {o.name: v for o, v in zip(self.encoder.get_outputs(), enc_out)}
+        enc = {
+            o.name: v
+            for o, v in zip(self.encoder.get_outputs(), self.encoder.run(None, {"src_ids": src}))
+        }
+        return [(enc[f"cross_k_{i}"], enc[f"cross_v_{i}"]) for i in range(npz.DEC_DEPTH)]
 
-        cross = {}
+    def greedy_batch_timed(
+        self, batch_src_ids: list[list[int]]
+    ) -> tuple[list[list[int]], float, float]:
+        """Greedy-decode a batch of sentences in lockstep, returning (per-sentence ids,
+        encode_ms, decode_ms).
+
+        The encoder still runs once per sentence (its cross K/V are padded to the batch's
+        longest source and masked via ``cross_bias``); the decoder loop runs the whole batch
+        as one call per position. Because rows are independent — SSRU state is per row and the
+        mask hides other rows' padding — each row's output equals decoding it alone (see the
+        batch-invariance gate in validate_onnx). encode/decode exclude model load.
+        """
+        b = len(batch_src_ids)
+        seqs = [len(ids) for ids in batch_src_ids]
+
+        t = time.perf_counter()
+        per_kv = [self._encode(ids) for ids in batch_src_ids]
+        encode_ms = (time.perf_counter() - t) * 1000.0
+
+        smax = max(seqs)
+        cross: dict[str, np.ndarray] = {}
         for i in range(npz.DEC_DEPTH):
-            cross[f"cross_k_{i}"] = enc[f"cross_k_{i}"]
-            cross[f"cross_v_{i}"] = enc[f"cross_v_{i}"]
+            k = np.zeros((b, smax, npz.DIM), dtype=np.float32)
+            v = np.zeros((b, smax, npz.DIM), dtype=np.float32)
+            for r, s in enumerate(seqs):
+                k[r, :s], v[r, :s] = per_kv[r][i]
+            cross[f"cross_k_{i}"] = k
+            cross[f"cross_v_{i}"] = v
+        cross_bias = np.zeros((b, smax), dtype=np.float32)
+        for r, s in enumerate(seqs):
+            cross_bias[r, s:] = -1e9
 
         states = {
-            f"decoder_state_{i}": np.zeros(npz.DIM, dtype=np.float32) for i in range(npz.DEC_DEPTH)
+            f"decoder_state_{i}": np.zeros((b, npz.DIM), dtype=np.float32)
+            for i in range(npz.DEC_DEPTH)
         }
+        max_len = [min(math.ceil(2 * s) + 4, 256) for s in seqs]
+        prev = np.full(b, tok.eos_id, dtype=np.int64)
+        finished = [False] * b
+        out: list[list[int]] = [[] for _ in range(b)]
 
-        seq = len(src_ids)
-        max_len = min(math.ceil(2 * seq) + 4, 256)
-
-        out: list[int] = []
-        prev = tok.eos_id
         t = time.perf_counter()
-        for pos in range(max_len):
+        for pos in range(max(max_len)):
             feed = {
-                "prev_token": np.array([prev], dtype=np.int64),
+                "prev_token": prev,
                 "pe_vec": PE[pos].astype(np.float32),
+                "cross_bias": cross_bias,
                 **cross,
                 **states,
             }
             res = {
                 o.name: v for o, v in zip(self.decoder.get_outputs(), self.decoder.run(None, feed))
             }
-            token = int(np.argmax(res["logits"]))
-            if token == tok.eos_id:
-                break
-            out.append(token)
-            prev = token
+            tokens = np.argmax(res["logits"], axis=1)
             states = {
                 f"decoder_state_{i}": res[f"new_decoder_state_{i}"] for i in range(npz.DEC_DEPTH)
             }
+            prev = prev.copy()
+            for r in range(b):
+                if finished[r]:
+                    continue
+                token = int(tokens[r])
+                if pos >= max_len[r] or token == tok.eos_id:
+                    finished[r] = True
+                    prev[r] = tok.eos_id  # inert; this row's output is ignored from here
+                    continue
+                out[r].append(token)
+                prev[r] = token
+            if all(finished):
+                break
         decode_ms = (time.perf_counter() - t) * 1000.0
         return out, encode_ms, decode_ms
 
+    def greedy_batch(self, batch_src_ids: list[list[int]]) -> list[list[int]]:
+        return self.greedy_batch_timed(batch_src_ids)[0]
+
     def greedy(self, src_ids: list[int]) -> list[int]:
-        return self.greedy_timed(src_ids)[0]
+        return self.greedy_batch([src_ids])[0]
 
     def translate(self, text: str) -> str:
         return tok.decode_ids(self.greedy(tok.encode_source(text)))

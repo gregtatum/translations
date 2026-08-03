@@ -61,13 +61,17 @@ def check_decode_steps(enc, dec, text: str, n_steps: int = 3) -> bool:
             enc.get_outputs(), enc.run(None, {"src_ids": np.asarray(src, dtype=np.int64)})
         )
     }
+    # Feed the batched decoder graph with a batch of one (a leading axis of 1 and an all-zero
+    # cross_bias — no padding), then drop that axis to compare against the [DIM]/[VOCAB] golden.
     cross = {}
     for i in range(npz.DEC_DEPTH):
-        cross[f"cross_k_{i}"] = enc_out[f"cross_k_{i}"]
-        cross[f"cross_v_{i}"] = enc_out[f"cross_v_{i}"]
+        cross[f"cross_k_{i}"] = enc_out[f"cross_k_{i}"][None]  # [1,seq,DIM]
+        cross[f"cross_v_{i}"] = enc_out[f"cross_v_{i}"][None]
+    cross["cross_bias"] = np.zeros((1, len(src)), dtype=np.float32)
 
     onnx_states = {
-        f"decoder_state_{i}": np.zeros(npz.DIM, dtype=np.float32) for i in range(npz.DEC_DEPTH)
+        f"decoder_state_{i}": np.zeros((1, npz.DIM), dtype=np.float32)
+        for i in range(npz.DEC_DEPTH)
     }
     ref_states = [np.zeros(npz.DIM, dtype=np.float32) for _ in range(npz.DEC_DEPTH)]
 
@@ -83,9 +87,9 @@ def check_decode_steps(enc, dec, text: str, n_steps: int = 3) -> bool:
         res = {o.name: v for o, v in zip(dec.get_outputs(), dec.run(None, feed))}
         ref_logits, ref_states = ref.decode_step(prev, pos, cross_kv, ref_states)
 
-        ld = np.abs(res["logits"] - ref_logits).max()
+        ld = np.abs(res["logits"][0] - ref_logits).max()
         sd = max(
-            np.abs(res[f"new_decoder_state_{i}"] - ref_states[i]).max()
+            np.abs(res[f"new_decoder_state_{i}"][0] - ref_states[i]).max()
             for i in range(npz.DEC_DEPTH)
         )
         step_ok = ld <= _TOL and sd <= _TOL
@@ -96,6 +100,23 @@ def check_decode_steps(enc, dec, text: str, n_steps: int = 3) -> bool:
             f"decoder_state_{i}": res[f"new_decoder_state_{i}"] for i in range(npz.DEC_DEPTH)
         }
         prev = int(np.argmax(ref_logits))  # drive both identically off the golden argmax
+    return ok
+
+
+def check_batch_invariance(engine: Engine, texts: list[str]) -> bool:
+    """Decoding sentences together must equal decoding each alone — the property that makes
+    the block-batched perf path trustworthy. Compares the batched output to the per-sentence
+    output (the latter is itself a batch of one through the same graph)."""
+    batch_ids = [tok.encode_source(t) for t in texts]
+    batched = engine.greedy_batch(batch_ids)
+    ok = True
+    for text, ids, got in zip(texts, batch_ids, batched):
+        alone = engine.greedy(ids)
+        same = got == alone
+        ok &= same
+        print(
+            f"  batched vs alone [{_status(same)}]  {text[:40]!r} ({len(got)} vs {len(alone)} tok)"
+        )
     return ok
 
 
@@ -123,6 +144,9 @@ def main() -> int:
         all_ok &= check_encoder(enc, text)
         all_ok &= check_decode_steps(enc, dec, text)
         all_ok &= check_e2e(engine, text)
+
+    print("\nbatch-invariance (block-batched decode == per-sentence):")
+    all_ok &= check_batch_invariance(engine, _SENTENCES)
 
     print(f"\nOVERALL: {_status(all_ok)}")
     return 0 if all_ok else 1

@@ -330,10 +330,9 @@ def main() -> None:
     if args.onnx:
         print(
             "  - ONNX ORT caveats (read the row with these in mind):\n"
-            "    * no within-block batching yet — it decodes a block's sentences one at a\n"
-            "      time, while rs/marian batch a block into one padded decode, so the work\n"
-            "      shapes differ; batching the ONNX path would likely raise its number\n"
-            "      further. int8 is ORT dynamic QDQ, not intgemm.\n"
+            "    * the decoder is block-batched (padded + masked, like rs/marian); the\n"
+            "      encoder still runs once per sentence, so the block isn't batched fully\n"
+            "      end to end. int8 is ORT dynamic QDQ, not intgemm.\n"
             "    * RSS is the whole Python+onnxruntime process (interpreter + ORT arenas),\n"
             "      so settled/peak carry overhead the native single-binary tools don't.\n"
             "    * init ms includes Python startup + ORT session load, not just model load."

@@ -7,11 +7,10 @@ one `[block] {...}` line per block to stderr with the per-block compute time (mo
 excluded); the harness sums those for words/s and samples RSS around the process. This makes
 the ONNX path a peer subject rather than a separate, non-comparable measurement.
 
-Caveat, stated so the numbers aren't over-read: this drives the block's sentences through the
-greedy engine one at a time — there is no within-block batching yet (inference-rs and
-block-bench batch a block's sentences into one padded decode). So `encode_ms + decode_ms` is
-the honest compute cost of the current ONNX engine, but the gap to the batched engines is
-partly the missing batching, not just the runtime. ORT is pinned single-threaded to match.
+Each block's sentences are decoded as one lockstep batch (padded cross K/V + a source mask,
+like inference-rs and block-bench), so `decode_ms` is the batched cost. The encoder still runs
+once per sentence, so a block isn't batched fully end to end — `encode_ms` is the summed
+per-sentence encoder cost. ORT is pinned single-threaded to match the native baselines.
 """
 
 from __future__ import annotations
@@ -49,20 +48,14 @@ def main(argv: list[str]) -> int:
     eng = onnx_engine.Engine(int8=args.int8, threads=args.threads)
 
     for i, sentences in enumerate(blocks):
-        encode_ms = decode_ms = 0.0
-        src_tokens = out_tokens = 0
-        for sentence in sentences:
-            ids = tok.encode_source(sentence)
-            out, enc_ms, dec_ms = eng.greedy_timed(ids)
-            encode_ms += enc_ms
-            decode_ms += dec_ms
-            src_tokens += len(ids)  # spm subwords + the appended EOS, as the rs spans count
-            out_tokens += len(out)
+        batch_ids = [tok.encode_source(s) for s in sentences]
+        outs, encode_ms, decode_ms = eng.greedy_batch_timed(batch_ids)
         span = {
             "block": i,
             "sentences": len(sentences),
-            "src_tokens": src_tokens,
-            "tokens": out_tokens,
+            # spm subwords + the appended EOS per sentence, as the rs spans count
+            "src_tokens": sum(len(ids) for ids in batch_ids),
+            "tokens": sum(len(o) for o in outs),
             "encode_ms": encode_ms,
             "decode_ms": decode_ms,
         }

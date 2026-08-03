@@ -211,15 +211,26 @@ Median of 4 runs (1 warmup), Apple Silicon:
 
 | engine | words/s | tokens/s | translate s | init ms | settled MiB | peak MiB |
 |---|---:|---:|---:|---:|---:|---:|
-| inference-rs (rust, fast) | 1243 | 1744 | 7.65 | 78 | 131 | 147 |
-| marian block-bench (native) | 1300 | 1823 | 7.32 | 59 | 298 | 298 |
-| **ONNX ORT (int8, .venv)** | **2040** | 2861 | 4.66 | 217 | **406** | 407 |
+| inference-rs (rust, fast) | 1252 | 1756 | 7.60 | 72 | 132 | 148 |
+| marian block-bench (native) | 1307 | 1833 | 7.28 | 63 | 298 | 298 |
+| **ONNX ORT (int8, .venv)** | **2357** | 3306 | 4.04 | 205 | **444** | 444 |
 | Firefox Wasm (Full-Page) | 419 | 567 | 22.85 | 135 | 355 | 355 |
 
-The surprise: **ONNX int8 is the fastest — 1.64× inference-rs, 1.57× marian, 4.87× Firefox** —
-*despite* having no within-block batching (it decodes a block's sentences one at a time while
-rs/marian batch). ORT's MatMulInteger kernels on this hardware outrun gemmology on this model,
-and batching would likely widen the ONNX lead further.
+The surprise: **ONNX int8 is the fastest — 1.88× inference-rs, 1.80× marian, 5.63× Firefox.**
+The decoder is now block-batched (see below); before batching it was 2040 wps / 1.64× rs, so
+batching added ~15%. ORT's MatMulInteger kernels on this hardware outrun gemmology on this
+model, and batching widens the lead. The encoder still runs once per sentence, so a block isn't
+batched fully end to end — batching it too is the remaining speed lever.
+
+**Batched decode (done).** The decoder graph now carries a leading batch dim on every step
+tensor plus a shared additive source mask `cross_bias` [B,Smax] (0 for real tokens, −inf for
+padding); a block's sentences decode in lockstep (`engine.greedy_batch`), padded to the block's
+longest source. Rows are independent (per-row SSRU state, masked cross-attn), so it is
+**token-identical to decoding each sentence alone** — asserted by a new batch-invariance gate
+in `validate_onnx.py` (two very different-length sentences, batched vs alone, exact match).
+B=1 with an all-zero mask is the per-sentence path, so Gate 2 numerics are unchanged. Memory
+rose 406→444 MiB from the padded [B,Smax,DIM] batch tensors (still the Python+ORT process, not
+a shippable figure).
 
 But **memory is the counter-story**: 406 MiB settled, ~3× inference-rs and above even Firefox.
 Read with the stated caveats: that RSS is the whole Python+onnxruntime process (interpreter +
@@ -234,9 +245,9 @@ measured natively.
 - **Memory under a native ORT harness.** The 406 MiB is Python+ORT, not the shippable cost. The
   next real gate is an embedded/C++ ORT harness (or a `RUSAGE`-attributed teardown) to get a
   memory number comparable to the native engines — the current column overstates ONNX's cost.
-- **Batched ONNX decode.** The engine is per-sentence; a batched decode (re-export with a batch
-  dim, padded/masked SSRU state, finished-row retirement — the note-10 decoder work) is the
-  path to a production-shaped ONNX number and likely more speed.
+- **Batched encoder.** The decoder is batched; the encoder still runs per sentence. Batching it
+  (padded [B,Smax,DIM] with a self-attention mask) is the remaining lever toward a fully
+  block-batched, production-shaped ONNX path.
 - base-memory (current prod v3.1) certification — re-resolve with `--version 3.1` (or drop the
   pin) and re-run; the converter and harness already handle it, only the pin changes.
 - Whether the shared en-ru `vocab.spm` and the split-vocab pairs both round-trip through the

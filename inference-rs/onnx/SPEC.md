@@ -119,11 +119,19 @@ eos_id (0)**; **no BOS**. Decoder seeds with target EOS (id 0) at pos 0. Stop on
 
 ## decode_step graph contract
 
-- run ONCE: encoder -> context; then per-layer cross_k_i, cross_v_i (each [seq,384]).
-- INPUTS/step: prev_token (int64), pos (or precomputed PE vector), cross_k_0..3, cross_v_0..3,
-  decoder_state_0..3 ([384] each, init zeros).
-- OUTPUTS/step: logits [32000], decoder_state_0..3 (new c_t).
-- driver loop: greedy argmax, feed states back, cap max_len = min(ceil(2*seq)+4, 256).
+- run ONCE: encoder -> context; then per-layer cross_k_i, cross_v_i (each [seq,dim]).
+- INPUTS/step: prev_token (int64), pos (or precomputed PE vector), cross_k_i, cross_v_i,
+  decoder_state_i (init zeros). Layer count is dec-depth (2 for en-ru base, 4 for the en-fr
+  student) — read from the model config, not hardcoded.
+- OUTPUTS/step: logits, new decoder_state_i (new c_t).
+- **Batched graph:** every step tensor carries a leading batch dim B (prev_token [B],
+  decoder_state_i [B,dim], cross_k_i/cross_v_i [B,Smax,dim], logits [B,vocab]), plus a shared
+  additive source mask `cross_bias` [B,Smax] (0 for real tokens, -inf for padding). pe_vec
+  stays [dim] — the whole batch decodes the same position in lockstep. B=1 with an all-zero
+  bias is the per-sentence case. Rows are independent (per-row SSRU state, masked cross-attn),
+  so a block-batched decode is token-identical to decoding each sentence alone.
+- driver loop: greedy argmax per row, feed states back, cap max_len = min(ceil(2*seq)+4, 256)
+  per row; a row retires on eos or its cap.
 
 ## Reference extraction (inference-rs int8 cross-check)
 
