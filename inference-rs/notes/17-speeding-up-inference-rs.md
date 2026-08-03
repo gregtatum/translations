@@ -42,7 +42,7 @@ first sketched from the older en-fr profile. Self-time:
 | self-time | symbol | note |
 |---:|---|---|
 | **73.2%** | `gemmology …Shift::Multiply<i8mm<neon64>>` | the int8 kernel — confirms it dominates |
-| **~11.8%** | `std::thread::local::LocalKey::with` | **pure overhead**, not compute (see below) |
+| **~12%** | `LocalKey::with` (affine closure wrapper) | inlined `prepare_a_into` activation-quant, *not* TLS — see below |
 | 4.5% | `Engine::encode_batch` | encoder glue (packing/copies) |
 | 3.9% | `ops::layer_normalization` | scalar, SIMD-able |
 | 1.5% | `Engine::decode_step_batch` | |
@@ -59,22 +59,25 @@ Three revisions to the plan:
    large-`m` and also ~44% of time, all in the same gemmology kernel. So **H2 (kernel efficiency
    vs MLAS) is the primary lever**, and the microbench must span large `m` too, not just `m`=1–4.
 
-2. **New top lever, wasn't in the draft: ~11.8% self-time is macOS thread-local access.**
-   `LocalKey::with` is called from `Weights::affine` (47.8% of that time), `full_logits_batch_into`
-   (28.8%), and `select_active` (10.6%) — i.e. the reusable activation-quant scratch buffer is a
-   `thread_local!`, and macOS's `tlv_get_addr` (lazy-init guard per access) is slow. At small `m`
-   with ~8 affines/layer this is hit constantly. **Fix: hold the scratch as an `Engine` field (or
-   thread it explicitly) instead of a thread-local.** Zero numerical risk, ~10%+ on the table —
-   the highest ROI, lowest risk item, and it's not even a GEMM change.
+2. **~12% self-time is the activation-quantization pass — *not* thread-local overhead (I was
+   wrong at first).** The profile shows ~12% in `std::thread::local::LocalKey::with`, which
+   reads like macOS TLS cost. It isn't: that frame is the `with_borrow_mut` *closure wrapper*
+   around the affine body — `prepare_a`/`matmul_into` inline into it (0% self of their own) and
+   the gemmology kernel is its *child* (74%). I tested the TLS hypothesis by making the
+   thread-local `const`-initialized (removes any lazy-init guard); it moved the number by ~0 and
+   throughput by ~1.6% (noise). So the 12% is the inlined **`prepare_a_into`** work — float→
+   shifted-u8 activation quantization done once per affine — and the lever is to **fuse it into
+   the matmul or SIMD it (H3/H6)**, not to touch the thread-local. (Lesson worth keeping: a hot
+   `LocalKey::with` frame is almost always the closure body, not the TLS resolve.)
 
 3. **Demote H1 (fused argmax).** On this model `project_argmax` barely registers (~0%); the
    projection's 28.8% is the GEMM itself, not the argmax writeback. H1's premise was the older
    profile's 6% argmax bucket. Still maybe worth the logit-writeback bandwidth, but the ceiling
    is small here — do it opportunistically, not first.
 
-Net: the profile **did change my mind** — start with the thread-local overhead (free ~10%) and
-the kernel microbench (which gates the biggest 73% lever), not with fused argmax. Everything
-below stands, reordered accordingly (see the revised sequence).
+Net: the profile **did change my mind** — the biggest levers are the kernel (73%, via the
+microbench) and the activation-quant pass (~12%, H0/H3), not fused argmax. Everything below
+stands, reordered accordingly (see the revised sequence).
 
 ## Where the time goes (older en-fr profile, for shape context)
 
@@ -136,18 +139,18 @@ must be justified against the oracle and the parity stance ([wasm-parity]).
 
 Each: mechanism → how to measure → expected payoff → memory/correctness risk.
 
-### H0 — Kill the macOS thread-local overhead in the affine hot path (measured 11.8%)
-The reusable activation-quant scratch buffer is reached through a `thread_local!`
-(`LocalKey::with` shows 11.8% self-time, from `Weights::affine`, `full_logits_batch_into`,
-`select_active`). macOS resolves `__thread` via `tlv_get_addr` with a per-access lazy-init
-guard — cheap on Linux, not here — and the decode step hits it on every affine.
-- **Mechanism:** move the scratch to an `Engine`/`Weights` field (or pass it down explicitly) so
-  the buffer is a plain field access, not a thread-local resolve. Keep it single-owner (the
-  engine is used single-threaded).
-- **Measure:** `LocalKey::with` self-time should go to ~0; re-run words/s.
-- **Payoff:** up to ~10% for free — highest ROI, lowest risk, not a GEMM change.
-- **Risk:** none numerically (same buffer, same math). Watch that it doesn't add a per-call
-  allocation; it should be a reused field.
+### H0 — Fuse/SIMD the activation-quantization pass (profile-confirmed ~12%)
+`prepare_a_into` (float activation → shifted-u8) runs once per affine and profiles at ~12%
+(inlined into the affine closure; see the profile-update note for how I mis-read this as a
+thread-local cost first). Two ways at it, ideally both:
+- **SIMD it:** the clamp/shift/cast loop in `ops.rs:prepare_a_into` is scalar; NEON-vectorize
+  the `f32 → clamp(-127,127) → +127 → u8` conversion.
+- **Fuse it into the kernel (overlaps H3):** gemmology can quantize the activation as it packs
+  `A`, avoiding a separate full pass over the activation before the matmul.
+- **Measure:** the `LocalKey::with`/closure self-time should shrink; re-run words/s.
+- **Payoff:** up to the measured ~12%, across every affine in encoder and decoder.
+- **Risk:** must stay bit-identical to the current shifted-u8 quantization (int8_parity,
+  gemm_parity). Memory-neutral.
 
 ### H1 — Fuse argmax into the output projection (kill the 16 MB×float writeback)
 Greedy decoding needs only `argmax` over the 32000 logits, but `full_logits` materializes the
@@ -218,7 +221,8 @@ measure the RSS cost — but expect ~9%, not the 1.85×.
 
 ## Suggested sequence (revised after the profile)
 
-1. **H0 — kill the thread-local overhead.** Free ~10%, zero risk, do it first.
+1. **H0 — SIMD/fuse the activation-quant pass (~12%).** Bit-identical, memory-neutral; overlaps
+   H3, so doing it as part of the kernel-epilogue fusion is natural.
 2. **Kernel microbench, large *and* small `m`.** gemmology vs standalone ORT `MatMulInteger` at
    the encoder shapes (large `m`, k=512, n=512/2048) and the decode shapes (`m`=1–4, n up to
    32000). This gates the 73% lever: if MLAS wins per-shape it's the kernel (**H2**); if it
