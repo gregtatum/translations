@@ -668,6 +668,28 @@ tasks:
     cmds:
       - python3 {{.TASKFILE_DIR}}/scripts/final_comparison.py --onnx {{.CLI_ARGS}}
 
+  kernel-micro:
+    desc: Microbench the gemmology int8 GEMM kernel at the decoder/encoder shapes.
+    summary: |
+      Times PreparedB::matmul_into (int matmul + dequant + bias) at the exact shapes the engine
+      runs — m=1..4 decoder, m=64/256 encoder, k=512, n up to 32000 — and prints GFLOP/s. Pairs
+      with rs:onnx-kernel-micro (ORT MatMulInteger) to isolate the kernel from the graph. See
+      notes/17.
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - cargo run --quiet --release --example kernel_micro --features fast -p fxtranslate
+
+  onnx-kernel-micro:
+    desc: Microbench ORT MatMulInteger (MLAS) at the same shapes as rs:kernel-micro.
+    summary: |
+      Single-threaded ORT MatMulInteger GFLOP/s at the decoder/encoder shapes, the MLAS side of
+      the kernel comparison in notes/17. Caveat: includes per-run dispatch + int32 output
+      marshalling, so small-m numbers are a loose lower bound, not a clean kernel figure.
+    deps: [onnx-venv]
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - .venv/bin/python3 onnx/kernel_micro.py
+
   onnx-quality:
     desc: Quality + rough perf of the ONNX engines vs inference-rs over a corpus.
     summary: |

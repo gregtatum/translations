@@ -79,6 +79,36 @@ Net: the profile **did change my mind** — the biggest levers are the kernel (7
 microbench) and the activation-quant pass (~12%, H0/H3), not fused argmax. Everything below
 stands, reordered accordingly (see the revised sequence).
 
+## Kernel microbench (2026-08-03) — the gap is glue, not the kernel
+
+The plan hinged on whether the ~1.85× gap to ORT is the kernel (→ H2) or the graph (→
+H0/H3/H4). I built shape-exact microbenches — `crates/fxtranslate/examples/kernel_micro.rs`
+(gemmology, `task rs:kernel-micro`) and `onnx/kernel_micro.py` (ORT `MatMulInteger`, `task
+rs:onnx-kernel-micro`) — at the decoder (m=1–4) and encoder (m=64/256) shapes, k=512, n up to
+32000, single-thread. gemmology's kernel:
+
+| shape | gemmology GFLOP/s |
+|---|---:|
+| m=1, n=512 / 2048 / 32000 | 238 / 250 / 201 |
+| m=4, n=512 / 2048 / 32000 | 295 / 299 / 282 |
+| m=64, n=512 / 2048 | 326 / 316 |
+| m=256, n=512 / 2048 | 326 / 328 |
+
+At m=1 that's ~100 GB/s of weight streaming — **bandwidth-bound and already efficient**; at
+large m it's 300+ GFLOP/s. **The kernel is not the bottleneck.** (The ORT side reads slower at
+small m, but that number is contaminated — each `sess.run()` pays graph dispatch + int32
+output marshalling to numpy, which the real fused decoder graph amortizes across a whole step;
+so it's a loose lower bound on MLAS, not a clean kernel figure. A fair MLAS kernel number needs
+IOBinding + a fused multi-matmul graph — future work. It doesn't change the conclusion: our
+kernel is already near roofline.)
+
+**This demotes H2 and promotes H0/H3/H4.** If 73% of time is a kernel already running
+bandwidth-bound, there's little kernel headroom; the ~1.85× must be the *glue* ORT avoids by
+running one fused graph per decode step — per-affine activation quant (~12%, H0), the fresh
+`Vec` every `affine` returns, FFI crossings, and many separate small ops (dequant/bias/layernorm)
+that never fuse. So: cut per-affine overhead (fuse quant→matmul→dequant+bias, reuse output
+buffers) and issue fewer/wider GEMMs — not rewrite the kernel.
+
 ## Where the time goes (older en-fr profile, for shape context)
 
 From [notes/08](./08-perf-analysis.md), profiled via samply on the block path. GEMM is ~96% of
@@ -221,21 +251,19 @@ measure the RSS cost — but expect ~9%, not the 1.85×.
 
 ## Suggested sequence (revised after the profile)
 
-1. **H0 — SIMD/fuse the activation-quant pass (~12%).** Bit-identical, memory-neutral; overlaps
-   H3, so doing it as part of the kernel-epilogue fusion is natural.
-2. **Kernel microbench, large *and* small `m`.** gemmology vs standalone ORT `MatMulInteger` at
-   the encoder shapes (large `m`, k=512, n=512/2048) and the decode shapes (`m`=1–4, n up to
-   32000). This gates the 73% lever: if MLAS wins per-shape it's the kernel (**H2**); if it
-   ties, the remaining gap is graph overhead (**H3/H4**).
-3. **H4 — fused QKV / SSRU GEMMs.** Bit-identical, memory-neutral; fewer, wider GEMMs help both
-   the kernel (bigger `n`) and per-call overhead. Applies to encoder self-attention too (~44%).
-4. **H3 — fused quant/dequant+bias epilogue.** Compounds across every affine in both encoder
-   and decoder.
-5. **H2 — kernel work** (skinny-`m` and/or better packing) if the microbench indicts gemmology.
-   This is the effortful lever but it's 73% of time and spans encoder + decoder.
-6. **H1 / H6** opportunistically — fused argmax (small ceiling here) and SIMD layernorm (3.9%)
-   + quant passes.
-7. Re-run the four-way (`task rs:onnx-perf`) and update notes/16's table; keep settled RSS ≤
+1. **Kernel microbench — DONE.** Verdict: gemmology is already near roofline; the gap is glue,
+   not the kernel. **H2 (kernel rewrite) is demoted** to "only if a fair IOBinding-based MLAS
+   microbench later shows real kernel headroom" (unlikely).
+2. **H3 + H0 — collapse the per-affine overhead.** Fuse activation-quant → int matmul →
+   dequant+bias into the gemmology epilogue (one pass, no separate `prepare_a_into`), and
+   **reuse the affine output buffer** — `Weights::affine` currently `let mut out = Vec::new()`
+   and returns it, allocating per call. This is the biggest overhead bucket and the closest
+   analogue to what ORT's fused graph does. Bit-identical, memory-neutral.
+3. **H4 — fused QKV / SSRU GEMMs.** Fewer, wider GEMMs cut per-call overhead further and help
+   the kernel (bigger `n`); applies to the encoder self-attention too (~44% of time).
+4. **H6 — SIMD layernorm (3.9%)** and any remaining scalar quant/dequant.
+5. **H1 — fused argmax**, opportunistically (small ceiling on this model).
+6. Re-run the four-way (`task rs:onnx-perf`) and update notes/16's table; keep settled RSS ≤
    ~131 MiB throughout.
 
 ## Guardrail summary (pin this)
