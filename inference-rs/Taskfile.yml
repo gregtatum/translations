@@ -757,6 +757,40 @@ tasks:
     cmds:
       - .venv/bin/python3 ggml/validate_ggml.py
 
+  ggml-llama-convert:
+    desc: Convert the float student .npz to a llama.cpp `marian` GGUF (G2/M1 encoder parity).
+    summary: |
+      Runs ggml/convert_marian_llama.py: repackages the proven weight math into the shape
+      llama.cpp's LLM_ARCH_MARIAN expects (standard KV keys, enc.blk.N.* tensor names, the
+      SentencePiece vocab embedded for the UGM tokenizer). Encoder-only for M1 (F32 linears
+      for parity); writes ggml/models/marian-llama.float.gguf. Needs the resolved en-ru npz.
+    deps: [ggml-venv, onnx-download-model]
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - .venv/bin/python3 ggml/convert_marian_llama.py
+
+  ggml-llama-build:
+    desc: Build CPU libllama (marian-arch) + the encoder-parity driver (marian_encoder_dump).
+    summary: |
+      Runs ggml/build_llama.sh: configures/builds a CPU-only libllama from LLAMA_DIR
+      (default ~/dev/llama.cpp, branch marian-arch) into build-cpu/, then compiles
+      ggml/marian_encoder_dump.cpp against it. The driver runs LLM_ARCH_MARIAN's encoder
+      (pooling NONE + embeddings) and dumps [n_embd, seq] for the parity gate.
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - bash ggml/build_llama.sh
+
+  ggml-llama-encoder:
+    desc: M1 gate — the llama.cpp `marian` encoder vs the numpy_ref float golden (< 1e-4).
+    summary: |
+      Runs ggml/validate_llama_encoder.py: feeds the fixed sentence's exact source ids
+      through marian_encoder_dump and diffs the encoder context against numpy_ref.encode to
+      abs max < 1e-4. Needs rs:ggml-llama-build and rs:ggml-llama-convert.
+    deps: [ggml-venv]
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - .venv/bin/python3 ggml/validate_llama_encoder.py
+
   ggml-perf:
     desc: Apples-to-apples block perf — ggml vs inference-rs vs marian vs Firefox.
     summary: |
