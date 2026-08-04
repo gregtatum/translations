@@ -206,3 +206,90 @@ in Gecko's `LlamaRunner` two-phase glue (M4 work) rather than in the arch code t
 The honest framing: the arch is competitive and memory-lean today; closing the last ~10% to
 G1's thread scaling is decoder-driver batching work, deferrable and orthogonal to the upstream
 arch PR.
+
+## M3b — block-batched decode: tried, measured, REGRESSED (do not ship)
+
+Hypothesis (from M3): the single-sequence one-token-per-`llama_decode` driver pays llama.cpp's
+fixed per-decode overhead ~13k times, so batching B sentences per decode step should amortize
+it and close the gap to G1. Built it end to end, validated correctness, measured — and it is a
+**large regression, not a win**. Root cause is architectural, and worth writing down so nobody
+re-attempts the flat-stash version.
+
+### What was built
+- **Arch (llama.cpp `marian.cpp`), minimal + correct:** added per-sequence masking so a block
+  of sentences can share one enc-dec pass.
+  - Encoder self-attention now takes the block-diagonal `build_attn_inp_no_cache` mask, so a
+    packed multi-sentence `llama_encode` never lets one sentence attend to another.
+  - Decoder cross-attention now takes the `build_attn_inp_cross` mask (0 / -inf from
+    `cross->seq_ids_enc`, the T5 mechanism) so each decoder token attends only to its own
+    source rows. Relaxed the `!equal_seqs()` assert in `llm_graph_input_attn_cross::set_input`
+    (its fill is per-token, correct for the recurrent equal-seqs split).
+  - Both masks are all-zero for a single sequence, so **M1/M2 stay bit-identical** (re-ran:
+    encoder 1.0e-6, decoder Gate 1/2 PASS, id-identical to G1).
+- **Driver (`marian_llama_blockbench.cpp`):** one packed `llama_encode` per block (each
+  sentence its own `seq_id`), then lockstep greedy `llama_decode` over live sequences, retiring
+  on EOS/length. `n_seq_max` sized to the largest block.
+
+### Correctness — PASS (this part is genuinely good)
+- **Float, block-batched == solo == G1 float: byte-identical on all 403 frankenstein sentences
+  (chrF 100.00).** The masked multi-sequence enc-dec math is exactly right — batch-invariant in
+  exact arithmetic.
+- Q8_0 block-batched vs Q8_0 solo = 93.3% exact-id (chrF vs G1 float 97.72). NOT a batching
+  bug: B=1-batched vs solo is **100%** id-identical at Q8_0, so the divergence is purely
+  llama.cpp's Q8_0 GEMM taking a different (wider-matrix) accumulation path at m>1 — ~1-ULP
+  logit noise that occasionally flips a greedy argmax on a near-tie, then the recurrence
+  amplifies it. The documented "explained float divergence" class, negligible chrF cost.
+
+### Perf — FAIL, and worse than M3 single-sequence at every thread count
+Q8_0, frankenstein blocks (103 blocks, up to 13 sentences/block), median of 3:
+
+| threads | batched wps | batched dec s | M3 single-seq wps | G1 wps |
+|--------:|------------:|--------------:|------------------:|-------:|
+| 1t      |         302 |         28.88 |               751 |    759 |
+| 2t      |         540 |         16.24 |              1326 |   1246 |
+| 4t      |         873 |         10.09 |              1819 |   1865 |
+| 5t      |         945 |          9.34 |              1852 |      — |
+| 6t      |         990 |          9.02 |              1775 |   2178 |
+| 8t      |        1044 |          8.59 |              1665 |   2289 |
+
+Batched **peaks at 1044 wps (8t)** — roughly **half** the single-sequence peak (1852) and
+**~0.52× the 2003 wps gate**. Decode time roughly doubled.
+
+### Why — B² cross-attention from the flat encoder stash (the load-bearing finding)
+Isolated the largest block (13 sentences, 564 total src tokens), 4 threads:
+- **B=13 batched: 783.6 ms decode.** B=1-each (same sentences solo): **186.3 ms** summed.
+  **4.2× slower batched.**
+
+llama.cpp stashes the encoder output as ONE flat `cross.v_embd` of shape
+`[n_embd, n_enc_total]`, where `n_enc_total` = the *concatenation* of every sentence's source
+tokens in the block (~564 here). Cross-attention builds K/V from that whole flat stash, so each
+of the B lockstep decoder tokens computes scores against **all** `n_enc_total` keys and then the
+per-sequence mask zeroes out the ~B-1/B of them that belong to other sentences. Work scales as
+`n_enc_total × B ≈ (mean_len × B) × B = B²·mean_len`, versus solo's `mean_len × 1` per step.
+For a block of B short sentences that is ~B× the cross-attention FLOPs, all thrown away by the
+mask. The SSRU/FFN parts do batch cleanly (B× weight reuse, the intended amortization), but
+cross-attention's B² term swamps that win on this corpus (short sentences, big vocab).
+
+This is exactly the shape G1 avoids: G1's `cross_attention_batched` carries per-row K/V
+`[dim, Smax, B]` where `Smax` is the block's *max* source length (~24, not the ~564 sum) and
+packs each row's OWN source, so its cross-attn is `Smax×B`, never `n_enc_total×B`. llama.cpp's
+single-stash enc-dec design has no equivalent — the flat stash is baked into `llama_cross` /
+`build_inp_cross_embd`, shared with T5. Making llama.cpp per-sequence-scope the cross K/V (a
+`[dim, Smax, B]` gather + a real ragged mask) is a **substantial change to shared enc-dec graph
+infrastructure**, not a driver tweak — and precisely the "STOP and report" boundary in the M3b
+brief.
+
+### Verdict / what to keep
+- **KEEP the arch masking change.** It is correct, bit-identical for single-sequence, and is the
+  prerequisite for ANY future correct multi-sequence enc-dec (it's also just more-correct than
+  the unmasked M2 graph). Low risk, upstream-friendly.
+- **REVERT the driver to single-sequence** as the shipping/benchmark path — M3's 1852-peak
+  numbers stand as the llama.cpp result. Block batching via the flat stash is a pessimization on
+  this workload; don't ship it, don't re-attempt it without first fixing the stash to per-seq
+  `Smax`-scoped K/V.
+- **M4 / Gecko `LlamaRunner`:** do NOT batch sentences into one enc-dec pass on stock llama.cpp.
+  The per-decode overhead M3 diagnosed is real but batching to amortize it costs more than it
+  saves because of the B² cross-attn. The right levers remain (a) reusing a persistent
+  batch/graph across greedy steps instead of `llama_batch_init`/`free` per token, and (b)
+  thread count — not multi-sequence batching. Multi-sequence batching only pays once llama.cpp's
+  enc-dec stash is per-sequence-scoped, which is upstream infra work.

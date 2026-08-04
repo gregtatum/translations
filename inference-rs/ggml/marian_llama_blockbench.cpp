@@ -19,6 +19,15 @@
 // driver decodes one sentence at a time (single-sequence). G1's headline finding is that
 // THREADS, not batching, are the lever; this driver's thread sweep tests the same lever on
 // llama.cpp's graph scheduler.
+//
+// M3b tried block-batched multi-sequence decode here (one packed llama_encode + lockstep
+// llama_decode over B sentences, with the new per-sequence enc/cross masks in the arch) and
+// found it a LARGE regression (peak ~1044 wps vs this driver's ~1852), because llama.cpp's
+// enc-dec stash is one flat [n_embd, sum-of-source-lengths] tensor: every batched decoder
+// token then attends over the WHOLE block's encoder tokens (B x the cross-attn FLOPs, all
+// masked away). Fixing that needs per-sequence-scoped cross K/V in shared llama.cpp enc-dec
+// infra, not a driver change -- see notes/19 "M3b". The arch masking (correct, and bit-
+// identical for single-sequence) was kept; the batched driver was not. Stay single-sequence.
 
 #include "llama.h"
 
