@@ -12,9 +12,11 @@
 //! Skips (rather than fails) when the en-fr model isn't downloaded.
 
 use fxtranslate::engine::Engine;
+use fxtranslate::shortlist::Shortlist;
 
 const MODEL: &str = "../../../data/models/enfr/model.enfr.intgemm.alphas.bin";
 const VOCAB: &str = "../../../data/models/enfr/vocab.enfr.spm";
+const SHORTLIST: &str = "../../../data/models/enfr/lex.50.50.enfr.s2t.bin";
 
 fn engine() -> Option<Engine> {
     if !std::path::Path::new(MODEL).exists() {
@@ -22,6 +24,54 @@ fn engine() -> Option<Engine> {
         return None;
     }
     Some(Engine::load(MODEL, VOCAB, VOCAB).expect("engine loads"))
+}
+
+/// Batched speculative decode (notes/21 Phase 2) must be byte-identical, per row,
+/// to shortlist-free batched greedy — which the test above pins to single-sentence
+/// greedy and thence to the marian trace. So this is cheat-proof: a per-row
+/// accept/rollback, state-carry, or ragged-compaction bug surfaces as a divergence
+/// from the independently-validated full-vocab path, not from our own speculation.
+#[test]
+fn speculative_batch_matches_full_vocab_greedy() {
+    let Some(plain) = engine() else { return };
+    // Speculation needs the shortlist as its draft; the reference stays shortlist-free.
+    let spec = Engine::load(MODEL, VOCAB, VOCAB)
+        .expect("engine loads")
+        .with_shortlist(Shortlist::load(SHORTLIST).expect("shortlist loads"));
+
+    // Mixed lengths so rows finish at different rounds (ragged tail) and the batch
+    // compacts — plus one that triggers several verify rounds with rollbacks.
+    let texts = [
+        "The cat sat on the mat.",
+        "Dogs run.",
+        "Scientists carefully explained the experiment to the students.",
+        "Birds fly south.",
+        "Good morning, how are you?",
+    ];
+    let ids: Vec<Vec<u32>> = texts.iter().map(|t| plain.src_ids(t)).collect();
+
+    let reference = plain.greedy_batch(&ids); // full-vocab batched greedy
+    for k in 1..=6 {
+        let batched_spec = spec.greedy_batch_speculative(&ids, k);
+        for (b, sid) in ids.iter().enumerate() {
+            // Batched speculative == batched full-vocab greedy == single greedy.
+            assert_eq!(
+                batched_spec[b], reference[b],
+                "row {b}: batched speculative (K={k}) vs full-vocab batched greedy"
+            );
+            assert_eq!(
+                batched_spec[b],
+                plain.greedy(sid),
+                "row {b}: batched speculative (K={k}) vs single-sentence greedy"
+            );
+            // …and matches the single-sentence speculative path for the same row.
+            assert_eq!(
+                batched_spec[b],
+                spec.greedy_speculative(sid, k),
+                "row {b}: batched vs single-sentence speculative (K={k})"
+            );
+        }
+    }
 }
 
 #[test]

@@ -104,6 +104,50 @@ fn acceptance_probe_mirrors_full_vocab_greedy() {
     }
 }
 
+/// The primary correctness gate for speculative decoding (notes/21 Phase 1):
+/// `greedy_speculative` output ids are **byte-identical** to full-vocab greedy for
+/// every guess length K. The shortlist only chooses how far to speculate; the
+/// emitted token is always the full-vocab argmax, so speculation is provably
+/// lossless — this asserts it across a range of K and several sentences (including
+/// a longer one, to exercise multiple verify rounds and a rollback or two).
+#[test]
+fn speculative_matches_full_vocab_greedy() {
+    let Some(spec_engine) = engine() else { return };
+    let plain = Engine::load(MODEL, VOCAB, VOCAB).expect("engine loads");
+
+    let cases = [
+        "Hello world.",
+        "The cat sat on the mat.",
+        "I love programming.",
+        "Good morning, how are you?",
+        "The weather today is remarkably pleasant and the sky is a brilliant blue.",
+    ];
+    for text in cases {
+        let src = spec_engine.src_ids(text);
+        let reference = plain.greedy(&src);
+        for k in 1..=8 {
+            let spec = spec_engine.greedy_speculative(&src, k);
+            assert_eq!(
+                spec, reference,
+                "speculative (K={k}) must equal full-vocab greedy for {text:?}"
+            );
+        }
+    }
+}
+
+/// With no shortlist attached there is no draft, so `greedy_speculative` falls back
+/// to plain greedy — still full-vocab, still the reference output.
+#[test]
+fn speculative_without_shortlist_is_plain_greedy() {
+    if !std::path::Path::new(MODEL).exists() || !std::path::Path::new(VOCAB).exists() {
+        eprintln!("skipping: model or vocab absent");
+        return;
+    }
+    let plain = Engine::load(MODEL, VOCAB, VOCAB).expect("engine loads");
+    let src = plain.src_ids("Hello world.");
+    assert_eq!(plain.greedy_speculative(&src, 4), plain.greedy(&src));
+}
+
 /// The probe requires a shortlist (its candidate set is the membership oracle);
 /// with none attached it returns `None` rather than silently measuring nothing.
 #[test]

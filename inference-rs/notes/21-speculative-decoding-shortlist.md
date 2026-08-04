@@ -188,21 +188,63 @@ speedup: (1) confirm P≈0.8 with the `notes/20` DRAM-vs-cache probe — the tab
 (2) the model excludes the cheap draft-projection cost (S≈705 columns × K steps/round), a mild
 real-world haircut the Phase 1 wps measurement will show directly.
 
-### The en→ru base model + the Amdahl reality (what makes the comparison-table row)
+## Phases 1–3 built + measured — NEGATIVE RESULT: it regresses (2026-08-04)
 
-The `notes/20` apples-to-apples table is the en→ru **base** model, so I re-ran the probe there
-(`FXTRANSLATE_MODEL_DIR=data/models/enru task rs:spec-probe -- --corpus corpora/frankenstein-en.blocks.txt`):
-**95.4% acceptance** over 13 595 steps (mean shortlist 965), realistic decode↑ **~2.2× at K=4 →
-~2.6× at K=8**. Close to en→fr — the shortlist-as-draft premise holds across pairs.
+Speculative decoding is now implemented end-to-end and **proven correct**, but on measurement it is
+**a throughput regression on every workload tested**, so it is not enabled and gets no row in the
+`notes/20` comparison table. The Phase 0 projection below was wrong — this section supersedes it.
 
-But the "one fact" section's overall multipliers (`A≈4 → ~1.9× overall`) **assumed decode dominates
-runtime, and on the block-batched workload it does not.** `--timing` on the Frankenstein blocks:
-**encode 52.6% of compute, decode 47.4%.** Speculation only touches decode, so by Amdahl the
-*overall* gain is capped at `1 / (0.526 + 0.474/decode↑)` ≈ **1.35× (K=4) to 1.41× (K=8)** — i.e.
-fxtranslate 1280 → **~1730–1800 wps**, moving it above marian (1330) and partway to ONNX (2398),
-at unchanged ~150 MiB RSS. That projected row is now in `notes/20`. Headline correction to this
-note's framing: **because encode ≈ decode here, speculative decoding (D2) and encoder threading
-(E1, `notes/20`) are complementary — you need both to reach ONNX, neither alone.**
+**Built (correct, byte-identical, gated):**
+- `Engine::greedy_speculative(src, k)` — single-sentence draft→verify→accept/rollback, reusing the
+  drafted hidden vectors in verify.
+- `Engine::greedy_batch_speculative(sentences, k)` — Phase 2 batched: per-row guess/accept/retire,
+  ragged compaction, one shared full-vocab haul per round over Σ live-rows×K.
+- Gates: `translate.rs::speculative_matches_full_vocab_greedy` (K=1..8) and
+  `batched_decode.rs::speculative_batch_matches_full_vocab_greedy` (K=1..6, per row vs full-vocab
+  batched greedy *and* single greedy). The correctness argument holds exactly as designed: the
+  emitted token is always the full-vocab argmax, so output is byte-identical regardless of the
+  draft — confirmed over the whole en-ru corpus in the bench's pre-timing check.
+
+**Measured (`task rs:spec-bench`, en-ru base, Frankenstein, median of 4, 1 thread):**
+
+| K | block-batched wps | vs baseline | single-sentence wps | vs baseline |
+|---|--:|--:|--:|--:|
+| baseline (full-vocab greedy) | 1256 | 1.00× | 877 | 1.00× |
+| 2 | 1094 | 0.87× | 794 | 0.91× |
+| 4 | 1044 | 0.83× | 757 | 0.86× |
+| 6 | 985 | 0.78× | — | — |
+| 8 | 963 | 0.77× | — | — |
+
+Slower everywhere, and monotonically worse with K. **Why the plan's premise was wrong:**
+
+1. **The projection is not DRAM-bandwidth-bound here** — the falsified core assumption. If it were
+   (notes/18), collapsing K per-token hauls into one would win big at batch=1; instead batch=1
+   *regresses* (0.91× at K=2). The 16.4 MiB int8 `Wemb` evidently stays largely cache-resident on
+   this M-series part, so "streaming it once per token" is a cache read, not a DRAM haul — there is
+   no haul to collapse. **This is exactly the notes/20 DRAM-vs-cache probe the plan said to run
+   first, and I skipped it.** The whole speedup model rested on P≈0.8 (projection = 80% of decode);
+   that was never confirmed and is false for this workload.
+2. **Batching already amortizes the projection.** The baseline `greedy_batch` streams the vocab
+   weight once per *step* shared across all active rows; speculation streams it once per *round*.
+   With the weight cache-resident anyway, that buys almost nothing — and speculation *adds* the
+   draft's per-row candidate-gather (`project_int8` re-gathers ~965 rows every draft step) + SSRU
+   snapshot clones + rollback bookkeeping, which is pure overhead. Hence worse with larger K.
+
+**Disposition.** Keep the code (it is correct, tested, and a real capability) but do not enable it.
+Do not chase draft-side optimizations (cache the per-sentence draft weight, drop the snapshot
+clones) until a direct **projection-share probe** confirms the projection is actually the decode
+bottleneck on the target — the end-to-end regression says it is not, and measure-first discipline
+(the lesson of this whole exercise) says confirm that before spending more. The real decode levers
+remain in `notes/20`: encoder threading (E1) and reducing the eager-allocation churn.
+
+### (superseded) Phase 0 en→ru probe + projection
+
+Kept for the record; the measurement above overrides it. Re-running the probe on the en→ru base
+model gave **95.4% acceptance** (13 595 steps, mean shortlist 965) and a *projected* decode↑ of
+~2.2–2.6× → a *projected* ~1.35–1.41× overall (1280 → ~1730–1800 wps) via an Amdahl calc on the
+measured 52.6%/47.4% encode/decode split. That projection assumed the decode↑ was real; it was not,
+because assumption (1) above fails. The encode/decode split itself is a valid measurement and is
+recorded in `notes/20`.
 
 ## Cross-refs
 `notes/20` (encoder/decoder opportunity map; this is decoder item D2, plus the DRAM-vs-cache

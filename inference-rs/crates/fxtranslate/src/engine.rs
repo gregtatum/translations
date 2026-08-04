@@ -527,6 +527,109 @@ impl Engine {
         })
     }
 
+    /// Speculative greedy decode (notes/21): use the lexical shortlist as a cheap
+    /// *draft* and the full-vocab projection as the *verifier*. Each round drafts
+    /// up to `k` tokens autoregressively with the shortlisted projection (small
+    /// candidate set → cheap), then verifies all `k` at once with **one** full-vocab
+    /// projection over the saved hidden vectors (the expensive ~17 MB weight haul is
+    /// streamed once per round instead of once per token), and keeps the longest
+    /// prefix the full model agrees with plus one correction.
+    ///
+    /// **Output ids are byte-identical to full-vocab [`greedy`]** (shortlist off)
+    /// by construction: every emitted token is the full-vocab argmax `fs[j]`, never
+    /// the draft guess. The draft only decides *how far* to speculate each round, so
+    /// the shortlist affects speed alone — it can never change the output, even if
+    /// its int8 projection path disagrees numerically with the full one (that only
+    /// lowers the acceptance rate). Requires a shortlist; with none attached it is
+    /// exactly [`greedy`] (which is then full-vocab).
+    ///
+    /// The decoder layers still run once per drafted position (they are cheap and
+    /// bandwidth-light); the win is collapsing `k` full-vocab projection hauls into
+    /// one. `k` is the guess length — start 4–6 (see notes/21 Phase 0).
+    pub fn greedy_speculative(&self, src_ids: &[u32], k: usize) -> Vec<u32> {
+        assert!(k >= 1, "guess length k must be >= 1");
+        let Some(shortlist) = self.shortlist.as_ref() else {
+            // No draft available — plain full-vocab greedy (the reference itself).
+            return self.greedy(src_ids);
+        };
+        let d = self.config.dim_emb;
+        let seq = src_ids.len();
+        let context = self.encode(src_ids);
+        let eos = self.trg_vocab.eos_id();
+        let cands = shortlist.candidates(src_ids, self.shared_vocab);
+
+        let mut cells = vec![vec![0.0f32; d]; self.config.dec_depth + 1];
+        let max_len = ((2.0 * seq as f32).ceil() as usize + 4).min(256);
+
+        let mut out: Vec<u32> = Vec::new();
+        let mut carried = eos; // decoder is seeded with EOS, as in `greedy`
+        let mut pos = 0usize; // next output position
+        while pos < max_len {
+            let kk = k.min(max_len - pos);
+
+            // DRAFT: kk cheap autoregressive steps via the shortlisted projection.
+            // Save each step's hidden vector `u` (verify reuses them — the layers are
+            // not re-run) and a snapshot of the SSRU cell state (to roll back to).
+            let mut us = vec![0.0f32; kk * d];
+            let mut ds: Vec<u32> = Vec::with_capacity(kk);
+            let mut snaps: Vec<Vec<Vec<f32>>> = Vec::with_capacity(kk);
+            let mut in_tok = carried;
+            for j in 0..kk {
+                let u = self.decode_step(in_tok, pos + j, &context, seq, &mut cells);
+                let dj = self.project_argmax(&u, Some(&cands));
+                us[j * d..(j + 1) * d].copy_from_slice(&u);
+                ds.push(dj);
+                snaps.push(cells.clone());
+                in_tok = dj;
+            }
+
+            // VERIFY: one full-vocab projection over all kk hidden vectors, argmax
+            // per position. `fs[j]` is exactly what full-vocab greedy emits at this
+            // position (same hidden vector, same projection as `greedy`).
+            let fs = self.full_argmax_batch(&us, kk);
+
+            // ACCEPT: everything up to the first draft/full disagreement matched the
+            // full model; take that prefix plus the correction at the mismatch. With
+            // no mismatch, the whole guess is accepted.
+            let m = (0..kk).find(|&j| ds[j] != fs[j]).unwrap_or(kk);
+            let accept_upto = if m < kk { m } else { kk - 1 };
+
+            // Emit the accepted full-vocab tokens, stopping at EOS (excluded from
+            // output, exactly like `greedy`). The state up to `accept_upto` was
+            // computed consuming accepted tokens, so carrying it is valid.
+            let mut done = false;
+            for j in 0..=accept_upto {
+                if fs[j] == eos {
+                    done = true;
+                    break;
+                }
+                out.push(fs[j]);
+            }
+            if done {
+                break;
+            }
+            cells = std::mem::take(&mut snaps[accept_upto]);
+            carried = fs[accept_upto];
+            pos += accept_upto + 1;
+        }
+        out
+    }
+
+    /// Full-vocab argmax for `m` stacked decoder tops `us` `[m, dim]`, in one batched
+    /// projection (the verify haul of [`greedy_speculative`]). Per-row argmax equals
+    /// [`project_argmax`]`(u, None)`, so each `fs[j]` matches full-vocab [`greedy`].
+    fn full_argmax_batch(&self, us: &[f32], m: usize) -> Vec<u32> {
+        let vocab = self.weights.output_vocab();
+        let mut fs = Vec::with_capacity(m);
+        LOGITS_SCRATCH.with_borrow_mut(|logits| {
+            self.weights.full_logits_batch_into(us, m, logits);
+            for i in 0..m {
+                fs.push(argmax(&logits[i * vocab..(i + 1) * vocab]));
+            }
+        });
+        fs
+    }
+
     /// Translate one sentence and return token-level [`Aligned`] output for a
     /// tag-transfer (HTML) layer: source/target token spans plus the per-target
     /// soft alignment over the source (head 0, last decoder layer — marian's
@@ -863,11 +966,16 @@ impl Engine {
     /// the active rows' SSRU cell state in place and returns the tops
     /// `[active.len(), dim]`. Decoder rows are independent (no decoder
     /// self-attention), so a row's output matches single-sentence decoding.
+    ///
+    /// `pos_of(i)` gives the output position of the `i`-th active row. In lockstep
+    /// batched greedy that is the shared step for every row (`|_| step`); the
+    /// speculative batch path passes each row's own position, since rows accept
+    /// different numbers of tokens per round and drift apart.
     fn decode_step_batch(
         &self,
         active: &[usize],
         prev: &[u32],
-        pos: usize,
+        pos_of: impl Fn(usize) -> usize,
         ctx: &BatchedContext,
         cross_kv: &[(Vec<f32>, Vec<f32>)],
         cells: &mut [Vec<f32>],
@@ -876,7 +984,12 @@ impl Engine {
         let n = active.len();
         let mut x = vec![0.0f32; n * d];
         for (i, &b) in active.iter().enumerate() {
-            self.embed_into(&[prev[b]], pos, Side::Target, &mut x[i * d..(i + 1) * d]);
+            self.embed_into(
+                &[prev[b]],
+                pos_of(i),
+                Side::Target,
+                &mut x[i * d..(i + 1) * d],
+            );
         }
         for layer in 1..=self.config.dec_depth {
             let p = format!("decoder_l{layer}");
@@ -1062,8 +1175,155 @@ impl Engine {
             if active.is_empty() {
                 break;
             }
-            let tops = self.decode_step_batch(&active, &prev, step, &ctx, &cross_kv, &mut cells);
+            let tops =
+                self.decode_step_batch(&active, &prev, |_| step, &ctx, &cross_kv, &mut cells);
             self.select_active(&active, &tops, &cands, eos, &mut prev, &mut out, &mut done);
+        }
+        out
+    }
+
+    /// Batched speculative greedy decode (notes/21 Phase 2): the block analogue of
+    /// [`greedy_speculative`]. Each sentence is an independent row with its own
+    /// position, SSRU state, carried token and pending K-guess; one round drafts up
+    /// to `k` tokens per live row (cheap shortlist projection), then **one shared
+    /// full-vocab projection** verifies every live row's K positions at once, and
+    /// each row independently accepts its own prefix + correction and re-guesses.
+    /// Rows retire at EOS and the batch compacts (only live rows draft/verify), so a
+    /// straggler at the ragged tail still gets multi-token-per-haul from its own
+    /// guesses. There is no global rollback — one row's bad guess never touches
+    /// another.
+    ///
+    /// **Output is byte-identical to batched full-vocab [`greedy_batch`]** (shortlist
+    /// off) for every row, hence to serial [`greedy`]: emitted tokens are always the
+    /// full-vocab argmax, the draft only sets speculation depth. Serial (single
+    /// thread), matching the 1-thread comparison workload; requires a shortlist (with
+    /// none attached it is exactly [`greedy_batch`]).
+    pub fn greedy_batch_speculative(&self, sentences: &[Vec<u32>], k: usize) -> Vec<Vec<u32>> {
+        assert!(k >= 1, "guess length k must be >= 1");
+        let Some(shortlist) = self.shortlist.as_ref() else {
+            return self.greedy_batch(sentences);
+        };
+        let d = self.config.dim_emb;
+        let depth = self.config.dec_depth;
+        let batch = sentences.len();
+        let vocab = self.weights.output_vocab();
+        let ctx = self.encode_batch(sentences);
+        let eos = self.trg_vocab.eos_id();
+        let cross_kv = self.cross_attn_kv(&ctx);
+
+        let cands: Vec<Vec<u32>> = sentences
+            .iter()
+            .map(|s| shortlist.candidates(s, self.shared_vocab))
+            .collect();
+        let max_len: Vec<usize> = sentences
+            .iter()
+            .map(|s| ((2.0 * s.len() as f32).ceil() as usize + 4).min(256))
+            .collect();
+
+        // Per-row state, indexed by original batch id.
+        let mut cells = vec![vec![0.0f32; batch * d]; depth + 1];
+        let mut carried = vec![eos; batch]; // each row seeded with EOS
+        let mut pos = vec![0usize; batch]; // next output position per row
+        let mut out = vec![Vec::new(); batch];
+        let mut done = vec![false; batch];
+
+        loop {
+            // Live rows: not finished and still within their length cap.
+            let active: Vec<usize> = (0..batch)
+                .filter(|&b| !done[b] && pos[b] < max_len[b])
+                .collect();
+            if active.is_empty() {
+                break;
+            }
+            let n = active.len();
+            // Per-row guess length this round (clamped to the row's remaining cap).
+            let kk: Vec<usize> = active.iter().map(|&b| k.min(max_len[b] - pos[b])).collect();
+            let kmax = kk.iter().copied().max().unwrap_or(0);
+
+            // DRAFT: kmax sub-steps; at sub-step j only rows with kk > j draft. Save
+            // each row's hidden vectors, draft tokens and per-step SSRU snapshots.
+            let mut us_rows: Vec<Vec<f32>> = vec![Vec::new(); n];
+            let mut ds_rows: Vec<Vec<u32>> = vec![Vec::new(); n];
+            let mut snaps_rows: Vec<Vec<Vec<Vec<f32>>>> = vec![Vec::new(); n];
+            let mut draft_prev = carried.clone(); // indexed by original id
+            for j in 0..kmax {
+                let sub: Vec<(usize, usize)> = active
+                    .iter()
+                    .enumerate()
+                    .filter(|&(a, _)| j < kk[a])
+                    .map(|(a, &b)| (a, b))
+                    .collect();
+                let sub_ids: Vec<usize> = sub.iter().map(|&(_, b)| b).collect();
+                let tops = self.decode_step_batch(
+                    &sub_ids,
+                    &draft_prev,
+                    |ii| pos[sub_ids[ii]] + j,
+                    &ctx,
+                    &cross_kv,
+                    &mut cells,
+                );
+                for (ii, &(a, b)) in sub.iter().enumerate() {
+                    let u = &tops[ii * d..(ii + 1) * d];
+                    let dj = self.project_argmax(u, Some(&cands[b]));
+                    us_rows[a].extend_from_slice(u);
+                    ds_rows[a].push(dj);
+                    let snap: Vec<Vec<f32>> = (0..=depth)
+                        .map(|layer| cells[layer][b * d..(b + 1) * d].to_vec())
+                        .collect();
+                    snaps_rows[a].push(snap);
+                    draft_prev[b] = dj;
+                }
+            }
+
+            // VERIFY: one full-vocab projection over every live row's K positions
+            // (Σ kk rows), the single expensive weight haul shared across the batch.
+            let total: usize = kk.iter().sum();
+            let mut verify_in = Vec::with_capacity(total * d);
+            for a in 0..n {
+                verify_in.extend_from_slice(&us_rows[a]);
+            }
+            let mut fs_rows: Vec<Vec<u32>> = vec![Vec::new(); n];
+            LOGITS_SCRATCH.with_borrow_mut(|logits| {
+                self.weights
+                    .full_logits_batch_into(&verify_in, total, logits);
+                let mut idx = 0;
+                for a in 0..n {
+                    for _ in 0..kk[a] {
+                        fs_rows[a].push(argmax(&logits[idx * vocab..(idx + 1) * vocab]));
+                        idx += 1;
+                    }
+                }
+            });
+
+            // ACCEPT per row: keep the matched prefix + one correction, emit the
+            // full-vocab tokens (stopping at EOS), and roll this row's state back to
+            // the last accepted step. Independent across rows — no global rollback.
+            for a in 0..n {
+                let b = active[a];
+                let kka = kk[a];
+                let m = (0..kka)
+                    .find(|&j| ds_rows[a][j] != fs_rows[a][j])
+                    .unwrap_or(kka);
+                let accept_upto = if m < kka { m } else { kka - 1 };
+                let mut fin = false;
+                for j in 0..=accept_upto {
+                    if fs_rows[a][j] == eos {
+                        fin = true;
+                        break;
+                    }
+                    out[b].push(fs_rows[a][j]);
+                }
+                if fin {
+                    done[b] = true;
+                    continue;
+                }
+                let snap = &snaps_rows[a][accept_upto];
+                for layer in 0..=depth {
+                    cells[layer][b * d..(b + 1) * d].copy_from_slice(&snap[layer]);
+                }
+                carried[b] = fs_rows[a][accept_upto];
+                pos[b] += accept_upto + 1;
+            }
         }
         out
     }
@@ -1125,7 +1385,8 @@ impl Engine {
             if active.is_empty() {
                 break;
             }
-            let tops = self.decode_step_batch(&active, &prev, step, &ctx, &cross_kv, &mut cells);
+            let tops =
+                self.decode_step_batch(&active, &prev, |_| step, &ctx, &cross_kv, &mut cells);
             if step == 0 {
                 first_token_ms = t_dec.elapsed().as_secs_f64() * 1e3;
             }
@@ -1200,7 +1461,8 @@ impl Engine {
             if active.is_empty() {
                 break;
             }
-            let tops = self.decode_step_batch(&active, &prev, step, &ctx, &cross_kv, &mut cells);
+            let tops =
+                self.decode_step_batch(&active, &prev, |_| step, &ctx, &cross_kv, &mut cells);
             if step == 0 {
                 on_phase(Phase::FirstToken);
             }

@@ -864,6 +864,19 @@ tasks:
     cmds:
       - cargo run --quiet --release --example acceptance_probe --features fast -p fxtranslate -- {{.CLI_ARGS}}
 
+  spec-bench:
+    desc: Measured speculative-decoding speedup on the block-batched workload (notes/21).
+    summary: |
+      Runs the block corpus through shortlist-free batched greedy (baseline, full-vocab) and
+      greedy_batch_speculative(K) sharing the same weights, asserts byte-identical output over the
+      whole corpus, then reports words/s for each and the speedup per guess length K. Model load
+      excluded (times the per-block greedy_batch* compute, like final_comparison.py). Defaults to
+      en-fr; for the comparison-table workload point it at en-ru + the Frankenstein blocks:
+      `FXTRANSLATE_MODEL_DIR=data/models/enru task rs:spec-bench -- --corpus inference-rs/corpora/frankenstein-en.blocks.txt`.
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - cargo run --quiet --release --example speculative_bench --features fast -p fxtranslate -- {{.CLI_ARGS}}
+
   onnx-kernel-micro:
     desc: Microbench ORT MatMulInteger (MLAS) at the same shapes as rs:kernel-micro.
     summary: |

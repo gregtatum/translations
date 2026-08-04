@@ -72,12 +72,19 @@ here. fxtranslate already **beats llama.cpp single-threaded** — gemmology's ke
 than ggml's Q8_0 single-thread path.
 
 **Measured encode/decode split (this workload, `--timing`): encode 52.6% of compute, decode
-47.4%.** This is the Amdahl ceiling for *any* decode-only optimization: a 2× decode speedup is
-only ~1.35× end-to-end. It's why the decoder (D2 speculative) and encoder (E1 threading) tracks
-are complementary — reaching ONNX needs both. No projected speculative row is added here: that
-engine is unbuilt (only the Phase 0 acceptance probe exists), so there is nothing to measure yet.
-The Phase 0 projection lives in `notes/21`, clearly labelled a projection — deliberately kept out
-of this measured table.
+47.4%.** This is the Amdahl ceiling for *any* decode-only optimization: even a 2× decode speedup is
+only ~1.35× end-to-end, so the decoder (D2) and encoder (E1) tracks are complementary.
+
+**No speculative row — it was built and measured, and it regresses (D2, `notes/21`).** Speculative
+decoding is implemented end-to-end and proven byte-identical to full-vocab greedy, but on this
+workload it is *slower*: block-batched **0.87× at K=2 → 0.77× at K=8**, and even single-sentence
+(batch=1) **0.91× → 0.86×** (`task rs:spec-bench`). The plan's premise — the projection is
+DRAM-bandwidth-bound, so collapsing K hauls into one wins — is false here: the 16.4 MiB int8 `Wemb`
+stays largely cache-resident, so there is no per-token DRAM haul to collapse, and batched greedy
+already amortizes the projection across the block's rows anyway. Speculation only adds draft +
+snapshot overhead. The earlier ~1730–1800 wps figure was a projection built on that false premise;
+it is retracted. Lesson: run the DRAM-vs-cache / projection-share probe *before* modelling a decode
+speedup, not after.
 
 ---
 
