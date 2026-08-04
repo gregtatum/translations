@@ -81,6 +81,37 @@ fn main() {
         opts.runs
     );
 
+    // Profiling mode: run ONE path for `--iters` passes and exit, with no baseline,
+    // no byte-identity gate and no timing — so a samply recording is dominated by
+    // the code under study (`--profile spec` uses ks[0] as the single guess length).
+    if let Some(which) = opts.profile.clone() {
+        let k = opts.ks[0];
+        eprintln!(
+            "profiling '{which}' — {} iterations over {} blocks (K={k} for spec)",
+            opts.iters,
+            blocks.len()
+        );
+        for _ in 0..opts.iters {
+            match which.as_str() {
+                "base" => {
+                    for b in &blocks {
+                        std::hint::black_box(baseline.greedy_batch(b));
+                    }
+                }
+                "spec" => {
+                    for b in &blocks {
+                        std::hint::black_box(speculative.greedy_batch_speculative(b, k));
+                    }
+                }
+                other => {
+                    eprintln!("--profile must be 'base' or 'spec', got {other:?}");
+                    std::process::exit(2);
+                }
+            }
+        }
+        return;
+    }
+
     // Correctness gate over the WHOLE corpus before timing: every K's speculative
     // output must equal baseline full-vocab greedy, block by block.
     let baseline_out: Vec<Vec<Vec<u32>>> =
@@ -164,6 +195,9 @@ struct Options {
     runs: usize,
     ks: Vec<usize>,
     per_sentence: bool,
+    /// `Some("base"|"spec")` → run only that path for `iters` passes, for profiling.
+    profile: Option<String>,
+    iters: usize,
 }
 
 impl Options {
@@ -172,11 +206,15 @@ impl Options {
         let mut runs = 4;
         let mut ks = vec![1, 2, 3, 4, 5, 6, 8];
         let mut per_sentence = false;
+        let mut profile = None;
+        let mut iters = 4;
         let mut args = std::env::args().skip(1);
         while let Some(arg) = args.next() {
             match arg.as_str() {
                 "--corpus" => corpus = args.next().map(PathBuf::from),
                 "--per-sentence" => per_sentence = true,
+                "--profile" => profile = args.next(),
+                "--iters" => iters = args.next().and_then(|v| v.parse().ok()).expect("--iters n"),
                 "--runs" => runs = args.next().and_then(|v| v.parse().ok()).expect("--runs n"),
                 "--ks" => {
                     ks = args
@@ -197,6 +235,8 @@ impl Options {
             runs,
             ks,
             per_sentence,
+            profile,
+            iters,
         }
     }
 }
