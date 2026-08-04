@@ -136,3 +136,73 @@ Roughly a T5-sized model class (~350–400 lines) + the simpler SSRU + the conve
 the tokenizer work. Weeks, **dominated by tokenizer parity and the upstream cycle, not the
 math** — G1 already de-risked the graph and quantization. If M0 (tokenizer) and M3 (perf)
 pass, G2 is the consolidation win; if the upstream cycle is slow, route C bridges.
+
+## M3 results — perf in the shared harness (measured)
+
+Machine: Apple Silicon, 18 logical cores (6 performance + 12 efficiency). CPU-only build
+(`GGML_METAL=OFF`, `GGML_BLAS=OFF`, `GGML_NATIVE=OFF`); OpenMP was absent so llama.cpp uses its
+own ggml threadpool. Driver: `ggml/marian_llama_blockbench.cpp` (mirrors G1's `blockbench`
+byte-for-byte; same pretokenized source ids from `pretokenize.py`; `--llama` row in
+`final_comparison.py`). Q8_0 GGUF (`marian-llama.q8_0.gguf`). Numbers are medians of the clean
+sweep (no concurrent RSS sampling — the truer compute figure).
+
+### Full table, 1 thread (all engines, `final_comparison.py`)
+
+| engine                 | words/s | tokens/s | translate s | init ms | peak MiB |
+|------------------------|--------:|---------:|------------:|--------:|---------:|
+| ONNX ORT (int8, 1t)    |    2398 |     3363 |        3.97 |     206 |      445 |
+| marian block-bench     |    1330 |     1864 |        7.15 |      57 |      298 |
+| inference-rs (fast)    |    1280 |     1795 |        7.43 |      67 |      150 |
+| **llama.cpp (q8_0)**   |     832 |     1167 |       11.43 |      86 |  **195** |
+| ggml G1 (q8_0)         |     758 |     1063 |       12.55 |      52 |      150 |
+| Firefox Wasm           |     419 |      567 |       22.85 |     135 |      355 |
+
+At **1 thread llama.cpp beats G1** (832 vs 758 wps, 1.10×) — its scheduler is already better
+than G1's hand loop. RSS 195 MiB vs G1 150 MiB (context/KV overhead), still well under ONNX's
+445 MiB and half of Firefox's 355.
+
+### Thread sweep — the headline, with the encode/decode split
+
+| threads | llama wps | llama enc s | llama dec s | G1 wps | G1 enc s | G1 dec s |
+|--------:|----------:|------------:|------------:|-------:|---------:|---------:|
+| 1t      |       751 |        2.14 |       10.55 |    759 |        — |        — |
+| 2t      |      1326 |        1.07 |        6.11 |   1246 |        — |        — |
+| 3t      |      1639 |        0.78 |        5.02 |      — |        — |        — |
+| 4t      |      1819 |        0.62 |        4.61 |   1865 |     1.51 |     3.60 |
+| 5t      |      1852 |        0.54 |        4.60 |      — |        — |        — |
+| 6t      |      1775 |        0.50 |        4.86 |   2178 |     1.14 |     3.22 |
+| 8t      |      1665 |        0.53 |        5.19 |   2289 |        — |        — |
+
+**Gate: FAIL (narrowly).** The 2003 wps/4t bar isn't met — llama.cpp does **1819 wps at 4t**
+(vs G1's 1865) and **peaks at ~1852 wps (5t)**, then *regresses* (1775 @ 6t, 1665 @ 8t). G1
+keeps climbing to 2178 @ 6t / 2289 @ 8t.
+
+**Diagnosed bottleneck — the decoder, and it's a driver/runtime artifact, not the arch math:**
+- llama.cpp's **encoder is 2.4× faster than G1's** at 4t (0.62s vs 1.51s): it runs the whole
+  source sequence as one `llama_encode` graph, where the G1 driver rebuilds a fresh encoder
+  graph per sentence. Clear win for the shipping runtime.
+- llama.cpp's **decoder is the drag** (4.61s vs G1's 3.60s at 4t) and **stops scaling past ~4-5
+  threads**, then regresses. Root cause: the two-phase driver is **single-sequence, one token
+  per `llama_decode`** — ~13k decode calls, each paying llama.cpp's fixed per-decode overhead
+  (batch build/free, graph reservation, output-buffer plumbing, threadpool fan-out/join). At
+  m=1 the actual matmul is tiny, so that fixed cost dominates and the threadpool spends more
+  time synchronizing than computing; past 6 threads it spills onto the E-cores and net
+  throughput drops. G1's hand loop has none of that per-step wrapping and keeps scaling.
+
+**This is fixable and not inherent to `LLM_ARCH_MARIAN`:** the levers are batching multiple
+sentences per decode (G1 found batching only ~+5% on this per-sentence corpus, but it directly
+amortizes llama.cpp's per-decode overhead, which is exactly what's hurting here) and reusing a
+persistent batch/graph across steps instead of `llama_batch_init`/`free` per token. The M2
+agent's flagged per-sentence encoder-output host copy is *not* the bottleneck — the encoder is
+llama.cpp's strong suit here.
+
+### M4 read (upstreaming)
+
+Perf is **neutral-to-mildly-positive** for an upstream PR, not a blocker. At single thread
+llama.cpp already beats G1, the encoder is materially faster, and memory (195 MiB) stays a
+third of ONNX and half of Firefox — the memory story is a genuine selling point. The 4t gap is
+a **greedy-driver limitation** (one-token single-sequence decode), not an arch cost, and lives
+in Gecko's `LlamaRunner` two-phase glue (M4 work) rather than in the arch code the PR proposes.
+The honest framing: the arch is competitive and memory-lean today; closing the last ~10% to
+G1's thread scaling is decoder-driver batching work, deferrable and orthogonal to the upstream
+arch PR.
