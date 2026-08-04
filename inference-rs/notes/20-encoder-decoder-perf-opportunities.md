@@ -71,6 +71,14 @@ llama.cpp threads to ~1852 wps @ 5t (then regresses); fxtranslate & marian are 1
 here. fxtranslate already **beats llama.cpp single-threaded** — gemmology's kernel is better
 than ggml's Q8_0 single-thread path.
 
+**Measured encode/decode split (this workload, `--timing`): encode 52.6% of compute, decode
+47.4%.** This is the Amdahl ceiling for *any* decode-only optimization: a 2× decode speedup is
+only ~1.35× end-to-end. It's why the decoder (D2 speculative) and encoder (E1 threading) tracks
+are complementary — reaching ONNX needs both. No projected speculative row is added here: that
+engine is unbuilt (only the Phase 0 acceptance probe exists), so there is nothing to measure yet.
+The Phase 0 projection lives in `notes/21`, clearly labelled a projection — deliberately kept out
+of this measured table.
+
 ---
 
 # ENCODER track — compute-bound, threading-friendly

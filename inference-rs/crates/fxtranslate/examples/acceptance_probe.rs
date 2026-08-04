@@ -33,17 +33,19 @@ fn main() {
     let model_dir = std::env::var("FXTRANSLATE_MODEL_DIR")
         .map(PathBuf::from)
         .unwrap_or_else(|_| repo_path("data/models/enfr"));
-    let model = model_dir.join("model.enfr.intgemm.alphas.bin");
-    let vocab = model_dir.join("vocab.enfr.spm");
-    let shortlist = model_dir.join("lex.50.50.enfr.s2t.bin");
+    // Discover the pair's files by suffix so any `data/models/<pair>/` works
+    // (en-fr, en-ru, …) — filenames carry the pair code (model.enru.…, vocab.enru.spm).
+    let model = find_in_dir(&model_dir, ".intgemm.alphas.bin");
+    let vocab = find_in_dir(&model_dir, ".spm");
+    let shortlist = find_in_dir(&model_dir, ".s2t.bin");
 
-    if !model.exists() || !vocab.exists() || !shortlist.exists() {
+    let (Some(model), Some(vocab), Some(shortlist)) = (model, vocab, shortlist) else {
         eprintln!(
-            "model/vocab/shortlist absent under {} — set FXTRANSLATE_MODEL_DIR",
+            "model/vocab/shortlist not all found under {} — set FXTRANSLATE_MODEL_DIR",
             model_dir.display()
         );
         std::process::exit(2);
-    }
+    };
 
     let engine = Engine::load(&model, &vocab, &vocab).expect("engine loads");
     let engine = engine.with_shortlist(Shortlist::load(&shortlist).expect("shortlist loads"));
@@ -60,9 +62,10 @@ fn main() {
     }
 
     println!(
-        "probe: {} sentences from {}  (proj-frac P = {:.2})",
+        "probe: {} sentences from {}\n  model {}  (proj-frac P = {:.2})",
         lines.len(),
         corpus_path.display(),
+        model.display(),
         opts.proj_frac
     );
 
@@ -269,6 +272,24 @@ impl Options {
             proj_frac,
         }
     }
+}
+
+/// First entry in `dir` whose file name ends with `suffix`, sorted so the choice
+/// is deterministic when several match; `None` if the dir is unreadable or nothing
+/// matches. The three suffixes we look up (`.intgemm.alphas.bin`, `.spm`,
+/// `.s2t.bin`) are mutually disjoint, so each resolves to its own file.
+fn find_in_dir(dir: &Path, suffix: &str) -> Option<PathBuf> {
+    let mut hits: Vec<PathBuf> = std::fs::read_dir(dir)
+        .ok()?
+        .filter_map(|e| e.ok().map(|e| e.path()))
+        .filter(|p| {
+            p.file_name()
+                .and_then(|n| n.to_str())
+                .is_some_and(|n| n.ends_with(suffix))
+        })
+        .collect();
+    hits.sort();
+    hits.into_iter().next()
 }
 
 /// Resolve a repo-relative path from the crate manifest dir, so the example runs

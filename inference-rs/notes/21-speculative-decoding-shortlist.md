@@ -183,10 +183,26 @@ shipped `lex.50.50` shortlist.
 
 **Verdict: GO.** Acceptance is high enough that A grows almost linearly in K (mismatches are rare),
 so the note's `K=4–6` start is conservative — adaptive/large K is worth trying in Phase 3. Proceed
-to Phase 1 (single-sentence speculative loop). Two caveats before trusting the *absolute* speedup:
-(1) confirm P≈0.8 with the `notes/20` DRAM-vs-cache probe — the table scales with P; (2) the model
-excludes the cheap draft-projection cost (S≈705 columns × K steps/round), a mild real-world haircut
-the Phase 1 wps measurement will show directly.
+to Phase 1 (single-sentence speculative loop). Two caveats before trusting the *absolute* decode
+speedup: (1) confirm P≈0.8 with the `notes/20` DRAM-vs-cache probe — the table scales with P;
+(2) the model excludes the cheap draft-projection cost (S≈705 columns × K steps/round), a mild
+real-world haircut the Phase 1 wps measurement will show directly.
+
+### The en→ru base model + the Amdahl reality (what makes the comparison-table row)
+
+The `notes/20` apples-to-apples table is the en→ru **base** model, so I re-ran the probe there
+(`FXTRANSLATE_MODEL_DIR=data/models/enru task rs:spec-probe -- --corpus corpora/frankenstein-en.blocks.txt`):
+**95.4% acceptance** over 13 595 steps (mean shortlist 965), realistic decode↑ **~2.2× at K=4 →
+~2.6× at K=8**. Close to en→fr — the shortlist-as-draft premise holds across pairs.
+
+But the "one fact" section's overall multipliers (`A≈4 → ~1.9× overall`) **assumed decode dominates
+runtime, and on the block-batched workload it does not.** `--timing` on the Frankenstein blocks:
+**encode 52.6% of compute, decode 47.4%.** Speculation only touches decode, so by Amdahl the
+*overall* gain is capped at `1 / (0.526 + 0.474/decode↑)` ≈ **1.35× (K=4) to 1.41× (K=8)** — i.e.
+fxtranslate 1280 → **~1730–1800 wps**, moving it above marian (1330) and partway to ONNX (2398),
+at unchanged ~150 MiB RSS. That projected row is now in `notes/20`. Headline correction to this
+note's framing: **because encode ≈ decode here, speculative decoding (D2) and encoder threading
+(E1, `notes/20`) are complementary — you need both to reach ONNX, neither alone.**
 
 ## Cross-refs
 `notes/20` (encoder/decoder opportunity map; this is decoder item D2, plus the DRAM-vs-cache
