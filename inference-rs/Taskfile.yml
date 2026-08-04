@@ -703,6 +703,34 @@ tasks:
     cmds:
       - .venv/bin/python3 ggml/convert_marian_gguf.py
 
+  ggml-convert-vocab:
+    desc: Emit vocab-only GGUFs from the Marian .spm vocabs (M0 tokenizer gate).
+    summary: |
+      Runs ggml/convert_spm_gguf.py for each reference .spm (en-fr, en-ja src/trg, en-ru),
+      writing ggml/models/<name>.vocab.gguf: the SentencePiece piece list + scores + types,
+      the precompiled_charsmap, and the whitespace flags, under general.architecture=t5 so
+      llama.cpp loads it via the UGM tokenizer in --vocab-only mode. Feeds rs:ggml-tok-parity.
+    deps: [ggml-venv]
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - .venv/bin/python3 ggml/convert_spm_gguf.py enfr     ../data/models/enfr/vocab.enfr.spm
+      - .venv/bin/python3 ggml/convert_spm_gguf.py enja-src ../data/models/enja/srcvocab.enja.spm
+      - .venv/bin/python3 ggml/convert_spm_gguf.py enja-trg ../data/models/enja/trgvocab.enja.spm
+      - .venv/bin/python3 ggml/convert_spm_gguf.py enru     ../data/models/onnx/en-ru/vocab.spm
+
+  ggml-tok-parity:
+    desc: M0 gate — llama.cpp UGM tokenizer vs the Marian SentencePiece oracle, byte-exact.
+    summary: |
+      Runs ggml/tokenizer_parity.py: for each (vocab GGUF, corpus, golden) it tokenizes every
+      line with llama-tokenize (vocab-only, no bos/eos) and diffs the ids against the upstream
+      spm_encode goldens (en-fr, en-ja) or the shipping spm.rs reference (en-ru). PASS = 100%
+      exact on all corpora. Needs the vocab GGUFs (rs:ggml-convert-vocab) and llama-tokenize
+      built on branch marian-arch (set LLAMA_TOKENIZE, default ~/dev/llama.cpp/build/bin).
+    deps: [ggml-venv]
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - .venv/bin/python3 ggml/tokenizer_parity.py
+
   ggml-translate:
     desc: Translate text through the ggml engine (tokenize -> binary decode -> detokenize).
     summary: |
