@@ -79,7 +79,7 @@ Net: the profile **did change my mind** — the biggest levers are the kernel (7
 microbench) and the activation-quant pass (~12%, H0/H3), not fused argmax. Everything below
 stands, reordered accordingly (see the revised sequence).
 
-## Kernel microbench (2026-08-03) — the gap is glue, not the kernel
+## Kernel microbench (2026-08-03) — decoder kernel wins, encoder trails MLAS ~1.4×
 
 The plan hinged on whether the ~1.85× gap to ORT is the kernel (→ H2) or the graph (→
 H0/H3/H4). I built shape-exact microbenches — `crates/fxtranslate/examples/kernel_micro.rs`
@@ -94,19 +94,32 @@ rs:onnx-kernel-micro`) — at the decoder (m=1–4) and encoder (m=64/256) shape
 | m=64, n=512 / 2048 | 326 / 316 |
 | m=256, n=512 / 2048 | 326 / 328 |
 
-At m=1 that's ~100 GB/s of weight streaming — **bandwidth-bound and already efficient**; at
-large m it's 300+ GFLOP/s. **The kernel is not the bottleneck.** (The ORT side reads slower at
-small m, but that number is contaminated — each `sess.run()` pays graph dispatch + int32
-output marshalling to numpy, which the real fused decoder graph amortizes across a whole step;
-so it's a loose lower bound on MLAS, not a clean kernel figure. A fair MLAS kernel number needs
-IOBinding + a fused multi-matmul graph — future work. It doesn't change the conclusion: our
-kernel is already near roofline.)
+Clean MLAS numbers (ORT `MatMulInteger`, single-thread, **IOBinding** so no per-run feed/output
+marshalling — this barely changed the figures, confirming they're the kernel, not dispatch):
 
-**This demotes H2 and promotes H0/H3/H4.** If 73% of time is a kernel already running
-bandwidth-bound, there's little kernel headroom; the ~1.85× must be the *glue* ORT avoids by
-running one fused graph per decode step — per-affine activation quant (~12%, H0), the fresh
-`Vec` every `affine` returns, FFI crossings, and many separate small ops (dequant/bias/layernorm)
-that never fuse.
+| shape | gemmology (incl. dequant+bias) | MLAS (raw int matmul) | winner |
+|---|---:|---:|---|
+| m=1, n=512 (decode) | 238 | 35 | **gemmology 6.8×** |
+| m=4, n=512 | 295 | 126 | **gemmology 2.3×** |
+| m=4, n=32000 (proj) | 282 | 111 | **gemmology 2.5×** |
+| m=64, n=2048 (encode) | 316 | 371 | MLAS 1.2× |
+| m=256, n=512 (encode) | 326 | 465 | MLAS 1.4× |
+| m=256, n=2048 (encode) | 328 | 455 | MLAS 1.4× |
+
+Corrected read (my earlier "near roofline everywhere" was too strong): gemmology **beats** MLAS
+at the **decoder** shapes by 2–7× — and it's carrying the dequant+bias epilogue MLAS's raw
+`MatMulInteger` isn't — so the decoder has *no* kernel headroom. MLAS pulls ahead only at
+**large-m encoder** shapes, ~1.2–1.4× (and even that gap shrinks once you charge MLAS for the
+dequant it skips). So the one bit-identical kernel lever is matching MLAS's large-m tiling on
+the encoder (~44% of time): ceiling ≈ `0.44·(1 − 1/1.4) ≈ 13%` overall, and less after the
+dequant caveat. Effortful C++, modest and uncertain payoff.
+
+This also means the end-to-end 1.85× is **not** a decoder-kernel deficit (we win there) — it's
+the encoder kernel (~1.4× on 44%) plus structural differences in ORT's graph/quant that we
+can't reproduce bit-identically.
+
+So the kernel headroom is confined to the encoder (large m); the decoder kernel and the glue
+have little to give bit-identically. The levers below were tried on that basis.
 
 ## Micro-levers tried — the bit-identical avenue is nearly exhausted (2026-08-03)
 
@@ -119,32 +132,37 @@ the same corpus:
 | dedupe shared-activation quant across QKV + SSRU (H0/H4) | **+0.5%** (noise) | reverted — adds per-call allocs, no measurable gain |
 
 Both target the ~12% quant; both barely move because the quant is **memory-bound** (stream f32
-in, u8 out) and small next to the 73% kernel. And the headline fusion — **fused QKV/SSRU
-GEMMs (H4) — is blocked outright**: each weight has its own per-tensor int8 dequant scale
-(`Wq/Wk/Wv` share the *activation* mult but not the weight mult), and gemmology applies one
-scale per matmul, so concatenating them into one GEMM would need re-quantizing to a shared
-scale — diverging from marian's int8 and breaking oracle token-identity. `dequant+bias` is
-*already* fused into the gemmology epilogue.
+in, u8 out) and small next to the 73% kernel. On **fused QKV/SSRU GEMMs (H4):** the weights have
+very different per-tensor scales (`Wq/Wk/Wv` qB = 61/65/299 — 389% spread; SSRU 165%), so
+concatenating them under gemmology's *scalar* unquant would need a shared-scale requant that is
+badly lossy → chrF would tank. It *could* be made bit-identical with a **per-column-unquant**
+kernel callback (each column keeps its own scale) — but that's C++ shim work for a win capped by
+the fact that **fusion doesn't reduce bytes streamed**, and the kernel is bandwidth-bound, so the
+ceiling is ~the 0.5% the quant-dedup already showed. Not worth it.
 
-**Conclusion: there is no meaningful *bit-identical, single-thread* win left.** The kernel is at
-roofline, the glue is memory-bound and minor, and cross-weight fusion is incompatible with
-per-tensor int8 + token-identity. ORT's 1.85× comes precisely from *not* being so constrained:
-it runs one fused graph and its own (dynamic, fusion-friendly) quantization. To materially close
-the gap, the next move is a **strategic fork, not another micro-opt**:
+### chrF-equivalence experiment: shortlist (2026-08-03)
 
-- **(a) Relax token-identity, keep quality.** Adopt a fusion-friendly quantization (shared or
-  per-channel scales so QKV/SSRU fuse into one GEMM) and validate by **chrF vs the oracle**
-  instead of exact tokens — the project already accepts small explained divergences elsewhere
-  ([wasm-parity]). This is the only path that unlocks the fused-GEMM win.
-- **(b) Do less work.** Shortlist the 32000-wide projection (H5) — the biggest single GEMM —
-  accepting its output change; chrF-validated.
-- **(c) Accept the position.** inference-rs is already 0.96× marian, ~3× Firefox Wasm, at
-  **131 MiB — a third of ORT's 444**. If the memory win is the product goal, matching ORT's
-  speed may not be worth trading it away. This is a legitimate stopping point.
+Tested the biggest work-cutting lever directly — the lexical shortlist shrinks the 32000-wide
+projection to a few hundred candidate tokens. **Speed: +42% (1590 → 2259 words/s)**, block
+latency 28.5 → 19.6 ms — nearly ORT's 2367, at 131 MiB. **But it is not chrF-equivalent:**
+against the shortlist-off ground truth (300 en-ru sentences), **chrF 94.16, with 117/300 (39%)
+sentences changed** and real mistranslations (`продавать мою` → `продавать мины` "my [iron]" →
+"mines"; `создали` → `вложили` "created" → "invested"). So the shortlist is a genuine speed↔
+quality trade, not a free win — it fails the equivalence bar.
 
-My recommendation: **(c) as the default**, with **(a)** scoped as a separate experiment only if
-a concrete need for ORT-class single-thread speed appears. Chasing it with more bit-identical
-micro-opts is not productive — this section is the evidence for stopping that line.
+**Conclusion.** No *bit-identical* win of size remains: the decoder kernel already beats MLAS,
+the encoder kernel is ~1.4× behind (≤~13% overall, effortful C++), fusion is bandwidth-capped
+(~0.5%), and the glue is memory-bound and minor. The one *big* lever — the shortlist — buys +42%
+but drops chrF to ~94 with visible errors. So the strategic fork is:
+
+- **(a) Encoder kernel** — match MLAS's large-m tiling in gemmology. Bit-identical, no quality
+  cost, but modest (≤~13%) and real kernel work. The only sizeable *equivalent* lever.
+- **(b) Shortlist** — +42%, chrF ~94. A product decision (Firefox ships it), not equivalent.
+- **(c) Accept the position** — 0.96× marian, ~3× Wasm, ⅓ ORT's memory.
+
+My recommendation: **(a) if a bit-identical speedup is wanted** (it's the only equivalent one
+left, and it's bounded); otherwise **(c)**. The shortlist (b) is a separate quality call. More
+bit-identical micro-opts are not productive — this section is the evidence for stopping that line.
 
 ## Where the time goes (older en-fr profile, for shape context)
 
@@ -288,22 +306,21 @@ measure the RSS cost — but expect ~9%, not the 1.85×.
 
 ## Suggested sequence (revised after the microbench + micro-lever results)
 
-1. **Kernel microbench — DONE.** gemmology is near roofline; the gap is glue, not the kernel.
-   H2 (kernel rewrite) demoted.
+1. **Kernel microbench — DONE (IOBinding-clean).** gemmology beats MLAS at decoder shapes (2–7×);
+   MLAS leads ~1.4× only at large-m encoder shapes. Kernel headroom exists **only on the encoder**.
 2. **Bit-identical glue micro-opts — DONE, negative.** SIMD quant (+1.7%, unsafe) and shared-
-   activation dedup (+0.5%, noise) both reverted (see "Micro-levers tried"). Fused QKV/SSRU
-   GEMMs are blocked by per-tensor int8 scales under token-identity. **The bit-identical avenue
-   is exhausted at the ~1–2% level.**
-3. **Decision point — strategic fork, not a micro-opt.** Pick (c) accept the position (default:
-   0.96× marian, ~3× Wasm, ⅓ ORT's memory), or (a) relax token-identity to chrF-equivalence so
-   fusion (and a fusion-friendly quant) becomes legal, or (b) shortlist the projection. Only (a)
-   and (b) can materially move single-thread throughput, and both trade exact-token parity.
-4. If (a)/(b) is chosen: prototype behind a feature flag, validate by chrF vs the oracle, and
-   re-run the four-way (`task rs:onnx-perf`), keeping settled RSS ≤ ~131 MiB. Otherwise, close
-   this line of work.
+   activation dedup (+0.5%, noise) both reverted. Fusion is bandwidth-capped (~0.5%) even done
+   losslessly. **The glue avenue is exhausted at the ~1–2% level.**
+3. **chrF-equivalence experiment (shortlist) — DONE, negative on equivalence.** +42% speed but
+   chrF **94.16** vs the shortlist-off ground truth (39% of sentences change, real errors). A
+   speed↔quality trade, not an equivalent win.
+4. **Remaining fork:** **(a)** encoder-kernel work (match MLAS large-m tiling; bit-identical,
+   ≤~13%, real C++); **(b)** ship the shortlist as a product quality decision (+42%, chrF ~94);
+   **(c)** accept the position (0.96× marian, ~3× Wasm, ⅓ ORT's memory). Recommend **(a)** only if
+   a bit-identical speedup is specifically wanted; else **(c)**.
 
-The H0–H6 lever descriptions below are kept for reference, but note that H0/H4 were tried and
-didn't pay (step 2), so treat them as background, not a to-do list.
+The H0–H6 lever descriptions below are kept for reference; H0/H4 and the shortlist were tried
+(steps 2–3), so treat them as background, not a to-do list.
 
 ## Guardrail summary (pin this)
 

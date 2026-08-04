@@ -42,13 +42,19 @@ def bench(m: int, k: int, n: int) -> None:
     rng = np.random.default_rng(0)
     a = rng.integers(0, 256, size=(m, k), dtype=np.uint8)
     b = rng.integers(-64, 64, size=(k, n)).astype(np.int8)
-    feed = {"A": a, "B": b}
+    # IOBinding with inputs/output as pre-created CPU OrtValues, so each run measures the
+    # kernel — not the per-run numpy feed conversion or int32 output marshalling that
+    # contaminated the plain sess.run() path (especially at large n).
+    io = sess.io_binding()
+    io.bind_ortvalue_input("A", ort.OrtValue.ortvalue_from_numpy(a))
+    io.bind_ortvalue_input("B", ort.OrtValue.ortvalue_from_numpy(b))
+    io.bind_output("Y", "cpu")
     for _ in range(8):
-        sess.run(None, feed)
+        sess.run_with_iobinding(io)
     budget, start, iters = 0.4, time.perf_counter(), 0
     while time.perf_counter() - start < budget:
         for _ in range(16):
-            sess.run(None, feed)
+            sess.run_with_iobinding(io)
         iters += 16
     per = (time.perf_counter() - start) / iters
     gflops = (2.0 * m * k * n) / per / 1e9
