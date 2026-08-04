@@ -791,6 +791,32 @@ tasks:
     cmds:
       - .venv/bin/python3 ggml/validate_llama_encoder.py
 
+  ggml-llama-decoder:
+    desc: M2 gate — the llama.cpp `marian` SSRU decoder end-to-end vs numpy_ref/G1.
+    summary: |
+      Runs ggml/validate_llama_decoder.py through marian_decoder_dump (a libllama two-phase
+      driver: llama_encode -> greedy llama_decode, threading the SSRU cell state via llama.cpp's
+      recurrent memory). Gate 1: first-step float logits vs numpy_ref (< 1e-3, argmax match).
+      Gate 2: end-to-end greedy output ids vs G1 float (id-identical). Needs rs:ggml-llama-build,
+      rs:ggml-llama-convert, and (for Gate 2) the G1 engine + GGUF (rs:ggml-build/convert).
+    deps: [ggml-venv]
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - .venv/bin/python3 ggml/validate_llama_decoder.py
+
+  ggml-llama-quality:
+    desc: M2 Gate 3 — chrF parity of the llama.cpp `marian` decoder vs G1 on a corpus.
+    summary: |
+      Runs ggml/quality_llama_decoder.py: translates a slice of the shared English corpus
+      through llama.cpp and G1 (en->ru), detokenizes with the target SPM, and reports corpus
+      chrF (llama.cpp vs the G1 float anchor) + exact output-id match. Float-vs-float is the
+      same weight math so it should be ~100; the Q8_0 rows are a quantized sanity check.
+      Pass -n N for the sentence count (default 100). Needs the G1 engine + both GGUF pairs.
+    deps: [ggml-venv]
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - .venv/bin/python3 ggml/quality_llama_decoder.py {{.CLI_ARGS}}
+
   ggml-perf:
     desc: Apples-to-apples block perf — ggml vs inference-rs vs marian vs Firefox.
     summary: |

@@ -5,6 +5,7 @@ testdata/
 # libggml build tree (configured from GGML_DIR by build.sh) + the compiled engine
 build-ggml/
 marian_ggml
-# compiled libllama encoder-parity driver (built by build_llama.sh)
+# compiled libllama drivers (built by build_llama.sh)
 marian_encoder_dump
+marian_decoder_dump
 __pycache__/

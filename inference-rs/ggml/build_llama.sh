@@ -23,11 +23,13 @@ cmake -S "$LLAMA_DIR" -B "$BUILD" -DCMAKE_BUILD_TYPE=Release \
 echo "[ggml-llama-build] building libllama"
 cmake --build "$BUILD" --target llama -j8 >/dev/null
 
-echo "[ggml-llama-build] compiling marian_encoder_dump"
-clang++ -std=c++17 -O2 -I "$LLAMA_DIR/include" -I "$LLAMA_DIR/ggml/include" \
-  "$HERE/marian_encoder_dump.cpp" \
-  "$BUILD/bin/libllama.dylib" "$BUILD/bin/libggml.dylib" \
-  "$BUILD/bin/libggml-base.dylib" "$BUILD/bin/libggml-cpu.dylib" \
-  -Wl,-rpath,"$BUILD/bin" \
-  -o "$HERE/marian_encoder_dump" 2>&1 | grep -v "ld: warning" || true
-echo "[ggml-llama-build] done -> $HERE/marian_encoder_dump"
+for drv in marian_encoder_dump marian_decoder_dump; do
+  echo "[ggml-llama-build] compiling $drv"
+  clang++ -std=c++17 -O2 -I "$LLAMA_DIR/include" -I "$LLAMA_DIR/ggml/include" \
+    "$HERE/$drv.cpp" \
+    "$BUILD/bin/libllama.dylib" "$BUILD/bin/libggml.dylib" \
+    "$BUILD/bin/libggml-base.dylib" "$BUILD/bin/libggml-cpu.dylib" \
+    -Wl,-rpath,"$BUILD/bin" \
+    -o "$HERE/$drv" 2>&1 | grep -v "ld: warning" || true
+done
+echo "[ggml-llama-build] done -> $HERE/marian_encoder_dump, $HERE/marian_decoder_dump"
