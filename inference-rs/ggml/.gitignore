@@ -8,4 +8,5 @@ marian_ggml
 # compiled libllama drivers (built by build_llama.sh)
 marian_encoder_dump
 marian_decoder_dump
+marian_llama_blockbench
 __pycache__/

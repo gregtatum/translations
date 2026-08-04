@@ -49,6 +49,11 @@ ONNX_MODELS = CRATE / "onnx/models"
 GGML_BIN = CRATE / "ggml/marian_ggml"
 GGML_PRETOK = CRATE / "ggml/pretokenize.py"
 GGML_MODELS = CRATE / "ggml/models"
+# The llama.cpp LLM_ARCH_MARIAN engine is also a compiled binary (built by ggml/build_llama.sh),
+# so its RSS is the fairest memory peer to G1. It consumes the SAME pretokenized source-id block
+# file G1 uses and emits identical [block] spans. See notes/18 M3.
+LLAMA_BIN = CRATE / "ggml/marian_llama_blockbench"
+LLAMA_MODELS = CRATE / "ggml/models"
 
 # Firefox "Full-Page Translations Base Model" (en→ru), medians of the 5-run
 # perftest the user provided. wordCount/tokenCount are the page's source totals.
@@ -185,6 +190,25 @@ def main() -> None:
         default=1,
         help="ggml CPU threads for the ggml row (default 1, matching the native rows)",
     )
+    ap.add_argument(
+        "--llama",
+        action="store_true",
+        help="add the llama.cpp LLM_ARCH_MARIAN engine (ggml/marian_llama_blockbench, Q8_0) as a "
+        "subject (see notes/18 M3)",
+    )
+    ap.add_argument(
+        "--llama-precision",
+        choices=["q8_0", "float"],
+        default="q8_0",
+        help="llama.cpp GGUF precision to benchmark (default q8_0, comparable to rs/marian int8)",
+    )
+    ap.add_argument(
+        "--llama-threads",
+        type=int,
+        default=1,
+        help="llama.cpp context threads (n_threads / n_threads_batch) for the llama row "
+        "(default 1, matching the native rows)",
+    )
     args = ap.parse_args()
 
     _s, _t, _l, config = common.resolve_config(args.models_dir, args.source, args.target)
@@ -268,12 +292,40 @@ def main() -> None:
         ggml_cmd = [str(GGML_BIN), str(gguf), "blockbench", "--blocks", ggml_pretok.name]
         ggml_env = {"FXT_GGML_THREADS": str(args.ggml_threads)}
 
+    llama_cmd = None
+    llama_env = None
+    llama_pretok = None
+    if args.llama:
+        gguf = LLAMA_MODELS / f"marian-llama.{args.llama_precision}.gguf"
+        if not LLAMA_BIN.exists():
+            sys.exit(
+                f"[final] llama.cpp engine not built at {LLAMA_BIN} (build it: "
+                f"bash ggml/build_llama.sh)"
+            )
+        if not gguf.exists():
+            sys.exit(
+                f"[final] llama GGUF missing: {gguf} (build it: "
+                f"task rs:ggml-llama-convert or python ggml/convert_marian_llama.py)"
+            )
+        # Same pretokenized source ids as G1 (shared SPM) — the sampled process is the binary alone.
+        llama_pretok = tempfile.NamedTemporaryFile("w", suffix=".ids", delete=False)
+        pre = subprocess.run(
+            [str(VENV_PY), str(GGML_PRETOK), str(blocks)], capture_output=True, text=True
+        )
+        if pre.returncode != 0:
+            sys.exit(f"[final] llama pretokenize failed:\n{pre.stderr}")
+        llama_pretok.write(pre.stdout)
+        llama_pretok.close()
+        llama_cmd = [str(LLAMA_BIN), str(gguf), "--blocks", llama_pretok.name]
+        llama_env = {"FXT_LLAMA_THREADS": str(args.llama_threads)}
+
     # Accumulators across runs.
     keys = ["wps", "tps", "translate_s", "init_ms", "settled", "peak"]
     rs = {k: [] for k in keys}
     mar = {k: [] for k in keys}
     onx = {k: [] for k in keys}
     ggm = {k: [] for k in keys}
+    llm = {k: [] for k in keys}
     src_tokens = None
     try:
         for i in range(args.warmup + args.runs):
@@ -331,10 +383,26 @@ def main() -> None:
                     ggm["init_ms"].append((wall - compute_s) * 1000.0)
                     ggm["settled"].append(settled)
                     ggm["peak"].append(peak)
+
+            # llama.cpp engine (compiled binary; reads a pre-tokenized --blocks file, no stdin)
+            if llama_cmd:
+                wall, err, samples = run_sampled(llama_cmd, None, args.interval, env=llama_env)
+                spans = parse_blocks(err)
+                compute_s = sum(s["encode_ms"] + s["decode_ms"] for s in spans) / 1000.0
+                settled, peak = rss_settled_peak(samples, wall)
+                if i >= args.warmup:
+                    llm["wps"].append(src_words / compute_s)
+                    llm["tps"].append(src_tokens / compute_s)
+                    llm["translate_s"].append(compute_s)
+                    llm["init_ms"].append((wall - compute_s) * 1000.0)
+                    llm["settled"].append(settled)
+                    llm["peak"].append(peak)
     finally:
         tmpcfg.unlink(missing_ok=True)
         if ggml_pretok:
             Path(ggml_pretok.name).unlink(missing_ok=True)
+        if llama_pretok:
+            Path(llama_pretok.name).unlink(missing_ok=True)
 
     print(
         f"\ncorpus: {blocks.stem} ({n_blocks} blocks, {src_words} source words, "
@@ -362,6 +430,8 @@ def main() -> None:
         row(f"ONNX ORT ({args.onnx_precision}, {onnx_tlabel})", onx)
     if args.ggml:
         row(f"ggml ({args.ggml_precision}, {args.ggml_threads}t)", ggm)
+    if args.llama:
+        row(f"llama.cpp ({args.llama_precision}, {args.llama_threads}t)", llm)
     print(
         f"{FIREFOX['label']:28}{FIREFOX['words_per_second']:>9.0f}"
         f"{FIREFOX['tokens_per_second']:>10.0f}{FIREFOX['translate_s']:>13.2f}"
@@ -389,6 +459,18 @@ def main() -> None:
             f"  ggml vs marian native        : {gw / mw:.2f}x\n"
             f"  ggml vs inference-rs         : {gw / rw:.2f}x  (ggml/rs; <1 = ggml slower)"
         )
+    if args.llama:
+        lw = med(llm["wps"])
+        print(
+            f"  llama.cpp vs Firefox Wasm    : {lw / fw:.2f}x\n"
+            f"  llama.cpp vs marian native   : {lw / mw:.2f}x\n"
+            f"  llama.cpp vs inference-rs    : {lw / rw:.2f}x  (llama/rs; <1 = llama slower)"
+        )
+        if args.ggml:
+            print(
+                f"  llama.cpp vs ggml (G1)       : {lw / med(ggm['wps']):.2f}x  "
+                f"(llama/G1; >=1 = llama's scheduler meets/beats G1's hand loop)"
+            )
     print(
         "\nnotes:\n"
         "  - Same en→ru BASE model (dim-emb 512, ffn 2048, SSRU dec) and same\n"
@@ -441,6 +523,19 @@ def main() -> None:
             "      scales ~2.5-3x to 4-6 threads (see notes/18), unlike ORT's ~9%.\n"
             "    * token_embd stays F16 (like ONNX keeping the Gather float); the tied output\n"
             "      projection is Q8_0."
+        )
+    if args.llama:
+        print(
+            "  - llama.cpp caveats (read the row with these in mind):\n"
+            "    * the LLM_ARCH_MARIAN engine inside upstream llama.cpp (marian-arch branch),\n"
+            "      driven two-phase (llama_encode -> greedy llama_decode). A compiled single\n"
+            "      binary like G1, so its RSS is a fair peer (ggml arenas + weights).\n"
+            "    * threads set on the llama context (n_threads / n_threads_batch); llama.cpp\n"
+            "      uses its own ggml threadpool (OpenMP was off at build).\n"
+            "    * single-sequence: one sentence at a time (no block batching), same shape as\n"
+            "      G1's per-sentence encoder path. Its own Q8_0 GGUF (marian-llama.q8_0.gguf),\n"
+            "      whose block layout differs slightly from G1's, so a handful of argmaxes flip\n"
+            "      (~0.2% output-length difference vs G1) — same source ids, same greedy math."
         )
 
 
