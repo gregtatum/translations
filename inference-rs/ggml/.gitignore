@@ -1,0 +1,8 @@
+# Generated GGUF artifacts — regenerate with convert_marian_gguf.py
+models/
+# Reference tensors — regenerate via the engine `dump` mode + numpy_ref.py
+testdata/
+# libggml build tree (configured from GGML_DIR by build.sh) + the compiled engine
+build-ggml/
+marian_ggml
+__pycache__/

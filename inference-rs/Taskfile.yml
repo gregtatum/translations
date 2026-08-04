@@ -668,6 +668,89 @@ tasks:
     cmds:
       - python3 {{.TASKFILE_DIR}}/scripts/final_comparison.py --onnx {{.CLI_ARGS}}
 
+  # ggml/llama.cpp port evaluation (G1 = bare-libggml; notes/18-ggml-port-design.md).
+  # A clean-room GGUF converter + a compiled libggml engine, the ggml analog of the onnx/
+  # eval. Reuses onnx/model_npz.py, onnx/numpy_ref.py, onnx/tokenizer.py and the ONNX
+  # int8 reference as a single source of truth for the architecture and the gates.
+  ggml-venv:
+    internal: true
+    desc: Ensure the .venv has gguf (on top of the onnx deps) for the ggml converter.
+    deps: [onnx-venv]
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - .venv/bin/python3 -c "import gguf" 2>/dev/null || .venv/bin/python3 -m pip install --disable-pip-version-check gguf
+
+  ggml-build:
+    desc: Build libggml (CPU-only) + compile the bare-libggml engine (ggml/marian_ggml).
+    summary: |
+      Runs ggml/build.sh: builds the ggml static libs (CPU-only, no Metal/BLAS/OpenMP)
+      from a local ggml checkout (GGML_DIR, default ~/dev/ggml — a sibling checkout like
+      marian-dev/gemmology) into ggml/build-ggml/, then compiles ggml/marian_ggml.cpp
+      against them. Idempotent; re-links only when sources change.
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - bash ggml/build.sh
+
+  ggml-convert:
+    desc: Convert the float student .npz to GGUF (float scaffold + Q8_0 shipped artifact).
+    summary: |
+      Rebuilds ggml/models/marian.{float,q8_0}.gguf from the resolved production float .npz
+      (data/models/onnx/en-ru/, fetched by rs:onnx-download-model) via ggml/convert_marian_gguf.py,
+      reusing onnx/model_npz.py. The float file (F32 linears) is the Gate-2 dev scaffold; the
+      Q8_0 file is the measured/shipped artifact. Prints the size table.
+    deps: [ggml-venv, onnx-download-model]
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - .venv/bin/python3 ggml/convert_marian_gguf.py
+
+  ggml-translate:
+    desc: Translate text through the ggml engine (tokenize -> binary decode -> detokenize).
+    summary: |
+      Drives ggml/marian_ggml decode over the shared SPM. Text is a positional arg or stdin;
+      --float selects the float GGUF (default Q8_0). Needs rs:ggml-build and rs:ggml-convert.
+
+      Examples:
+        task rs:ggml-translate -- "Hello, world."
+        task rs:ggml-translate -- --float "Hello, world."
+        echo "Hello world." | task rs:ggml-translate
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - .venv/bin/python3 ggml/translate.py {{.CLI_ARGS}}
+
+  ggml-validate:
+    desc: Both gates — ggml FLOAT vs numpy golden (Gate 2), Q8_0 vs inference-rs int8 (Gate 1).
+    summary: |
+      Runs ggml/validate_ggml.py: Gate 2 checks the float graph against the numpy_ref golden
+      (~1e-4, isolates graph bugs); Gate 1 cross-checks the Q8_0 graph against the inference-rs
+      int8 dump (mutual top-K argmax; needs onnx/testdata/inferrs_*.f32 from `task rs:onnx-dump`,
+      else Gate 1 is skipped). Needs rs:ggml-build and rs:ggml-convert.
+    deps: [ggml-venv]
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - .venv/bin/python3 ggml/validate_ggml.py
+
+  ggml-perf:
+    desc: Apples-to-apples block perf — ggml vs inference-rs vs marian vs Firefox.
+    summary: |
+      Runs scripts/final_comparison.py with the ggml engine added as a subject: the same
+      Frankenstein block corpus and en-ru base model through inference-rs (rust), marian
+      block-bench (native), and ggml/marian_ggml (Q8_0, compiled binary — a fair RSS peer,
+      unlike the Python+ORT ONNX row). Single-threaded to match the native rows.
+      --ggml-precision float benchmarks the float GGUF; --ggml-threads N sets ggml CPU threads.
+
+      Prerequisites (the script errors with a hint if any are missing):
+        - ggml engine + GGUFs: task rs:ggml-build && task rs:ggml-convert
+        - block-bench built: task inference-build
+        - en-ru base v3.0 intgemm model: task rs:download-model -- en ru --version 3.0
+
+      Examples:
+        task rs:ggml-perf
+        task rs:ggml-perf -- --ggml-precision float
+        task rs:ggml-perf -- --onnx        # add the ONNX row too (full 5-way)
+    dir: '{{.ROOT_DIR}}'
+    cmds:
+      - python3 {{.TASKFILE_DIR}}/scripts/final_comparison.py --ggml {{.CLI_ARGS}}
+
   kernel-micro:
     desc: Microbench the gemmology int8 GEMM kernel at the decoder/encoder shapes.
     summary: |

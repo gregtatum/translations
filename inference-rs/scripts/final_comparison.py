@@ -43,6 +43,12 @@ DEFAULT_BLOCKS = CRATE / "corpora/frankenstein-en.blocks.txt"
 VENV_PY = CRATE / ".venv/bin/python3"
 ONNX_BLOCKBENCH = CRATE / "onnx/blockbench.py"
 ONNX_MODELS = CRATE / "onnx/models"
+# The ggml engine is a compiled binary; its RSS is just ggml arenas + weights (no Python
+# runtime), so it is the fairest memory peer. It consumes pre-tokenized source ids so the
+# sampled process is the binary itself. See notes/18.
+GGML_BIN = CRATE / "ggml/marian_ggml"
+GGML_PRETOK = CRATE / "ggml/pretokenize.py"
+GGML_MODELS = CRATE / "ggml/models"
 
 # Firefox "Full-Page Translations Base Model" (en→ru), medians of the 5-run
 # perftest the user provided. wordCount/tokenCount are the page's source totals.
@@ -73,14 +79,20 @@ def sample_rss_mib(pid: int):
     return int(v) / 1024.0 if v.isdigit() else None
 
 
-def run_sampled(cmd, stdin_path, interval):
+def run_sampled(cmd, stdin_path, interval, env=None):
     """Run `cmd`, polling its RSS every `interval` s. Returns (wall_s, stderr,
     samples) where samples is [(t_since_start, rss_mib)]. stderr goes to a temp
-    file (no pipe-buffer deadlock while we poll); stdin is fed from a file."""
+    file (no pipe-buffer deadlock while we poll); stdin is fed from a file. `env`
+    (if given) is merged over the current environment for the child."""
     err = tempfile.TemporaryFile()
     stdin = open(stdin_path, "rb") if stdin_path else subprocess.DEVNULL
+    child_env = None
+    if env:
+        import os
+
+        child_env = {**os.environ, **env}
     t0 = time.perf_counter()
-    p = subprocess.Popen(cmd, stdin=stdin, stdout=subprocess.DEVNULL, stderr=err)
+    p = subprocess.Popen(cmd, stdin=stdin, stdout=subprocess.DEVNULL, stderr=err, env=child_env)
     samples = []
     while p.poll() is None:
         rss = sample_rss_mib(p.pid)
@@ -156,6 +168,23 @@ def main() -> None:
         help="ORT intra-op threads for the ONNX row (default 1 = single, matching the native "
         "rows; 0 = ORT default/multithreaded — trades memory for decode speed)",
     )
+    ap.add_argument(
+        "--ggml",
+        action="store_true",
+        help="add the bare-libggml engine (ggml/marian_ggml, Q8_0) as a subject (see notes/18)",
+    )
+    ap.add_argument(
+        "--ggml-precision",
+        choices=["q8_0", "float"],
+        default="q8_0",
+        help="ggml GGUF precision to benchmark (default q8_0, comparable to rs/marian int8)",
+    )
+    ap.add_argument(
+        "--ggml-threads",
+        type=int,
+        default=1,
+        help="ggml CPU threads for the ggml row (default 1, matching the native rows)",
+    )
     args = ap.parse_args()
 
     _s, _t, _l, config = common.resolve_config(args.models_dir, args.source, args.target)
@@ -217,11 +246,34 @@ def main() -> None:
         if args.onnx_precision == "int8":
             onnx_cmd.append("--int8")
 
+    ggml_cmd = None
+    ggml_env = None
+    ggml_pretok = None
+    if args.ggml:
+        gguf = GGML_MODELS / f"marian.{args.ggml_precision}.gguf"
+        if not GGML_BIN.exists():
+            sys.exit(f"[final] ggml engine not built at {GGML_BIN} (build it: task rs:ggml-build)")
+        if not gguf.exists():
+            sys.exit(f"[final] ggml GGUF missing: {gguf} (build it: task rs:ggml-convert)")
+        # Pre-tokenize the block corpus once (shared SPM), so the sampled process is the
+        # binary alone — the fair-RSS requirement.
+        ggml_pretok = tempfile.NamedTemporaryFile("w", suffix=".ids", delete=False)
+        pre = subprocess.run(
+            [str(VENV_PY), str(GGML_PRETOK), str(blocks)], capture_output=True, text=True
+        )
+        if pre.returncode != 0:
+            sys.exit(f"[final] ggml pretokenize failed:\n{pre.stderr}")
+        ggml_pretok.write(pre.stdout)
+        ggml_pretok.close()
+        ggml_cmd = [str(GGML_BIN), str(gguf), "blockbench", "--blocks", ggml_pretok.name]
+        ggml_env = {"FXT_GGML_THREADS": str(args.ggml_threads)}
+
     # Accumulators across runs.
     keys = ["wps", "tps", "translate_s", "init_ms", "settled", "peak"]
     rs = {k: [] for k in keys}
     mar = {k: [] for k in keys}
     onx = {k: [] for k in keys}
+    ggm = {k: [] for k in keys}
     src_tokens = None
     try:
         for i in range(args.warmup + args.runs):
@@ -265,8 +317,24 @@ def main() -> None:
                     onx["init_ms"].append((wall - compute_s) * 1000.0)
                     onx["settled"].append(settled)
                     onx["peak"].append(peak)
+
+            # ggml engine (compiled binary; reads a pre-tokenized --blocks file, no stdin)
+            if ggml_cmd:
+                wall, err, samples = run_sampled(ggml_cmd, None, args.interval, env=ggml_env)
+                spans = parse_blocks(err)
+                compute_s = sum(s["encode_ms"] + s["decode_ms"] for s in spans) / 1000.0
+                settled, peak = rss_settled_peak(samples, wall)
+                if i >= args.warmup:
+                    ggm["wps"].append(src_words / compute_s)
+                    ggm["tps"].append(src_tokens / compute_s)
+                    ggm["translate_s"].append(compute_s)
+                    ggm["init_ms"].append((wall - compute_s) * 1000.0)
+                    ggm["settled"].append(settled)
+                    ggm["peak"].append(peak)
     finally:
         tmpcfg.unlink(missing_ok=True)
+        if ggml_pretok:
+            Path(ggml_pretok.name).unlink(missing_ok=True)
 
     print(
         f"\ncorpus: {blocks.stem} ({n_blocks} blocks, {src_words} source words, "
@@ -292,6 +360,8 @@ def main() -> None:
     row("marian block-bench (native)", mar)
     if args.onnx:
         row(f"ONNX ORT ({args.onnx_precision}, {onnx_tlabel})", onx)
+    if args.ggml:
+        row(f"ggml ({args.ggml_precision}, {args.ggml_threads}t)", ggm)
     print(
         f"{FIREFOX['label']:28}{FIREFOX['words_per_second']:>9.0f}"
         f"{FIREFOX['tokens_per_second']:>10.0f}{FIREFOX['translate_s']:>13.2f}"
@@ -311,6 +381,13 @@ def main() -> None:
         print(
             f"  ONNX ORT vs Firefox Wasm     : {ow / fw:.2f}x\n"
             f"  ONNX ORT vs inference-rs     : {ow / rw:.2f}x  (ONNX/rs; <1 = ONNX slower)"
+        )
+    if args.ggml:
+        gw = med(ggm["wps"])
+        print(
+            f"  ggml vs Firefox Wasm         : {gw / fw:.2f}x\n"
+            f"  ggml vs marian native        : {gw / mw:.2f}x\n"
+            f"  ggml vs inference-rs         : {gw / rw:.2f}x  (ggml/rs; <1 = ggml slower)"
         )
     print(
         "\nnotes:\n"
@@ -349,6 +426,19 @@ def main() -> None:
             "    * RSS is the whole Python+onnxruntime process (interpreter + ORT arenas),\n"
             "      so settled/peak carry overhead the native single-binary tools don't.\n"
             "    * init ms includes Python startup + ORT session load, not just model load."
+        )
+    if args.ggml:
+        print(
+            "  - ggml caveats (read the row with these in mind):\n"
+            "    * a compiled single binary like the native tools, so its RSS is a fair peer\n"
+            "      (ggml arenas + weights) — unlike the Python+ORT ONNX row.\n"
+            "    * Q8_0 is ggml's block-wise int8 (per-32 scale), NOT intgemm shifted-int8;\n"
+            "      it tracks the float reference more closely (see notes/18 Gate 1).\n"
+            "    * the decoder step graph is rebuilt per token (no cross-step graph reuse yet);\n"
+            "      the encoder runs once per sentence, not block-batched — a decode-speed\n"
+            "      handicap vs the batched rs/marian rows, and a named follow-up.\n"
+            "    * token_embd stays F16 (like ONNX keeping the Gather float); the tied output\n"
+            "      projection is Q8_0."
         )
 
 
