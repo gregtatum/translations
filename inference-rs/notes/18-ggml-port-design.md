@@ -100,29 +100,38 @@ corroborating `notes/14`'s hypothesis and the ONNX finding that block/QDQ int8 b
 intgemm on fidelity. End-to-end the Q8_0 translation of the fixed sentence is coherent and
 arguably better than the float greedy output (`здравствуйте, мир…` vs truncated `здрав…`).
 
-## Perf/memory — the apples-to-apples number (`task rs:ggml-perf`)
+## Final perf/memory report (`task rs:ggml-perf`)
 
+The bottom line after the optimization pass (derivation in "Optimization pass" below). Same
 en-ru **base v3.0** (dim 512, ffn 2048, 6-enc/2-dec SSRU), Frankenstein blocks (103 blocks,
-9513 words), single-thread, shortlist off, model load excluded, RSS sampled every 20 ms:
+9513 words), shortlist off, model load excluded, RSS sampled every 20 ms. The decoder is
+block-batched with row compaction. Native rows are single-thread (as those tools ship);
+ggml is shown at 1 thread (fair peer) and 4 threads (what the runtime actually does). ONNX
+figures are from `notes/16`.
 
-| engine | words/s | tokens/s | translate s | settled MiB | peak MiB |
-|---|---|---|---|---|---|
-| marian block-bench (native) | 1332 | 1868 | 7.15 | 298 | 298 |
-| inference-rs (rust, fast) | 1285 | 1801 | 7.41 | 129 | 148 |
-| **ggml (q8_0, 1t)** | **744** | **1043** | **12.79** | **119** | **119** |
-| Firefox Wasm (Full-Page) | 419 | 567 | 22.85 | 355 | 355 |
+| engine | words/s | vs rs | settled MiB | notes |
+|---|---|---|---|---|
+| **ggml (q8_0, 4t)** | **2003** | **1.6×** | 150 | threads are the lever; ½ marian's mem, ⅓ ONNX's |
+| ONNX ORT (int8, 1t) | 2357 | 1.9× | 444 | fastest, but whole-Python-process memory |
+| marian block-bench (1t) | ~1330 | 1.04× | 298 | native reference ceiling |
+| inference-rs (rust, 1t) | ~1290 | 1.00× | 129 | single-thread by design, leanest tuned |
+| ggml (q8_0, 1t) | 779 | 0.60× | 150 | fair single-thread peer |
+| Firefox Wasm (Full-Page) | 419 | 0.33× | 355 | shipping end-to-end path |
 
-- ggml is **0.58× inference-rs / 0.56× marian / 1.78× Firefox Wasm** on speed, at the
-  **lowest memory of any engine (119 MiB)** — the fair-RSS win a compiled binary buys (vs
-  ONNX's 2357 wps but 444 MiB whole-Python-process from `notes/16`).
-- The 744 wps is a **floor, not a ceiling**: it carries two un-optimized handicaps the
-  batched rs/marian rows don't — (1) the decode graph is rebuilt every token (no cross-step
-  reuse), (2) the encoder runs once per sentence (not block-batched). Both are known levers.
+(inference-rs/marian drift ±3% run-to-run; ggml 1t/4t and ONNX measured in the same harness.)
 
-So the three-way tradeoff is now on one page: **ONNX** = fastest but heaviest memory and its
-SSRU glue lives in transformers.js JS; **ggml** = leanest memory, currently slowest but with
-clear decode-glue headroom, and its SSRU glue lives in C++ arch code; **inference-rs** =
-balanced and already tuned, but a bespoke engine to carry.
+**Read:** ggml is *not* the slow option — single-thread it's 0.60× inference-rs, but it
+threads ~2.5–3× (see the sweep below) to **1.6× inference-rs and 1.5× marian at 4 threads**,
+using cores those single-threaded engines don't, and it holds the **leanest memory except
+inference-rs** — a third of ONNX's. Decoder batching adds only ~5% on this per-sentence-shaped
+corpus; threading is the real lever. The three-way maintenance tradeoff on one page:
+
+- **ONNX** — fastest single-thread, heaviest memory (444 MiB Python process); SSRU glue lives
+  in transformers.js JS.
+- **ggml** — threads best, second-leanest memory; SSRU glue lives in C++ arch code (G2); a
+  runtime Gecko already ships, so batching/threading/scheduling come free.
+- **inference-rs** — balanced and already tuned, lowest memory, but a bespoke engine to carry
+  and single-threaded until threading work (notes/11) is done.
 
 ## Feasibility verdict (the encoder vs the SSRU decoder — Greg's original worry)
 
