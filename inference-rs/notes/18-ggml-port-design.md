@@ -211,10 +211,10 @@ Decoder batching (with compaction) and threading are **done**; the remaining lev
    rebuild and the per-step cross-K/V re-gather. Cheap, modest.
 4. **Quality at scale**: chrF/token-overlap of ggml-Q8_0 vs float and vs inference-rs
    (a `quality_ggml.py`, mirroring `onnx/quality.py`).
-5. **Only if the numbers justify consolidation → G2**: `LLM_ARCH_MARIAN` in a patched
-   llama.cpp + a driver, then the SPM-parity and upstream-appetite gates from `notes/14`.
-   Note G2 inherits batching/threading/scheduling from the runtime — so the threading result
-   above is a preview of what G2 gives for free.
+5. **Only if the numbers justify consolidation → G2** (specified in `notes/19`):
+   `LLM_ARCH_MARIAN` in llama.cpp + a converter revision, then the SPM-parity and
+   upstream-appetite gates. G2 inherits batching/threading/scheduling from the runtime — the
+   threading result above is a preview of what G2 gives for free.
 
 ## Reproduce
 
