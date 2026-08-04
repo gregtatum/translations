@@ -138,17 +138,74 @@ gates"): a novel `LLM_ARCH_MARIAN` combining cross-attention with recurrent memo
 pieces exist in T5 + Jamba/RWKV but nothing combines them), SPM tokenizer parity, and
 upstreamability.
 
+## Optimization pass (2026-08-03, after the first G1 measurement)
+
+Started from 744 wps single-thread and the two named handicaps. Measured, not guessed
+(notes/17 doctrine): the span split is **38% encoder / 62% decoder**, and a bandwidth
+budget shows decode at m=1 is **~90% weight-streaming compute** (the 512×32000 Q8_0
+projection is ~17.5 MB streamed per token → ~0.35 ms of 0.567 ms/token), ~10% glue. So the
+per-token graph rebuild is not the cost; streaming weights to make one token at a time is.
+
+**Decoder batching (the predicted big lever) — implemented, gated, but only ~+5% here.**
+Added a batched lockstep decoder (leading batch dim, `[dim,Smax,B]` cross K/V + a shared
+additive `cross_bias` mask, per-row eos/length retirement), gated by **batch-invariance**
+(Gate 3: a B=5 mixed-length batch is token-identical to B=1 — `decode` vs `decode solo`).
+
+- Naive full-batch lockstep was a **regression** (744→550 wps, +41 MiB): a block runs to its
+  *longest* sentence, so ragged lengths waste compute on already-retired rows, and at B≈13
+  the 32000-vocab projection tips compute-bound (losing the bandwidth amortization batching
+  gives ORT).
+- A controlled **uniform-length** batch (B=8, equal length) *does* win **1.38×/token**
+  (0.501→0.364 ms) — the amortization is real; ragged waste was the whole regression.
+- Fixed with **row compaction** (retired rows drop out each step; total row-steps == Σ
+  per-sentence lengths). Net **779 wps (+5% over per-sentence), 150 MiB**. The win is small
+  *because the corpus is per-sentence-shaped* — many blocks are 1 sentence (B=1, no benefit),
+  and the encoder (38%) is still per-sentence. This matches Greg's prior that batching isn't
+  large for this workload; the 1.38× is only there for uniform multi-sentence traffic.
+
+**Threads — the real lever (~2.5–3×), and a genuine ggml advantage.**
+
+| threads | 1 | 2 | 4 | 6 | 8 |
+|---|---|---|---|---|---|
+| wps | 792 | 1258 | 1964 | 2354 | 2349 |
+
+ggml scales cleanly because the m=1 projection is bandwidth-bound and Apple Silicon adds
+bandwidth per core, and ggml parallelizes the big matmul — where notes/16 found ORT threads
+added only ~9%. **At 4 threads ggml is 2003 wps / 150 MiB — 1.6× inference-rs and 1.5× marian
+(both single-thread by design), still a third of ONNX's memory:**
+
+| engine | words/s | settled MiB |
+|---|---|---|
+| ggml (q8_0, 4t) | **2003** | 150 |
+| marian native (1t) | 1317 | 298 |
+| inference-rs (1t) | 1252 | 130 |
+| Firefox Wasm | 419 | 355 |
+
+**Revised conclusion:** ggml is *not* slower — single-thread it's 0.6× inference-rs, but it
+threads to 1.5–1.8× using cores inference-rs doesn't touch, at a third of ONNX's memory.
+For the maintenance question this is the key point: riding llama.cpp/ggml gives
+multi-threading (and batching, scheduling, state management) for free, whereas matching it in
+inference-rs is unstarted threading work (notes/11). The eval's headline rows stay
+single-thread for fairness; the threaded row is "what the runtime actually does."
+
 ## Recommended next steps
 
-1. **Close the decode-glue gap in G1** before judging ggml on speed: cross-step graph reuse
-   (fix the gallocr aliasing) and block-batch the encoder/decoder (masked cross-attn, per-row
-   SSRU state — the batch-invariance the ONNX decoder already validates). This tells us the
-   *kernel* ceiling vs gemmology, cleanly. Optionally add G0 (ggml GEMM inside inference-rs)
-   to isolate kernel-vs-glue outright.
-2. **Quality at scale**: chrF/token-overlap of ggml-Q8_0 vs float and vs inference-rs over a
-   real corpus (a `quality_ggml.py`, mirroring `onnx/quality.py`).
-3. **Only if G1 speed justifies consolidation → G2**: `LLM_ARCH_MARIAN` in a patched
+Decoder batching (with compaction) and threading are **done**; the remaining levers:
+
+1. **Kernel bake-off (G0)** — the clean ceiling question now that glue is handled: microbench
+   ggml's Q8_0 ARM matmul vs gemmology i8mm at the decode shapes (m=1…B, k=512, n=32000/2048/
+   512), the analog of `rs:kernel-micro`. The 1t gap to inference-rs (0.6×) should be mostly
+   kernel + the per-sentence encoder; this isolates it.
+2. **Batch the encoder** (38% of time, still per-sentence) — padded + masked self-attention
+   across the block, same batch-invariance gate. Bounded upside on this per-sentence corpus.
+3. **Cross-step graph reuse** (~10% of decode) — `ggml_backend_sched` to drop the per-token
+   rebuild and the per-step cross-K/V re-gather. Cheap, modest.
+4. **Quality at scale**: chrF/token-overlap of ggml-Q8_0 vs float and vs inference-rs
+   (a `quality_ggml.py`, mirroring `onnx/quality.py`).
+5. **Only if the numbers justify consolidation → G2**: `LLM_ARCH_MARIAN` in a patched
    llama.cpp + a driver, then the SPM-parity and upstream-appetite gates from `notes/14`.
+   Note G2 inherits batching/threading/scheduling from the runtime — so the threading result
+   above is a preview of what G2 gives for free.
 
 ## Reproduce
 

@@ -219,43 +219,73 @@ EncGraph build_encoder(Model & m, int seq) {
     return e;
 }
 
-// --- decoder step graph: reused across all steps of one sentence -------------
+// --- batched decoder step graph ----------------------------------------------
+// B sentences decode in lockstep. At m=1 a single-sentence step is bandwidth-bound
+// streaming the 512x32000 Q8_0 projection to make ONE token; batching B rows reuses that
+// same weight stream for B tokens (near-linear until compute-bound). Rows are independent
+// (per-row SSRU state, per-row masked cross-attention), so a batched decode is
+// token-identical to decoding each sentence alone — gated by batch-invariance.
 
 struct DecGraph {
     ggml_context * ctx;
     ggml_cgraph * gf;
-    ggml_tensor * tok;                        // input I32 [1]
-    ggml_tensor * pe;                         // input F32 [dim,1]
-    std::vector<ggml_tensor *> state_in;      // input F32 [dim] per layer
-    std::vector<ggml_tensor *> cross_k, cross_v; // input F32 [dim,seq] per layer
-    std::vector<ggml_tensor *> state_out;     // output F32 [dim] per layer
-    ggml_tensor * logits;                     // output F32 [vocab]
+    ggml_tensor * tok;                           // input I32 [B]
+    ggml_tensor * pe;                            // input F32 [dim,1] (shared lockstep pos)
+    ggml_tensor * cross_bias;                    // input F32 [Smax,1,1,B] additive src mask
+    std::vector<ggml_tensor *> state_in;         // input F32 [dim,B] per layer
+    std::vector<ggml_tensor *> cross_k, cross_v; // input F32 [dim,Smax,B] per layer
+    std::vector<ggml_tensor *> state_out;        // output F32 [dim,B] per layer
+    ggml_tensor * logits;                        // output F32 [vocab,B]
+    int B, Smax;
 };
 
-DecGraph build_decoder(Model & m, int seq) {
-    DecGraph d;
+// Batched single-query cross-attention. q:[dim,B], ck/cv:[dim,Smax,B], bias:[Smax,1,1,B].
+// Batches over (head, sentence) = (ne2, ne3); the additive bias masks each row's source
+// padding. Returns [dim,B].
+ggml_tensor * cross_attention_batched(ggml_context * c, ggml_tensor * q, ggml_tensor * ck,
+                                     ggml_tensor * cv, ggml_tensor * bias, int n_head,
+                                     int head_dim, int Smax, int B, float scale) {
+    ggml_tensor * Q = ggml_cont(c, ggml_permute(c,
+        ggml_reshape_4d(c, q, head_dim, n_head, 1, B), 0, 2, 1, 3));      // [hd,1,nh,B]
+    ggml_tensor * K = ggml_cont(c, ggml_permute(c,
+        ggml_reshape_4d(c, ck, head_dim, n_head, Smax, B), 0, 2, 1, 3));  // [hd,Smax,nh,B]
+    ggml_tensor * KQ = ggml_mul_mat(c, K, Q);                             // [Smax,1,nh,B]
+    KQ = ggml_scale(c, KQ, scale);
+    KQ = ggml_add(c, KQ, bias);                                          // -inf on padding
+    KQ = ggml_soft_max(c, KQ);                                           // over ne0=Smax
+    ggml_tensor * V = ggml_cont(c, ggml_permute(c,
+        ggml_reshape_4d(c, cv, head_dim, n_head, Smax, B), 1, 2, 0, 3));  // [Smax,hd,nh,B]
+    ggml_tensor * KQV = ggml_mul_mat(c, V, KQ);                           // [hd,1,nh,B]
+    KQV = ggml_cont(c, ggml_permute(c, KQV, 0, 2, 1, 3));                 // [hd,nh,1,B]
+    return ggml_reshape_2d(c, KQV, head_dim * n_head, B);                 // [dim,B]
+}
+
+DecGraph build_decoder(Model & m, int B, int Smax) {
+    DecGraph d; d.B = B; d.Smax = Smax;
     d.ctx = graph_ctx();
     ggml_context * c = d.ctx;
     d.gf = ggml_new_graph(c);
     const HParams & hp = m.hp;
 
-    d.tok = ggml_new_tensor_1d(c, GGML_TYPE_I32, 1); ggml_set_input(d.tok);
+    d.tok = ggml_new_tensor_1d(c, GGML_TYPE_I32, B); ggml_set_input(d.tok);
     d.pe  = ggml_new_tensor_2d(c, GGML_TYPE_F32, hp.dim, 1); ggml_set_input(d.pe);
+    d.cross_bias = ggml_new_tensor_4d(c, GGML_TYPE_F32, Smax, 1, 1, B); ggml_set_input(d.cross_bias);
 
-    ggml_tensor * u = ggml_get_rows(c, m.get("token_embd.weight"), d.tok); // [dim,1]
+    ggml_tensor * u = ggml_get_rows(c, m.get("token_embd.weight"), d.tok); // [dim,B]
     u = ggml_scale(c, u, hp.embed_scale);
-    u = ggml_add(c, u, d.pe);
+    u = ggml_add(c, u, d.pe);                                              // pe broadcast over B
 
     for (int l = 0; l < hp.dec_depth; ++l) {
         std::string p = "dec." + std::to_string(l) + ".";
         auto W = [&](const std::string & n){ return m.get(p + n); };
 
-        ggml_tensor * s_in = ggml_new_tensor_1d(c, GGML_TYPE_F32, hp.dim); ggml_set_input(s_in);
-        ggml_tensor * ck = ggml_new_tensor_2d(c, GGML_TYPE_F32, hp.dim, seq); ggml_set_input(ck);
-        ggml_tensor * cv = ggml_new_tensor_2d(c, GGML_TYPE_F32, hp.dim, seq); ggml_set_input(cv);
+        ggml_tensor * s_in = ggml_new_tensor_2d(c, GGML_TYPE_F32, hp.dim, B); ggml_set_input(s_in);
+        ggml_tensor * ck = ggml_new_tensor_3d(c, GGML_TYPE_F32, hp.dim, Smax, B); ggml_set_input(ck);
+        ggml_tensor * cv = ggml_new_tensor_3d(c, GGML_TYPE_F32, hp.dim, Smax, B); ggml_set_input(cv);
         d.state_in.push_back(s_in); d.cross_k.push_back(ck); d.cross_v.push_back(cv);
 
-        // SSRU highway: c_t = g*c_prev + (1-g)*cand = cand + g*(c_prev - cand).
+        // SSRU highway: c_t = g*c_prev + (1-g)*cand = cand + g*(c_prev - cand). Per-column
+        // (per-row) over ne1=B; LayerNorm normalizes ne0=dim independently per row.
         ggml_tensor * cand = ggml_mul_mat(c, W("rnn.w"), u);                 // no bias
         ggml_tensor * g = ggml_sigmoid(c, linear(c, W("rnn.wf"), W("rnn.bf"), u));
         ggml_tensor * c_t = ggml_add(c, cand, ggml_mul(c, g, ggml_sub(c, s_in, cand)));
@@ -263,9 +293,9 @@ DecGraph build_decoder(Model & m, int seq) {
         ggml_tensor * hcell = ggml_relu(c, c_t);
         ggml_tensor * x_self = layernorm(c, ggml_add(c, hcell, u), W("rnn.ln.scale"), W("rnn.ln.bias"), hp.eps);
 
-        // cross-attention: Q from decoder, K/V precomputed from encoder context.
-        ggml_tensor * q = linear(c, W("cross.wq"), W("cross.bq"), x_self);   // [dim,1]
-        ggml_tensor * a = attention(c, q, ck, cv, hp.heads, hp.head_dim, hp.attn_scale);
+        ggml_tensor * q = linear(c, W("cross.wq"), W("cross.bq"), x_self);   // [dim,B]
+        ggml_tensor * a = cross_attention_batched(c, q, ck, cv, d.cross_bias,
+                                                  hp.heads, hp.head_dim, Smax, B, hp.attn_scale);
         a = linear(c, W("cross.wo"), W("cross.bo"), a);
         ggml_tensor * x_ctx = layernorm(c, ggml_add(c, a, x_self), W("cross.ln.scale"), W("cross.ln.bias"), hp.eps);
 
@@ -274,7 +304,7 @@ DecGraph build_decoder(Model & m, int seq) {
         u = layernorm(c, ggml_add(c, fo, x_ctx), W("ffn.ln.scale"), W("ffn.ln.bias"), hp.eps);
     }
 
-    d.logits = linear(c, m.get("output.weight"), m.get("output.bias"), u); // tied projection [vocab,1]
+    d.logits = linear(c, m.get("output.weight"), m.get("output.bias"), u); // tied projection [vocab,B]
     ggml_set_output(d.logits);
     ggml_build_forward_expand(d.gf, d.logits);
     for (auto t : d.state_out) ggml_build_forward_expand(d.gf, t);
@@ -285,67 +315,115 @@ DecGraph build_decoder(Model & m, int seq) {
 
 struct Timing { double encode_ms = 0, decode_ms = 0; };
 
-// Greedy-decode one sentence (source ids include the trailing EOS). Returns output ids.
-std::vector<int> translate_one(Model & m, ggml_gallocr_t alloc,
-                              const std::vector<int32_t> & src, Timing * tm) {
+// Greedy-decode a batch of sentences in lockstep (each src includes the trailing EOS).
+// Returns per-sentence output ids. The encoder still runs once per sentence (its cross K/V
+// are padded to the batch's longest source and masked); only the decoder is batched — a
+// block-batched decode, the production shape (matching inference-rs / ONNX).
+std::vector<std::vector<int>> translate_batch(Model & m, ggml_gallocr_t alloc,
+                                              const std::vector<std::vector<int32_t>> & batch,
+                                              Timing * tm) {
     const HParams & hp = m.hp;
-    const int seq = (int) src.size();
+    const int B = (int) batch.size();
+    std::vector<int> seq(B);
+    for (int b = 0; b < B; ++b) seq[b] = (int) batch[b].size();
 
-    // Encoder.
+    // Encoder per sentence -> per-row (unpadded) cross K/V; the active batch is packed each
+    // decode step so padding shrinks with the live rows.
     double t0 = now_ms();
-    EncGraph e = build_encoder(m, seq);
-    ggml_gallocr_alloc_graph(alloc, e.gf);
-    ggml_backend_tensor_set(e.ids, src.data(), 0, seq * sizeof(int32_t));
-    ggml_backend_tensor_set(e.pe, m.pe.data(), 0, (size_t) seq * hp.dim * sizeof(float));
-    ggml_backend_graph_compute(m.backend, e.gf);
-
-    // Pull cross K/V to host so the reused decode graph can reference them per sentence.
-    std::vector<std::vector<float>> ck(hp.dec_depth), cv(hp.dec_depth);
-    for (int l = 0; l < hp.dec_depth; ++l) {
-        ck[l].resize((size_t) seq * hp.dim); cv[l].resize((size_t) seq * hp.dim);
-        ggml_backend_tensor_get(e.cross_k[l], ck[l].data(), 0, ck[l].size() * sizeof(float));
-        ggml_backend_tensor_get(e.cross_v[l], cv[l].data(), 0, cv[l].size() * sizeof(float));
+    std::vector<std::vector<std::vector<float>>> ckr(hp.dec_depth), cvr(hp.dec_depth);
+    for (int l = 0; l < hp.dec_depth; ++l) { ckr[l].resize(B); cvr[l].resize(B); }
+    for (int b = 0; b < B; ++b) {
+        EncGraph e = build_encoder(m, seq[b]);
+        ggml_gallocr_alloc_graph(alloc, e.gf);
+        ggml_backend_tensor_set(e.ids, batch[b].data(), 0, seq[b] * sizeof(int32_t));
+        ggml_backend_tensor_set(e.pe, m.pe.data(), 0, (size_t) seq[b] * hp.dim * sizeof(float));
+        ggml_backend_graph_compute(m.backend, e.gf);
+        for (int l = 0; l < hp.dec_depth; ++l) {
+            ckr[l][b].resize((size_t) seq[b] * hp.dim); cvr[l][b].resize((size_t) seq[b] * hp.dim);
+            ggml_backend_tensor_get(e.cross_k[l], ckr[l][b].data(), 0, ckr[l][b].size() * sizeof(float));
+            ggml_backend_tensor_get(e.cross_v[l], cvr[l][b].data(), 0, cvr[l][b].size() * sizeof(float));
+        }
+        ggml_free(e.ctx);
     }
-    ggml_free(e.ctx);
     if (tm) tm->encode_ms += now_ms() - t0;
 
-    // Decoder greedy loop. The step graph is rebuilt per token: a single-token decode is
-    // tiny (dec_depth * ~30 nodes) next to the matmuls, and rebuilding sidesteps any
-    // gallocr input/scratch aliasing across reused computes. (A reuse optimization is a
-    // possible follow-up once correctness is locked.)
+    // Lockstep greedy over the ACTIVE rows only. As rows hit eos/length they retire and the
+    // batch compacts, so total row-steps == the sum of per-sentence lengths (no wasted
+    // compute on finished rows — the difference between this being a win and a pessimization
+    // on ragged blocks), while live rows still share amortized weight streams.
     t0 = now_ms();
-    std::vector<std::vector<float>> state(hp.dec_depth,
-                                          std::vector<float>((size_t) hp.dim, 0.0f));
-    const int max_len = std::min((int) std::ceil(2.0 * seq) + 4, 256);
-    std::vector<int> out;
-    std::vector<float> logits(hp.vocab);
-    int32_t prev = hp.eos_id;
+    std::vector<std::vector<float>> state(hp.dec_depth,        // per-row [dim], indexed by row r
+                                          std::vector<float>((size_t) hp.dim * B, 0.0f));
+    std::vector<int> max_len(B);
+    for (int b = 0; b < B; ++b) max_len[b] = std::min((int) std::ceil(2.0 * seq[b]) + 4, 256);
+    std::vector<std::vector<int>> out(B);
+    std::vector<int32_t> prev(B, hp.eos_id);
+    std::vector<bool> fin(B, false);
 
-    for (int pos = 0; pos < max_len; ++pos) {
-        DecGraph d = build_decoder(m, seq);
+    for (int pos = 0; ; ++pos) {
+        for (int b = 0; b < B; ++b) if (!fin[b] && pos >= max_len[b]) fin[b] = true;
+        std::vector<int> act;
+        for (int b = 0; b < B; ++b) if (!fin[b]) act.push_back(b);
+        if (act.empty()) break;
+        const int Ba = (int) act.size();
+        int Smax = 0;
+        for (int r : act) Smax = std::max(Smax, seq[r]);
+
+        DecGraph d = build_decoder(m, Ba, Smax);
         ggml_gallocr_alloc_graph(alloc, d.gf);
-        ggml_backend_tensor_set(d.tok, &prev, 0, sizeof(int32_t));
+
+        std::vector<int32_t> toks(Ba);
+        std::vector<float> bias((size_t) Smax * Ba, 0.0f);
+        for (int i = 0; i < Ba; ++i) {
+            int r = act[i]; toks[i] = prev[r];
+            for (int s = seq[r]; s < Smax; ++s) bias[(size_t) i * Smax + s] = -1e30f;
+        }
+        ggml_backend_tensor_set(d.tok, toks.data(), 0, Ba * sizeof(int32_t));
         ggml_backend_tensor_set(d.pe, &m.pe[(size_t) pos * hp.dim], 0, hp.dim * sizeof(float));
+        ggml_backend_tensor_set(d.cross_bias, bias.data(), 0, bias.size() * sizeof(float));
+
+        std::vector<float> sa((size_t) hp.dim * Ba);
+        std::vector<float> ka((size_t) hp.dim * Smax * Ba), va((size_t) hp.dim * Smax * Ba);
         for (int l = 0; l < hp.dec_depth; ++l) {
-            ggml_backend_tensor_set(d.state_in[l], state[l].data(), 0, hp.dim * sizeof(float));
-            ggml_backend_tensor_set(d.cross_k[l], ck[l].data(), 0, ck[l].size() * sizeof(float));
-            ggml_backend_tensor_set(d.cross_v[l], cv[l].data(), 0, cv[l].size() * sizeof(float));
+            std::fill(ka.begin(), ka.end(), 0.0f); std::fill(va.begin(), va.end(), 0.0f);
+            for (int i = 0; i < Ba; ++i) {
+                int r = act[i];
+                std::copy_n(&state[l][(size_t) r * hp.dim], hp.dim, &sa[(size_t) i * hp.dim]);
+                std::copy(ckr[l][r].begin(), ckr[l][r].end(), ka.begin() + (size_t) i * Smax * hp.dim);
+                std::copy(cvr[l][r].begin(), cvr[l][r].end(), va.begin() + (size_t) i * Smax * hp.dim);
+            }
+            ggml_backend_tensor_set(d.state_in[l], sa.data(), 0, sa.size() * sizeof(float));
+            ggml_backend_tensor_set(d.cross_k[l], ka.data(), 0, ka.size() * sizeof(float));
+            ggml_backend_tensor_set(d.cross_v[l], va.data(), 0, va.size() * sizeof(float));
         }
 
         ggml_backend_graph_compute(m.backend, d.gf);
 
-        for (int l = 0; l < hp.dec_depth; ++l)
-            ggml_backend_tensor_get(d.state_out[l], state[l].data(), 0, hp.dim * sizeof(float));
-        ggml_backend_tensor_get(d.logits, logits.data(), 0, hp.vocab * sizeof(float));
+        std::vector<float> so((size_t) hp.dim * Ba);
+        for (int l = 0; l < hp.dec_depth; ++l) {
+            ggml_backend_tensor_get(d.state_out[l], so.data(), 0, so.size() * sizeof(float));
+            for (int i = 0; i < Ba; ++i)
+                std::copy_n(&so[(size_t) i * hp.dim], hp.dim, &state[l][(size_t) act[i] * hp.dim]);
+        }
+        std::vector<float> logits((size_t) hp.vocab * Ba);
+        ggml_backend_tensor_get(d.logits, logits.data(), 0, logits.size() * sizeof(float));
         ggml_free(d.ctx);
 
-        int tok = (int) (std::max_element(logits.begin(), logits.end()) - logits.begin());
-        if (tok == hp.eos_id) break;
-        out.push_back(tok);
-        prev = tok;
+        for (int i = 0; i < Ba; ++i) {
+            int r = act[i];
+            float * lb = &logits[(size_t) i * hp.vocab];              // logits [vocab,Ba], row i
+            int tok = (int) (std::max_element(lb, lb + hp.vocab) - lb);
+            if (tok == hp.eos_id) { fin[r] = true; continue; }
+            out[r].push_back(tok); prev[r] = tok;
+        }
     }
     if (tm) tm->decode_ms += now_ms() - t0;
     return out;
+}
+
+// One-sentence convenience (B=1) — the batch-invariance reference.
+std::vector<int> translate_one(Model & m, ggml_gallocr_t alloc, const std::vector<int32_t> & src) {
+    return translate_batch(m, alloc, {src}, nullptr)[0];
 }
 
 std::vector<int32_t> parse_ids(const std::string & line) {
@@ -358,15 +436,30 @@ std::vector<int32_t> parse_ids(const std::string & line) {
 
 // --- modes -------------------------------------------------------------------
 
-int mode_decode(Model & m, ggml_gallocr_t alloc) {
+int mode_decode(Model & m, ggml_gallocr_t alloc, bool solo) {
+    std::vector<std::string> lines;
     std::string line;
-    while (std::getline(std::cin, line)) {
-        if (line.empty()) { std::cout << "\n"; continue; }
-        auto src = parse_ids(line);
-        auto out = translate_one(m, alloc, src, nullptr);
-        for (size_t i = 0; i < out.size(); ++i) std::cout << (i ? " " : "") << out[i];
-        std::cout << "\n";
+    while (std::getline(std::cin, line)) lines.push_back(line);
+    std::vector<std::vector<int32_t>> batch;
+    std::vector<int> row_of;  // batch row -> line index
+    for (size_t i = 0; i < lines.size(); ++i)
+        if (lines[i].find_first_not_of(" \t\r\n") != std::string::npos) {
+            batch.push_back(parse_ids(lines[i])); row_of.push_back((int) i);
+        }
+    std::vector<std::string> outstr(lines.size());
+    // `solo` decodes each line as its own B=1 batch — the batch-invariance reference.
+    std::vector<std::vector<int>> outs;
+    if (solo) {
+        for (auto & s : batch) outs.push_back(translate_one(m, alloc, s));
+    } else if (!batch.empty()) {
+        outs = translate_batch(m, alloc, batch, nullptr);
     }
+    for (size_t r = 0; r < outs.size(); ++r) {
+        std::string s;
+        for (size_t j = 0; j < outs[r].size(); ++j) { if (j) s += " "; s += std::to_string(outs[r][j]); }
+        outstr[row_of[r]] = s;
+    }
+    for (auto & s : outstr) std::cout << s << "\n";
     return 0;
 }
 
@@ -378,12 +471,10 @@ int mode_blockbench(Model & m, ggml_gallocr_t alloc, const char * blocks_path) {
     auto flush = [&]() {
         if (block.empty()) return;
         Timing tm;
+        auto outs = translate_batch(m, alloc, block, &tm);  // whole block as one lockstep batch
         int src_tokens = 0, out_tokens = 0;
-        for (auto & s : block) {
-            auto o = translate_one(m, alloc, s, &tm);
-            src_tokens += (int) s.size();
-            out_tokens += (int) o.size();
-        }
+        for (auto & s : block) src_tokens += (int) s.size();
+        for (auto & o : outs) out_tokens += (int) o.size();
         fprintf(stderr,
                 "[block] {\"block\": %d, \"sentences\": %zu, \"src_tokens\": %d, "
                 "\"tokens\": %d, \"encode_ms\": %.3f, \"decode_ms\": %.3f}\n",
@@ -420,13 +511,15 @@ int mode_dump(Model & m, ggml_gallocr_t alloc, const std::vector<int32_t> & src)
     }
     ggml_free(e.ctx);
 
-    // First decode step (pos 0, prev = eos), states zero.
-    DecGraph d = build_decoder(m, seq);
+    // First decode step (B=1, pos 0, prev = eos, state zero, no source padding).
+    DecGraph d = build_decoder(m, 1, seq);
     ggml_gallocr_alloc_graph(alloc, d.gf);
     int32_t prev = hp.eos_id;
     std::vector<float> zero((size_t) hp.dim, 0.0f);
+    std::vector<float> nobias((size_t) seq, 0.0f);
     ggml_backend_tensor_set(d.tok, &prev, 0, sizeof(int32_t));
     ggml_backend_tensor_set(d.pe, &m.pe[0], 0, hp.dim * sizeof(float));
+    ggml_backend_tensor_set(d.cross_bias, nobias.data(), 0, nobias.size() * sizeof(float));
     for (int l = 0; l < hp.dec_depth; ++l) {
         ggml_backend_tensor_set(d.state_in[l], zero.data(), 0, hp.dim * sizeof(float));
         ggml_backend_tensor_set(d.cross_k[l], ck[l].data(), 0, ck[l].size() * sizeof(float));
@@ -463,7 +556,9 @@ int main(int argc, char ** argv) {
     std::string mode = argv[2];
     int rc = 1;
     if (mode == "decode") {
-        rc = mode_decode(m, alloc);
+        bool solo = false;  // `decode solo` = per-sentence B=1 (batch-invariance reference)
+        for (int i = 3; i < argc; ++i) if (std::string(argv[i]) == "solo") solo = true;
+        rc = mode_decode(m, alloc, solo);
     } else if (mode == "blockbench") {
         const char * blocks = nullptr;
         for (int i = 3; i < argc; ++i)

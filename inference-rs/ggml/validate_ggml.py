@@ -109,9 +109,34 @@ def main() -> int:
         _stat("intgemm vs float", enc_r, ctx_g)
     print()
 
-    ok = gate2 and (gate1 in (True, None))
+    # --- Gate 3: batch-invariance (batched block == per-sentence, token-identical) ---
+    print("Gate 3 — batch-invariance (block-batched decode == per-sentence):")
+    sents = [
+        "Hello.",
+        "This is a test of the translation engine.",
+        "The quick brown fox jumps over the lazy dog.",
+        "Good morning.",
+        "She sells seashells by the seashore in the bright summer sun.",
+    ]
+    ids_in = "\n".join(" ".join(str(i) for i in tok.encode_source(s)) for s in sents) + "\n"
+    gguf = str(_MODELS / "marian.q8_0.gguf")
+
+    def _decode(extra: list[str]) -> str:
+        return subprocess.run(
+            [str(_BIN), gguf, "decode", *extra], input=ids_in,
+            capture_output=True, text=True, check=True,
+        ).stdout
+
+    batched, solo = _decode([]), _decode(["solo"])
+    gate3 = batched == solo
+    print(f"    {len(sents)} sentences (B={len(sents)} vs B=1): "
+          f"{'PASS (token-identical)' if gate3 else 'FAIL (batched != per-sentence)'}")
+    print()
+
+    ok = gate2 and (gate1 in (True, None)) and gate3
     print(f"RESULT: Gate 2 {'PASS' if gate2 else 'FAIL'}, "
-          f"Gate 1 {'PASS' if gate1 else ('SKIP' if gate1 is None else 'FAIL')}")
+          f"Gate 1 {'PASS' if gate1 else ('SKIP' if gate1 is None else 'FAIL')}, "
+          f"Gate 3 {'PASS' if gate3 else 'FAIL'}")
     return 0 if ok else 1
 
 

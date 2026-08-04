@@ -61,15 +61,20 @@ Gate 1 PASS — Q8_0 vs inference-rs int8: mutual top-5 argmax (int8 near-tie sw
 **2.76%** from the float golden vs intgemm's **10.59%** — block-wise Q8_0 is ~4× closer to
 float than intgemm shifted-int8.
 
-**Perf/memory** (Frankenstein blocks, model load excluded):
+**Perf/memory** (Frankenstein blocks, model load excluded). The decoder is block-batched
+with row compaction; the headline eval rows are single-thread for fairness with the native
+tools, but ggml threads well and that is its real advantage:
 
 | engine | words/s | settled MiB |
 |---|---|---|
-| marian native | 1332 | 298 |
-| inference-rs (rust) | 1285 | 129 |
-| ggml (q8_0) | 744 | **119 (lowest)** |
+| **ggml (q8_0, 4 threads)** | **2003** | 150 |
+| marian native (1t) | 1317 | 298 |
+| inference-rs (rust, 1t) | 1252 | 130 |
+| ggml (q8_0, 1t) | 779 | 150 |
 | Firefox Wasm | 419 | 355 |
 
-ggml is 0.58× inference-rs on speed but the **leanest memory of any engine**. The speed is a
-floor: the decode graph is rebuilt per token (no cross-step reuse) and the encoder isn't
-block-batched — both named follow-ups in notes/18.
+Single-thread ggml is 0.6× inference-rs; at 4 threads it is **1.6× inference-rs and 1.5×
+marian** (both single-thread by design) at a third of ONNX's memory. ggml scales ~2.5–3× to
+4–6 threads where ORT gained only ~9% (notes/16). Decoder batching is only ~+5% on this
+per-sentence-shaped corpus (1.38×/token for uniform multi-sentence batches); threads are the
+lever. See `../notes/18-ggml-port-design.md` for the full optimization pass.
