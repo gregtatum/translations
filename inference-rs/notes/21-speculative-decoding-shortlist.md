@@ -237,6 +237,22 @@ bottleneck on the target — the end-to-end regression says it is not, and measu
 (the lesson of this whole exercise) says confirm that before spending more. The real decode levers
 remain in `notes/20`: encoder threading (E1) and reducing the eager-allocation churn.
 
+### Profiles (samply, Firefox Profiler)
+
+CPU profiles on the en-ru base / Frankenstein workload (`task rs:spec-bench --profile`, recorded
+with `--unstable-presymbolicate`), the regression made visible. Files + full write-up in the
+gitignored `artifacts/speculative-profiles.md`.
+
+| profile | shared | leaf self-time headline |
+|---|---|---|
+| baseline `greedy_batch` (full-vocab) | https://share.firefox.dev/4wHJCaG | gemmology i8mm GEMM **69.1%**, encode_batch 8.9%, layernorm 4.1% |
+| speculative `greedy_batch_speculative` K=5 | https://share.firefox.dev/4xi9ABl | GEMM **57.8%** + draft overhead the baseline lacks: `gemmology_read_row` 5.2% (candidate gather) + `intgemm_affine` 3.4% (un-batched draft GEMM) + `Vec::spec_from_iter` 2.2% (snapshot clones) + `output_wemb_int8_row`/`project_argmax` 1.5% |
+
+Side-by-side: speculation adds **~13%** of runtime in draft machinery (candidate gather + un-batched
+draft GEMM + snapshot/alloc churn) while shrinking the full-vocab-projection GEMM only modestly — so
+the GEMM *share* falls 69→58% yet wall-clock rises. The engine is GEMM-bound (same as notes/09/17);
+speculation adds a second GEMM path rather than removing work, which is why it regresses.
+
 ### (superseded) Phase 0 en→ru probe + projection
 
 Kept for the record; the measurement above overrides it. Re-running the probe on the en→ru base
