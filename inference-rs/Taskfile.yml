@@ -850,6 +850,20 @@ tasks:
     cmds:
       - cargo run --quiet --release --example kernel_micro --features fast -p fxtranslate
 
+  spec-probe:
+    desc: Phase-0 speculative-decoding acceptance probe (shortlist-as-draft, notes/21).
+    summary: |
+      Runs plain full-vocab greedy over the en-fr corpus and, per decode step, checks whether
+      the full-vocab argmax is in the sentence's lexical-shortlist candidate set — i.e. whether
+      a shortlist draft would have guessed it right. Reports overall acceptance, the in-shortlist
+      run-length distribution, and simulated tokens/round A(K) + predicted decode speedup for
+      several guess lengths K, with a GO/STOP verdict against the 70% threshold. No speculative
+      code runs; this measures the ceiling before Phase 1. Needs data/models/enfr/.
+      Args pass through, e.g. `task rs:spec-probe -- --limit 100 --proj-frac 0.75`.
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - cargo run --quiet --release --example acceptance_probe --features fast -p fxtranslate -- {{.CLI_ARGS}}
+
   onnx-kernel-micro:
     desc: Microbench ORT MatMulInteger (MLAS) at the same shapes as rs:kernel-micro.
     summary: |

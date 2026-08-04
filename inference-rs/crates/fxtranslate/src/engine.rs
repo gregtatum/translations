@@ -126,6 +126,29 @@ pub struct BlockCounts {
     pub tokens: usize,
 }
 
+/// Phase-0 acceptance probe for speculative decoding (notes/21), one sentence.
+///
+/// The probe runs **ordinary full-vocab greedy** — the shortlist never decides a
+/// token — and at each decode step records whether the full-vocab argmax lies in
+/// the sentence's shortlist candidate set. Because the full argmax, when it is a
+/// candidate, is also the argmax over the candidate subset, an in-set step is
+/// exactly a step a shortlist *draft* would have guessed correctly (invariant 4 in
+/// the note). So `hits` is the raw signal the speculative-speedup model is built
+/// from: the acceptance rate is the mean of `hits`, and the run-length structure
+/// of consecutive `true`s predicts average tokens accepted per verify round for a
+/// given guess length K. No speculative code runs here; this only measures the
+/// ceiling before any is written.
+pub struct AcceptanceProbe {
+    /// One entry per emitted decode step, in order, **including** the terminal EOS
+    /// step: `true` when the full-vocab argmax at that step is in the sentence's
+    /// shortlist candidate set (a token the draft would have guessed right),
+    /// `false` when it is not (a mismatch the full-vocab verifier must correct).
+    pub hits: Vec<bool>,
+    /// The shortlist candidate-set size for this sentence — the number of columns a
+    /// draft projection would stream, i.e. the draft cost knob (S in the note).
+    pub candidate_count: usize,
+}
+
 /// One source or target token with its span in the relevant string.
 ///
 /// Offsets are **UTF-16 code-unit** offsets (DOM string space), so a JS HTML
@@ -459,6 +482,49 @@ impl Engine {
             prev = next;
         }
         out
+    }
+
+    /// Phase-0 acceptance probe for shortlist-as-draft speculative decoding
+    /// (notes/21). Decodes `src_ids` with **full-vocab greedy** — identical token
+    /// choices to [`greedy`] on a shortlist-free engine — and returns, per step,
+    /// whether that step's full-vocab argmax is in the sentence's shortlist
+    /// candidate set (see [`AcceptanceProbe`]). This measures the speculative
+    /// speedup ceiling without writing any speculative code.
+    ///
+    /// Requires a shortlist to be attached (it is the candidate set we test the
+    /// argmax against); returns `None` when none is. The shortlist here is only a
+    /// *membership oracle* — it never restricts the argmax, so the decoded path is
+    /// plain full-vocab greedy regardless of whether one is attached.
+    pub fn acceptance_probe(&self, src_ids: &[u32]) -> Option<AcceptanceProbe> {
+        let shortlist = self.shortlist.as_ref()?;
+        let d = self.config.dim_emb;
+        let seq = src_ids.len();
+        let context = self.encode(src_ids);
+        let eos = self.trg_vocab.eos_id();
+
+        let mut cells = vec![vec![0.0f32; d]; self.config.dec_depth + 1];
+        let max_len = ((2.0 * seq as f32).ceil() as usize + 4).min(256);
+
+        // The candidate set is per-sentence and fixed for the whole decode.
+        let cand_set = shortlist.candidate_set(src_ids, self.shared_vocab);
+        let candidate_count = cand_set.len();
+
+        let mut hits = Vec::new();
+        let mut prev = eos; // decoder is seeded with EOS, as in `greedy`
+        for step in 0..max_len {
+            let top = self.decode_step(prev, step, &context, seq, &mut cells);
+            // Full-vocab argmax — the shortlist does NOT decide the token here.
+            let next = argmax(&self.project(&top));
+            hits.push(cand_set.contains(&next));
+            if next == eos {
+                break;
+            }
+            prev = next;
+        }
+        Some(AcceptanceProbe {
+            hits,
+            candidate_count,
+        })
     }
 
     /// Translate one sentence and return token-level [`Aligned`] output for a

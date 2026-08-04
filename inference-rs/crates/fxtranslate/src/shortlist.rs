@@ -102,6 +102,16 @@ impl Shortlist {
 
         set.into_iter().collect()
     }
+
+    /// The same per-sentence candidate ids as [`candidates`], but as a hash set
+    /// for O(1) membership tests. Used by the speculative-decoding acceptance
+    /// probe (`Engine::acceptance_probe`, notes/21), which asks per decode step
+    /// whether the full-vocab argmax lies in this set — i.e. whether a shortlist
+    /// draft would have guessed that token correctly. Contents are identical to
+    /// `candidates`; only the ordering (none) and the lookup cost differ.
+    pub fn candidate_set(&self, src_ids: &[u32], shared: bool) -> std::collections::HashSet<u32> {
+        self.candidates(src_ids, shared).into_iter().collect()
+    }
 }
 
 #[cfg(test)]

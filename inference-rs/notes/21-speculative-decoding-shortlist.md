@@ -149,6 +149,45 @@ Primary gate everywhere: **speculative output ids == plain full-vocab greedy ids
 chrF therefore identical). Secondary: acceptance rate A, decode wps, aggregate wps vs baselines in
 `final_comparison.py`. Reuse `ggml/quality_llama_decoder.py`-style chrF tooling and the corpora.
 
+## Phase 0 results — GO (measured 2026-08-04)
+
+Implemented and run. The probe is `Engine::acceptance_probe` (`crates/fxtranslate/src/engine.rs`)
++ `Shortlist::candidate_set` (`src/shortlist.rs`), driven by `examples/acceptance_probe.rs`
+(`task rs:spec-probe`). It decodes plain full-vocab greedy — the shortlist never decides a token —
+and records per step whether the full-vocab argmax is in the sentence's shortlist candidate set.
+Gate test `acceptance_probe_mirrors_full_vocab_greedy` pins that the probe walks the exact
+full-vocab greedy path (step count == shortlist-free `greedy` length + 1 for EOS).
+
+Corpus: `corpora/nllb-en-fr.txt`, 1000 sentences, 24 052 decode steps, en→fr int8 model with the
+shipped `lex.50.50` shortlist.
+
+- **Overall acceptance: 99.2%** (23 863 / 24 052 steps; only 189 mismatches). Far above the 70%
+  go/no-go bar. This is the key finding: the shortlist is a near-perfect *guesser* even though it
+  was a quality-losing *decider* — the ~0.8% it gets wrong is exactly what the full-vocab verifier
+  now corrects for free ([[inference-rs-validation]]).
+- **Shortlist size:** mean 705, median 696, max 1344 candidates/sentence — the draft-projection
+  width (S). Small vs the 32 000 full vocab, so drafts are cheap.
+- **Run lengths:** in-shortlist runs are long (mode ~14–26 consecutive correct guesses), so
+  acceptance barely falls off with K — larger K keeps paying.
+- **Simulated A (tokens accepted / verify haul) and predicted decode speedup** (P = 0.8; opt =
+  note's ceiling with free layer re-runs, real = layers re-run K×/round):
+
+  | K | A | hauls/tok | decode↑ opt | decode↑ real |
+  |---|-----|-----|------|------|
+  | 2 | 1.95 | 0.512 | 1.64× | 1.63× |
+  | 3 | 2.85 | 0.350 | 2.08× | 2.04× |
+  | 4 | 3.72 | 0.269 | 2.41× | 2.32× |
+  | 5 | 4.54 | 0.220 | 2.66× | 2.52× |
+  | 6 | 5.32 | 0.188 | 2.86× | 2.66× |
+  | 8 | 6.80 | 0.147 | 3.15× | 2.83× |
+
+**Verdict: GO.** Acceptance is high enough that A grows almost linearly in K (mismatches are rare),
+so the note's `K=4–6` start is conservative — adaptive/large K is worth trying in Phase 3. Proceed
+to Phase 1 (single-sentence speculative loop). Two caveats before trusting the *absolute* speedup:
+(1) confirm P≈0.8 with the `notes/20` DRAM-vs-cache probe — the table scales with P; (2) the model
+excludes the cheap draft-projection cost (S≈705 columns × K steps/round), a mild real-world haircut
+the Phase 1 wps measurement will show directly.
+
 ## Cross-refs
 `notes/20` (encoder/decoder opportunity map; this is decoder item D2, plus the DRAM-vs-cache
 measure-first), `notes/18` (decode is bandwidth-bound on the projection; batching + row

@@ -70,6 +70,54 @@ fn near_tie_casing_matches_apart_from_case() {
     assert_eq!(got.to_lowercase(), "bonjour, comment allez-vous ?");
 }
 
+/// The Phase-0 speculative-decoding acceptance probe (notes/21) walks the exact
+/// full-vocab greedy path: it never lets the shortlist decide a token. Pin that by
+/// checking the probe's step count equals a shortlist-free engine's greedy output
+/// length plus one — the extra step is the terminal EOS the probe also records.
+/// This is the property the whole plan rests on: the probe (and, later, the
+/// speculative decoder it green-lights) reproduces plain full-vocab greedy exactly,
+/// so the acceptance rate it reports is measured against the real reference path.
+#[test]
+fn acceptance_probe_mirrors_full_vocab_greedy() {
+    let Some(probe_engine) = engine() else { return };
+    // A shortlist-free engine decodes plain full-vocab greedy — the probe's reference.
+    let plain = Engine::load(MODEL, VOCAB, VOCAB).expect("engine loads");
+
+    for text in [
+        "Hello world.",
+        "The cat sat on the mat.",
+        "I love programming.",
+    ] {
+        let src = probe_engine.src_ids(text);
+        let greedy = plain.greedy(&src);
+        let probe = probe_engine
+            .acceptance_probe(&src)
+            .expect("shortlist attached");
+        // hits: one per emitted token plus the terminal EOS step.
+        assert_eq!(
+            probe.hits.len(),
+            greedy.len() + 1,
+            "probe steps mirror full-vocab greedy for {text:?}"
+        );
+        // The candidate set is non-trivial (the membership oracle is real).
+        assert!(probe.candidate_count > 0);
+    }
+}
+
+/// The probe requires a shortlist (its candidate set is the membership oracle);
+/// with none attached it returns `None` rather than silently measuring nothing.
+#[test]
+fn acceptance_probe_requires_shortlist() {
+    if !std::path::Path::new(MODEL).exists() || !std::path::Path::new(VOCAB).exists() {
+        eprintln!("skipping: model or vocab absent");
+        return;
+    }
+    let plain = Engine::load(MODEL, VOCAB, VOCAB).expect("engine loads");
+    assert!(plain
+        .acceptance_probe(&plain.src_ids("Hello world."))
+        .is_none());
+}
+
 /// A single over-long line is silently truncated — the model translates a prefix
 /// and drops the rest, with no error or warning.
 ///
