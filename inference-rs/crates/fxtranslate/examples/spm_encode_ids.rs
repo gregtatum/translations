@@ -10,7 +10,9 @@ use std::io::{self, BufRead, Write};
 use fxtranslate::spm::SpmVocab;
 
 fn main() {
-    let path = std::env::args().nth(1).expect("usage: spm_encode_ids <path.spm>");
+    let path = std::env::args()
+        .nth(1)
+        .expect("usage: spm_encode_ids <path.spm>");
     let vocab = SpmVocab::load(&path).expect("vocab parses");
 
     let stdin = io::stdin();
