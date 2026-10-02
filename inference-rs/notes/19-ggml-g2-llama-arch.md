@@ -196,16 +196,21 @@ persistent batch/graph across steps instead of `llama_batch_init`/`free` per tok
 agent's flagged per-sentence encoder-output host copy is *not* the bottleneck — the encoder is
 llama.cpp's strong suit here.
 
-### M4 read (upstreaming)
+### M4 read (upstreamability as a property — NOT a plan to upstream)
 
-Perf is **neutral-to-mildly-positive** for an upstream PR, not a blocker. At single thread
+**Guardrail: do NOT open a pull request against llama.cpp.** Whether the arch is ever
+upstreamed is a human decision for Greg/the team to make and act on directly; nothing in this
+work should submit, draft-for-submission, or otherwise action an upstream PR. The notes below
+assess *how upstreamable the change is* as a maintenance-model data point for that decision —
+they are not a step toward opening one.
+
+On that assessment: perf is **neutral-to-mildly-positive**, not a blocker. At single thread
 llama.cpp already beats G1, the encoder is materially faster, and memory (195 MiB) stays a
 third of ONNX and half of Firefox — the memory story is a genuine selling point. The 4t gap is
 a **greedy-driver limitation** (one-token single-sequence decode), not an arch cost, and lives
-in Gecko's `LlamaRunner` two-phase glue (M4 work) rather than in the arch code the PR proposes.
-The honest framing: the arch is competitive and memory-lean today; closing the last ~10% to
-G1's thread scaling is decoder-driver batching work, deferrable and orthogonal to the upstream
-arch PR.
+in Gecko's `LlamaRunner` two-phase glue rather than in the arch code itself. The honest
+framing: the arch is competitive and memory-lean today; closing the last ~10% to G1's thread
+scaling is decoder-driver batching work, deferrable and orthogonal to the arch code.
 
 ## M3b — block-batched decode: tried, measured, REGRESSED (do not ship)
 
