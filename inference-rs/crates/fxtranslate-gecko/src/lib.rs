@@ -242,7 +242,10 @@ pub unsafe extern "C" fn fxtranslate_translate(
             2
         }
         Err(payload) => {
-            set_last_error(format!("panic during translate: {}", panic_message(&*payload)));
+            set_last_error(format!(
+                "panic during translate: {}",
+                panic_message(&*payload)
+            ));
             3
         }
     }
@@ -555,7 +558,11 @@ pub unsafe extern "C" fn fxtranslate_aligned_free(ptr: *mut FxAligned) {
             drop(Vec::from_raw_parts(a.text_ptr, a.text_len, a.text_len));
         }
         if !a.src_norm_ptr.is_null() {
-            drop(Vec::from_raw_parts(a.src_norm_ptr, a.src_norm_len, a.src_norm_len));
+            drop(Vec::from_raw_parts(
+                a.src_norm_ptr,
+                a.src_norm_len,
+                a.src_norm_len,
+            ));
         }
         if !a.src_tokens_ptr.is_null() {
             drop(Vec::from_raw_parts(

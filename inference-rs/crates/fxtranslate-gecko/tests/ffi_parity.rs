@@ -63,12 +63,7 @@ fn last_error() -> String {
 ///
 /// # Safety
 /// Requires valid model/vocab/shortlist byte slices.
-unsafe fn c_abi_translate(
-    model: &[u8],
-    vocab: &[u8],
-    shortlist: &[u8],
-    text: &str,
-) -> String {
+unsafe fn c_abi_translate(model: &[u8], vocab: &[u8], shortlist: &[u8], text: &str) -> String {
     // Shared vocab: en-fr ships one vocab.enfr.spm used as both src and trg.
     let engine: *mut FxEngine = fxtranslate_engine_new(
         model.as_ptr(),
@@ -163,10 +158,20 @@ fn c_abi_no_shortlist_matches_standalone() {
             ptr::null(),
             0,
         );
-        assert!(!engine.is_null(), "no-shortlist engine_new null: {}", last_error());
+        assert!(
+            !engine.is_null(),
+            "no-shortlist engine_new null: {}",
+            last_error()
+        );
         let mut out_ptr = ptr::null_mut();
         let mut out_len = 0usize;
-        let rc = fxtranslate_translate(engine, text.as_ptr(), text.len(), &mut out_ptr, &mut out_len);
+        let rc = fxtranslate_translate(
+            engine,
+            text.as_ptr(),
+            text.len(),
+            &mut out_ptr,
+            &mut out_len,
+        );
         assert_eq!(rc, 0, "no-shortlist translate rc {rc}: {}", last_error());
         let out = String::from_utf8(std::slice::from_raw_parts(out_ptr, out_len).to_vec()).unwrap();
         fxtranslate_string_free(out_ptr, out_len);
@@ -202,8 +207,14 @@ fn malformed_model_returns_null_not_panic() {
             shortlist.len(),
         )
     };
-    assert!(engine.is_null(), "truncated model must yield null, not a handle");
-    assert!(!last_error().is_empty(), "truncated model must set a last-error");
+    assert!(
+        engine.is_null(),
+        "truncated model must yield null, not a handle"
+    );
+    assert!(
+        !last_error().is_empty(),
+        "truncated model must set a last-error"
+    );
 
     // Truncated shortlist: Shortlist::from_bytes panics (try_into().unwrap on a
     // short slice); catch_unwind must turn that into a null + last-error.
@@ -235,14 +246,29 @@ fn null_and_empty_inputs_are_clean_errors() {
     // Null model with a nonzero length: a caller bug, must be a clean error not a
     // segfault. (Length nonzero so slice_from_raw actually rejects the null ptr.)
     let engine = unsafe {
-        fxtranslate_engine_new(ptr::null(), 16, ptr::null(), 0, ptr::null(), 0, ptr::null(), 0)
+        fxtranslate_engine_new(
+            ptr::null(),
+            16,
+            ptr::null(),
+            0,
+            ptr::null(),
+            0,
+            ptr::null(),
+            0,
+        )
     };
     assert!(engine.is_null(), "null model ptr must yield null");
     assert!(!last_error().is_empty(), "null model must set a last-error");
 
     // Null out-params on translate: rc != 0, no crash.
     let rc = unsafe {
-        fxtranslate_translate(ptr::null_mut(), ptr::null(), 0, ptr::null_mut(), ptr::null_mut())
+        fxtranslate_translate(
+            ptr::null_mut(),
+            ptr::null(),
+            0,
+            ptr::null_mut(),
+            ptr::null_mut(),
+        )
     };
     assert_ne!(rc, 0, "null out-params must be a nonzero rc");
 
@@ -295,7 +321,11 @@ fn c_abi_aligned_matches_standalone_and_is_well_formed() {
                 shortlist.as_ptr(),
                 shortlist.len(),
             );
-            assert!(!engine.is_null(), "aligned engine_new null: {}", last_error());
+            assert!(
+                !engine.is_null(),
+                "aligned engine_new null: {}",
+                last_error()
+            );
 
             let mut out: *mut FxAligned = ptr::null_mut();
             let rc = fxtranslate_translate_aligned(engine, text.as_ptr(), text.len(), &mut out);
@@ -308,18 +338,32 @@ fn c_abi_aligned_matches_standalone_and_is_well_formed() {
             let ffi_text =
                 String::from_utf8(std::slice::from_raw_parts(a.text_ptr, a.text_len).to_vec())
                     .expect("aligned text is UTF-8");
-            assert_eq!(ffi_text, direct.target_text, "aligned C ABI text diverged: {text:?}");
+            assert_eq!(
+                ffi_text, direct.target_text,
+                "aligned C ABI text diverged: {text:?}"
+            );
 
             // source_normalized round-trips.
             let ffi_src_norm = String::from_utf8(
                 std::slice::from_raw_parts(a.src_norm_ptr, a.src_norm_len).to_vec(),
             )
             .expect("aligned src_norm is UTF-8");
-            assert_eq!(ffi_src_norm, direct.source_normalized, "src_norm diverged: {text:?}");
+            assert_eq!(
+                ffi_src_norm, direct.source_normalized,
+                "src_norm diverged: {text:?}"
+            );
 
             // Token counts match the standalone shape and the matrix dims.
-            assert_eq!(a.src_tokens_len, direct.source_tokens.len(), "src token count");
-            assert_eq!(a.trg_tokens_len, direct.target_tokens.len(), "trg token count");
+            assert_eq!(
+                a.src_tokens_len,
+                direct.source_tokens.len(),
+                "src token count"
+            );
+            assert_eq!(
+                a.trg_tokens_len,
+                direct.target_tokens.len(),
+                "trg token count"
+            );
             assert_eq!(a.align_rows, a.trg_tokens_len, "rows == trg tokens");
             assert_eq!(a.align_cols, a.src_tokens_len, "cols == src tokens");
 
@@ -347,7 +391,11 @@ fn c_abi_aligned_matches_standalone_and_is_well_formed() {
                     (sum - 1.0).abs() < 1e-3,
                     "alignment row {r} sum {sum} not ~1 for {text:?}"
                 );
-                assert_eq!(row, direct.alignments[r].as_slice(), "flat row {r} != nested");
+                assert_eq!(
+                    row,
+                    direct.alignments[r].as_slice(),
+                    "flat row {r} != nested"
+                );
             }
 
             fxtranslate_aligned_free(out);
@@ -361,14 +409,13 @@ fn c_abi_aligned_matches_standalone_and_is_well_formed() {
 #[test]
 fn c_abi_aligned_bad_inputs_are_clean_errors() {
     // Null out-pointer: nonzero rc, no crash.
-    let rc = unsafe { fxtranslate_translate_aligned(ptr::null_mut(), ptr::null(), 0, ptr::null_mut()) };
+    let rc =
+        unsafe { fxtranslate_translate_aligned(ptr::null_mut(), ptr::null(), 0, ptr::null_mut()) };
     assert_ne!(rc, 0, "null out must be a nonzero rc");
 
     // Null engine with a valid out-pointer: nonzero rc, *out left null.
     let mut out: *mut FxAligned = 1 as *mut FxAligned;
-    let rc = unsafe {
-        fxtranslate_translate_aligned(ptr::null_mut(), ptr::null(), 0, &mut out)
-    };
+    let rc = unsafe { fxtranslate_translate_aligned(ptr::null_mut(), ptr::null(), 0, &mut out) };
     assert_ne!(rc, 0, "null engine must be a nonzero rc");
     assert!(out.is_null(), "null engine must leave *out null");
 
