@@ -1545,8 +1545,10 @@ def _right_for(step: Step) -> str:
         detail = step.status.detail if step.status else ""
         return color(f"{detail} (dry-run)".strip(), "dim")
     if step.result is not None:
-        detail = step.done_detail if step.done_detail is not None else (
-            step.status.detail if step.status else ""
+        detail = (
+            step.done_detail
+            if step.done_detail is not None
+            else (step.status.detail if step.status else "")
         )
         return f"{detail} {format_duration(step.result['duration_ms'])}".strip()
     return step.status.detail if step.status else ""
