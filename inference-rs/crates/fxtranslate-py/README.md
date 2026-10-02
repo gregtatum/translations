@@ -1,8 +1,6 @@
 # fxtranslate
 
-Translate with [Firefox Translations](https://mozilla.github.io/translations/firefox-models/) models from Python — a **library** powered by the same lightweight, CPU-only models Firefox ships for on-device translation. The engine is native compiled Rust (fast, CPU-only, no GPU), and it discovers, downloads, and caches the models for you; no API keys, no network round-trips to a translation service, nothing leaves your machine after the model download.
-
-Unlike the npm/wasm build, the Python wheel ships the fast, batteries-included engine: the [gemmology](https://github.com/mozilla/gemmology) SIMD int8 GEMM kernel, `mmap`, ICU4X sentence segmentation, and built-in networked model discovery/download/caching. Prefer a native binary, a Rust dependency, or Node? See [Related packages](#related-packages).
+Translate using the [Firefox Translations](https://mozilla.github.io/translations/firefox-models/) models. These are high-quality, lightweight, CPU-optimized models that Firefox ships for on-device translation.
 
 ## Install
 
@@ -10,66 +8,154 @@ Unlike the npm/wasm build, the Python wheel ships the fast, batteries-included e
 $ pip install fxtranslate
 ```
 
-The first release ships an sdist plus one platform wheel (built on the release machine). On other platforms `pip` compiles from source — that needs a Rust and C++ toolchain, and it falls back to the portable scalar kernel automatically if no SIMD backend is wired for your target — until the full binary-wheel matrix lands.
+Requires Python 3.8 or newer. Prebuilt wheels cover Linux (x86_64 and aarch64), macOS (Apple silicon), and Windows (x86_64). Other platforms, install from the source distribution, which compiles the engine locally. You'll need a [Rust toolchain](https://rustup.rs) and a C++ compiler installed first.
 
-## Library, batteries-included
+## The CLI
 
-Lead with this — the native advantage over the wasm build. One call discovers the model for the pair, downloads and hash-verifies it into a local cache, builds the engine, and is ready to translate:
+```sh
+# Discover what models are available.
+$ fxtranslate list
+$ fxtranslate list es
+$ fxtranslate list --all
 
-```python
+# Translate a phrase. The model for the pair is discovered, downloaded, and
+# cached on first use, then reused from disk on subsequent runs.
+$ fxtranslate translate en es "The weather is nice today."
+> El clima es agradable hoy.
+
+# You can switch languages.
+$ fxtranslate translate en de "Translations are fun"
+> Übersetzungen machen Spaß
+
+# Changing the language order changes the translation direction.
+$ fxtranslate translate es en "Buenos días, ¿cómo estás?"
+> Good morning, how are you?
+
+# When translating between languages where there is not a specific matching language pair,
+# it translates through a "pivot language".
+# Here Spanish to French pivots through a common English model: es → en → fr.
+$ fxtranslate translate es fr "Buenos días."
+> bonjour.
+
+# Translate entire documents by piping text into the CLI.
+$ cat document.txt | fxtranslate translate en es > document-es.txt
+
+# Enter into an interactive translation mode.
+$ fxtranslate translate en es
+
+# Access the full CLI documentation.
+$ fxtranslate --help
+```
+
+## Model usage
+
+The auto-discovery is powered by Firefox's internal model delivery service. This should not be used for production services. Please download and re-host the models. They can be downloaded through the CLI, or manually from the [mozilla/translations models dashboard](https://mozilla.github.io/translations/firefox-models/). The CLI has best-effort support for model downloads, but may break.
+
+## Library examples
+
+Load models from your local model store.
+
+```py
+from pathlib import Path
 from fxtranslate import Translator
 
-t = Translator.load("en", "es")          # discover → download → cache → ready
-print(t.translate("The weather is nice today."))
-# El clima es agradable hoy.
+# English-Spanish has a shared vocab file.
+model_dir = Path("models/en-es")
+vocab = (model_dir / "vocab.enes.spm").read_bytes()
 
-# translate_long segments multi-sentence / long input and translates each part
-# within the model's context window, instead of truncating.
-print(t.translate_long(long_article))
+en_es = Translator(
+    model=(model_dir / "model.enes.intgemm.alphas.bin").read_bytes(),
+    src_vocab=vocab,
+    trg_vocab=vocab,
+)
+
+print(en_es.translate_long("The weather is nice today. Don't you think so?"))
+print(en_es.translate("The weather is nice today."))
 ```
 
-## Library, bring-your-own model
+`translate_long` segments the text into sentences and translates each one, which is
+the right default for input you haven't split yourself. `translate` treats its
+argument as a single sentence and silently truncates anything past the model's
+context size.
 
-If you already have the model files on disk (recommended for production — see [The models](#the-models)), pass the bytes directly. You supply the marian `.bin` model and the source/target SentencePiece vocabularies (the same file for most pairs; only CJK pairs differ) — pass the source vocab twice for a shared-vocab pair:
+Some pairs have split vocabs, like English-Japanese. The source and target vocabs differ.
 
-```python
-from fxtranslate import Translator
-
-model = open("en-es/model.bin", "rb").read()
-vocab = open("en-es/vocab.spm", "rb").read()
-t = Translator(model, vocab, vocab)       # src vocab twice for shared-vocab pairs
-print(t.translate("The weather is nice today."))
+```py
+model_dir = Path("models/en-ja")
+en_ja = Translator(
+    model=(model_dir / "model.enja.intgemm.alphas.bin").read_bytes(),
+    src_vocab=(model_dir / "srcvocab.enja.spm").read_bytes(),
+    trg_vocab=(model_dir / "trgvocab.enja.spm").read_bytes(),
+)
 ```
 
-## Discovery helpers
+Most supported languages can translate between each other. When no direct model exists for a pair, the translation routes through a pivot language; for 50 languages that means fewer than 100 models rather than the 2,450 a fully direct matrix would need. The CLI and `Translator.load` pick the route automatically, but it can also be done manually.
 
-`fxtranslate.discovery` re-exports the pure model-discovery/routing surface the batteries-included path is built on — over a Remote Settings records body, returning native Python objects (no JSON strings) — for building your own model-management flow:
+```py
+es_en = Translator(...)
+en_fr = Translator(...)
 
-```python
-from fxtranslate import discovery
-
-route = discovery.resolve_route(records_json, "en", "es")  # {"kind": "direct", ...}
-cat = discovery.catalog(records_json, "en")           # {"bidirectional": [...], ...}
-pairs = discovery.model_pairs(records_json)           # list[(src, trg)]
-recs = discovery.parse_records(records_json)          # list[dict]
-sents = discovery.segment_sentences(text)             # list[str] (ICU4X UAX #29)
-plain = discovery.verify_and_decompress(zst_bytes, sha256_hex)  # bytes
+print(en_fr.translate_long(es_en.translate_long("Buenos días.")))
 ```
 
-## The models
+Fetch all model files once, to re-host them. This can be several gigabytes.
 
-`fxtranslate` uses the models Firefox ships. They're discovered through Mozilla's Remote Settings and downloaded from Firefox's CDN, then cached under the platform-native cache directory — `~/Library/Caches/fxtranslate/models` on macOS, `$XDG_CACHE_HOME/fxtranslate/models` on Linux, `%LOCALAPPDATA%\fxtranslate\models` on Windows — one subdirectory per language pair.
+```py
+from fxtranslate import Cache, discovery
 
-**That hosting is provisioned for Firefox, not for third-party traffic**, and neither the endpoints nor the availability of any particular model are a stable contract for downstream projects. `Translator.load` is a convenient way to try the engine; if you're shipping a product on top of it, mirror the model files you depend on, serve them from infrastructure you control, and load them with the bring-your-own-model `Translator(...)` constructor.
+records = discovery.fetch_records_body()
+pairs = discovery.model_pairs(records)
 
-## Related packages
+for src, trg in pairs:
+    discovery.add_models(src, trg, cache_dir="./models", progress=True)
 
-The same engine is published across ecosystems on one shared version, so you can pick the artifact that fits:
+cache = Cache("./models")
+print(cache.pair_files("en-es"))
+# [ ('lex.50.50.enes.s2t.bin',        4198436,  '/path/to/models/en-es/lex.50.50.enes.s2t.bin'),
+#   ('model.enes.intgemm.alphas.bin', 31561787, '/path/to/models/en-es/model.enes.intgemm.alphas.bin'),
+#   ('vocab.enes.spm',                816054,   '/path/to/models/en-es/vocab.enes.spm')]
+```
 
-- **[`fxtranslate`](https://crates.io/crates/fxtranslate)** (crates.io) — the Rust engine library. Native SIMD int8 kernel, optional built-in model management.
-- **[`fxtranslate-cli`](https://crates.io/crates/fxtranslate-cli)** (crates.io) — the native Rust CLI, installed with `cargo install fxtranslate-cli`.
-- **[`fxtranslate`](https://www.npmjs.com/package/fxtranslate)** (npm) — the Node CLI + library (WebAssembly core).
+Or just specific ones.
+
+```py
+for src, trg in [("en", "es"), ("es", "en"), ("en", "de"), ("de", "en")]:
+    discovery.add_models(src, trg, cache_dir="./models", progress=True)
+```
+
+Without a `cache_dir`, models land in the platform-native cache directory:
+
+ * **macOS** – `~/Library/Caches/fxtranslate/models`
+ * **Linux** – `$XDG_CACHE_HOME/fxtranslate/models` or `~/.cache/fxtranslate/models`
+ * **Windows** – `%LOCALAPPDATA%\fxtranslate\models`
+
+`Cache` allows for working with cached models.
+
+```py
+from fxtranslate import Cache
+
+cache = Cache()
+print(cache.root)
+# /path/to/cache/fxtranslate/models
+
+for entry in cache.list_cached():
+    print(entry["name"], entry["bytes"])
+  # en-de 36719532
+  # en-es 36576277
+
+# Removes the model.
+cache.remove_pair("en-de")
+```
+
+## How this works
+
+The underlying inference engine is a portable Rust library based on the [Marian](https://github.com/marian-nmt/marian-dev/) expression graph powered by the [Gemmology matrix library](https://github.com/mozilla/gemmology). The Firefox models have a similar architecture to the traditional encoder/decoder [transformer models](https://arxiv.org/abs/1706.03762), but with a shallow RNN decoder based on the [SSRU described here](https://aclanthology.org/D19-5632/). These models come from [Mozilla's translation training program](https://github.com/mozilla/translations). They are student models distilled and quantized for CPU from larger transformer-based teacher models.
+
+- **[`fxtranslate` on crates.io](https://crates.io/crates/fxtranslate)** – The Rust inference engine library
+- **[`fxtranslate-cli` on crates.io](https://crates.io/crates/fxtranslate-cli)** – The Rust CLI
+- **[`fxtranslate` on npm](https://www.npmjs.com/package/fxtranslate)** – The Node.js bindings library and CLI
+- **[`fxtranslate` on pypi](https://pypi.org/project/fxtranslate/)** – The Python bindings library and CLI
 
 ## License
 
-MPL-2.0. The engine is a Rust port of the [Firefox Translations](https://github.com/mozilla/translations) inference engine.
+MPL-2.0 from [Firefox Translations](https://github.com/mozilla/translations)
