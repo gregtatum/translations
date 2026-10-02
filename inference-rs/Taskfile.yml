@@ -105,6 +105,12 @@ tasks:
     cmds:
       - cargo fmt {{.CLI_ARGS}}
 
+  lint-fix:
+    desc: Fix all automatically fixable inference-rs lint errors. Useful before pushing.
+    cmds:
+      - task: lint-black-fix
+      - task: lint-rust-fix
+
   lint-ci:
     desc: Fail if the GitHub CI workflow drifts from the rs:check check list.
     summary: |
