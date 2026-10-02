@@ -92,7 +92,7 @@ The same engine is published across ecosystems on one shared version, so you can
 
 ## Contributing
 
-Building the wasm core, the conformance strategy that keeps this package byte-identical to the Rust CLI, and how to run the parity harness are documented in [DEVELOPMENT.md](./DEVELOPMENT.md).
+Building the wasm core, the conformance strategy that keeps this package byte-identical to the Rust CLI, and how to run the parity harness are documented in [DEVELOPMENT.md](https://github.com/gregtatum/translations/blob/inference-rs/inference-rs/DEVELOPMENT.md).
 
 ## License
 

@@ -1,125 +1,67 @@
 # inference-rs
 
-Development workspace for the Rust reimplementation of the Firefox Translations inference engine,
-validated against the existing C++ engine (`inference/build/src/app/translator-cli`).
+A Rust reimplementation of the Firefox Translations inference engine, validated against the
+C++ engine it replaces (`inference/build/src/app/translator-cli`). One engine ships to four
+places: crates.io, npm, PyPI, and Firefox.
 
-This file is the internal orientation for working *in* the workspace. For using the engine or the
-CLI — installation, the library API, performance — see the crate README:
-[`crates/fxtranslate/README.md`](./crates/fxtranslate/README.md).
+This file is the orientation for working *in* the workspace. For *using* the engine or the CLI
+— installation, the library API, performance — see [`crates/fxtranslate/README.md`](./crates/fxtranslate/README.md).
 
-## Crates
+- [DEVELOPMENT.md](./DEVELOPMENT.md) — how correctness is established, how the four bindings
+  relate, conformance, CI, and the conventions this directory follows.
+- [RELEASING.md](./RELEASING.md) — shipping all four artifacts on one shared version.
 
-Three crates under `crates/`:
+## Get going
 
-- **[`fxtranslate`](./crates/fxtranslate)** — the engine library. Fast by default (native SIMD int8
-  kernel where wired, portable scalar fallback everywhere else). Also carries optional model
-  management (Remote Settings discovery + verified cache) behind the `download`/`net` features.
-- **[`fxtranslate-cli`](./crates/fxtranslate-cli)** — the batteries-included CLI (binary named
-  `fxtranslate`): discover → download/cache → translate. A thin shell over the engine.
-- **[`fxtranslate-oracle`](./crates/fxtranslate-oracle)** — dev-only validation harness and raw
-  diagnostic binary. The trace comparator, replay bisector, and the marian-oracle parity tests live
-  here so none of it can leak into the shipped library or CLI. `publish = false`.
+You need a [Rust toolchain](https://rustup.rs), [go-task](https://taskfile.dev),
+[cargo-nextest](https://nexte.st), and a C++ compiler — the default `fast` build compiles a
+small SIMD shim (`gemmology_shim.cpp`) through `cc`, and `--features portable` is the
+toolchain-less fallback. Building the reference C++ engine (`task inference-build`) needs its
+own toolchain; `wasm-pack` and `maturin` are needed only for the npm and Python bindings. Tasks
+print an install hint when a tool they need is missing, so you can add them as you go.
 
-## Tasks
+```bash
+task rs:check                                 # the gate: lints, tests, conformance, C++ engine build
+task rs:download-model -- en es               # fetch a model triple into data/models/
+task rs:fxtranslate -- translate en es "The weather is nice today."
+```
 
-Tasks live in `Taskfile.yml`, included by the repo-root Taskfile under the `rs` namespace, so run
-them from anywhere in the repo. `task rs:` lists them all; the ones you'll reach for:
+`task rs:check` is the one to run after any code change — it is the same set of checks CI runs,
+rendered as a compact pass/fail board.
 
-| task | what it does |
+**The Taskfile is the source of truth for how to run things**, and this file does not duplicate
+it. There are 48 tasks:
+
+```bash
+task --list | grep '^\* rs:'       # every task with its one-line description
+task rs:<name> --summary           # the long form: what it does, what it needs, examples
+```
+
+## Map
+
+Every top-level entry in this directory:
+
+| path | what it is |
 |---|---|
-| `task rs:download-model -- en es` | Fetch a model+vocab+lex by pair from Remote Settings into `data/models/<src><trg>/`. |
-| `task rs:translate -- en es --text "…"` | Translate with the Rust engine (via the oracle diagnostic binary). |
-| `task rs:translate-reference -- en es --text "…"` | Translate with the reference C++ `translator-cli` — the oracle. |
-| `task rs:fxtranslate -- translate en es "…"` | Run the batteries-included CLI (its own model discovery/cache; `list` to enumerate pairs). |
-| `task rs:parity` | Greedy exact-match rate of the Rust engine vs. `translator-cli` over a corpus. |
-| `task rs:perf` | Engine perf (TTFT + tok/s), or record a samply profile. |
-| `task rs:test` / `task rs:check` | Workspace tests / all checks incl. the C++ engine build. |
-| `task rs:release` | Release build + binary-size characterization + artifact validation. |
+| `crates/fxtranslate` | The engine library. Published to crates.io. |
+| `crates/fxtranslate-cli` | The batteries-included CLI (`fxtranslate` binary). Published to crates.io, and the reference every other CLI is held to. |
+| `crates/fxtranslate-wasm` | wasm-bindgen binding. Built by `wasm-pack` and copied into `npm/`; not published to crates.io. |
+| `crates/fxtranslate-py` | PyO3 binding. Shipped to PyPI as a maturin wheel; not published to crates.io. |
+| `crates/fxtranslate-gecko` | C-ABI binding, vendored into Firefox. Not published anywhere. |
+| `crates/fxtranslate-oracle` | Dev-only validation harness and raw diagnostic binary — see its [README](./crates/fxtranslate-oracle/README.md). |
+| `npm/` | The npm package: a JS CLI and library over the copied wasm core. |
+| `onnx/` | Clean-room ONNX export evaluation — see its [README](./onnx/README.md). |
+| `ggml/` | Bare-libggml port evaluation — see its [README](./ggml/README.md). |
+| `scripts/` | The Python harnesses the tasks drive (checks, parity, perf, conformance, publish). Run them through `task`, not directly. |
+| `corpora/` | Committed text and token-id fixtures the harnesses translate, with `.sha256` companions. |
+| `notes/` | Numbered design and analysis history, oldest to newest. The highest numbers are the current thinking. |
+| `issues/` | Task specs, moved to `issues/closed/` when done. |
+| `artifacts/` | Generated output — traces, profiles, goldens. Entirely gitignored; nothing here is a source of truth. |
+| `architecture.md` | The model itself: why the decoder is an SSRU and not a Transformer decoder, and which `model.yml` keys lie. |
+| `gemm-backends.md` | The int8 GEMM backends, and where their numbers can legitimately diverge. |
+| `pivot-translations.md` | How pairs with no direct model (`es → fr`) route through a hub language. |
+| `Taskfile.yml` | Every task, included by the repo-root Taskfile under the `rs:` namespace. |
+| `CHANGELOG.md` | Release history. |
 
-`task rs:test` runs the workspace tests through [cargo-nextest](https://nexte.st) (a single global
-parallel pool — ~2× faster than `cargo test` here). Install it once with `cargo binstall cargo-nextest`
-(or `cargo install cargo-nextest`); the task prints an install hint if it's missing.
-
-## The oracle: how correctness is validated
-
-The reference C++ engine is the source of truth. It builds and runs natively on Apple Silicon
-(arm64) — no Docker:
-
-```bash
-task inference-build     # builds inference/build/src/app/translator-cli
-```
-
-On ARM that build uses the gemmology int8 backend, which runs the same `int8shiftAlphaAll` algorithm
-as the shipped WASM models — so a native build is a faithful reference-trace oracle for the Rust
-port. See [gemm-backends.md](./gemm-backends.md) for how the int8 backends line up across
-architectures.
-
-The Rust ops are validated two ways: op-level, against recorded intermediate tensors, and
-end-to-end, against reference translations (`task rs:parity`).
-
-### Recording a reference trace
-
-The C++ engine can record every intermediate tensor of one translation. Pass `--trace` to
-`translate-reference`:
-
-```bash
-# Writes artifacts/<src><trg>.trace (+ .trace.txt) by default. Keep --text short and
-# --cpu-threads 1 so the trace stays compact and complete.
-task rs:translate-reference -- en fr --text "Hello world." --cpu-threads 1 --trace
-```
-
-Each run writes two files: `<path>.trace` — the binary trace (one record per graph node in
-forward-execution order: `{id, op, name, dtype, shape, child ids, raw bytes}`), consumed by the Rust
-reader; and `<path>.trace.txt` — a human-readable manifest of the same nodes, shapes only, no tensor
-data. The binary format is documented at the top of
-[`inference/marian-fork/src/graph/trace_recorder.h`](../inference/marian-fork/src/graph/trace_recorder.h).
-
-Traces land in `artifacts/` (gitignored) and are large — a single short sentence is ~170 MB, because
-static model parameters are re-recorded on every decoding step. Under the hood the recorder keys off
-the `MARIAN_TRACE` env var (a no-op for normal runs); `--trace` just sets it for you.
-
-### Reading and comparing a trace (the Rust side)
-
-- **Reader:** [`crates/fxtranslate/src/trace.rs`](./crates/fxtranslate/src/trace.rs) —
-  `Trace::load(path)` parses a trace into per-node fixtures with typed views of the tensor bytes
-  (`to_f32`/`to_i8`/`to_i32`) and `Trace::inputs(index)` to resolve a node's inputs by child id.
-- **Comparator:** [`crates/fxtranslate-oracle/src/compare.rs`](./crates/fxtranslate-oracle/src/compare.rs)
-  — `assert_close` / `compare_f32` assert two `f32` slices match within a tight rtol/atol.
-- **Inspect from the CLI** (also a smoke check that the reader handles a real, full-size trace):
-
-  ```bash
-  cargo run -p fxtranslate-oracle -- trace artifacts/enfr.trace       # record count, op histogram
-  cargo run -p fxtranslate-oracle -- trace artifacts/enfr.trace 20    # + first 20 records
-  ```
-
-The real-trace integration tests skip when no trace is present, so `task rs:test` passes without one.
-
-## Publishing
-
-`fxtranslate` and `fxtranslate-cli` publish to crates.io together, in lockstep — one shared
-version, with the CLI pinning the engine exactly. `task rs:publish` fronts `scripts/publish.py`,
-which runs the whole sequence: bump both crates, build + test, publish the engine then the CLI
-(that order — the CLI's pin must resolve on crates.io first), and finally create + push the
-`fxtranslate-vX.Y.Z` tag. The dev-only `fxtranslate-oracle` is never published.
-
-```bash
-task rs:publish -- patch --dry-run   # preview: prints the plan, changes nothing
-task rs:publish -- patch             # release for real (or: minor / major / --set X.Y.Z)
-```
-
-Re-runs are safe — already-uploaded crates are skipped — and the tag only lands once both crates
-are up. You need `cargo login` with publish rights, a clean tree (`--allow-dirty` to override), and
-should be on `main`. `--no-push` tags locally without pushing.
-
-## Further reading
-
-- [`crates/fxtranslate/README.md`](./crates/fxtranslate/README.md) — engine + CLI usage, library API, performance.
-- [pivot-translations.md](./pivot-translations.md) — how non-English pairs (`es → fr`) are served by pivoting through English: route resolution, memory, the `list` views, and the cheat-proof audit.
-- [gemm-backends.md](./gemm-backends.md) — the int8 GEMM backends and how they diverge per architecture.
-- [onnx/README.md](./onnx/README.md) — the clean-room **ONNX export evaluation** (route B of note `15`): a
-  Python converter that rebuilds the en-fr student as ONNX graphs and validates them against the engine.
-  Driven by the `rs:onnx-*` tasks (`download-model`, `export`, `quantize`, `translate`, `dump`, `validate`, `quality`);
-  `download-model` fetches the float student `.npz` from GCS (auto-run as a dependency).
-- `notes/` — the design and build-out history: the parity bar and plan, the model architecture, the
-  memory/perf approach, the final comparisons (`01`–`10`), and the runtime-consolidation evaluations —
-  llama.cpp/GGUF (`14`) and ONNX/ORT (`15`).
+Downloaded models live outside this directory, in the repo-root `data/models/<src><trg>/`
+(gitignored), shared with the C++ engine.
