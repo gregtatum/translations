@@ -54,13 +54,16 @@ def main() -> int:
     out_bin.parent.mkdir(exist_ok=True)
     subprocess.run(
         [str(_DEC), "dump", str(_MODEL), str(out_bin), *[str(i) for i in src_ids]],
-        check=True, capture_output=True,
+        check=True,
+        capture_output=True,
     )
     log_llama = np.fromfile(out_bin, dtype=np.float32)
 
     ctx_g = ref.encode(src_ids)
     log_g, _ = ref.decode_step(
-        tok.eos_id, 0, ref.precompute_cross_kv(ctx_g),
+        tok.eos_id,
+        0,
+        ref.precompute_cross_kv(ctx_g),
         [np.zeros(npz.DIM, dtype=np.float32) for _ in range(npz.DEC_DEPTH)],
     )
     d = np.abs(log_llama.astype(np.float64) - log_g.astype(np.float64))
@@ -68,13 +71,17 @@ def main() -> int:
     gate1 = d.max() < _LOGITS_TOL and argmatch
     print("Gate 1 — first-step float logits vs numpy_ref (must be < 1e-3, argmax match):")
     print(f"    logits [{log_llama.size}]  abs max={d.max():.3e}  mean={d.mean():.3e}")
-    print(f"    argmax llama={log_llama.argmax()} golden={log_g.argmax()}  "
-          f"{'PASS' if gate1 else 'FAIL'}\n")
+    print(
+        f"    argmax llama={log_llama.argmax()} golden={log_g.argmax()}  "
+        f"{'PASS' if gate1 else 'FAIL'}\n"
+    )
 
     # --- Gate 2: end-to-end greedy output ids vs G1 float ---
     llama_out = subprocess.run(
         [str(_DEC), "decode", str(_MODEL), "--", *[str(i) for i in src_ids]],
-        check=True, capture_output=True, text=True,
+        check=True,
+        capture_output=True,
+        text=True,
     ).stdout.strip()
 
     g1_out = "?"
@@ -83,7 +90,9 @@ def main() -> int:
         g1_out = subprocess.run(
             [str(_G1), str(_G1_MODEL), "decode"],
             input=" ".join(str(i) for i in src_ids) + "\n",
-            capture_output=True, text=True, check=True,
+            capture_output=True,
+            text=True,
+            check=True,
         ).stdout.strip()
         gate2 = llama_out == g1_out
     else:
@@ -95,11 +104,15 @@ def main() -> int:
         print(f"    G1:        {g1_out}")
         print(f"    {'PASS (id-identical)' if gate2 else 'FAIL (ids differ)'}\n")
     else:
-        print("    (G1 engine/GGUF not built; skipping the id comparison — run task rs:ggml-build)\n")
+        print(
+            "    (G1 engine/GGUF not built; skipping the id comparison — run task rs:ggml-build)\n"
+        )
 
     ok = gate1 and (gate2 in (True, None))
-    print(f"RESULT: Gate 1 {'PASS' if gate1 else 'FAIL'}, "
-          f"Gate 2 {'PASS' if gate2 else ('SKIP' if gate2 is None else 'FAIL')}")
+    print(
+        f"RESULT: Gate 1 {'PASS' if gate1 else 'FAIL'}, "
+        f"Gate 2 {'PASS' if gate2 else ('SKIP' if gate2 is None else 'FAIL')}"
+    )
     return 0 if ok else 1
 
 

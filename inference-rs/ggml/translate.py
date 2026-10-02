@@ -28,7 +28,10 @@ def translate(lines: list[str], precision: str) -> list[str]:
     ids_in = "\n".join(" ".join(str(i) for i in tok.encode_source(ln)) for ln in lines) + "\n"
     r = subprocess.run(
         [str(_BIN), str(gguf), "decode"],
-        input=ids_in, capture_output=True, text=True, check=True,
+        input=ids_in,
+        capture_output=True,
+        text=True,
+        check=True,
     )
     out = []
     for line in r.stdout.splitlines():

@@ -50,7 +50,9 @@ def _dump(model: str, src_ids: list[int]) -> tuple[np.ndarray, np.ndarray]:
         cwd=_HERE.parent,  # dump writes ggml/testdata/ relative to inference-rs/
         capture_output=True,
     )
-    enc = np.fromfile(_TESTDATA / "ggml_encoder.bin", dtype=np.float32).reshape(len(src_ids), npz.DIM)
+    enc = np.fromfile(_TESTDATA / "ggml_encoder.bin", dtype=np.float32).reshape(
+        len(src_ids), npz.DIM
+    )
     log = np.fromfile(_TESTDATA / "ggml_logits.bin", dtype=np.float32)
     return enc, log
 
@@ -70,7 +72,9 @@ def main() -> int:
     # Golden float reference (in-process, same code path onnx uses).
     ctx_g = ref.encode(src_ids)
     log_g, _ = ref.decode_step(
-        tok.eos_id, 0, ref.precompute_cross_kv(ctx_g),
+        tok.eos_id,
+        0,
+        ref.precompute_cross_kv(ctx_g),
         [np.zeros(npz.DIM, dtype=np.float32) for _ in range(npz.DEC_DEPTH)],
     )
 
@@ -83,8 +87,10 @@ def main() -> int:
     lmax = np.abs(log_f - log_g).max()
     argmatch = int(log_f.argmax()) == int(log_g.argmax())
     gate2 = emax < _GATE2_TOL and lmax < _GATE2_TOL * 1e3 and argmatch  # logits are larger-scale
-    print(f"    argmax ggml={log_f.argmax()} golden={log_g.argmax()}  "
-          f"{'PASS' if gate2 else 'FAIL'}\n")
+    print(
+        f"    argmax ggml={log_f.argmax()} golden={log_g.argmax()}  "
+        f"{'PASS' if gate2 else 'FAIL'}\n"
+    )
 
     # --- Gate 1: Q8_0 ggml vs inference-rs int8 oracle ---
     print("Gate 1 — ggml Q8_0 vs inference-rs int8 oracle (mutual top-K argmax):")
@@ -95,15 +101,19 @@ def main() -> int:
         print("    Produce it with `task rs:onnx-dump`, then re-run. Skipping Gate 1.")
         gate1 = None
     else:
-        enc_r = np.fromfile(_INFERRS / "inferrs_encoder.f32", dtype="<f4").reshape(len(src_ids), npz.DIM)
+        enc_r = np.fromfile(_INFERRS / "inferrs_encoder.f32", dtype="<f4").reshape(
+            len(src_ids), npz.DIM
+        )
         log_r = np.fromfile(_INFERRS / "inferrs_logits.f32", dtype="<f4")
         _stat("encoder (q8 vs intgemm)", enc_q, enc_r)
         _stat("logits  (q8 vs intgemm)", log_q, log_r)
         gg = set(int(i) for i in np.argsort(log_q)[::-1][:_TOPK])
         rr = set(int(i) for i in np.argsort(log_r)[::-1][:_TOPK])
         gate1 = log_q.argmax() in rr and log_r.argmax() in gg
-        print(f"    argmax ggml={log_q.argmax()} inferrs={log_r.argmax()}  "
-              f"mutual-top{_TOPK}={'PASS' if gate1 else 'FAIL'}")
+        print(
+            f"    argmax ggml={log_q.argmax()} inferrs={log_r.argmax()}  "
+            f"mutual-top{_TOPK}={'PASS' if gate1 else 'FAIL'}"
+        )
         print("    (int8 scheme distance to float golden, lower = closer:)")
         _stat("q8 vs float", enc_q, ctx_g)
         _stat("intgemm vs float", enc_r, ctx_g)
@@ -123,20 +133,27 @@ def main() -> int:
 
     def _decode(extra: list[str]) -> str:
         return subprocess.run(
-            [str(_BIN), gguf, "decode", *extra], input=ids_in,
-            capture_output=True, text=True, check=True,
+            [str(_BIN), gguf, "decode", *extra],
+            input=ids_in,
+            capture_output=True,
+            text=True,
+            check=True,
         ).stdout
 
     batched, solo = _decode([]), _decode(["solo"])
     gate3 = batched == solo
-    print(f"    {len(sents)} sentences (B={len(sents)} vs B=1): "
-          f"{'PASS (token-identical)' if gate3 else 'FAIL (batched != per-sentence)'}")
+    print(
+        f"    {len(sents)} sentences (B={len(sents)} vs B=1): "
+        f"{'PASS (token-identical)' if gate3 else 'FAIL (batched != per-sentence)'}"
+    )
     print()
 
     ok = gate2 and (gate1 in (True, None)) and gate3
-    print(f"RESULT: Gate 2 {'PASS' if gate2 else 'FAIL'}, "
-          f"Gate 1 {'PASS' if gate1 else ('SKIP' if gate1 is None else 'FAIL')}, "
-          f"Gate 3 {'PASS' if gate3 else 'FAIL'}")
+    print(
+        f"RESULT: Gate 2 {'PASS' if gate2 else 'FAIL'}, "
+        f"Gate 1 {'PASS' if gate1 else ('SKIP' if gate1 is None else 'FAIL')}, "
+        f"Gate 3 {'PASS' if gate3 else 'FAIL'}"
+    )
     return 0 if ok else 1
 
 

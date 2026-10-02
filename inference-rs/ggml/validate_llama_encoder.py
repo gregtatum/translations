@@ -44,7 +44,8 @@ def main() -> int:
     out.parent.mkdir(exist_ok=True)
     subprocess.run(
         [str(_BIN), str(_MODEL), str(out), *[str(i) for i in src_ids]],
-        check=True, capture_output=True,
+        check=True,
+        capture_output=True,
     )
 
     enc_llama = np.fromfile(out, dtype=np.float32).reshape(len(src_ids), npz.DIM)
@@ -56,7 +57,9 @@ def main() -> int:
     passed = amax < _TOL
 
     print("M1 gate — llama.cpp marian encoder vs numpy_ref golden (must be < 1e-4):")
-    print(f"    encoder [{len(src_ids)},{npz.DIM}]  abs max={amax:.3e}  mean={amean:.3e}  (rel {rel:.3f}%)")
+    print(
+        f"    encoder [{len(src_ids)},{npz.DIM}]  abs max={amax:.3e}  mean={amean:.3e}  (rel {rel:.3f}%)"
+    )
     print(f"\nRESULT: {'PASS' if passed else 'FAIL'} (abs max {amax:.3e} vs tol {_TOL:.0e})")
     return 0 if passed else 1
 

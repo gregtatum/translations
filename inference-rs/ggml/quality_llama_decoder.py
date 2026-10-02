@@ -33,8 +33,11 @@ _CORPUS = _HERE.parent / "corpora" / "nllb-en-fr.txt"
 def _g1_decode(model: Path, id_lines: list[list[int]]) -> list[list[int]]:
     inp = "\n".join(" ".join(str(i) for i in ids) for ids in id_lines) + "\n"
     out = subprocess.run(
-        [str(_G1), str(model), "decode"], input=inp,
-        capture_output=True, text=True, check=True,
+        [str(_G1), str(model), "decode"],
+        input=inp,
+        capture_output=True,
+        text=True,
+        check=True,
     ).stdout.splitlines()
     return [[int(x) for x in line.split()] for line in out]
 
@@ -44,7 +47,9 @@ def _llama_decode(model: Path, id_lines: list[list[int]]) -> list[list[int]]:
     for ids in id_lines:
         r = subprocess.run(
             [str(_DEC), "decode", str(model), "--", *[str(i) for i in ids]],
-            capture_output=True, text=True, check=True,
+            capture_output=True,
+            text=True,
+            check=True,
         ).stdout.strip()
         outs.append([int(x) for x in r.split()] if r else [])
     return outs

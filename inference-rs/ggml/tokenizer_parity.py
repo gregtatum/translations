@@ -100,9 +100,19 @@ def _llama_ids(vocab: Path, line: str) -> list[int]:
         tmp = f.name
     try:
         out = subprocess.run(
-            [str(_LLAMA_TOKENIZE), "-m", str(vocab), "-f", tmp,
-             "--ids", "--no-bos", "--no-escape"],
-            capture_output=True, text=True, check=True,
+            [
+                str(_LLAMA_TOKENIZE),
+                "-m",
+                str(vocab),
+                "-f",
+                tmp,
+                "--ids",
+                "--no-bos",
+                "--no-escape",
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
         ).stdout
     finally:
         Path(tmp).unlink(missing_ok=True)
@@ -122,9 +132,12 @@ def _spm_rs_reference(spm: Path, corpus: Path) -> list[list[int]]:
     lines = _read_lines(corpus)
     stdin = "\n".join(lines) + "\n"
     out = subprocess.run(
-        ["cargo", "run", "-q", "-p", "fxtranslate", "--example", "spm_encode_ids",
-         "--", str(spm)],
-        cwd=str(_INFERENCE_RS), input=stdin, capture_output=True, text=True, check=True,
+        ["cargo", "run", "-q", "-p", "fxtranslate", "--example", "spm_encode_ids", "--", str(spm)],
+        cwd=str(_INFERENCE_RS),
+        input=stdin,
+        capture_output=True,
+        text=True,
+        check=True,
     ).stdout
     ref = []
     for ln in out.splitlines():
@@ -139,8 +152,7 @@ def run_case(c: Case) -> tuple[int, int, list[str]]:
     lines = _read_lines(c.corpus)
     if c.golden_ids is not None:
         golden = [
-            [int(x) for x in g.split()] if g.strip() else []
-            for g in _read_lines(c.golden_ids)
+            [int(x) for x in g.split()] if g.strip() else [] for g in _read_lines(c.golden_ids)
         ]
         golden_src = c.golden_ids.name
     else:
@@ -155,17 +167,18 @@ def run_case(c: Case) -> tuple[int, int, list[str]]:
         if got == g:
             matches += 1
         else:
-            diffs.append(
-                f"  line {i+1}: {line!r}\n    llama.cpp: {got}\n    golden   : {g}"
-            )
+            diffs.append(f"  line {i+1}: {line!r}\n    llama.cpp: {got}\n    golden   : {g}")
     print(f"[{c.name}] golden={golden_src}  {matches}/{len(lines)} exact")
     return matches, len(lines), diffs
 
 
 def main() -> None:
     if not _LLAMA_TOKENIZE.exists():
-        print(f"ERROR: llama-tokenize not found at {_LLAMA_TOKENIZE} "
-              f"(set LLAMA_TOKENIZE or build it on branch marian-arch)", file=sys.stderr)
+        print(
+            f"ERROR: llama-tokenize not found at {_LLAMA_TOKENIZE} "
+            f"(set LLAMA_TOKENIZE or build it on branch marian-arch)",
+            file=sys.stderr,
+        )
         sys.exit(2)
 
     rows = []

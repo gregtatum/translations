@@ -95,11 +95,11 @@ def _collect(include_decoder: bool = False) -> list[tuple[str, np.ndarray, bool]
         out.append((name, arr.astype(np.float32), False))
 
     wemb = npz.wemb().astype(np.float32)  # (vocab, dim)
-    raw("token_embd.weight", wemb)                 # get_rows lookup (F16 is a later perf tweak)
+    raw("token_embd.weight", wemb)  # get_rows lookup (F16 is a later perf tweak)
     raw("position_embd.weight", _build_pe(_MAX_SEQ))  # baked sinusoidal PE
-    out.append(("output.weight", wemb, True))      # tied projection: quantized like the linears
+    out.append(("output.weight", wemb, True))  # tied projection: quantized like the linears
     if include_decoder:
-        raw("output.bias", npz.logit_bias())       # decoder logit bias [M2]
+        raw("output.bias", npz.logit_bias())  # decoder logit bias [M2]
 
     def ln(name: str, npz_prefix: str) -> None:
         raw(f"{name}.weight", npz.weight(f"{npz_prefix}_ln_scale"))
@@ -119,14 +119,18 @@ def _collect(include_decoder: bool = False) -> list[tuple[str, np.ndarray, bool]
         ln(f"{o}.ffn_norm", f"{p}_ffn_ffn")  # post-FFN LayerNorm
 
     # decoder layers: SSRU + cross-attention + FFN.
-    for l in (range(npz.DEC_DEPTH) if include_decoder else range(0)):
+    for l in range(npz.DEC_DEPTH) if include_decoder else range(0):
         p, o = f"decoder_l{l+1}", f"dec.blk.{l}"
         lin(f"{o}.rnn.weight", f"{p}_rnn_W")  # candidate, no bias
         lin(f"{o}.rnn_f.weight", f"{p}_rnn_Wf")
         raw(f"{o}.rnn_f.bias", npz.weight(f"{p}_rnn_bf"))
         ln(f"{o}.rnn_norm", f"{p}_rnn_ffn")
-        for src, dst in (("q", "cross_attn_q"), ("k", "cross_attn_k"),
-                         ("v", "cross_attn_v"), ("o", "cross_attn_o")):
+        for src, dst in (
+            ("q", "cross_attn_q"),
+            ("k", "cross_attn_k"),
+            ("v", "cross_attn_v"),
+            ("o", "cross_attn_o"),
+        ):
             lin(f"{o}.{dst}.weight", f"{p}_context_W{src}")
             raw(f"{o}.{dst}.bias", npz.weight(f"{p}_context_b{src}"))
         ln(f"{o}.cross_attn_norm", f"{p}_context_Wo")
@@ -193,18 +197,18 @@ def _write_meta(w: gguf.GGUFWriter, ftype: gguf.LlamaFileType) -> None:
     # standard KV keys
     w.add_context_length(_MAX_SEQ)
     w.add_embedding_length(npz.DIM)
-    w.add_block_count(npz.ENC_DEPTH)               # encoder depth (n_layer)
-    w.add_decoder_block_count(npz.DEC_DEPTH)       # SSRU decoder depth (M2)
+    w.add_block_count(npz.ENC_DEPTH)  # encoder depth (n_layer)
+    w.add_decoder_block_count(npz.DEC_DEPTH)  # SSRU decoder depth (M2)
     w.add_feed_forward_length(npz.FFN_DIM)
     w.add_head_count(npz.HEADS)
     w.add_head_count_kv(npz.HEADS)
     w.add_key_length(npz.HEAD_DIM)
     w.add_value_length(npz.HEAD_DIM)
-    w.add_layer_norm_eps(npz.EPS)                  # {arch}.attention.layer_norm_epsilon
-    w.add_embedding_scale(npz.EMBED_SCALE)         # {arch}.embedding_scale = sqrt(dim)
+    w.add_layer_norm_eps(npz.EPS)  # {arch}.attention.layer_norm_epsilon
+    w.add_embedding_scale(npz.EMBED_SCALE)  # {arch}.embedding_scale = sqrt(dim)
     # 1/sqrt(head_dim); the graph derives the same if this key is absent.
     w.add_key_value("marian.attention.scale", float(npz.ATTN_SCALE), gguf.GGUFValueType.FLOAT32)
-    w.add_decoder_start_token_id(npz.EOS_ID)       # Marian starts decoding from </s>
+    w.add_decoder_start_token_id(npz.EOS_ID)  # Marian starts decoding from </s>
     w.add_file_type(ftype)
 
 
@@ -234,7 +238,7 @@ def main() -> None:
     )
     tensors = _collect(include_decoder=True)
     _write(tensors, _MODELS / "marian-llama.float.gguf", quant=False)  # Gate-1/2 numeric parity
-    _write(tensors, _MODELS / "marian-llama.q8_0.gguf",  quant=True)   # top-K + chrF + perf
+    _write(tensors, _MODELS / "marian-llama.q8_0.gguf", quant=True)  # top-K + chrF + perf
 
 
 if __name__ == "__main__":
