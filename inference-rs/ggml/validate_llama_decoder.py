@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""M2 gate — the llama.cpp ``marian`` SSRU decoder end-to-end vs the numpy_ref/G1 goldens.
+"""Decoder gate — the llama.cpp ``marian`` SSRU decoder end-to-end vs the numpy_ref/G1 goldens.
 
-Two gates on the fixed sentence (same source ids as M1), driven through
+Two gates on the fixed sentence (the same source ids the encoder gate uses), driven through
 ``ggml/marian_decoder_dump`` (a libllama two-phase driver: llama_encode -> greedy llama_decode,
 threading the SSRU recurrent cell state via llama.cpp's recurrent memory):
 

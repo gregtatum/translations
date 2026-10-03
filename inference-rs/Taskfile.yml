@@ -396,11 +396,11 @@ tasks:
     desc: Capture plain-text translation goldens from the REAL Bergamot WASM engine.
     summary: |
       Freezes "what Bergamot does today" as a diffable artifact so the native engine
-      can be gated against it (plan 03 §2/§3b, gate M1.3). Runs the actual shipping
+      can be gated against it. Runs the actual shipping
       Bergamot engine (Marian compiled to wasm, the same bergamot-translator.js
       vendored into Firefox) through the committed legacy Node harness under
-      inference/wasm/tests, feeding the SAME NLLB en->fr source corpus that Pass B
-      uses (corpora/nllb-en-fr.txt) as plain text (html:false). Writes
+      inference/wasm/tests, feeding the SAME NLLB en->fr source corpus that conformance
+      Pass B uses (corpora/nllb-en-fr.txt) as plain text (html:false). Writes
       artifacts/goldens/bergamot/plain/<src>-<trg>.jsonl ({src,tgt} per line) plus a
       MODELS.lock of the model sha256s the goldens were captured against.
 
@@ -710,7 +710,7 @@ tasks:
       - .venv/bin/python3 ggml/convert_marian_gguf.py
 
   ggml-convert-vocab:
-    desc: Emit vocab-only GGUFs from the Marian .spm vocabs (M0 tokenizer gate).
+    desc: Emit vocab-only GGUFs from the Marian .spm vocabs (for the tokenizer gate).
     summary: |
       Runs ggml/convert_spm_gguf.py for each reference .spm (en-fr, en-ja src/trg, en-ru),
       writing ggml/models/<name>.vocab.gguf: the SentencePiece piece list + scores + types,
@@ -725,7 +725,7 @@ tasks:
       - .venv/bin/python3 ggml/convert_spm_gguf.py enru     ../data/models/onnx/en-ru/vocab.spm
 
   ggml-tok-parity:
-    desc: M0 gate — llama.cpp UGM tokenizer vs the Marian SentencePiece oracle, byte-exact.
+    desc: Tokenizer gate — llama.cpp UGM tokenizer vs the Marian SentencePiece oracle, byte-exact.
     summary: |
       Runs ggml/tokenizer_parity.py: for each (vocab GGUF, corpus, golden) it tokenizes every
       line with llama-tokenize (vocab-only, no bos/eos) and diffs the ids against the upstream
@@ -764,11 +764,11 @@ tasks:
       - .venv/bin/python3 ggml/validate_ggml.py
 
   ggml-llama-convert:
-    desc: Convert the float student .npz to a llama.cpp `marian` GGUF (G2/M1 encoder parity).
+    desc: Convert the float student .npz to a llama.cpp `marian` GGUF (G2, for encoder parity).
     summary: |
       Runs ggml/convert_marian_llama.py: repackages the proven weight math into the shape
       llama.cpp's LLM_ARCH_MARIAN expects (standard KV keys, enc.blk.N.* tensor names, the
-      SentencePiece vocab embedded for the UGM tokenizer). Encoder-only for M1 (F32 linears
+      SentencePiece vocab embedded for the UGM tokenizer). Encoder-only (F32 linears
       for parity); writes ggml/models/marian-llama.float.gguf. Needs the resolved en-ru npz.
     deps: [ggml-venv, onnx-download-model]
     dir: '{{.TASKFILE_DIR}}'
@@ -787,7 +787,7 @@ tasks:
       - bash ggml/build_llama.sh
 
   ggml-llama-encoder:
-    desc: M1 gate — the llama.cpp `marian` encoder vs the numpy_ref float golden (< 1e-4).
+    desc: Encoder gate — the llama.cpp `marian` encoder vs the numpy_ref float golden (< 1e-4).
     summary: |
       Runs ggml/validate_llama_encoder.py: feeds the fixed sentence's exact source ids
       through marian_encoder_dump and diffs the encoder context against numpy_ref.encode to
@@ -798,7 +798,7 @@ tasks:
       - .venv/bin/python3 ggml/validate_llama_encoder.py
 
   ggml-llama-decoder:
-    desc: M2 gate — the llama.cpp `marian` SSRU decoder end-to-end vs numpy_ref/G1.
+    desc: Decoder gate — the llama.cpp `marian` SSRU decoder end-to-end vs numpy_ref/G1.
     summary: |
       Runs ggml/validate_llama_decoder.py through marian_decoder_dump (a libllama two-phase
       driver: llama_encode -> greedy llama_decode, threading the SSRU cell state via llama.cpp's
@@ -811,7 +811,7 @@ tasks:
       - .venv/bin/python3 ggml/validate_llama_decoder.py
 
   ggml-llama-quality:
-    desc: M2 Gate 3 — chrF parity of the llama.cpp `marian` decoder vs G1 on a corpus.
+    desc: Decoder quality gate — chrF parity of the llama.cpp `marian` decoder vs G1 on a corpus.
     summary: |
       Runs ggml/quality_llama_decoder.py: translates a slice of the shared English corpus
       through llama.cpp and G1 (en->ru), detokenizes with the target SPM, and reports corpus
@@ -857,14 +857,14 @@ tasks:
       - cargo run --quiet --release --example kernel_micro --features fast -p fxtranslate
 
   spec-probe:
-    desc: Phase-0 speculative-decoding acceptance probe (shortlist-as-draft, notes/21).
+    desc: Speculative-decoding acceptance probe (shortlist-as-draft, notes/21).
     summary: |
       Runs plain full-vocab greedy over the en-fr corpus and, per decode step, checks whether
       the full-vocab argmax is in the sentence's lexical-shortlist candidate set — i.e. whether
       a shortlist draft would have guessed it right. Reports overall acceptance, the in-shortlist
       run-length distribution, and simulated tokens/round A(K) + predicted decode speedup for
       several guess lengths K, with a GO/STOP verdict against the 70% threshold. No speculative
-      code runs; this measures the ceiling before Phase 1. Needs data/models/enfr/.
+      code runs; this measures the ceiling only. Needs data/models/enfr/.
       Args pass through, e.g. `task rs:spec-probe -- --limit 100 --proj-frac 0.75`.
     dir: '{{.TASKFILE_DIR}}'
     cmds:

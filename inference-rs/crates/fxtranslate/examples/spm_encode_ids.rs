@@ -1,5 +1,5 @@
 //! Encode stdin lines to space-separated SentencePiece ids via the shipping
-//! `spm.rs` tokenizer (no eos). Used by the M0 ggml tokenizer-parity gate to
+//! `spm.rs` tokenizer (no eos). Used by the ggml tokenizer-parity gate to
 //! produce a reference for vocabs that have no upstream `spm_encode` golden
 //! (en-ru). One output line per input line, matching the golden convention.
 //!

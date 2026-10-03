@@ -1,5 +1,5 @@
 //! Measured throughput of speculative decoding (notes/21) vs full-vocab greedy —
-//! the real number that replaced the Phase 0 projection. (Outcome: it regresses on
+//! the real number that replaced the probe's projection. (Outcome: it regresses on
 //! this hardware/model; see the NEGATIVE RESULT section of notes/21.)
 //!
 //! Runs the same block corpus through two engines sharing the same weights:

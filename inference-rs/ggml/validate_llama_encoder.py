@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""M1 gate — the llama.cpp ``marian`` encoder vs the numpy_ref float golden.
+"""Encoder gate — the llama.cpp ``marian`` encoder vs the numpy_ref float golden.
 
 Feeds the fixed sentence's EXACT source ids (the same ids G1 and numpy_ref use) through
 ``ggml/marian_encoder_dump`` (a libllama driver that runs LLM_GRAPH_TYPE_ENCODER with
@@ -56,7 +56,7 @@ def main() -> int:
     rel = amean / (np.abs(ctx_golden).mean() + 1e-12) * 100
     passed = amax < _TOL
 
-    print("M1 gate — llama.cpp marian encoder vs numpy_ref golden (must be < 1e-4):")
+    print("Encoder gate — llama.cpp marian encoder vs numpy_ref golden (must be < 1e-4):")
     print(
         f"    encoder [{len(src_ids)},{npz.DIM}]  abs max={amax:.3e}  mean={amean:.3e}  (rel {rel:.3f}%)"
     )

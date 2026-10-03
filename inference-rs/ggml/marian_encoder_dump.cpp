@@ -1,4 +1,4 @@
-// M1 parity driver: feed EXACT source ids to the llama.cpp Marian encoder and dump the
+// Encoder parity driver: feed EXACT source ids to the llama.cpp Marian encoder and dump the
 // full per-token encoder context [n_embd, seq] to a binary file for numpy comparison
 // against the G1 / numpy_ref golden.
 //
@@ -6,7 +6,7 @@
 // pooling_type = NONE, so llama_encode writes the whole encoder output, retrieved via
 // llama_get_embeddings(). No debug hook in the arch code — the encoder output is exposed
 // through the standard embeddings API (same path BERT / T5ENCODER use). Nothing here is
-// temporary; M2 keeps this driver as an encoder regression harness.
+// temporary; this stays on as the encoder regression harness.
 //
 // usage: marian_encoder_dump <model.gguf> <out.bin> <id0> <id1> ...
 

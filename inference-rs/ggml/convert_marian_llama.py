@@ -7,7 +7,7 @@ llama.cpp's ``LLM_ARCH_MARIAN`` expects — standard KV keys, ``enc.blk.N.*`` / 
 tensor names, and the SentencePiece vocab embedded exactly as ``convert_spm_gguf.py`` does
 (so llama.cpp selects the UGM tokenizer, ``tokenizer.ggml.model = "t5"``).
 
-M2 wires the full two-phase encoder + SSRU decoder in llama.cpp; this emits the complete
+The llama.cpp arch wires the full two-phase encoder + SSRU decoder; this emits the complete
 encoder + decoder (SSRU + cross-attention) tensor set, ``output.bias``, and hparams, in both
 a float GGUF (numeric parity gate) and a Q8_0 GGUF (top-K + chrF + perf).
 
@@ -22,13 +22,13 @@ Tensor-name scheme (must match src/llama-arch.cpp LLM_TENSOR_NAMES exactly):
     enc.blk.N.attn_norm                       (.weight + .bias)  post-attention LayerNorm
     enc.blk.N.ffn_up/ffn_down                 (.weight + .bias)
     enc.blk.N.ffn_norm                        (.weight + .bias)  post-FFN LayerNorm
-    dec.blk.N.rnn                             (.weight)          SSRU candidate (no bias)  [M2]
-    dec.blk.N.rnn_f                           (.weight + .bias)  SSRU forget gate          [M2]
-    dec.blk.N.rnn_norm                        (.weight + .bias)  SSRU cell LayerNorm       [M2]
-    dec.blk.N.cross_attn_q/k/v/o              (.weight + .bias)                            [M2]
-    dec.blk.N.cross_attn_norm                 (.weight + .bias)                            [M2]
-    dec.blk.N.ffn_up/ffn_down                 (.weight + .bias)                            [M2]
-    dec.blk.N.ffn_norm                        (.weight + .bias)                            [M2]
+    dec.blk.N.rnn                             (.weight)          SSRU candidate (no bias)
+    dec.blk.N.rnn_f                           (.weight + .bias)  SSRU forget gate
+    dec.blk.N.rnn_norm                        (.weight + .bias)  SSRU cell LayerNorm
+    dec.blk.N.cross_attn_q/k/v/o              (.weight + .bias)
+    dec.blk.N.cross_attn_norm                 (.weight + .bias)
+    dec.blk.N.ffn_up/ffn_down                 (.weight + .bias)
+    dec.blk.N.ffn_norm                        (.weight + .bias)
 
 Run via ``task rs:ggml-llama-convert``.
 """
@@ -85,7 +85,7 @@ def _linear(npz_name: str) -> np.ndarray:
 # A collected tensor: (name, float array, quantizable). `quant=True` marks a matmul weight the
 # Q8_0 GGUF quantizes; everything else (biases, LayerNorm, embeddings, PE) stays F32/F16.
 def _collect(include_decoder: bool = False) -> list[tuple[str, np.ndarray, bool]]:
-    """Encoder-only by default (M1). `include_decoder` bakes the SSRU decoder for M2."""
+    """Encoder-only by default. `include_decoder` bakes in the SSRU decoder."""
     out: list[tuple[str, np.ndarray, bool]] = []
 
     def lin(name: str, npz_name: str) -> None:
@@ -99,7 +99,7 @@ def _collect(include_decoder: bool = False) -> list[tuple[str, np.ndarray, bool]
     raw("position_embd.weight", _build_pe(_MAX_SEQ))  # baked sinusoidal PE
     out.append(("output.weight", wemb, True))  # tied projection: quantized like the linears
     if include_decoder:
-        raw("output.bias", npz.logit_bias())  # decoder logit bias [M2]
+        raw("output.bias", npz.logit_bias())  # decoder logit bias
 
     def ln(name: str, npz_prefix: str) -> None:
         raw(f"{name}.weight", npz.weight(f"{npz_prefix}_ln_scale"))
@@ -198,7 +198,7 @@ def _write_meta(w: gguf.GGUFWriter, ftype: gguf.LlamaFileType) -> None:
     w.add_context_length(_MAX_SEQ)
     w.add_embedding_length(npz.DIM)
     w.add_block_count(npz.ENC_DEPTH)  # encoder depth (n_layer)
-    w.add_decoder_block_count(npz.DEC_DEPTH)  # SSRU decoder depth (M2)
+    w.add_decoder_block_count(npz.DEC_DEPTH)  # SSRU decoder depth
     w.add_feed_forward_length(npz.FFN_DIM)
     w.add_head_count(npz.HEADS)
     w.add_head_count_kv(npz.HEADS)

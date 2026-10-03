@@ -2,8 +2,7 @@
 // — the JS mirror of the Rust `run`/`dispatch` (crates/fxtranslate-cli/src/cli.rs).
 //
 // All commands are implemented: the read-only paths (`list`, `models list/info`)
-// and — as of step 4 — the cache-writing / engine paths (`translate`, `models
-// add`, `models rm`). The shell owns the async fetch + fs; the pure decisions
+// and the cache-writing / engine paths (`translate`, `models add`, `models rm`). The shell owns the async fetch + fs; the pure decisions
 // (routing, catalog, decode+verify, inference) come from the synchronous wasm core.
 
 const wasm = require("../wasm/fxtranslate_wasm.js");

@@ -1,6 +1,6 @@
 # fxtranslate-oracle
 
-Internal, dev-only validation harness for the [fxtranslate](../fxtranslate) engine. Not published to crates.io (`publish = false`).
+Internal, dev-only validation harness for the [fxtranslate](../fxtranslate) engine. Not published to crates.io.
 
 It validates the Rust engine against the reference marian C++ translator by comparing recorded execution traces, and provides a raw diagnostic binary for poking at the engine directly. It holds:
 

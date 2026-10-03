@@ -1,4 +1,4 @@
-// M3 perf driver: blockbench for the LLM_ARCH_MARIAN engine in llama.cpp.
+// Perf driver: blockbench for the LLM_ARCH_MARIAN engine in llama.cpp.
 //
 // This mirrors the G1 bare-libggml engine's `blockbench` mode (ggml/marian_ggml.cpp) EXACTLY
 // so scripts/final_comparison.py's parse_blocks consumes its output unchanged:
@@ -12,8 +12,9 @@
 //   - emit one `[block] {json}` span per block on stderr in the identical format.
 //
 // Threading: --threads N sets llama_context_params.n_threads / n_threads_batch (also
-// FXT_LLAMA_THREADS env for harness convenience). Correctness is settled in M2 (byte-
-// identical to G1); this binary changes nothing about the graph math, only measures it.
+// FXT_LLAMA_THREADS env for harness convenience). Correctness is settled by the decoder
+// gate (byte-identical to G1); this binary changes nothing about the graph math, only
+// measures it.
 //
 // Note on batching: like G1's encoder (which still runs once per sentence), the llama.cpp
 // driver decodes one sentence at a time (single-sequence). G1's headline finding is that

@@ -1,15 +1,5 @@
 //! C ABI over the native `fxtranslate` engine, for Firefox/Gecko C++ to call.
 //!
-//! This is the **third binding** of the same one-shape engine surface — a direct
-//! sibling of `fxtranslate-wasm` (`Translator::new` at
-//! `crates/fxtranslate-wasm/src/lib.rs`) and `fxtranslate-py`
-//! (`Translator::new` at `crates/fxtranslate-py/src/lib.rs`). All three wrap the
-//! same byte-path entry points ([`Engine::from_bytes`] +
-//! [`Engine::with_shortlist_bytes`] + [`Engine::translate_long`]); this one
-//! exposes them as an opaque-handle `extern "C"` surface so a WebIDL C++ shim
-//! (`FxTranslator`) can hold a `void*` and pass model/vocab/shortlist bytes
-//! straight from the worker's `ArrayBuffer`s.
-//!
 //! # Safety contract with C++
 //!
 //! Every entry point that runs engine logic wraps its body in
@@ -472,7 +462,7 @@ fn aligned_into_ffi(a: Aligned) -> *mut FxAligned {
 /// [`FxAligned`] to `*out`. Returns 0 on success, nonzero on error.
 ///
 /// Uses [`Engine::translate_aligned`] — the **single-sequence** aligned path (no
-/// UAX#29 sentence segmentation, unlike [`fxtranslate_translate`]); the M2 HTML
+/// UAX#29 sentence segmentation, unlike [`fxtranslate_translate`]); the caller's HTML
 /// layer segments and calls this per unit. On success `*out` owns everything and
 /// MUST be freed with [`fxtranslate_aligned_free`]. On error `*out` is set null and
 /// the reason is retrievable via [`fxtranslate_last_error`].

@@ -26,7 +26,7 @@ fn engine() -> Option<Engine> {
     Some(Engine::load(MODEL, VOCAB, VOCAB).expect("engine loads"))
 }
 
-/// Batched speculative decode (notes/21 Phase 2) must be byte-identical, per row,
+/// Batched speculative decode (notes/21) must be byte-identical, per row,
 /// to shortlist-free batched greedy — which the test above pins to single-sentence
 /// greedy and thence to the marian trace. So this is cheat-proof: a per-row
 /// accept/rollback, state-carry, or ragged-compaction bug surfaces as a divergence

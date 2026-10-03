@@ -1,4 +1,4 @@
-// Host-timed perf harness for the wasm fxtranslate engine (build-order step 7).
+// Host-timed perf harness for the wasm fxtranslate engine.
 //
 // Produces the SAME metrics as the native `scripts/perf.py --blocks` path so the
 // wasm rows drop straight into the project's perf table:

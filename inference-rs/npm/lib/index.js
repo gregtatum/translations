@@ -1,6 +1,6 @@
 // Library entry point for `import { ... } from "fxtranslate"`. Re-exports the
 // wasm core surface (Translator + the pure discovery/routing/segment/verify
-// functions exposed in build-order step 1) alongside the JS shell's argument
+// functions the wasm core exposes) alongside the JS shell's argument
 // grammar and runner. The wasm artifacts live under ./wasm (copied in by
 // `npm run build:wasm`; see README).
 
@@ -10,7 +10,7 @@ const { run } = require("./run");
 const { processIo } = require("./io");
 
 module.exports = {
-  // Shared wasm core (JS-facing names, from fxtranslate-wasm step 1).
+  // Shared wasm core (JS-facing names, from fxtranslate-wasm).
   Translator: wasm.Translator,
   parseRecords: wasm.parseRecords,
   resolveRoute: wasm.resolveRoute,

@@ -2,8 +2,8 @@
 //
 // Reads the en->fr model, vocab, and shortlist from `data/models/enfr/` as
 // buffers, constructs the wasm `Translator`, translates the sentence given on the
-// command line (or a default), and prints the result. This is the step-4/5
-// milestone: `node run.js "Hello world."` -> French, produced by wasm.
+// command line (or a default), and prints the result:
+// `node run.js "Hello world."` -> French, produced by wasm.
 //
 // Usage:
 //   node run.js "Hello world."          translate one sentence

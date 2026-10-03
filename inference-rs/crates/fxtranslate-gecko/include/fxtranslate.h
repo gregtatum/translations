@@ -94,7 +94,7 @@ size_t fxtranslate_backend(uint8_t* out_ptr, size_t out_cap);
 
 /*
  * ===========================================================================
- * M2 token-alignment shape (S8a). translate_aligned emits, per translated unit,
+ * Token-alignment shape. translate_aligned emits, per translated unit,
  * the target text, the SPM-normalized source, both token arrays, and the soft
  * cross-attention alignment matrix — everything the JS HTML tag-transfer layer
  * needs. The whole struct-of-arrays result is one allocation freed in one call.

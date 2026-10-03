@@ -2,8 +2,8 @@
 // Interface-parity check (Pass A, in miniature): run BOTH the Rust CLI (the
 // oracle) and this JS CLI over each case and assert byte-identical stdout,
 // stderr, and exit code. This pins the argument grammar, help text, error/exit
-// behavior, and — as of step 3 — the read-only command bodies (`list`, `models
-// list`, `models info`) to the Rust reference (crates/fxtranslate-cli). Rerun
+// behavior, and the read-only command bodies (`list`, `models list`, `models
+// info`) to the Rust reference (crates/fxtranslate-cli). Rerun
 // with `npm run check:parity`.
 //
 // Four groups:
@@ -12,19 +12,19 @@
 //     fixture cache this script builds, with known-size files, so both binaries
 //     read the same bytes with no network. Covers the empty-cache and
 //     unknown-pair edges too.
-//   * cache-writing `models rm` (step 4) — HERMETIC and destructive: each case gets
+//   * cache-writing `models rm` — HERMETIC and destructive: each case gets
 //     its own freshly-seeded fixture cache per binary, so the removal output, the
 //     space-reclaimed trailer, the two-tag form, and the unknown/empty notes are all
 //     pinned byte-for-byte without ever touching the user's real cache.
-//   * `list` — needs LIVE Remote Settings (no injected-fetch flag on the Rust
-//     binary yet; that arrives in step 5). Run against the network and diffed
+//   * `list` — needs LIVE Remote Settings: the Rust binary has no injected-fetch
+//     flag, so this case cannot be made hermetic. Run against the network and diffed
 //     byte-for-byte; skipped (not failed) when the network is unavailable.
 //
 // `translate` and `models add` are NOT in this harness: `add` downloads real model
 // attachments (network + large files — verified separately), and `translate` output
 // is the tolerant tier (wasm libm), not a byte-exact interface case. Their INTERFACE
-// bits (status lines, pivot hop, REPL/EOF) are proven in the step-4 report and will
-// join the Python conformance harness (Pass A/B) in steps 5-6.
+// bits (status lines, pivot hop, REPL/EOF) are covered by the centralized conformance
+// harness (Pass A/B, scripts/conformance.py), which runs this CLI as a registered subject.
 
 "use strict";
 
@@ -274,11 +274,11 @@ function main() {
   runRm(["models", "rm", "--all"], true); // wipe all + reclaimed trailer
   runRm(["models", "rm", "--all"], false); // empty cache note
 
-  console.log("\nlist (LIVE Remote Settings — the Rust binary has no injected-fetch flag yet):");
+  console.log("\nlist (LIVE Remote Settings — the Rust binary has no injected-fetch flag):");
   if (networkAvailable()) {
     for (const argv of liveListCases) run(argv);
   } else {
-    console.log("  skip live `list` parity — network unavailable (fully hermetic in step 5).");
+    console.log("  skip live `list` parity — network unavailable.");
   }
 
   console.log(`\n${pass}/${pass + fail} cases byte-identical.`);

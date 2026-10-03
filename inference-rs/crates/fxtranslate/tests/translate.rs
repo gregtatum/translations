@@ -70,12 +70,12 @@ fn near_tie_casing_matches_apart_from_case() {
     assert_eq!(got.to_lowercase(), "bonjour, comment allez-vous ?");
 }
 
-/// The Phase-0 speculative-decoding acceptance probe (notes/21) walks the exact
+/// The speculative-decoding acceptance probe (notes/21) walks the exact
 /// full-vocab greedy path: it never lets the shortlist decide a token. Pin that by
 /// checking the probe's step count equals a shortlist-free engine's greedy output
 /// length plus one — the extra step is the terminal EOS the probe also records.
-/// This is the property the whole plan rests on: the probe (and, later, the
-/// speculative decoder it green-lights) reproduces plain full-vocab greedy exactly,
+/// This is the property the probe rests on: it (and the speculative decoder built
+/// on top of it) reproduces plain full-vocab greedy exactly,
 /// so the acceptance rate it reports is measured against the real reference path.
 #[test]
 fn acceptance_probe_mirrors_full_vocab_greedy() {
@@ -104,7 +104,7 @@ fn acceptance_probe_mirrors_full_vocab_greedy() {
     }
 }
 
-/// The primary correctness gate for speculative decoding (notes/21 Phase 1):
+/// The primary correctness gate for speculative decoding (notes/21):
 /// `greedy_speculative` output ids are **byte-identical** to full-vocab greedy for
 /// every guess length K. The shortlist only chooses how far to speculate; the
 /// emitted token is always the full-vocab argmax, so speculation is provably
@@ -359,7 +359,7 @@ fn from_bytes_matches_load() {
 /// `translate`, and the token/alignment contract must be internally consistent
 /// (spans slice their string; rows are distributions of the right shape). Parity
 /// of the alignment *values* against marian lives in the oracle crate
-/// (`alignment_parity.rs`); here we lock the contract shape and the M1 equality.
+/// (`alignment_parity.rs`); here we lock the contract shape and the text equality.
 #[test]
 fn translate_aligned_matches_translate_and_is_well_formed() {
     let Some(engine) = engine() else { return };
@@ -371,7 +371,7 @@ fn translate_aligned_matches_translate_and_is_well_formed() {
         let plain = engine.translate(src);
         let a = engine.translate_aligned(src);
 
-        // M1: alignment path must not change the plain-text output.
+        // The alignment path must not change the plain-text output.
         assert_eq!(a.target_text, plain, "aligned target_text for {src:?}");
 
         // Source spans (UTF-16) tile source_normalized; last token is EOS

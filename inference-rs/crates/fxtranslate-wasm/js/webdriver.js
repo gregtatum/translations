@@ -1,4 +1,4 @@
-// Firefox WebDriver harness for the wasm fxtranslate engine (build-order step 9).
+// Firefox WebDriver harness for the wasm fxtranslate engine.
 //
 // Launches HEADLESS Firefox via geckodriver + selenium-webdriver, serves the
 // crate + repo over a tiny static HTTP server (fetch() + ES modules do not work

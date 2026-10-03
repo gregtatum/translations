@@ -1,5 +1,5 @@
-//! Layer-1 correctness (01-binding-and-build.md §5): the C ABI must be
-//! **byte-exact** to the standalone `fxtranslate` engine on the real en-fr model,
+//! The C ABI must be **byte-exact** to the standalone `fxtranslate` engine on the
+//! real en-fr model,
 //! in the same process on the same arch with the same feature set. A single diff
 //! is an ABI bug — truncation, wrong vocab side, or UTF-8 mishandling — not a
 //! tolerable float divergence (same libm, same GEMM as the direct call).

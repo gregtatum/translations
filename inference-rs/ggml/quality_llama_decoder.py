@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""M2 Gate 3 — chrF parity of the llama.cpp ``marian`` decoder vs G1 on a corpus.
+"""Decoder quality gate — chrF parity of the llama.cpp ``marian`` decoder vs G1 on a corpus.
 
 Translates a slice of the shared English corpus through both engines (en->ru), detokenizes
 with the target SPM, and reports corpus chrF (llama.cpp hypothesis vs the G1 float anchor)

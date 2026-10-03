@@ -3,7 +3,7 @@
 Capture plain-text translation goldens from the REAL Bergamot WASM engine.
 
 This freezes "what Bergamot does today" as a diffable artifact so the native
-Rust engine can be gated against it (plan 03 §2/§3b, gate M1.3). The goldens are
+Rust engine can be gated against it. The goldens are
 captured ONCE by running the actual shipping Bergamot engine (the C++/Marian
 translator compiled to wasm, the same one vendored into Firefox as
 bergamot-translator.js) through the committed legacy Node harness under
@@ -54,7 +54,7 @@ HARNESS_MODELS_DIR = WASM_TESTS_DIR / "models"
 REMOTE_SETTINGS_MODELS = REPO_ROOT / "data" / "models"
 
 # Keep the golden a modest checked-in file; matches conformance Pass B's slice so
-# the two harnesses share input (plan 03 §2 "feed the SAME NLLB corpus").
+# the two harnesses share the same NLLB corpus as input.
 DEFAULT_LINES = 200
 DEFAULT_CORPUS = "nllb-en-fr.txt"
 

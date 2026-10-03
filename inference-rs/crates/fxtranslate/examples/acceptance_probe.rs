@@ -1,4 +1,4 @@
-//! Phase-0 acceptance probe for shortlist-as-draft speculative decoding (notes/21).
+//! Acceptance probe for shortlist-as-draft speculative decoding (notes/21).
 //!
 //! Runs ordinary full-vocab greedy over a corpus and, at each decode step, asks
 //! whether the full-vocab argmax lies in the sentence's lexical-shortlist candidate
@@ -151,10 +151,10 @@ fn main() {
             "  GO — acceptance {:.1}% ≥ 70%. Best realistic decode speedup ~{best_real:.2}x.",
             acceptance * 100.0
         );
-        println!("  Proceed to Phase 1 (single-sentence speculative loop).");
+        println!("  Ceiling only — the built speculative decoder still regressed; see notes/21.");
     } else {
         println!(
-            "  STOP — acceptance {:.1}% < 70%. Speculation won't pay; do not build Phases 1-3.",
+            "  STOP — acceptance {:.1}% < 70%. Speculation won't pay.",
             acceptance * 100.0
         );
     }

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""M0 tokenizer-parity gate: llama.cpp UGM vs the Marian SentencePiece oracle.
+"""Tokenizer-parity gate: llama.cpp UGM vs the Marian SentencePiece oracle.
 
 For each (vocab GGUF, corpus, golden-ids) triple this tokenizes every corpus line
 with ``llama-tokenize`` (vocab-only, no bos/eos) and diffs the id sequence against

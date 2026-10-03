@@ -1,4 +1,4 @@
-//! Alignment tensor parity against the marian reference trace (02 §5.1).
+//! Alignment tensor parity against the marian reference trace.
 //!
 //! Bergamot's token alignment is head 0 of the **last** decoder layer's
 //! cross-attention softmax, `P(src | trg)`, captured per decode step

@@ -29,7 +29,7 @@ fn main() {
     // The pure-Rust wasm SIMD128 int8 kernel needs no feature and no C++ toolchain:
     // it compiles whenever the wasm32 target is built with `simd128` enabled
     // (`-C target-feature=+simd128`). Detect it here so the plain scalar wasm build
-    // (step 5) keeps the scalar path. `portable` still forces scalar everywhere.
+    // keeps the scalar path. `portable` forces scalar everywhere.
     let target_features = std::env::var("CARGO_CFG_TARGET_FEATURE").unwrap_or_default();
     let wasm_simd128 = arch == "wasm32"
         && target_features.split(',').any(|f| f == "simd128")

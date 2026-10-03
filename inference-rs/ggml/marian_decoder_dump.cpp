@@ -1,8 +1,8 @@
-// M2 end-to-end driver: feed EXACT source ids to the llama.cpp Marian encoder-decoder and
+// End-to-end decoder driver: feed EXACT source ids to the llama.cpp Marian encoder-decoder and
 // run the two-phase greedy loop (llama_encode -> llama_decode*), producing output ids and
 // (on the first step) the full [vocab] logits vector for numeric parity against G1.
 //
-// This is the M2 analog of marian_encoder_dump.cpp. Tokenization stays in Python (the shared
+// This is the decoder analog of marian_encoder_dump.cpp. Tokenization stays in Python (the shared
 // SPM), so this binary consumes/produces ids — identical inputs across every engine.
 //
 // modes:

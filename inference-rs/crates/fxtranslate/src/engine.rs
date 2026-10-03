@@ -126,7 +126,7 @@ pub struct BlockCounts {
     pub tokens: usize,
 }
 
-/// Phase-0 acceptance probe for speculative decoding (notes/21), one sentence.
+/// Acceptance probe for speculative decoding (notes/21), one sentence.
 ///
 /// The probe runs **ordinary full-vocab greedy** — the shortlist never decides a
 /// token — and at each decode step records whether the full-vocab argmax lies in
@@ -484,8 +484,8 @@ impl Engine {
         out
     }
 
-    /// Phase-0 acceptance probe for shortlist-as-draft speculative decoding
-    /// (notes/21). Decodes `src_ids` with **full-vocab greedy** — identical token
+    /// Acceptance probe for shortlist-as-draft speculative decoding (notes/21).
+    /// Decodes `src_ids` with **full-vocab greedy** — identical token
     /// choices to [`greedy`] on a shortlist-free engine — and returns, per step,
     /// whether that step's full-vocab argmax is in the sentence's shortlist
     /// candidate set (see [`AcceptanceProbe`]). This measures the speculative
@@ -545,7 +545,14 @@ impl Engine {
     ///
     /// The decoder layers still run once per drafted position (they are cheap and
     /// bandwidth-light); the win is collapsing `k` full-vocab projection hauls into
-    /// one. `k` is the guess length — start 4–6 (see notes/21 Phase 0).
+    /// one. `k` is the guess length.
+    ///
+    /// **Measured, this is a throughput regression at every `k` tried** (en-ru base,
+    /// one thread: 0.91× at k=2, 0.86× at k=4, against full-vocab greedy) — the extra
+    /// draft steps cost more than the collapsed projection hauls save. It is kept
+    /// because it is proven byte-identical to [`greedy`] and the tradeoff may flip on
+    /// other hardware, but nothing enables it by default. See the NEGATIVE RESULT
+    /// section of notes/21.
     pub fn greedy_speculative(&self, src_ids: &[u32], k: usize) -> Vec<u32> {
         assert!(k >= 1, "guess length k must be >= 1");
         let Some(shortlist) = self.shortlist.as_ref() else {
@@ -1182,7 +1189,7 @@ impl Engine {
         out
     }
 
-    /// Batched speculative greedy decode (notes/21 Phase 2): the block analogue of
+    /// Batched speculative greedy decode (notes/21): the block analogue of
     /// [`greedy_speculative`]. Each sentence is an independent row with its own
     /// position, SSRU state, carried token and pending K-guess; one round drafts up
     /// to `k` tokens per live row (cheap shortlist projection), then **one shared

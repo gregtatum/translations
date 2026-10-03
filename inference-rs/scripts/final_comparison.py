@@ -51,7 +51,7 @@ GGML_PRETOK = CRATE / "ggml/pretokenize.py"
 GGML_MODELS = CRATE / "ggml/models"
 # The llama.cpp LLM_ARCH_MARIAN engine is also a compiled binary (built by ggml/build_llama.sh),
 # so its RSS is the fairest memory peer to G1. It consumes the SAME pretokenized source-id block
-# file G1 uses and emits identical [block] spans. See notes/18 M3.
+# file G1 uses and emits identical [block] spans. See notes/18.
 LLAMA_BIN = CRATE / "ggml/marian_llama_blockbench"
 LLAMA_MODELS = CRATE / "ggml/models"
 
@@ -194,7 +194,7 @@ def main() -> None:
         "--llama",
         action="store_true",
         help="add the llama.cpp LLM_ARCH_MARIAN engine (ggml/marian_llama_blockbench, Q8_0) as a "
-        "subject (see notes/18 M3)",
+        "subject (see notes/18)",
     )
     ap.add_argument(
         "--llama-precision",
