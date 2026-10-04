@@ -29,7 +29,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   **This changes output for every model and pair.** The remaining int8 mismatches
   are legitimate quantization near-ties (they vanish at float32). Pinned by
   `tests/decoder_seed.rs`. The trace replay could not catch it — the step-0
-  embedding and PE are `const` leaves, so it passes them through — and
+  embedding and positional encoding are `const` leaves, so it passes them through — and
   `onnx/numpy_ref.py` shared the old convention. All three ports are fixed and
   re-validated: `onnx/` (`decode_step.onnx` gained an `embed_gate` input, since
   its embedding lookup is inside the graph), `ggml/marian_ggml.cpp` (G1), and

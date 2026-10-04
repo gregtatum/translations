@@ -46,8 +46,8 @@ and passes every feasibility gate below. Summary of what shipped and what it pro
 - **Gate 1 (graph correct, bit-close):** ONNX-float vs numpy-float — encoder max
   **3e-6**, decode logits/states max **~4e-5**; end-to-end ORT translation string is
   identical to the golden. `onnx.checker` clean. **No custom ops, no Loop/Scan.**
-  The Sin/posrange landmine was sidestepped by baking PE as a constant (encoder) and
-  passing a precomputed PE vector as a graph input (decoder).
+  The Sin/posrange landmine was sidestepped by baking the positional encoding as a constant (encoder) and
+  passing a precomputed positional-encoding vector as a graph input (decoder).
 - **Gate 2 (quantization quality):** ORT dynamic QInt8 (per-tensor, QDQ) → 213MB→124MB
   (1.72×; capped by the tied `Wemb` staying float for the `Gather`). On 50 sentences,
   int8-ONNX vs float-ONNX **chrF 98.4** — *closer to float than the production intgemm

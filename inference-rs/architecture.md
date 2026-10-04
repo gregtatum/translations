@@ -35,7 +35,7 @@ the tensor shapes in the file, not the yaml. Confirmed discrepancies:
 | `tied-embeddings: false`, `tied-embeddings-src: false` | one `Wemb` for source, target, **and** output projection | `tied-embeddings-all: true` overrides both — the "-all" flag wins. |
 | `dim-vocabs:` (empty list) | 32000-ish, read from the `Wemb` row count | The engine ignores the yaml here and counts embedding rows (`weights.rs`). |
 | `transformer-preprocess: ""`, `transformer-postprocess: dan` | **post-norm** everywhere | `dan` = dropout→add→norm *after* each sublayer. This is the original Vaswani placement, **not** the pre-norm most modern code uses. |
-| `transformer-postprocess-emb: d` | embeddings get dropout only (no LayerNorm) | So after `√d·Wemb + PE` the vector goes straight into layer 1. |
+| `transformer-postprocess-emb: d` | embeddings get dropout only (no LayerNorm) | So after `√d·Wemb + positional encoding` the vector goes straight into layer 1. |
 
 The dimensions that *are* real (and that the engine actually parses from the
 yaml, with tensor-shape fallbacks) for the `en→fr` model:
@@ -63,14 +63,14 @@ cross-attention K/V are projected from it once and reused across every step
 flowchart LR
   subgraph SRC["Source side (run once)"]
     direction TB
-    s_ids["src token ids<br/>+ EOS"] --> s_emb["Embedding<br/>√d·Wemb + PE"]
+    s_ids["src token ids<br/>+ EOS"] --> s_emb["Embedding<br/>√d·Wemb<br/>+ positional encoding"]
     s_emb --> enc["Encoder<br/>6 × transformer layer<br/>(bidirectional)"]
     enc --> ctx["context / memory<br/>[seq, 384]"]
   end
 
   subgraph TRG["Target side (run per output step t)"]
     direction TB
-    prev["prev token id<br/>(EOS at t=0)"] --> t_emb["Embedding<br/>√d·Wemb + PE(t)"]
+    prev["prev token id<br/>(EOS at t=0)"] --> t_emb["Embedding<br/>√d·Wemb<br/>+ positional encoding(t)"]
     t_emb --> dec["Decoder<br/>4 × SSRU layer"]
     dec --> proj["Tied output projection<br/>h·Wembᵀ + b_out"]
     proj --> argmax["argmax → next token"]
@@ -343,10 +343,11 @@ One tensor, `Wemb`, is shared three ways (`tied-embeddings-all: true`): source
 embedding, target embedding, and the output projection weight. (Split-vocab CJK
 models instead ship `encoder_Wemb` + `decoder_Wemb`; the code handles both.)
 
-Each embedded token is `x_t = √d · Wemb[id_t] + PE(pos)`. The positional
-encoding uses the **rotor / concatenated** form, not the interleaved form in the
-paper's equation: the first half of the channels are sines and the second half
-cosines of the same frequencies, rather than `sin,cos,sin,cos…` interleaved.
+Each embedded token is `x_t = √d · Wemb[id_t] + PE(pos)`, where `PE` is the
+positional encoding. It uses the **rotor / concatenated** form, not the
+interleaved form in the paper's equation: the first half of the channels are
+sines and the second half cosines of the same frequencies, rather than
+`sin,cos,sin,cos…` interleaved.
 
 ```text
 PE(pos)[c] = sin( pos · freq[c] + offs[c] )
@@ -354,7 +355,8 @@ freq[c] = 1e-4 ^ ( (c mod d/2) / (d/2 − 1) )
 offs[c] = (c ÷ d/2) · (π/2)        # 0 for first half → sin;  π/2 for second half → cos
 ```
 
-Code: `Engine::new` (builds `pe_freq`/`pe_offs`) and `embed_into`. `Wemb` is
+Code: `Engine::new` (builds `positional_encoding_freq` /
+`positional_encoding_offs`) and `embed_into`. `Wemb` is
 stored int8; it is either dequantized into a resident f32 table (default) or
 dequantized on demand (`lean-embed` feature) — see `weights.rs`.
 

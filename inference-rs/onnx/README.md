@@ -5,7 +5,7 @@ translation model as ONNX graphs, verifies them against a numpy float golden and
 the production `inference-rs` int8 engine, and quantizes them to int8 for
 shipping. The `inference-rs` engine is ground truth; no external exporter is
 trusted. See `SPEC.md` for the full architecture (post-norm transformer encoder,
-SSRU decoder, tied embeddings, sinusoidal PE baked as a constant).
+SSRU decoder, tied embeddings, sinusoidal positional encoding baked as a constant).
 
 ## Pipeline
 

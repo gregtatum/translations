@@ -74,7 +74,7 @@ static std::vector<llama_token> translate(llama_context * ctx, const llama_model
         llama_batch dec = llama_batch_init(1, 0, 1);
         dec.n_tokens = 1;
         dec.token[0]     = cur;
-        dec.pos[0]       = step;      // absolute decoder position -> sinusoidal PE row
+        dec.pos[0]       = step;      // absolute decoder position -> sinusoidal positional-encoding row
         dec.n_seq_id[0]  = 1;
         dec.seq_id[0][0] = 0;
         dec.logits[0]    = 1;

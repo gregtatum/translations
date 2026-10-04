@@ -35,8 +35,8 @@ the marian oracle is explicitly given up; validate by numeric parity to the G1 e
 ## Deliverable 1 — converter revision (GGUF for llama.cpp)
 
 Reuse `ggml/convert_marian_gguf.py`'s proven math (weight orientation `[in,out]→ggml ne0=in`,
-Q8_0 quant set, F16 `token_embd`, baked sinusoidal PE). Change only the **packaging** so
-llama.cpp — not our code — can load and tokenize it:
+Q8_0 quant set, F16 `token_embd`, baked sinusoidal positional encoding). Change only
+the **packaging** so llama.cpp — not our code — can load and tokenize it:
 
 1. **Tensor names → llama.cpp conventions.** Emit the `LLM_TENSOR_*` names the new arch
    registers (not our self-describing `enc.0.self.wq` scheme). Model on T5's enc/dec tensor
@@ -62,7 +62,7 @@ coding — line numbers drift):
   tensors; `LLM_TENSOR_INFOS` op kinds; **add `MARIAN` to `llm_arch_is_recurrent()`**
   (line 943).
 - **`src/models/marian.cpp`** (new) — the model class + graph:
-  - **Encoder** (post-norm transformer, sinusoidal PE, tied embed): model on
+  - **Encoder** (post-norm transformer, sinusoidal positional encoding, tied embed): model on
     `src/models/t5.cpp`'s encoder graph (`LLM_GRAPH_TYPE_ENCODER`, stateless).
   - **Decoder step**: SSRU (elementwise `sigmoid/sub/mul/add/relu` — the exact ops proven in
     G1's `build_decoder`) over **recurrent memory**, then **cross-attention** to encoder

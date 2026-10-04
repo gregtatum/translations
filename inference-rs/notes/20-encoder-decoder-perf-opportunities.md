@@ -6,7 +6,7 @@ optimization pass (`notes/18`). **The encoder and decoder are different physics 
 different levers — treat them as two independent tracks.**
 
 Scope: CPU-first, en→ru **base v3.0** student (dim=512, heads=8, head_dim=64, enc-depth=6,
-dec-depth=2, ffn=2048, vocab=32000, SSRU decoder + cross-attn, post-norm, sinusoidal PE,
+dec-depth=2, ffn=2048, vocab=32000, SSRU decoder + cross-attn, post-norm, sinusoidal positional encoding,
 tied-embeddings-all). Two engines in play: **fxtranslate** (the Rust port, `crates/fxtranslate`)
 and **llama.cpp** (`LLM_ARCH_MARIAN` on the local `~/dev/llama.cpp` branch `marian-arch`). Do
 not chase bit-exactness with the marian oracle (given up in G2); validate by numeric parity to

@@ -178,7 +178,7 @@ The collapse to zero only happens once *all four* are shared.
 
 **Decision on record:** accept these small, fully-explained divergences. Do
 **not** force a shared libm in production — it would touch the hot math path
-(softmax/layernorm/PE) for a cosmetic bit-parity gain we don't need, since wasm is
+(softmax/layernorm/positional encoding) for a cosmetic bit-parity gain we don't need, since wasm is
 a validation + npm artifact and production ships native Rust. The int8 GEMM stays
 held to the strict bit-identical bar (`gemm_parity.rs`); it already clears it.
 Forcing full wasm↔native determinism *is* possible if ever required — the libm

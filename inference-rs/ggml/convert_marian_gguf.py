@@ -6,7 +6,8 @@ This is the ggml analog of ``onnx/export_{encoder,decoder}.py`` (route B of
 float ``.npz`` and emits weights in a container the ggml engine loads. It reuses
 ``onnx/model_npz.py`` for config + named weights so both evaluations share one source
 of truth for the architecture, and it bakes the sinusoidal positional-encoding table
-exactly as ``onnx/numpy_ref.py`` computes it, so PE is never a divergence source.
+exactly as ``onnx/numpy_ref.py`` computes it, so the positional encoding is never a
+divergence source.
 
 Two artifacts are written into ``ggml/models/``:
   * ``marian.float.gguf`` — F16 linears (the Gate-2 dev scaffold, diffed vs numpy_ref)
@@ -44,8 +45,9 @@ _ARCH = "marian"
 _MAX_SEQ = 256
 
 
-def _build_pe(max_seq: int) -> np.ndarray:
-    """Sinusoidal rotor PE table, byte-for-byte the formula in numpy_ref.build_pe."""
+def _build_positional_encoding(max_seq: int) -> np.ndarray:
+    """Sinusoidal rotor positional-encoding table, byte-for-byte the formula in
+    numpy_ref.build_positional_encoding."""
     d = npz.DIM
     half = d // 2
     c = np.arange(d)
@@ -60,7 +62,8 @@ class _Emit:
 
     ``linear`` weights are transposed to (out, in) once; ``store_q8`` marks whether the
     Q8_0 file quantizes that tensor (linears + the output projection) or keeps it F16
-    (embeddings, PE) — everything else (biases, LayerNorm) stays F32 in both files.
+    (embeddings, positional encoding) — everything else (biases, LayerNorm) stays F32
+    in both files.
     """
 
     def __init__(self) -> None:
@@ -77,7 +80,7 @@ class _Emit:
         self.q8_tensors.append((name, wt.astype(np.float32), True))
 
     def raw(self, name: str, arr: np.ndarray, f16: bool = False) -> None:
-        """A non-matmul tensor (bias, LayerNorm, embedding, PE): never Q8_0."""
+        """A non-matmul tensor (bias, LayerNorm, embedding, pos. encoding): never Q8_0."""
         a = arr.astype(np.float16 if f16 else np.float32)
         self.float_tensors.append((name, a))
         self.q8_tensors.append((name, a.astype(np.float32) if not f16 else a, False))
@@ -94,7 +97,8 @@ def _collect() -> _Emit:
     e.float_tensors.append(("output.weight", wemb.astype(np.float32)))
     e.q8_tensors.append(("output.weight", wemb, True))
     e.raw("output.bias", npz.logit_bias())
-    e.raw("pos_enc", _build_pe(_MAX_SEQ))  # F32: added to F32 embeddings, keep it clean
+    # F32: added to F32 embeddings, keep it clean
+    e.raw("pos_enc", _build_positional_encoding(_MAX_SEQ))
 
     def ln(prefix_out: str, npz_prefix: str) -> None:
         e.raw(f"{prefix_out}.ln.scale", npz.weight(f"{npz_prefix}_ln_scale"))

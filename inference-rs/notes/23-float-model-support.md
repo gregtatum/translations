@@ -43,7 +43,7 @@ step was receiving a spurious vector ~1.9× the size of the only signal that say
 "this is the start of a sentence."
 
 Confirmed directly in the reference trace: the decoder step-0 embedding node
-(`id=397`) is all 512 elements zero, and the step-0 PE node (`id=399`) is exactly
+(`id=397`) is all 512 elements zero, and the step-0 positional-encoding node (`id=399`) is exactly
 `PE(0)` in marian's block layout (256 zeros, then 256 ones). `decoder_start_state_1`
 is also all zeros, so the SSRU cell seeding was already right.
 
@@ -83,7 +83,7 @@ Pinned by `tests/decoder_seed.rs`, which fails on both counts without the fix.
 Three layers of existing verification all had the same blind spot:
 
 - **The trace replay** (`oracle replay`) recomputes each node from its children
-  *in the trace*. The decoder's step-0 embedding and PE are `const` leaf nodes, so
+  *in the trace*. The decoder's step-0 embedding and positional encoding are `const` leaf nodes, so
   they are passed through, never recomputed. The replay reports 635 nodes
   recomputed and no real divergence even with the bug present.
 - **`onnx/numpy_ref.py`** seeds `prev = tok.eos_id` — the same convention, hence
@@ -106,7 +106,7 @@ by execution.
 
 The embedding lookup lives *inside* `decode_step.onnx`, so the driver alone could
 not fix it. `export_decoder.py` gained a scalar `embed_gate` input that multiplies
-the embedding before the PE is added; the drivers pass `0.0` at position 0 and
+the embedding before the positional encoding is added; the drivers pass `0.0` at position 0 and
 `1.0` after. The gate is a runtime input rather than baked in because the graph is
 position-agnostic — the driver owns `pos`.
 

@@ -55,7 +55,7 @@ struct Model {
     ggml_backend_t backend = nullptr;
     ggml_context * wctx = nullptr;                 // holds weight tensors
     std::map<std::string, ggml_tensor *> w;        // name -> weight
-    std::vector<float> pe;                          // [max_seq*dim] host PE table
+    std::vector<float> positional_encoding;        // [max_seq*dim] host table
     int n_threads = 1;
 
     ggml_tensor * get(const std::string & n) const {
@@ -119,10 +119,11 @@ void load_model(Model & m, const char * path) {
     }
     f.close();
 
-    // Cache the PE table on the host so the decode step can feed the row for its position.
-    ggml_tensor * pe = m.get("pos_enc");
-    m.pe.resize((size_t) m.hp.max_seq * m.hp.dim);
-    ggml_backend_tensor_get(pe, m.pe.data(), 0, ggml_nbytes(pe));
+    // Cache the positional-encoding table on the host so the decode step can feed the row for its position.
+    ggml_tensor * positional_encoding = m.get("pos_enc");
+    m.positional_encoding.resize((size_t) m.hp.max_seq * m.hp.dim);
+    ggml_backend_tensor_get(positional_encoding, m.positional_encoding.data(), 0,
+                            ggml_nbytes(positional_encoding));
 
     gguf_free(g);
 }
@@ -169,7 +170,7 @@ struct EncGraph {
     ggml_context * ctx;
     ggml_cgraph * gf;
     ggml_tensor * ids;      // input I32 [seq]
-    ggml_tensor * pe;       // input F32 [dim, seq]
+    ggml_tensor * positional_encoding; // input F32 [dim, seq]
     ggml_tensor * context;  // output [dim, seq]
     std::vector<ggml_tensor *> cross_k, cross_v; // per layer [dim, seq]
 };
@@ -182,11 +183,12 @@ EncGraph build_encoder(Model & m, int seq) {
     const HParams & hp = m.hp;
 
     e.ids = ggml_new_tensor_1d(c, GGML_TYPE_I32, seq); ggml_set_input(e.ids);
-    e.pe  = ggml_new_tensor_2d(c, GGML_TYPE_F32, hp.dim, seq); ggml_set_input(e.pe);
+    e.positional_encoding = ggml_new_tensor_2d(c, GGML_TYPE_F32, hp.dim, seq);
+    ggml_set_input(e.positional_encoding);
 
     ggml_tensor * x = ggml_get_rows(c, m.get("token_embd.weight"), e.ids); // [dim,seq]
     x = ggml_scale(c, x, hp.embed_scale);
-    x = ggml_add(c, x, e.pe);
+    x = ggml_add(c, x, e.positional_encoding);
 
     for (int l = 0; l < hp.enc_depth; ++l) {
         std::string p = "enc." + std::to_string(l) + ".";
@@ -230,7 +232,7 @@ struct DecGraph {
     ggml_context * ctx;
     ggml_cgraph * gf;
     ggml_tensor * tok;                           // input I32 [B]
-    ggml_tensor * pe;                            // input F32 [dim,1] (shared lockstep pos)
+    ggml_tensor * positional_encoding;           // input F32 [dim,1] (shared lockstep pos)
     ggml_tensor * cross_bias;                    // input F32 [Smax,1,1,B] additive src mask
     std::vector<ggml_tensor *> state_in;         // input F32 [dim,B] per layer
     std::vector<ggml_tensor *> cross_k, cross_v; // input F32 [dim,Smax,B] per layer
@@ -271,7 +273,8 @@ DecGraph build_decoder(Model & m, int B, int Smax, int pos) {
     const HParams & hp = m.hp;
 
     d.tok = ggml_new_tensor_1d(c, GGML_TYPE_I32, B); ggml_set_input(d.tok);
-    d.pe  = ggml_new_tensor_2d(c, GGML_TYPE_F32, hp.dim, 1); ggml_set_input(d.pe);
+    d.positional_encoding = ggml_new_tensor_2d(c, GGML_TYPE_F32, hp.dim, 1);
+    ggml_set_input(d.positional_encoding);
     d.cross_bias = ggml_new_tensor_4d(c, GGML_TYPE_F32, Smax, 1, 1, B); ggml_set_input(d.cross_bias);
 
     ggml_tensor * u = ggml_get_rows(c, m.get("token_embd.weight"), d.tok); // [dim,B]
@@ -281,7 +284,7 @@ DecGraph build_decoder(Model & m, int B, int Smax, int pos) {
     // `DecoderTransformer::step`), so the first step has no previous token to embed.
     // Scaling by 0 here is exactly that zero-pad. See notes/23-float-model-support.md.
     u = ggml_scale(c, u, pos == 0 ? 0.0f : hp.embed_scale);
-    u = ggml_add(c, u, d.pe);                                              // pe broadcast over B
+    u = ggml_add(c, u, d.positional_encoding);   // broadcast over B
 
     for (int l = 0; l < hp.dec_depth; ++l) {
         std::string p = "dec." + std::to_string(l) + ".";
@@ -344,7 +347,8 @@ std::vector<std::vector<int>> translate_batch(Model & m, ggml_gallocr_t alloc,
         EncGraph e = build_encoder(m, seq[b]);
         ggml_gallocr_alloc_graph(alloc, e.gf);
         ggml_backend_tensor_set(e.ids, batch[b].data(), 0, seq[b] * sizeof(int32_t));
-        ggml_backend_tensor_set(e.pe, m.pe.data(), 0, (size_t) seq[b] * hp.dim * sizeof(float));
+        ggml_backend_tensor_set(e.positional_encoding, m.positional_encoding.data(), 0,
+                                (size_t) seq[b] * hp.dim * sizeof(float));
         ggml_backend_graph_compute(m.backend, e.gf);
         for (int l = 0; l < hp.dec_depth; ++l) {
             ckr[l][b].resize((size_t) seq[b] * hp.dim); cvr[l][b].resize((size_t) seq[b] * hp.dim);
@@ -387,7 +391,8 @@ std::vector<std::vector<int>> translate_batch(Model & m, ggml_gallocr_t alloc,
             for (int s = seq[r]; s < Smax; ++s) bias[(size_t) i * Smax + s] = -1e30f;
         }
         ggml_backend_tensor_set(d.tok, toks.data(), 0, Ba * sizeof(int32_t));
-        ggml_backend_tensor_set(d.pe, &m.pe[(size_t) pos * hp.dim], 0, hp.dim * sizeof(float));
+        ggml_backend_tensor_set(d.positional_encoding, &m.positional_encoding[(size_t) pos * hp.dim],
+                                0, hp.dim * sizeof(float));
         ggml_backend_tensor_set(d.cross_bias, bias.data(), 0, bias.size() * sizeof(float));
 
         std::vector<float> sa((size_t) hp.dim * Ba);
@@ -507,7 +512,7 @@ int mode_dump(Model & m, ggml_gallocr_t alloc, const std::vector<int32_t> & src)
     EncGraph e = build_encoder(m, seq);
     ggml_gallocr_alloc_graph(alloc, e.gf);
     ggml_backend_tensor_set(e.ids, src.data(), 0, seq * sizeof(int32_t));
-    ggml_backend_tensor_set(e.pe, m.pe.data(), 0, (size_t) seq * hp.dim * sizeof(float));
+    ggml_backend_tensor_set(e.positional_encoding, m.positional_encoding.data(), 0, (size_t) seq * hp.dim * sizeof(float));
     ggml_backend_graph_compute(m.backend, e.gf);
     std::vector<float> ctx((size_t) seq * hp.dim);
     ggml_backend_tensor_get(e.context, ctx.data(), 0, ctx.size() * sizeof(float));
@@ -528,7 +533,7 @@ int mode_dump(Model & m, ggml_gallocr_t alloc, const std::vector<int32_t> & src)
     std::vector<float> zero((size_t) hp.dim, 0.0f);
     std::vector<float> nobias((size_t) seq, 0.0f);
     ggml_backend_tensor_set(d.tok, &prev, 0, sizeof(int32_t));
-    ggml_backend_tensor_set(d.pe, &m.pe[0], 0, hp.dim * sizeof(float));
+    ggml_backend_tensor_set(d.positional_encoding, &m.positional_encoding[0], 0, hp.dim * sizeof(float));
     ggml_backend_tensor_set(d.cross_bias, nobias.data(), 0, nobias.size() * sizeof(float));
     for (int l = 0; l < hp.dec_depth; ++l) {
         ggml_backend_tensor_set(d.state_in[l], zero.data(), 0, hp.dim * sizeof(float));

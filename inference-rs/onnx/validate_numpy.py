@@ -29,8 +29,9 @@ _LOGITS = _TESTDATA / "inferrs_logits.f32"
 # argmax: int8 rounding legitimately reshuffles tokens whose float logits are near-tied (the
 # same reason wasm/native argmax can flip; see notes/16 and the wasm-parity stance). So the
 # gate is mutual top-K membership — the numpy argmax must sit in the int8 top-K and vice
-# versa. A real architecture bug (transposed weight, wrong PE, mis-read dim) would put the
-# tokens nowhere near each other's top-K, so this still catches what the gate is for.
+# versa. A real architecture bug (transposed weight, wrong positional encoding,
+# mis-read dim) would put the tokens nowhere near each other's top-K, so this still
+# catches what the gate is for.
 _TOPK = 5
 
 

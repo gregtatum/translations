@@ -2,7 +2,7 @@
 """Build and save ``models/decode_step.onnx``.
 
 One autoregressive decoder step per the SPEC decode_step contract: embed the
-previous token (host-supplied PE added in-graph), run four post-norm SSRU layers
+previous token (host-supplied positional encoding added in-graph), run four post-norm SSRU layers
 with cross attention over the precomputed encoder K/V, then the tied output
 projection. The pre-ReLU SSRU cell ``c`` is threaded as persistent state.
 Mirrors ``numpy_ref.decode_step`` op for op.

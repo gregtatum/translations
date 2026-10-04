@@ -47,8 +47,9 @@ $$
 x_t \;=\; \sqrt{d}\; E[\,\text{id}_t\,] \;+\; \mathrm{PE}(t)
 $$
 
-The $\sqrt{d}$ scale (`scalar_mult`, $\approx 19.60$) is applied before adding positions. The
-sinusoidal signal uses marian's rotor form (`transformer.h:95`):
+Here $\mathrm{PE}$ is the positional encoding. The $\sqrt{d}$ scale (`scalar_mult`, $\approx
+19.60$) is applied before adding positions. The sinusoidal signal uses marian's rotor form
+(`transformer.h:95`):
 
 $$
 \mathrm{PE}(t)_i = \sin\!\big(t\cdot \omega_i + \phi_i\big),\qquad
@@ -120,7 +121,7 @@ source:
 
 ```mermaid
 flowchart TD
-  src["source ids + EOS"] --> emb["scaled embedding + sinusoidal PE"]
+  src["source ids + EOS"] --> emb["scaled embedding + sinusoidal positional encoding"]
   emb --> L0
   subgraph enc["Encoder layer × 6"]
     direction TB
@@ -265,7 +266,7 @@ they don't change greedy output.
 flowchart TD
   text["source text"] --> tok["SentencePiece encode (unigram)"]
   tok --> ids["ids + EOS"]
-  ids --> emb["embed ×√d + PE"]
+  ids --> emb["embed ×√d<br/>+ positional encoding"]
   emb --> ENC["Encoder × 6 (bidirectional self-attn + FFN)"]
   ENC --> H["context H"]
   H --> DEC

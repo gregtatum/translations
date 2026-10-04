@@ -29,8 +29,8 @@ pub struct Engine {
     trg_vocab: SpmVocab,
     config: Config,
     /// Sinusoidal positional-encoding frequencies and offsets, length `dim`.
-    pe_freq: Vec<f32>,
-    pe_offs: Vec<f32>,
+    positional_encoding_freq: Vec<f32>,
+    positional_encoding_offs: Vec<f32>,
     /// Optional lexical shortlist restricting the output vocabulary per sentence.
     shortlist: Option<Shortlist>,
     /// Whether source and target share a vocabulary (affects shortlist candidates).
@@ -286,20 +286,21 @@ impl Engine {
         let config = weights.config();
         let d = config.dim_emb;
         let t = d / 2;
-        // PE(pos)[c] = sin(pos*freq[c] + offs[c]); rotor form (transformer.h:95).
-        let mut pe_freq = vec![0.0f32; d];
-        let mut pe_offs = vec![0.0f32; d];
+        // Positional encoding, rotor form (transformer.h:95):
+        //   PE(pos)[c] = sin(pos*freq[c] + offs[c])
+        let mut positional_encoding_freq = vec![0.0f32; d];
+        let mut positional_encoding_offs = vec![0.0f32; d];
         for c in 0..d {
-            pe_freq[c] = 1e-4f32.powf((c % t) as f32 / (t as f32 - 1.0));
-            pe_offs[c] = (c / t) as f32 * FRAC_PI_2;
+            positional_encoding_freq[c] = 1e-4f32.powf((c % t) as f32 / (t as f32 - 1.0));
+            positional_encoding_offs[c] = (c / t) as f32 * FRAC_PI_2;
         }
         Engine {
             weights,
             src_vocab,
             trg_vocab,
             config,
-            pe_freq,
-            pe_offs,
+            positional_encoding_freq,
+            positional_encoding_offs,
             shortlist: None,
             shared_vocab: true,
             #[cfg(feature = "threads")]
@@ -1809,9 +1810,10 @@ impl Engine {
     // --- embeddings ----------------------------------------------------------
 
     /// Embed a run of token ids at consecutive positions starting at `start`:
-    /// `x_t = √d · Wemb[id_t] + PE(start + t)`. `side` selects the source
-    /// (encoder) or target (decoder) embedding — the same matrix for shared-vocab
-    /// models, distinct for split-vocab (CJK) ones.
+    /// `x_t = √d · Wemb[id_t] + PE(start + t)`, where `PE` is the positional
+    /// encoding. `side` selects the source (encoder) or target (decoder)
+    /// embedding — the same matrix for shared-vocab models, distinct for
+    /// split-vocab (CJK) ones.
     fn embed(&self, ids: &[u32], start: usize, side: Side) -> Vec<f32> {
         let mut out = vec![0.0f32; ids.len() * self.config.dim_emb];
         self.embed_into(ids, start, side, &mut out);
@@ -1825,6 +1827,8 @@ impl Engine {
     fn embed_into(&self, ids: &[u32], start: usize, side: Side, out: &mut [f32]) {
         let d = self.config.dim_emb;
         let scale = (d as f32).sqrt();
+        let freq = &self.positional_encoding_freq;
+        let offs = &self.positional_encoding_offs;
         for (t, &id) in ids.iter().enumerate() {
             let dst = &mut out[t * d..(t + 1) * d];
             match side {
@@ -1834,20 +1838,21 @@ impl Engine {
                 // target embeddings right and zero-padding the vacated first
                 // slot (`shift(embeddings, {0, 1, 0})` in
                 // `DecoderTransformer::step`), so at the first step there is no
-                // previous token to embed. Embedding the seed token instead (the
-                // BOS convention other toolkits use) injects a vector ~1.9× the
-                // norm of PE(0) into that step, which swamps the sentence-initial
-                // signal: the model then prefers the lowercase form of the token
-                // it would otherwise emit. Confirmed against the reference trace,
-                // whose decoder step-0 embedding node is all zeros; worth
-                // 0/20 → 18/20 greedy exact-match vs translator-cli on en-ru.
-                // See notes/23-float-model-support.md.
+                // previous token to embed. Embedding the seed token instead
+                // (the BOS convention other toolkits use) injects a vector
+                // ~1.9× the norm of the positional encoding at position 0 into
+                // that step, which swamps the sentence-initial signal: the
+                // model then prefers the lowercase form of the token it would
+                // otherwise emit. Confirmed against the reference trace, whose
+                // decoder step-0 embedding node is all zeros; worth 0/20 →
+                // 18/20 greedy exact-match vs translator-cli on en-ru. See
+                // notes/23-float-model-support.md.
                 Side::Target if start + t == 0 => dst.fill(0.0),
                 Side::Target => self.weights.trg_embed_row_into(id, dst),
             }
             let pos = (start + t) as f32;
             for c in 0..d {
-                dst[c] = scale * dst[c] + (pos * self.pe_freq[c] + self.pe_offs[c]).sin();
+                dst[c] = scale * dst[c] + (pos * freq[c] + offs[c]).sin();
             }
         }
     }

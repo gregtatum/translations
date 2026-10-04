@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build and save ``models/encoder.onnx``.
 
-The encoder graph embeds+scales source ids, adds a precomputed rotor PE, runs
+The encoder graph embeds+scales source ids, adds a precomputed rotor positional encoding, runs
 six post-norm transformer layers, and folds in the per-decoder-layer cross
 attention K/V so the whole pre-loop pass is a single ORT run. Weights enter as
 initializers in the stored ``[in,out]`` orientation, so every linear is a plain
@@ -17,7 +17,7 @@ import onnx
 from onnx import TensorProto, helper, numpy_helper
 
 import model_npz as npz
-from numpy_ref import build_pe
+from numpy_ref import build_positional_encoding
 
 _MODELS = Path(__file__).resolve().parent / "models"
 _MAX_SEQ = 256
@@ -129,9 +129,13 @@ def build() -> onnx.ModelProto:
     zero = g.const("i0", np.array([0], dtype=np.int64))
     seq = g.add("Slice", [shape, zero, g.const("i1", np.array([1], dtype=np.int64)), zero], "seq")
 
-    pe_table = g.const("pe_table", build_pe(_MAX_SEQ))  # [max_seq,384]
-    pe = g.add("Slice", [pe_table, zero, seq, zero], "pe_slice")  # [seq,384]
-    x = g.add("Add", [emb, pe], "x0")
+    positional_encoding_table = g.const(
+        "positional_encoding_table", build_positional_encoding(_MAX_SEQ)
+    )  # [max_seq,384]
+    positional_encoding = g.add(
+        "Slice", [positional_encoding_table, zero, seq, zero], "positional_encoding_slice"
+    )  # [seq,384]
+    x = g.add("Add", [emb, positional_encoding], "x0")
 
     for layer in range(1, npz.ENC_DEPTH + 1):
         x = _enc_layer(g, x, f"encoder_l{layer}", seq)

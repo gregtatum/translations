@@ -46,7 +46,7 @@ source of truth for the architecture (so the two evals can't silently disagree o
 
 | file | role | reuse |
 |---|---|---|
-| `convert_marian_gguf.py` | float `.npz` → `marian.float.gguf` (F32 scaffold) + `marian.q8_0.gguf` (shipped) | imports `onnx/model_npz.py`; bakes PE via the `onnx/numpy_ref.py` formula |
+| `convert_marian_gguf.py` | float `.npz` → `marian.float.gguf` (F32 scaffold) + `marian.q8_0.gguf` (shipped) | imports `onnx/model_npz.py`; bakes the positional encoding via the `onnx/numpy_ref.py` formula |
 | `marian_ggml.cpp` | the engine: builds the encoder + SSRU-decoder cgraphs on libggml, greedy loop in the driver | — |
 | `build.sh` | builds libggml (CPU-only) from `GGML_DIR` + compiles the engine | — |
 | `pretokenize.py` | block corpus → source-id blocks for blockbench (fair-RSS: the sampled process is the binary) | `onnx/tokenizer.py` |
@@ -65,8 +65,8 @@ source of truth for the architecture (so the two evals can't silently disagree o
   This is exactly ONNX's split (float Gather, quantized projection) and is why the size
   ratio is capped.
 - **Quantization.** Q8_0 (block-wise, per-32 scale) on every linear matmul weight + the
-  output projection; F16 embeddings; F32 biases/LayerNorm and the baked PE table.
-- **PE baked as an F32 constant** via the exact `numpy_ref` rotor formula — never a live
+  output projection; F16 embeddings; F32 biases/LayerNorm and the baked positional-encoding table.
+- **Positional encoding baked as an F32 constant** via the exact `numpy_ref` rotor formula — never a live
   `Sin` (the known marian-exporter divergence). F32 so it adds cleanly to F32 activations.
 - **SSRU is elementwise per step**, exactly as `notes/14` predicted: `c_t = g·c_prev +
   (1−g)·cand`, implemented as `cand + g⊙(c_prev − cand)` with `ggml_sigmoid/sub/mul/add` and
@@ -136,7 +136,7 @@ corpus; threading is the real lever. The three-way maintenance tradeoff on one p
 ## Feasibility verdict (the encoder vs the SSRU decoder — Greg's original worry)
 
 - **Encoder: zero risk.** Standard post-norm transformer; every op is stock ggml. The only
-  non-vanilla bits are graph-wiring (post-norm order, baked PE, `sqrt(d)` scale on a tied
+  non-vanilla bits are graph-wiring (post-norm order, baked positional encoding, `sqrt(d)` scale on a tied
   `Wemb`). Proven exact in Gate 2.
 - **SSRU decoder: the feared part was a false alarm.** Elementwise per step, no scan, no
   custom op. Proven exact in Gate 2 and coherent in Q8_0. The state slot is one vector per

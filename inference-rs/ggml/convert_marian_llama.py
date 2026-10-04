@@ -13,8 +13,9 @@ a float GGUF (numeric parity gate) and a Q8_0 GGUF (top-K + chrF + perf).
 
 Weight orientation is unchanged from G1: each linear is stored transposed to numpy shape
 ``(out, in)`` → ggml ``ne0=in, ne1=out`` so ``ggml_mul_mat(W, x)`` gives ``y[o]=sum_i W[i,o]*x[i]``.
-The sinusoidal absolute PE is baked into ``position_embd`` (indexed by absolute position in
-the graph) — same table ``numpy_ref.build_pe`` computes, so PE is never a divergence source.
+The sinusoidal absolute positional encoding is baked into ``position_embd`` (indexed by
+absolute position in the graph) — the same table ``numpy_ref.build_positional_encoding``
+computes, so the positional encoding is never a divergence source.
 
 Tensor-name scheme (must match src/llama-arch.cpp LLM_TENSOR_NAMES exactly):
     token_embd.weight, position_embd.weight, output.weight, output.bias
@@ -60,8 +61,9 @@ _ARCH = "marian"
 _MAX_SEQ = 256
 
 
-def _build_pe(max_seq: int) -> np.ndarray:
-    """Sinusoidal rotor PE table, byte-for-byte the formula in numpy_ref.build_pe.
+def _build_positional_encoding(max_seq: int) -> np.ndarray:
+    """Sinusoidal rotor positional-encoding table, byte-for-byte the formula in
+    numpy_ref.build_positional_encoding.
 
     Returns shape (max_seq, DIM); GGUF stores it row-major as ne0=DIM, ne1=max_seq, so
     ggml_get_rows(position_embd, pos) yields the DIM-vector for absolute position `pos`.
@@ -83,7 +85,8 @@ def _linear(npz_name: str) -> np.ndarray:
 
 
 # A collected tensor: (name, float array, quantizable). `quant=True` marks a matmul weight the
-# Q8_0 GGUF quantizes; everything else (biases, LayerNorm, embeddings, PE) stays F32/F16.
+# Q8_0 GGUF quantizes; everything else (biases, LayerNorm, embeddings, positional
+# encoding) stays F32/F16.
 def _collect(include_decoder: bool = False) -> list[tuple[str, np.ndarray, bool]]:
     """Encoder-only by default. `include_decoder` bakes in the SSRU decoder."""
     out: list[tuple[str, np.ndarray, bool]] = []
@@ -96,7 +99,8 @@ def _collect(include_decoder: bool = False) -> list[tuple[str, np.ndarray, bool]
 
     wemb = npz.wemb().astype(np.float32)  # (vocab, dim)
     raw("token_embd.weight", wemb)  # get_rows lookup (F16 is a later perf tweak)
-    raw("position_embd.weight", _build_pe(_MAX_SEQ))  # baked sinusoidal PE
+    # baked sinusoidal positional encoding
+    raw("position_embd.weight", _build_positional_encoding(_MAX_SEQ))
     out.append(("output.weight", wemb, True))  # tied projection: quantized like the linears
     if include_decoder:
         raw("output.bias", npz.logit_bias())  # decoder logit bias

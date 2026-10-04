@@ -115,7 +115,7 @@ memory-optimized `base-memory` architecture:
 | decompressed bin | 42.99 MB | 31.56 MB |
 | float `.npz` | 170.78 MB | 125.03 MB |
 
-Both are transformer encoder + SSRU decoder, tied embeddings, sinusoidal PE, post-norm
+Both are transformer encoder + SSRU decoder, tied embeddings, sinusoidal positional encoding, post-norm
 (`transformer-postprocess: dan`) — both convertible. (Coincidentally, base-memory's
 384/dec-depth-4 shape matches the en-fr student the converter was first built for; base's
 512/dec-depth-2 does not — which is exactly why the converter must be driven from config,

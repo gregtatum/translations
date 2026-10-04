@@ -37,7 +37,7 @@ Validate in float first so quantization is not a confounding variable.
 | eps | 1e-6 | LayerNorm, inside sqrt, biased (÷d) variance |
 | activation | ReLU | FFN and SSRU cell output |
 | norm | POST-norm | `LayerNorm(sublayer(x) + x)` — NOT pre-norm |
-| PE | sinusoidal rotor | precompute as constant; do NOT emit in-graph Sin |
+| positional encoding | sinusoidal rotor | precompute as constant; do NOT emit in-graph Sin |
 | embeddings | tied-all | `Wemb` is source emb, target emb, and (transposed) output projection |
 
 ## Weight orientation (CRITICAL)
@@ -54,17 +54,17 @@ shape-error if wrong.
 ## Embedding + positions
 
 ```
-x_t = sqrt(384) * Wemb[id_t] + PE(pos_t)          # scale BEFORE adding PE
+x_t = sqrt(384) * Wemb[id_t] + PE(pos_t)          # scale BEFORE adding the positional encoding
 sqrt(384) ≈ 19.5959
 ```
-No embedding LayerNorm. PE (rotor form, T = d/2 = 192):
+No embedding LayerNorm. Positional encoding (rotor form, T = d/2 = 192):
 ```
 freq[c] = 1e-4 ^ ((c mod 192) / 191)              # c in 0..384
 offs[c] = floor(c / 192) * (pi/2)                 # 0 for c<192 (sin), pi/2 for c>=192 (cos)
 PE(pos)[c] = sin(pos * freq[c] + offs[c])
 ```
-Precompute the whole `[max_seq, 384]` PE table as an f32 constant/initializer and add a
-slice; or pass a precomputed PE vector as a graph input. Never emit a live `Sin` op
+Precompute the whole `[max_seq, 384]` positional-encoding table as an f32 constant/initializer and add a
+slice; or pass a precomputed positional-encoding vector as a graph input. Never emit a live `Sin` op
 (known marian-exporter divergence bug).
 
 ## Encoder layer (post-norm), for L in 1..6, prefix `encoder_l{L}`
@@ -120,7 +120,7 @@ eos_id (0)**; **no BOS**. Decoder seeds with target EOS (id 0) at pos 0. Stop on
 ## decode_step graph contract
 
 - run ONCE: encoder -> context; then per-layer cross_k_i, cross_v_i (each [seq,dim]).
-- INPUTS/step: prev_token (int64), pos (or precomputed PE vector), cross_k_i, cross_v_i,
+- INPUTS/step: prev_token (int64), pos (or precomputed positional-encoding vector), cross_k_i, cross_v_i,
   decoder_state_i (init zeros). Layer count is dec-depth (2 for en-ru base, 4 for the en-fr
   student) — read from the model config, not hardcoded.
 - OUTPUTS/step: logits, new decoder_state_i (new c_t).

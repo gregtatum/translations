@@ -177,7 +177,8 @@ const   [18]            token ids, flattened (seq*batch = 6*3)
 rows    [18, 384]       embedding lookup
 reshape [6, 3, 384]     -> [seq, batch, dim]   (marian is TIME-MAJOR: seq outermost)
 const   [6, 3, 1]       data_0_mask            (1.0 valid / 0.0 pad, per [seq,batch])
-scalar_mult/const/+     √d·emb + PE  (PE const is [6,1,384], broadcast over batch)
+scalar_mult/const/+     √d·emb + positional encoding
+                        (the PE const is [6,1,384], broadcast over batch)
 reshape/transpose       -> [1, batch, seq, dim]  (batch-major for the affines)
 (mask) reshape/transpose/negate/scalar_add/scalar_mult/reshape
                         data_0_mask -> additive attention mask [batch, 1, 1, seq]

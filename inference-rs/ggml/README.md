@@ -26,9 +26,9 @@ float .npz  →  convert_marian_gguf.py  →  marian.float.gguf (F32 scaffold)  
 
 ## Files
 
-- `convert_marian_gguf.py` — float `.npz` → GGUF (reuses `../onnx/model_npz.py`; bakes the PE
-  table with the `../onnx/numpy_ref.py` formula). Writes an F32 float scaffold and a Q8_0
-  artifact; prints the size table.
+- `convert_marian_gguf.py` — float `.npz` → GGUF (reuses `../onnx/model_npz.py`; bakes
+  the positional-encoding table with the `../onnx/numpy_ref.py` formula). Writes an F32
+  float scaffold and a Q8_0 artifact; prints the size table.
 - `marian_ggml.cpp` — the engine. Modes: `decode` (ids in/out), `blockbench --blocks F`
   (emits `[block] {json}` spans like the other engines), `dump ID…` (encoder context +
   first-step logits → `testdata/`, for the gates).

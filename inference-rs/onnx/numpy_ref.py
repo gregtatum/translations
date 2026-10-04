@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Float32 numpy reference forward pass (the bit-close golden).
 
-Implements the SPEC exactly: tied+scaled embeddings with a precomputed rotor PE
-table, 6 post-norm encoder layers, and a 4-layer SSRU decoder step with cross
-attention and the tied output projection. See ``onnx/SPEC.md``.
+Implements the SPEC exactly: tied+scaled embeddings with a precomputed rotor
+positional-encoding table, 6 post-norm encoder layers, and a 4-layer SSRU decoder
+step with cross attention and the tied output projection. See ``onnx/SPEC.md``.
 """
 
 from __future__ import annotations
@@ -74,7 +74,7 @@ def multihead(q: np.ndarray, k: np.ndarray, v: np.ndarray) -> np.ndarray:
 # --- positional encoding (rotor form, precomputed constant) -------------------
 
 
-def build_pe(max_seq: int) -> np.ndarray:
+def build_positional_encoding(max_seq: int) -> np.ndarray:
     d = npz.DIM
     half = d // 2  # 192
     c = np.arange(d)
@@ -84,11 +84,11 @@ def build_pe(max_seq: int) -> np.ndarray:
     return np.sin(pos * freq[None, :] + offs[None, :]).astype(np.float32)
 
 
-PE = build_pe(256)
+POSITIONAL_ENCODING = build_positional_encoding(256)
 
 
 def embed(ids: list[int], start_pos: int = 0, decoder: bool = False) -> np.ndarray:
-    """sqrt(d)*Wemb[id] + PE(pos), scaling BEFORE adding PE.
+    """sqrt(d)*Wemb[id] + PE(pos), scaling BEFORE adding the positional encoding.
 
     With ``decoder=True``, position 0 gets *no* embedding, only the positional
     encoding. marian builds the decoder input by shifting the target embeddings
@@ -99,11 +99,11 @@ def embed(ids: list[int], start_pos: int = 0, decoder: bool = False) -> np.ndarr
     ``notes/23-float-model-support.md``.
     """
     x = npz.EMBED_SCALE * npz.wemb()[ids]  # [seq,384]
-    pe = PE[start_pos : start_pos + len(ids)]
+    positional_encoding = POSITIONAL_ENCODING[start_pos : start_pos + len(ids)]
     if decoder and start_pos == 0:
         x = x.copy()
         x[0] = 0.0
-    return (x + pe).astype(np.float32)
+    return (x + positional_encoding).astype(np.float32)
 
 
 # --- encoder ------------------------------------------------------------------

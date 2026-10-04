@@ -80,8 +80,9 @@ def check_decode_steps(enc, dec, text: str, n_steps: int = 3) -> bool:
     for pos in range(n_steps):
         feed = {
             "prev_token": np.array([prev], dtype=np.int64),
-            "pe_vec": ref.PE[pos].astype(np.float32),
-            # Position 0 takes no embedding, only the PE (see export_decoder.build).
+            "pe_vec": ref.POSITIONAL_ENCODING[pos].astype(np.float32),
+            # Position 0 takes no embedding, only the positional encoding
+            # (see export_decoder.build).
             "embed_gate": np.array(0.0 if pos == 0 else 1.0, dtype=np.float32),
             **cross,
             **onnx_states,

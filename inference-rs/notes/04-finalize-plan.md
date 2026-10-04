@@ -9,7 +9,7 @@ The full pipeline is built and runs with no trace involved (`cargo run -- transl
   Viterbi). Source ids match the reference byte-for-byte on the tested sentences.
 - **`weights.rs`** — model view: dequantized `Wemb`, per-affine int8 weights + `qA/qB`,
   parsed config.
-- **`engine.rs`** — dynamic forward pass: `√d` embeddings + sinusoidal PE, 6-layer encoder,
+- **`engine.rs`** — dynamic forward pass: `√d` embeddings + sinusoidal positional encoding, 6-layer encoder,
   4-layer SSRU decoder (cell state carried across steps), greedy loop.
 - **`shortlist.rs`** — `lex.*.s2t.bin` reader + per-sentence candidate set; the int8 tied
   output projection restricts to those columns (the reference `SelectColumnsB` path).

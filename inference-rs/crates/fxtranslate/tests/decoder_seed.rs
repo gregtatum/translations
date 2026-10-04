@@ -5,10 +5,10 @@
 //! zero-padding the vacated first slot (`shift(embeddings, {0, 1, 0})`), so at
 //! step 0 there is no previous token to embed. Embedding the seed token instead
 //! — the BOS convention other toolkits use — injects a vector roughly 1.9× the
-//! norm of `PE(0)` into that step. The model still picks the right *word*, but
-//! prefers its lowercase form, so the symptom is a sentence that reads correctly
-//! except for its capitalization (and, once the first token shifts, occasional
-//! reordering downstream).
+//! norm of the positional encoding at position 0 into that step. The model
+//! still picks the right *word*, but prefers its lowercase form, so the symptom
+//! is a sentence that reads correctly except for its capitalization (and, once
+//! the first token shifts, occasional reordering downstream).
 //!
 //! This was worth 0/20 → 18/20 greedy exact-match against `translator-cli` on
 //! en-ru, and 6/20 → 19/20 on en-es, so it is pinned here: the failure is quiet

@@ -25,7 +25,7 @@ import onnxruntime as ort
 
 import model_npz as npz
 import tokenizer as tok
-from numpy_ref import PE
+from numpy_ref import POSITIONAL_ENCODING
 
 _MODELS = Path(__file__).resolve().parent / "models"
 _DEFAULT_TEXT = "Hello, world. This is a test of the translation engine."
@@ -111,8 +111,8 @@ class Engine:
         for pos in range(max(max_len)):
             feed = {
                 "prev_token": prev,
-                "pe_vec": PE[pos].astype(np.float32),
-                # Position 0 takes no embedding, only the PE — marian zero-pads the
+                "pe_vec": POSITIONAL_ENCODING[pos].astype(np.float32),
+                # Position 0 takes no embedding, only the positional encoding — marian zero-pads the
                 # shifted target embeddings there (see export_decoder.build).
                 "embed_gate": np.array(0.0 if pos == 0 else 1.0, dtype=np.float32),
                 "cross_bias": cross_bias,
