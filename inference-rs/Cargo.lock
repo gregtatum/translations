@@ -254,7 +254,7 @@ dependencies = [
 
 [[package]]
 name = "fxtranslate"
-version = "0.4.2"
+version = "0.5.0"
 dependencies = [
  "cc",
  "dirs",
@@ -269,21 +269,21 @@ dependencies = [
 
 [[package]]
 name = "fxtranslate-cli"
-version = "0.4.2"
+version = "0.5.0"
 dependencies = [
  "fxtranslate",
 ]
 
 [[package]]
 name = "fxtranslate-gecko"
-version = "0.4.2"
+version = "0.5.0"
 dependencies = [
  "fxtranslate",
 ]
 
 [[package]]
 name = "fxtranslate-oracle"
-version = "0.4.2"
+version = "0.5.0"
 dependencies = [
  "dhat",
  "fxtranslate",
@@ -292,7 +292,7 @@ dependencies = [
 
 [[package]]
 name = "fxtranslate-py"
-version = "0.4.2"
+version = "0.5.0"
 dependencies = [
  "fxtranslate",
  "pyo3",
@@ -300,7 +300,7 @@ dependencies = [
 
 [[package]]
 name = "fxtranslate-wasm"
-version = "0.4.2"
+version = "0.5.0"
 dependencies = [
  "console_error_panic_hook",
  "fxtranslate",

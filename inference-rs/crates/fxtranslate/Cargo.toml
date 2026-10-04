@@ -1,6 +1,6 @@
 [package]
 name = "fxtranslate"
-version = "0.4.2"
+version = "0.5.0"
 edition = "2021"
 description = "Rust reimplementation of the Firefox Translations inference engine, validated against the C++ translator-cli."
 license = "MPL-2.0"

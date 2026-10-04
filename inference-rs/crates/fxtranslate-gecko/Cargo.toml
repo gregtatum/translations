@@ -1,6 +1,6 @@
 [package]
 name = "fxtranslate-gecko"
-version = "0.4.2"
+version = "0.5.0"
 edition = "2021"
 description = "C-ABI glue crate exposing the fxtranslate neural machine-translation engine to Firefox/Gecko C++ (the third binding, mirroring the wasm and PyO3 crates)."
 license = "MPL-2.0"
