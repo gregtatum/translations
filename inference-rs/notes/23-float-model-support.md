@@ -96,6 +96,104 @@ Three layers of existing verification all had the same blind spot:
 The float32 work is what made this findable: it ruled out quantization in one
 step, which left the driver loop as the only place to look.
 
+## Propagating the fix to the other ports
+
+All three ports inherited the old seeding, because all three were built against
+`numpy_ref` (or against the engine itself). All three are now fixed and verified
+by execution.
+
+### `onnx/`
+
+The embedding lookup lives *inside* `decode_step.onnx`, so the driver alone could
+not fix it. `export_decoder.py` gained a scalar `embed_gate` input that multiplies
+the embedding before the PE is added; the drivers pass `0.0` at position 0 and
+`1.0` after. The gate is a runtime input rather than baked in because the graph is
+position-agnostic — the driver owns `pos`.
+
+Touched: `export_decoder.py` (graph), `engine.py` and `validate_onnx.py` (the two
+feed sites), `numpy_ref.py` (`embed(..., decoder=True)`). Re-exported, re-quantized.
+
+```
+validate_onnx.py   encoder 2.2e-06 | decode steps 0-2 logits <5.6e-05
+                   end-to-end string match | batch-invariance    OVERALL: PASS
+validate_numpy.py  argmax PASS (exact — was a near-tie reshuffle); top-5 now
+                   identical in order between numpy_ref and the int8 engine
+```
+
+### `ggml/` G1 — `marian_ggml.cpp`
+
+The decoder graph is rebuilt per position, so the gate folds into the existing
+`ggml_scale` with no new input tensor:
+
+```cpp
+u = ggml_scale(c, u, pos == 0 ? 0.0f : hp.embed_scale);
+```
+
+`build_decoder` takes `pos`; both call sites (the greedy loop and `mode_dump`'s
+first step) pass it.
+
+```
+validate_ggml.py   Gate 2 (float vs numpy_ref)  encoder 7.3e-07  logits 2.3e-05  PASS
+                   Gate 1 (Q8_0 vs rs int8)     argmax 2289 both, mutual-top5 PASS
+                   Gate 3 (batch-invariance)    token-identical        PASS
+```
+
+### `ggml/` G2 — llama.cpp `LLM_ARCH_MARIAN`
+
+The G2 decoder graph is in llama.cpp, not here (`marian_decoder_dump.cpp` is only
+a driver). It had the same bug, at `src/models/marian.cpp` in `graph_decoder`:
+
+```cpp
+inpL = build_inp_embd(model.tok_embd);
+inpL = ggml_add(ctx0, inpL, ggml_get_rows(ctx0, model.pos_embd, inp_pos));
+```
+
+This is llama.cpp's generic encoder-decoder convention, which starts from
+`llama_model_decoder_start_token(model)` and **embeds** it — correct for T5, which
+genuinely uses a start-token embedding, wrong for marian, which zero-pads.
+
+Fixed by gating on the position, in `graph_decoder` only (the encoder's position 0
+is a real token and must keep its embedding):
+
+```cpp
+ggml_tensor * embd_gate = ggml_step(ctx0, ggml_cast(ctx0, inp_pos, GGML_TYPE_F32));
+embd_gate = ggml_reshape_2d(ctx0, embd_gate, 1, n_tokens);
+inpL = ggml_mul(ctx0, inpL, embd_gate);
+```
+
+`ggml_step(x)` is 1 for `x > 0` and 0 otherwise, so the gate is `step(pos)`
+broadcast over `n_embd`. Gated **per token** rather than per graph because
+block-batched decode can hold rows at different positions in one batch.
+
+```
+validate_llama_decoder.py  Gate 1 (first-step logits vs numpy_ref)  1.7e-05, argmax 2289  PASS
+                           Gate 2 (end-to-end greedy vs G1 float)   id-identical          PASS
+validate_llama_encoder.py  encoder vs numpy_ref  1.0e-06                                  PASS
+```
+
+**This change is in an external repo** — `~/src/llama.cpp`, branch `marian-arch`,
+left uncommitted in the working tree.
+
+### All four implementations now agree
+
+```
+translator-cli (reference)   Погода сегодня хорошая.
+fxtranslate int8 / float32   Погода сегодня хорошая.
+numpy_ref float              Погода сегодня хорошая.
+ONNX float / int8            Погода сегодня хорошая.
+ggml G1 float                Погода сегодня хорошая.
+ggml G2 (llama.cpp) float    Погода сегодня хорошая.
+```
+
+### Build-path note
+
+The `~/dev` checkouts moved to `~/src`, so the stale defaults were updated:
+`ggml/build.sh` (`GGML_DIR`), `ggml/build_llama.sh` (`LLAMA_DIR`),
+`ggml/tokenizer_parity.py` (`llama-tokenize`), plus the `Taskfile.yml` /
+`ggml/README.md` / `notes/18` mentions. Both build trees had cmake caches pinned
+to the old absolute paths and had to be wiped before reconfiguring; they are
+gitignored artifacts.
+
 ## The float path itself
 
 `Weights` detects precision at load from the container's dtype and reports it via

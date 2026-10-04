@@ -219,7 +219,7 @@ Decoder batching (with compaction) and threading are **done**; the remaining lev
 ## Reproduce
 
 ```sh
-task rs:ggml-build          # libggml (CPU-only) from GGML_DIR=~/dev/ggml + compile engine
+task rs:ggml-build          # libggml (CPU-only) from GGML_DIR=~/src/ggml + compile engine
 task rs:ggml-convert        # float .npz -> marian.{float,q8_0}.gguf
 task rs:onnx-dump           # (optional) inference-rs int8 reference for Gate 1
 task rs:ggml-validate       # Gate 2 + Gate 1

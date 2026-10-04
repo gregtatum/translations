@@ -31,7 +31,7 @@ _CORPORA = _INFERENCE_RS / "corpora"
 _LLAMA_TOKENIZE = Path(
     __import__("os").environ.get(
         "LLAMA_TOKENIZE",
-        str(Path.home() / "dev/llama.cpp/build/bin/llama-tokenize"),
+        str(Path.home() / "src/llama.cpp/build/bin/llama-tokenize"),
     )
 )
 

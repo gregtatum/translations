@@ -139,11 +139,18 @@ def _dec_layer(g: _Graph, u: str, p: str, layer: int) -> tuple[str, str]:
 def build() -> onnx.ModelProto:
     g = _Graph()
 
-    # embed prev_token: sqrt(d)*Wemb[id] + pe_vec  -> [B,DIM]
+    # embed prev_token: embed_gate*sqrt(d)*Wemb[id] + pe_vec  -> [B,DIM]
     wemb = g.const("Wemb", npz.wemb())
     emb = g.add("Gather", [wemb, "prev_token"], "emb", axis=0)  # [B,DIM] (prev_token is [B])
     scale = g.const("embed_scale", np.array(npz.EMBED_SCALE, dtype=np.float32))
     emb = g.add("Mul", [emb, scale], "emb_scaled")
+    # `embed_gate` is 0.0 at decode position 0 and 1.0 afterwards. marian builds the
+    # decoder input by shifting the target embeddings right and zero-padding the
+    # vacated first slot (`shift(embeddings, {0,1,0})`), so the first step has no
+    # previous token to embed — only the positional encoding. The gate is a runtime
+    # input rather than baked in because the graph is position-agnostic: the driver
+    # owns `pos`. See notes/23-float-model-support.md.
+    emb = g.add("Mul", [emb, "embed_gate"], "emb_gated")
     # pe_vec is [DIM] (same decode position for the whole batch); broadcast-add over rows
     u = g.add("Add", [emb, "pe_vec"], "u0")
 
@@ -171,6 +178,7 @@ def build() -> onnx.ModelProto:
     inputs = [
         helper.make_tensor_value_info("prev_token", TensorProto.INT64, ["batch"]),
         helper.make_tensor_value_info("pe_vec", TensorProto.FLOAT, [npz.DIM]),
+        helper.make_tensor_value_info("embed_gate", TensorProto.FLOAT, []),
     ]
     for i in range(npz.DEC_DEPTH):
         inputs.append(

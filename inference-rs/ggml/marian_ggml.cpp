@@ -260,7 +260,10 @@ ggml_tensor * cross_attention_batched(ggml_context * c, ggml_tensor * q, ggml_te
     return ggml_reshape_2d(c, KQV, head_dim * n_head, B);                 // [dim,B]
 }
 
-DecGraph build_decoder(Model & m, int B, int Smax) {
+// `pos` is the absolute decoder position. The graph is rebuilt per position (see
+// the greedy loop), so the position-dependent part of the embedding folds in here
+// rather than needing a runtime gate input.
+DecGraph build_decoder(Model & m, int B, int Smax, int pos) {
     DecGraph d; d.B = B; d.Smax = Smax;
     d.ctx = graph_ctx();
     ggml_context * c = d.ctx;
@@ -272,7 +275,12 @@ DecGraph build_decoder(Model & m, int B, int Smax) {
     d.cross_bias = ggml_new_tensor_4d(c, GGML_TYPE_F32, Smax, 1, 1, B); ggml_set_input(d.cross_bias);
 
     ggml_tensor * u = ggml_get_rows(c, m.get("token_embd.weight"), d.tok); // [dim,B]
-    u = ggml_scale(c, u, hp.embed_scale);
+    // Decoder position 0 takes no embedding at all — only the positional encoding.
+    // marian builds the decoder input by shifting the target embeddings right and
+    // zero-padding the vacated first slot (`shift(embeddings, {0,1,0})` in
+    // `DecoderTransformer::step`), so the first step has no previous token to embed.
+    // Scaling by 0 here is exactly that zero-pad. See notes/23-float-model-support.md.
+    u = ggml_scale(c, u, pos == 0 ? 0.0f : hp.embed_scale);
     u = ggml_add(c, u, d.pe);                                              // pe broadcast over B
 
     for (int l = 0; l < hp.dec_depth; ++l) {
@@ -369,7 +377,7 @@ std::vector<std::vector<int>> translate_batch(Model & m, ggml_gallocr_t alloc,
         int Smax = 0;
         for (int r : act) Smax = std::max(Smax, seq[r]);
 
-        DecGraph d = build_decoder(m, Ba, Smax);
+        DecGraph d = build_decoder(m, Ba, Smax, pos);
         ggml_gallocr_alloc_graph(alloc, d.gf);
 
         std::vector<int32_t> toks(Ba);
@@ -512,7 +520,9 @@ int mode_dump(Model & m, ggml_gallocr_t alloc, const std::vector<int32_t> & src)
     ggml_free(e.ctx);
 
     // First decode step (B=1, pos 0, prev = eos, state zero, no source padding).
-    DecGraph d = build_decoder(m, 1, seq);
+    // At pos 0 the seed token's embedding is zero-padded away (see build_decoder),
+    // so `prev` below is inert — it is set for symmetry with the greedy loop.
+    DecGraph d = build_decoder(m, 1, seq, 0);
     ggml_gallocr_alloc_graph(alloc, d.gf);
     int32_t prev = hp.eos_id;
     std::vector<float> zero((size_t) hp.dim, 0.0f);

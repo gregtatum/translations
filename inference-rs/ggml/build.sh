@@ -3,7 +3,7 @@
 #
 # Two idempotent steps:
 #   1. Build libggml static libs (CPU-only, no Metal/BLAS/OpenMP — CPU-first per the eval
-#      mandate) from a local ggml checkout ($GGML_DIR, default ~/dev/ggml, a sibling
+#      mandate) from a local ggml checkout ($GGML_DIR, default ~/src/ggml, a sibling
 #      checkout like marian-dev/gemmology) into ggml/build-ggml/.
 #   2. Compile ggml/marian_ggml.cpp against those static libs -> ggml/marian_ggml.
 #
@@ -12,7 +12,7 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"          # inference-rs/ggml
-GGML_DIR="${GGML_DIR:-$HOME/dev/ggml}"
+GGML_DIR="${GGML_DIR:-$HOME/src/ggml}"
 BUILD="$HERE/build-ggml"
 LIBS="$BUILD/src"
 

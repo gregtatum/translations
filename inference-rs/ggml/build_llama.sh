@@ -9,7 +9,7 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"          # inference-rs/ggml
-LLAMA_DIR="${LLAMA_DIR:-$HOME/dev/llama.cpp}"
+LLAMA_DIR="${LLAMA_DIR:-$HOME/src/llama.cpp}"
 BUILD="$LLAMA_DIR/build-cpu"
 
 if [[ ! -d "$LLAMA_DIR/src/models" ]]; then

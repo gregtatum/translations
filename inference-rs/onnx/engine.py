@@ -112,6 +112,9 @@ class Engine:
             feed = {
                 "prev_token": prev,
                 "pe_vec": PE[pos].astype(np.float32),
+                # Position 0 takes no embedding, only the PE — marian zero-pads the
+                # shifted target embeddings there (see export_decoder.build).
+                "embed_gate": np.array(0.0 if pos == 0 else 1.0, dtype=np.float32),
                 "cross_bias": cross_bias,
                 **cross,
                 **states,

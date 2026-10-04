@@ -32,7 +32,7 @@ float .npz  →  convert_marian_gguf.py  →  marian.float.gguf (F32 scaffold)  
 - `marian_ggml.cpp` — the engine. Modes: `decode` (ids in/out), `blockbench --blocks F`
   (emits `[block] {json}` spans like the other engines), `dump ID…` (encoder context +
   first-step logits → `testdata/`, for the gates).
-- `build.sh` — builds libggml (CPU-only) from `GGML_DIR` (default `~/dev/ggml`) + compiles
+- `build.sh` — builds libggml (CPU-only) from `GGML_DIR` (default `~/src/ggml`) + compiles
   the engine. Run via `task rs:ggml-build`.
 - `pretokenize.py` — block corpus → source-id blocks for `blockbench` (keeps the sampled
   process the binary alone).

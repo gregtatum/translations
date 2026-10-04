@@ -705,7 +705,7 @@ tasks:
     desc: Build libggml (CPU-only) + compile the bare-libggml engine (ggml/marian_ggml).
     summary: |
       Runs ggml/build.sh: builds the ggml static libs (CPU-only, no Metal/BLAS/OpenMP)
-      from a local ggml checkout (GGML_DIR, default ~/dev/ggml — a sibling checkout like
+      from a local ggml checkout (GGML_DIR, default ~/src/ggml — a sibling checkout like
       marian-dev/gemmology) into ggml/build-ggml/, then compiles ggml/marian_ggml.cpp
       against them. Idempotent; re-links only when sources change.
     dir: '{{.TASKFILE_DIR}}'
@@ -746,7 +746,7 @@ tasks:
       line with llama-tokenize (vocab-only, no bos/eos) and diffs the ids against the upstream
       spm_encode goldens (en-fr, en-ja) or the shipping spm.rs reference (en-ru). PASS = 100%
       exact on all corpora. Needs the vocab GGUFs (rs:ggml-convert-vocab) and llama-tokenize
-      built on branch marian-arch (set LLAMA_TOKENIZE, default ~/dev/llama.cpp/build/bin).
+      built on branch marian-arch (set LLAMA_TOKENIZE, default ~/src/llama.cpp/build/bin).
     deps: [ggml-venv]
     dir: '{{.TASKFILE_DIR}}'
     cmds:
@@ -794,7 +794,7 @@ tasks:
     desc: Build CPU libllama (marian-arch) + the encoder-parity driver (marian_encoder_dump).
     summary: |
       Runs ggml/build_llama.sh: configures/builds a CPU-only libllama from LLAMA_DIR
-      (default ~/dev/llama.cpp, branch marian-arch) into build-cpu/, then compiles
+      (default ~/src/llama.cpp, branch marian-arch) into build-cpu/, then compiles
       ggml/marian_encoder_dump.cpp against it. The driver runs LLM_ARCH_MARIAN's encoder
       (pooling NONE + embeddings) and dumps [n_embd, seq] for the parity gate.
     dir: '{{.TASKFILE_DIR}}'

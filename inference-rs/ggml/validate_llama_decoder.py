@@ -5,10 +5,12 @@ Two gates on the fixed sentence (the same source ids the encoder gate uses), dri
 ``ggml/marian_decoder_dump`` (a libllama two-phase driver: llama_encode -> greedy llama_decode,
 threading the SSRU recurrent cell state via llama.cpp's recurrent memory):
 
-  Gate 1 — first-step float logits: with the recurrent state zero and the first decoder input
-    = decoder_start (EOS), the [vocab] logits must match numpy_ref.decode_step to ~1e-3 with an
-    identical argmax. Validates the decoder graph wiring (SSRU s_prev=0, cross-attn, FFN) BEFORE
-    recurrence is exercised.
+  Gate 1 — first-step float logits: with the recurrent state zero, the [vocab] logits must
+    match numpy_ref.decode_step to ~1e-3 with an identical argmax. Validates the decoder graph
+    wiring (SSRU s_prev=0, cross-attn, FFN) BEFORE recurrence is exercised. Note the first
+    decoder input is decoder_start (EOS) but its *embedding* is gated off: marian zero-pads
+    the shifted target embeddings at position 0, so only the PE enters step 0 and the start
+    token is inert (see notes/23-float-model-support.md).
 
   Gate 2 — end-to-end greedy: the full greedy loop's output ids must match G1's float greedy
     output for the fixed sentence. Exercises the recurrent state threading across steps.
