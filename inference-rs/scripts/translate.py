@@ -85,7 +85,9 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    src, trg, _langs, config = common.resolve_config(args.models_dir, args.source, args.target)
+    src, trg, _langs, config = common.resolve_config(
+        args.models_dir, args.source, args.target, args.float32
+    )
     model_cfg = common.parse_model_config(config)
 
     vocabs = model_cfg["vocabs"]

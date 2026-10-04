@@ -344,8 +344,14 @@ pub enum TraceError {
     Io(std::io::Error),
     /// The file did not start with the `MTRC` magic.
     BadMagic,
-    /// The file declared a version this reader does not support.
+    /// The trace file declared a version this reader does not support.
     UnsupportedVersion(u32),
+    /// The model container declared a version this reader does not support.
+    /// Held as `u64` because the field is 64-bit: truncating it to `u32` hides
+    /// the high word, and the usual cause of this error is a file that is not a
+    /// marian container at all (a raw `.npz` leads with the zip magic
+    /// `0x04034B50`, whose low word alone is a confusing number to report).
+    UnsupportedModelVersion(u64),
     /// A record ran past the end of the buffer.
     Truncated,
     /// A string field was not valid UTF-8.
@@ -372,6 +378,15 @@ impl fmt::Display for TraceError {
             TraceError::Io(e) => write!(f, "i/o error reading trace: {e}"),
             TraceError::BadMagic => write!(f, "not a trace file (missing MTRC magic)"),
             TraceError::UnsupportedVersion(v) => write!(f, "unsupported trace version {v}"),
+            TraceError::UnsupportedModelVersion(v) => {
+                let hint = if *v == 0x0403_4B50 {
+                    " (this looks like a zip/.npz file — marian models must be \
+converted with `marian-conv` first)"
+                } else {
+                    ""
+                };
+                write!(f, "unsupported model version {v:#x}{hint}")
+            }
             TraceError::Truncated => write!(f, "trace ended mid-record (truncated)"),
             TraceError::InvalidUtf8 => write!(f, "trace string field was not valid UTF-8"),
             TraceError::UnknownDType(raw) => write!(f, "unknown marian type value {raw:#x}"),

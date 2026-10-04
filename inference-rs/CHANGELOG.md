@@ -9,6 +9,31 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Float32 (non-quantized) model support. `marian-conv --gemm-type float32`
+  containers now load and run alongside the shipped `*.intgemm.alphas.bin`
+  int8 models, with no API change and no flag — `Weights` detects the precision
+  at load and reports it via `Weights::precision()`. This makes an
+  apples-to-apples int8-vs-float comparison possible within one engine, which is
+  what it was built for; it is a correctness/reference facility, not a fast path.
+  - The float container stores an affine weight `[K, N]` where the int8 one
+    stores it `[N, K]` (marian's float save branch neither packs nor
+    transposes), and carries no `*_QuantMultA` tensors. `Wemb` is the exception:
+    `[vocab, dim]` in both. `ops::affine_f32` / `ops::project_f32_into` take
+    their weight in the float orientation explicitly so the two cannot be
+    confused, and `tests/float_model.rs` pins it — a transposed read scores
+    cosine -0.03 against the correct one, versus 0.9998 for int8-vs-float on the
+    same checkpoint.
+  - A float model always uses resident f32 embedding tables: under `lean-embed`
+    there is nothing to save (the tables are the model's own data) and no quant
+    multiplier for the int8 output projection, so the embedding representation is
+    now chosen at load from the dtype rather than purely by feature.
+  - Verified against `onnx/numpy_ref.py`, an independent float implementation of
+    the same checkpoint: encoder max abs diff 1.9e-06 and first-step logits
+    5.8e-05, with an identical top-5 — versus 0.168 / 4.74 for the int8 path.
+  - `--float32` on `task rs:translate`, `rs:translate-reference`, and `rs:parity`
+    runs the `<pair>-f32` conversion, so both engines can be compared at either
+    precision through the same interface.
+
 - Optional CPU threading, both off by default (the default build, wasm, and
   reproducible builds stay single-threaded and deterministic):
   - `threads` — data-parallel batch translation. `Engine::greedy_batch` /

@@ -818,6 +818,12 @@ impl Engine {
     /// and a quantized `Wemb`, this runs the reference's int8 projection over the
     /// candidate columns (the `SelectColumnsB` path) for exact parity; otherwise
     /// it falls back to the full-vocab float projection.
+    ///
+    /// A float32 model always takes that fallback (it has no quant multiplier),
+    /// which costs the full vocab but is numerically identical to gathering the
+    /// candidate rows first: each logit is an independent dot product over `dim`.
+    /// The int8 shortlist path, by contrast, genuinely differs from int8
+    /// full-vocab — it re-derives the prepared bias from the gathered columns.
     fn project_argmax(&self, h: &[f32], candidates: Option<&[u32]>) -> u32 {
         match (candidates, self.weights.output_wemb_qmult()) {
             (Some(cands), Some(qwemb)) => self.project_int8(h, cands, qwemb),

@@ -558,6 +558,109 @@ pub fn intgemm_affine(
     out
 }
 
+/// The plain float32 affine — the non-quantized counterpart of
+/// [`intgemm_affine`], for models saved by `marian-conv --gemm-type float32`.
+///
+/// `w` is the weight exactly as a float model stores it: **untransposed**,
+/// `[K, N]` row-major, so `W[k,n] == w[k*n + n]`. That is the *opposite*
+/// orientation to the int8 path, where the same weight is stored `[N, K]`
+/// ([`intgemm_affine`]). marian's float save branch is a bare
+/// `val->get(item, pName)` (`expression_graph_packable.h`) — no packing and no
+/// transposition — while the int8 branch runs `PrepareBTransposed`. Reading one
+/// as the other produces plausible-looking garbage rather than a crash, so the
+/// two kernels take their weight in explicitly different layouts to keep the
+/// mistake unrepresentable.
+///
+/// ```text
+/// out[m,n] = Σ_k x[m,k] · W[k,n] + bias[n]
+/// ```
+///
+/// # Panics
+/// If the operand lengths disagree with `m·k`, `k·n`, or `n`.
+pub fn affine_f32(x: &[f32], m: usize, k: usize, w: &[f32], n: usize, bias: &[f32]) -> Vec<f32> {
+    let mut out = Vec::new();
+    affine_f32_into(x, m, k, w, n, bias, &mut out);
+    out
+}
+
+/// [`affine_f32`] into a caller-owned buffer (resized to `[m, n]`), reused across
+/// decode steps so the hot path allocates no per-call output.
+///
+/// Accumulated as an `axpy` over `k`: for each `x[m,p]` the inner loop walks
+/// `w[p, ..]` and the output row contiguously in `n`. That is the cache- and
+/// autovectorizer-friendly order for a `[K, N]` row-major weight and needs no
+/// transpose or packing step. Per output element the additions still run in
+/// increasing `k`, exactly as a dot-product loop would; the bias is added at the
+/// end rather than seeded into the accumulator, matching `x @ W + b` in marian
+/// (sgemm then bias) and in `onnx/numpy_ref.py`.
+pub fn affine_f32_into(
+    x: &[f32],
+    m: usize,
+    k: usize,
+    w: &[f32],
+    n: usize,
+    bias: &[f32],
+    out: &mut Vec<f32>,
+) {
+    assert_eq!(x.len(), m * k, "x length must be m * k");
+    assert_eq!(w.len(), k * n, "w length must be k * n");
+    assert_eq!(bias.len(), n, "bias length must be n");
+
+    out.clear();
+    out.resize(m * n, 0.0);
+    for row in 0..m {
+        let x_row = &x[row * k..(row + 1) * k];
+        let o = &mut out[row * n..(row + 1) * n];
+        for (p, &a) in x_row.iter().enumerate() {
+            let w_row = &w[p * n..(p + 1) * n];
+            for (o, &b) in o.iter_mut().zip(w_row) {
+                *o += a * b;
+            }
+        }
+        for (o, &b) in o.iter_mut().zip(bias) {
+            *o += b;
+        }
+    }
+}
+
+/// The tied output projection in float32: `out[m, vocab] = h[m, dim] · Wembᵀ + bias`.
+///
+/// Unlike the affine weights, `wemb` is `[vocab, dim]` row-major in *both* the
+/// float and int8 containers — a float model's `Wemb` needs no reorientation,
+/// because its declared shape is already intgemm's `Bᵀ` form. So this is a
+/// row-by-row dot product against `wemb`, not an `axpy` like [`affine_f32_into`].
+///
+/// # Panics
+/// If the operand lengths disagree with `m·dim`, `vocab·dim`, or `vocab`.
+pub fn project_f32_into(
+    h: &[f32],
+    m: usize,
+    dim: usize,
+    wemb: &[f32],
+    vocab: usize,
+    bias: &[f32],
+    out: &mut Vec<f32>,
+) {
+    assert_eq!(h.len(), m * dim, "h length must be m * dim");
+    assert_eq!(wemb.len(), vocab * dim, "wemb length must be vocab * dim");
+    assert_eq!(bias.len(), vocab, "bias length must be vocab");
+
+    out.clear();
+    out.resize(m * vocab, 0.0);
+    for row in 0..m {
+        let hr = &h[row * dim..(row + 1) * dim];
+        let o = &mut out[row * vocab..(row + 1) * vocab];
+        for (v, o) in o.iter_mut().enumerate() {
+            let w = &wemb[v * dim..(v + 1) * dim];
+            let mut acc = 0.0f32;
+            for (&a, &b) in hr.iter().zip(w) {
+                acc += a * b;
+            }
+            *o = acc + bias[v];
+        }
+    }
+}
+
 /// Row-major (C-order) strides for a shape: the number of flat elements between
 /// successive indices along each axis.
 fn row_major_strides(shape: &[i32]) -> Vec<usize> {

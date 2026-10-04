@@ -39,23 +39,53 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
         default=DEFAULT_MODELS_DIR,
         help=f"Root directory the model was downloaded into (default: {DEFAULT_MODELS_DIR})",
     )
+    parser.add_argument(
+        "--float32",
+        action="store_true",
+        help=(
+            "Use the non-quantized float32 conversion of the pair, from the sibling "
+            "<pair>-f32 directory, instead of the shipped int8 model. Both engines "
+            "accept this flag, so the same invocation compares int8 against float32 "
+            "on either side."
+        ),
+    )
 
 
-def config_path(models_dir: str, src: str, trg: str) -> Path:
+def pair_dir(models_dir: str, langs: str, float32: bool = False) -> Path:
+    """The directory holding a pair's model files.
+
+    The float32 conversion of a pair lives in a `-f32` sibling of the shipped
+    int8 directory (`data/models/enru-f32` beside `data/models/enru`) and keeps
+    the same `config.<langs>.yml` filename, so every resolver below is precision
+    agnostic — only the directory changes.
+    """
+    return Path(models_dir) / (f"{langs}-f32" if float32 else langs)
+
+
+def config_path(models_dir: str, src: str, trg: str, float32: bool = False) -> Path:
     """The decode-config path for a downloaded `src`→`trg` model (may not exist)."""
     langs = f"{src.lower()}{trg.lower()}"
-    return Path(models_dir) / langs / f"config.{langs}.yml"
+    return pair_dir(models_dir, langs, float32) / f"config.{langs}.yml"
 
 
-def resolve_config(models_dir: str, source: str, target: str) -> tuple[str, str, str, Path]:
+def resolve_config(
+    models_dir: str, source: str, target: str, float32: bool = False
+) -> tuple[str, str, str, Path]:
     """Resolve the decode config for a language pair, erroring if it is missing.
 
     Returns `(src, trg, langs, config_path)`.
     """
     src, trg = source.lower(), target.lower()
     langs = f"{src}{trg}"
-    config = config_path(models_dir, src, trg)
+    config = config_path(models_dir, src, trg, float32)
     if not config.exists():
+        if float32:
+            raise SystemExit(
+                f"[error] float32 decode config not found at {config}\n"
+                f"  The float32 conversion is built locally, not downloaded. Convert it\n"
+                f"  with marian-conv --gemm-type float32 (see the convert.sh beside an\n"
+                f"  existing one, e.g. data/models/enru-f32/convert.sh)."
+            )
         raise SystemExit(
             f"[error] decode config not found at {config}\n"
             f"  Download the model first with: task rs:download-model -- {src} {trg}"
@@ -64,7 +94,7 @@ def resolve_config(models_dir: str, source: str, target: str) -> tuple[str, str,
 
 
 def resolve_route(
-    models_dir: str, source: str, target: str, hub: str = "en"
+    models_dir: str, source: str, target: str, hub: str = "en", float32: bool = False
 ) -> tuple[str, list[tuple[str, str, Path]]]:
     """Resolve a language pair to a translation route against the *downloaded*
     models, mirroring `fxtranslate::route::resolve_route`: a direct model wins,
@@ -78,7 +108,7 @@ def resolve_route(
     """
     src, trg = source.lower(), target.lower()
     hub = hub.lower()
-    direct = config_path(models_dir, src, trg)
+    direct = config_path(models_dir, src, trg, float32)
     if direct.exists():
         return ("direct", [(src, trg, direct)])
 
@@ -90,7 +120,8 @@ def resolve_route(
             f"  Download the model first with: task rs:download-model -- {src} {trg}"
         )
 
-    leg1, leg2 = config_path(models_dir, src, hub), config_path(models_dir, hub, trg)
+    leg1 = config_path(models_dir, src, hub, float32)
+    leg2 = config_path(models_dir, hub, trg, float32)
     missing = [(a, b, p) for (a, b, p) in ((src, hub, leg1), (hub, trg, leg2)) if not p.exists()]
     if missing:
         hints = "\n".join(f"  task rs:download-model -- {a} {b}" for a, b, _ in missing)

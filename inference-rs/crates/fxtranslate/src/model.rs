@@ -185,7 +185,7 @@ impl Model {
 
         let version = c.u64()?;
         if version != BINARY_FILE_VERSION {
-            return Err(TraceError::UnsupportedVersion(version as u32));
+            return Err(TraceError::UnsupportedModelVersion(version));
         }
         let num_items = c.u64()? as usize;
 
@@ -384,7 +384,7 @@ mod tests {
         bytes[0] = 9;
         assert!(matches!(
             Model::from_bytes(&bytes),
-            Err(TraceError::UnsupportedVersion(9))
+            Err(TraceError::UnsupportedModelVersion(9))
         ));
     }
 }

@@ -118,9 +118,21 @@ def main() -> None:
     parser.add_argument(
         "--shortlist", action="store_true", help="enable the shortlist on both sides"
     )
+    parser.add_argument(
+        "--float32",
+        action="store_true",
+        help=(
+            "Run both engines on the non-quantized float32 conversion (the <pair>-f32 "
+            "directory) instead of the shipped int8 model. Isolates whether a "
+            "divergence is caused by quantization: if the mismatch set is unchanged, "
+            "it is not."
+        ),
+    )
     args = parser.parse_args()
 
-    kind, legs = common.resolve_route(args.models_dir, args.source, args.target, args.pivot)
+    kind, legs = common.resolve_route(
+        args.models_dir, args.source, args.target, args.pivot, args.float32
+    )
 
     lines = [l for l in Path(args.corpus).read_text().splitlines() if l.strip()]
     if args.limit:
@@ -163,7 +175,8 @@ def main() -> None:
             mismatches.append((lines[i], ref[i], rust[i]))
 
     shortlist_state = "on" if args.shortlist else "off"
-    print(f"parity {langs} (shortlist {shortlist_state}): {matches}/{n} exact")
+    precision = "float32" if args.float32 else "int8"
+    print(f"parity {langs} ({precision}, shortlist {shortlist_state}): {matches}/{n} exact")
     for src, r, m in mismatches:
         print(f"  src : {src}")
         print(f"  ref : {r}")

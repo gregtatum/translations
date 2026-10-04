@@ -379,6 +379,9 @@ Greedy only (argmax; no beam search in this engine). Length cap
 
 ## All GEMMs are shifted int8 affines
 
+(For the shipped models. A float32 container takes a plain f32 GEMM instead —
+see [the two containers](#the-two-containers) below.)
+
 Every linear layer (`Weights::affine`) runs the quantized pipeline, not float
 matmul: quantize the activation into the shifted `u8` domain
 (`prepare_a`, +127 offset), fold the shift-correction into the bias
@@ -387,6 +390,37 @@ matmul: quantize the activation into the shifted `u8` domain
 LayerNorm, softmax, the attention dot-products, ReLU, the highway/sigmoid — stay
 in f32. This matches marian's `int8shiftAlphaAll` path; see `ops.rs` for the
 exact per-op semantics and `notes`/`gemm-backends.md` for the SIMD backends.
+
+---
+
+## The two containers
+
+Firefox ships `*.intgemm.alphas.bin` (`marian-conv --gemm-type intgemm8`).
+`marian-conv --gemm-type float32` writes the *same* model unquantized, and
+`Weights` loads either — detecting which at load and reporting it via
+`Weights::precision()`. Parameter names, shapes, and the embedded
+`special:model.yml` are identical between the two; three things differ:
+
+| | int8 (`intgemm8`, `0x4101`) | float32 (`0x404`) |
+|---|---|---|
+| affine weight layout | `[N, K]` (`PrepareBTransposed`) | `[K, N]` (no pack, no transpose) |
+| `Wemb` layout | `[vocab, dim]` | `[vocab, dim]` — the one that does *not* flip |
+| `*_QuantMultA` | one per affine, plus `none_QuantMultA` | absent entirely |
+
+Biases and layernorm parameters are float32 and bit-identical in both. The
+orientation flip is the dangerous part: a logically-square weight read in the
+wrong orientation still has a valid shape and produces fluent, wrong output
+rather than a crash, so `ops::affine_f32` documents and `tests/float_model.rs`
+pins it.
+
+Float support exists for **reference and comparison**, not speed: it lets the
+same engine be run at both precisions so a divergence can be attributed to
+quantization or exonerated. Note that the shipped students are
+quantization-aware finetuned, so their float weights already sit on the int8
+grid (dequantized int8 matches the float checkpoint to ~1e-4 on en-ru). An
+int8-vs-float comparison on these models therefore measures *activation*
+quantization and accumulation, not weight quantization — there is almost no
+weight error left to measure.
 
 ---
 

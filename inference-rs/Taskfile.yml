@@ -147,9 +147,15 @@ tasks:
       lexical shortlist is off by default (it lowers quality on short inputs); --shortlist
       enables it.
 
+      --float32 runs the non-quantized conversion of the pair (from the sibling
+      <pair>-f32 directory) instead of the shipped int8 model, for int8-vs-float
+      comparison within one engine. It is built locally by marian-conv, not
+      downloaded.
+
       Examples:
         task rs:translate -- en es --text "Hello world!"
         task rs:translate -- en es --shortlist --text "Hello world!"
+        task rs:translate -- en ru --float32 --text "Hello world!"
         echo "Hello world!" | task rs:translate -- en es
     dir: '{{.ROOT_DIR}}'
     cmds:
@@ -485,9 +491,14 @@ tasks:
       Requires the model downloaded (task rs:download-model -- <src> <trg>) and
       the reference engine built (task inference-build).
 
+      --float32 runs BOTH engines on the non-quantized conversion instead. That
+      isolates whether a divergence is caused by quantization: if the mismatch set
+      comes back unchanged, it is not.
+
       Examples:
         task rs:parity -- en fr
         task rs:parity -- en es --limit 10
+        task rs:parity -- en ru --limit 25 --float32
     dir: '{{.ROOT_DIR}}'
     cmds:
       - python3 {{.TASKFILE_DIR}}/scripts/parity.py {{.CLI_ARGS}}
@@ -503,8 +514,12 @@ tasks:
       Arguments are passed through to the script (see --help):
         task rs:translate-reference -- --help
 
+      --float32 points it at the <pair>-f32 conversion (gemm-precision: float32),
+      so the reference can be run at either precision too.
+
       Examples:
         task rs:translate-reference -- en es --text "Hello World"
+        task rs:translate-reference -- en ru --float32 --text "Hello World"
     dir: '{{.ROOT_DIR}}'
     cmds:
       # Runs from the repo root so the script's relative model/binary defaults resolve.

@@ -74,7 +74,9 @@ def main() -> None:
             "  Build it first with: task inference-build"
         )
 
-    src, trg, langs, config = common.resolve_config(args.models_dir, args.source, args.target)
+    src, trg, langs, config = common.resolve_config(
+        args.models_dir, args.source, args.target, args.float32
+    )
 
     text = common.read_input_text(args) + "\n"
 
