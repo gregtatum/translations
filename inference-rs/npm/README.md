@@ -1,17 +1,23 @@
 # fxtranslate
 
-Translate with [Firefox Translations](https://mozilla.github.io/translations/firefox-models/) models from Node — a **command-line tool** and a **library**, powered by the same lightweight, CPU-only models Firefox ships for on-device translation. It discovers, downloads, and caches the models for you; no API keys, no network round-trips to a translation service, nothing leaves your machine after the model download.
+Translate using the [Firefox Translations](https://mozilla.github.io/translations/firefox-models/) models. These are high-quality, lightweight, CPU-optimized models that Firefox ships for on-device translation.
 
-The engine is the Rust [`fxtranslate`](https://crates.io/crates/fxtranslate) crate compiled to WebAssembly, so translations match the native Rust CLI. The command-line interface is byte-for-byte compatible with the Rust [`fxtranslate-cli`](https://crates.io/crates/fxtranslate-cli): same subcommands, flags, help text, and exit codes. Prefer a native binary or a Rust dependency? See [Related packages](#related-packages).
-
-## Command-line tool
+## Install
 
 ```console
+# The CLI.
 $ npm install -g fxtranslate
+
+# The library.
+$ npm install fxtranslate
 ```
 
-```console
-# List supported languages (or filter to one); --all shows the raw model pairs:
+Requires Node 18 or newer. The inference engine ships as a single WebAssembly artifact, so there are no prebuilt binaries to match, no native toolchain to install, and no compile step — it runs anywhere Node does.
+
+## The CLI
+
+```sh
+# Discover what models are available.
 $ fxtranslate list
 $ fxtranslate list es
 $ fxtranslate list --all
@@ -19,81 +25,160 @@ $ fxtranslate list --all
 # Translate a phrase. The model for the pair is discovered, downloaded, and
 # cached on first use, then reused from disk on subsequent runs.
 $ fxtranslate translate en es "The weather is nice today."
-El clima es agradable hoy.
+> El clima es agradable hoy.
 
-$ fxtranslate translate en de "Knowledge is power."
-Wissen ist Macht.
+# You can switch languages.
+$ fxtranslate translate en de "Translations are fun"
+> Übersetzungen machen Spaß
 
+# Changing the language order changes the translation direction.
 $ fxtranslate translate es en "Buenos días, ¿cómo estás?"
-Good morning, how are you?
+> Good morning, how are you?
 
-# Neither side is English? It pivots through English automatically.
-$ fxtranslate translate es fr "Buenos días."
-Bonjour.
-```
+# When translating between languages where there is not a specific matching language pair,
+# it translates through a "pivot language".
+# Here Spanish to Russian pivots through a common English model: es → en → ru.
+$ fxtranslate translate es ru "Buenos días, ¿cómo estás?"
+> Доброе утро, как дела?
 
-Every Firefox Translations model translates to or from English, so each direction is its own model (`en → es` and `es → en` are separate downloads). A pair where neither side is English — like `es → fr` — is served by **pivoting**: it runs `es → en` then `en → fr` automatically, so the full cartesian product of languages works. That's also why `list` shows *languages* by default rather than raw model pairs.
+# Translate entire documents by piping text into the CLI.
+$ cat document.txt | fxtranslate translate en es > document-es.txt
 
-With no text argument, `translate` reads from stdin — one translation per line when piped, or an interactive prompt on a terminal:
-
-```console
-# Pipe mode: one line in, one translation out.
-$ echo "The library opens at nine in the morning." | fxtranslate translate en fr
-La bibliothèque ouvre à neuf heures du matin.
-
-# Interactive prompt (Ctrl-D to quit).
+# Enter into an interactive translation mode.
 $ fxtranslate translate en es
-Interactive en→es. Type a sentence and press Enter; Ctrl-D to quit.
-en→es» ...
+
+# Access the full CLI documentation.
+$ fxtranslate --help
 ```
 
-Status lines (model resolution, download progress) are written to stderr, so piped stdout carries only the translations.
+Status lines — model resolution, download progress — go to stderr, so a piped stdout carries only the translations.
 
-## Library
+## Model usage
 
-```console
-$ npm install fxtranslate
-```
+The auto-discovery is powered by Firefox's internal model delivery service. This should not be used for production services. Please download and re-host the models. They can be downloaded through the CLI, or manually from the [mozilla/translations models dashboard](https://mozilla.github.io/translations/firefox-models/). The CLI has best-effort support for model downloads, but may break.
+
+## Library examples
+
+Load models from your local model store.
 
 ```js
-import { Translator } from "fxtranslate";
 import { readFileSync } from "node:fs";
+import { Translator } from "fxtranslate";
 
-// You supply the model triple: the marian `.bin` and the source/target
-// SentencePiece vocabularies (the same file for most pairs; only CJK pairs
-// differ). Pass the source vocab twice for a shared-vocab pair.
-const model = readFileSync("en-es/model.bin");
-const vocab = readFileSync("en-es/vocab.spm");
+// English-Spanish has a shared vocab file.
+const vocab = readFileSync("models/en-es/vocab.enes.spm");
 
-const translator = new Translator(model, vocab, vocab);
-console.log(translator.translate("The weather is nice today."));
+const enEs = new Translator(
+  readFileSync("models/en-es/model.enes.intgemm.alphas.bin"),
+  vocab,
+  vocab,
+);
+
+console.log(enEs.translate_long("The weather is nice today. Don't you think so?"));
+// El clima es agradable hoy. ¿No lo crees?
+
+console.log(enEs.translate("The weather is nice today."));
 // El clima es agradable hoy.
-
-// translate_long segments multi-sentence / long input and translates each part
-// within the model's context window, instead of truncating.
-console.log(translator.translate_long(longArticleText));
 ```
 
-The library also re-exports the pure discovery/routing helpers the CLI is built on — `resolveRoute`, `catalog`, `modelPairs`, `parseRecords`, `segmentSentences`, and `verifyAndDecompress` — for building your own model-management flow. Types ship in the box (`fxtranslate` is authored with JSDoc and a hand-maintained `.d.ts`).
+`translate_long` segments the text into sentences and translates each one, which is
+the right default for input you haven't split yourself. `translate` treats its
+argument as a single sentence and silently truncates anything past the model's
+context size.
 
-## The models
+Some pairs have split vocabs, like English-Japanese. The source and target vocabs differ.
 
-`fxtranslate` uses the models Firefox ships. They're discovered through Mozilla's Remote Settings and downloaded from Firefox's CDN, then cached under the platform-native cache directory — `~/Library/Caches/fxtranslate/models` on macOS, `$XDG_CACHE_HOME/fxtranslate/models` on Linux, `%LOCALAPPDATA%\fxtranslate\models` on Windows — one subdirectory per language pair. Override the CLI's location with `--cache-dir <DIR>`.
+```js
+const enJa = new Translator(
+  readFileSync("models/en-ja/model.enja.intgemm.alphas.bin"),
+  readFileSync("models/en-ja/srcvocab.enja.spm"),
+  readFileSync("models/en-ja/trgvocab.enja.spm"),
+);
+```
 
-**That hosting is provisioned for Firefox, not for third-party traffic**, and neither the endpoints nor the availability of any particular model are a stable contract for downstream projects. This package is a convenient way to try the engine; if you're shipping a product on top of it, mirror the model files you depend on, serve them from infrastructure you control, and load them with the `Translator` constructor.
+A fourth, optional argument takes a lexical shortlist (`lex.50.50.enes.s2t.bin`), which restricts the output vocabulary per sentence and speeds up decoding.
 
-## Related packages
+Most supported languages can translate between each other. When no direct model exists for a pair, the translation routes through a pivot language; for 50 languages that means fewer than 100 models rather than the 2,450 a fully direct matrix would need. The CLI picks the route automatically — `resolveRoute` is the same decision exposed to you — but it can also be done manually.
 
-The same engine is published across ecosystems on one shared version, so you can pick the artifact that fits:
+```js
+const esEn = new Translator(...);
+const enRu = new Translator(...);
 
-- **[`fxtranslate`](https://crates.io/crates/fxtranslate)** (crates.io) — the Rust engine library. Native SIMD int8 kernel, optional built-in model management.
-- **[`fxtranslate-cli`](https://crates.io/crates/fxtranslate-cli)** (crates.io) — the native Rust CLI. Same interface as this package's `fxtranslate` binary, installed with `cargo install fxtranslate-cli`.
-- **[`fxtranslate`](https://pypi.org/project/fxtranslate/)** (PyPI) — the Python library (native compiled engine, batteries-included model management), installed with `pip install fxtranslate`.
+console.log(enRu.translate_long(esEn.translate_long("Buenos días, ¿cómo estás?")));
+```
 
-## Contributing
+The discovery and routing helpers the CLI is built on are exported too, so you can
+drive model management yourself. Each returns a JSON string, so parse what you need.
 
-Building the wasm core, the conformance strategy that keeps this package byte-identical to the Rust CLI, and how to run the parity harness are documented in [DEVELOPMENT.md](https://github.com/gregtatum/translations/blob/inference-rs/inference-rs/DEVELOPMENT.md).
+```js
+import { parseRecords, modelPairs, resolveRoute, catalog } from "fxtranslate";
+
+const url =
+  "https://firefox.settings.services.mozilla.com" +
+  "/v1/buckets/main/collections/translations-models-v2/records";
+const body = await fetch(url).then((response) => response.text());
+
+// Every one-way model pair, version-gated to what this engine can load.
+const pairs = JSON.parse(modelPairs(body));
+// [ ["af", "en"], ["ar", "en"], ["az", "en"], ["be", "en"], ... ]
+
+// How a given pair is served: a direct model, or a two-leg pivot.
+console.log(JSON.parse(resolveRoute(body, "es", "fr")));
+// { kind: 'pivot', src: 'es', pivot: 'en', trg: 'fr' }
+
+// Languages grouped by the directions they support, and the individual
+// model-file records behind them.
+const { bidirectional, sourceOnly, targetOnly } = JSON.parse(catalog(body, "en"));
+const records = JSON.parse(parseRecords(body));
+```
+
+Fetch all model files once, to re-host them. This can be several gigabytes. Each
+record carries a `location` to append to the attachments CDN root and a
+`decompressedHash`; `verifyAndDecompress` does the zstd decode and the SHA-256
+check in one step, the same way the CLI does.
+
+```js
+import { writeFileSync } from "node:fs";
+import { parseRecords, verifyAndDecompress } from "fxtranslate";
+
+const CDN_ROOT = "https://firefox-settings-attachments.cdn.mozilla.net";
+
+for (const record of JSON.parse(parseRecords(body))) {
+  const response = await fetch(`${CDN_ROOT}/${record.location}`);
+  const compressed = new Uint8Array(await response.arrayBuffer());
+  writeFileSync(record.name, verifyAndDecompress(compressed, record.decompressedHash));
+}
+```
+
+Or let the CLI do it, which writes into the same verified cache that `translate` reads.
+
+```sh
+# Download a pair ahead of time. Both legs of a pivot are fetched.
+$ fxtranslate models add es fr
+
+# What's cached, how big it is, and where it lives.
+$ fxtranslate models list
+$ fxtranslate models info en-es
+
+# Remove a pair, or the whole cache.
+$ fxtranslate models rm en-es
+$ fxtranslate models rm --all
+```
+
+Without a `--cache-dir`, models land in the platform-native cache directory:
+
+ * **macOS** – `~/Library/Caches/fxtranslate/models`
+ * **Linux** – `$XDG_CACHE_HOME/fxtranslate/models` or `~/.cache/fxtranslate/models`
+ * **Windows** – `%LOCALAPPDATA%\fxtranslate\models`
+
+## How this works
+
+The underlying inference engine is a portable Rust library based on the [Marian](https://github.com/marian-nmt/marian-dev/) expression graph, compiled here to WebAssembly with a pure-Rust SIMD128 int8 kernel in place of the native build's [Gemmology matrix library](https://github.com/mozilla/gemmology). The Firefox models have a similar architecture to the traditional encoder/decoder [transformer models](https://arxiv.org/abs/1706.03762), but with a shallow RNN decoder based on the [SSRU described here](https://aclanthology.org/D19-5632/). These models come from [Mozilla's translation training program](https://github.com/mozilla/translations). They are student models distilled and quantized for CPU from larger transformer-based teacher models.
+
+- **[`fxtranslate` on crates.io](https://crates.io/crates/fxtranslate)** – The Rust inference engine library
+- **[`fxtranslate-cli` on crates.io](https://crates.io/crates/fxtranslate-cli)** – The Rust CLI
+- **[`fxtranslate` on pypi](https://pypi.org/project/fxtranslate/)** – The Python bindings library and CLI
 
 ## License
 
-[MPL-2.0](./LICENSE). The engine is a Rust port of the [Firefox Translations](https://github.com/mozilla/translations) inference engine.
+MPL-2.0 from [Firefox Translations](https://github.com/mozilla/translations)

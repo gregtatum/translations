@@ -33,9 +33,9 @@ $ fxtranslate translate es en "Buenos días, ¿cómo estás?"
 
 # When translating between languages where there is not a specific matching language pair,
 # it translates through a "pivot language".
-# Here Spanish to French pivots through a common English model: es → en → fr.
-$ fxtranslate translate es fr "Buenos días."
-> bonjour.
+# Here Spanish to Russian pivots through a common English model: es → en → ru.
+$ fxtranslate translate es ru "Buenos días, ¿cómo estás?"
+> Доброе утро, как дела?
 
 # Translate entire documents by piping text into the CLI.
 $ cat document.txt | fxtranslate translate en es > document-es.txt
@@ -93,9 +93,9 @@ Most supported languages can translate between each other. When no direct model 
 
 ```py
 es_en = Translator(...)
-en_fr = Translator(...)
+en_ru = Translator(...)
 
-print(en_fr.translate_long(es_en.translate_long("Buenos días.")))
+print(en_ru.translate_long(es_en.translate_long("Buenos días, ¿cómo estás?")))
 ```
 
 Fetch all model files once, to re-host them. This can be several gigabytes.
