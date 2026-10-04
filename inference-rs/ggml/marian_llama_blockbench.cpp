@@ -1,11 +1,11 @@
 // Perf driver: blockbench for the LLM_ARCH_MARIAN engine in llama.cpp.
 //
-// This mirrors the G1 bare-libggml engine's `blockbench` mode (ggml/marian_ggml.cpp) EXACTLY
+// This mirrors the bare-libggml engine's `blockbench` mode (ggml/marian_ggml.cpp) EXACTLY
 // so scripts/final_comparison.py's parse_blocks consumes its output unchanged:
 //
 //   - load the Q8_0 GGUF once (model load EXCLUDED from per-block timing; init measured
 //     separately as wall - sum(compute) by the harness),
-//   - read the SAME pretokenized source-id block file G1 uses (ggml/pretokenize.py output:
+//   - read the SAME pretokenized source-id block file that engine uses (ggml/pretokenize.py:
 //     blank-line-separated blocks, one sentence per line, space-separated ids incl. EOS),
 //   - translate each block sentence-by-sentence via the two-phase greedy path
 //     (llama_encode -> greedy llama_decode*), timing encode vs decode separately,
@@ -13,11 +13,12 @@
 //
 // Threading: --threads N sets llama_context_params.n_threads / n_threads_batch (also
 // FXT_LLAMA_THREADS env for harness convenience). Correctness is settled by the decoder
-// gate (byte-identical to G1); this binary changes nothing about the graph math, only
+// gate (byte-identical to bare-libggml); this binary changes nothing about the graph math, only
 // measures it.
 //
-// Note on batching: like G1's encoder (which still runs once per sentence), the llama.cpp
-// driver decodes one sentence at a time (single-sequence). G1's headline finding is that
+// Note on batching: like bare-libggml's encoder (which still runs once per sentence), the
+// llama.cpp driver decodes one sentence at a time (single-sequence). That engine's headline
+// finding is that
 // THREADS, not batching, are the lever; this driver's thread sweep tests the same lever on
 // llama.cpp's graph scheduler.
 //
@@ -62,7 +63,7 @@ static llama_context * make_ctx(llama_model * model, int n_threads) {
 }
 
 // Encode the source, then greedy-decode from decoder_start. Adds encode/decode wall time to
-// the running counters. Returns the greedy output ids (matches G1's per-sentence path).
+// the running counters. Returns the greedy output ids (matches the bare-libggml path).
 static std::vector<llama_token> translate_one(llama_context * ctx, const llama_model * model,
                                               const std::vector<llama_token> & src, int max_new,
                                               double * encode_ms, double * decode_ms) {

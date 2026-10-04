@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build the bare-libggml translation engine (G1 of the ggml-port eval; see notes/18).
+# Build the bare-libggml translation engine (the ggml-port eval; see notes/18).
 #
 # Two idempotent steps:
 #   1. Build libggml static libs (CPU-only, no Metal/BLAS/OpenMP — CPU-first per the eval

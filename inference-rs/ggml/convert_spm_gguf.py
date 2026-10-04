@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Emit a vocab-only GGUF from a SentencePiece ``.spm`` for the tokenizer-parity gate.
 
-This is the tokenizer half of the G2 llama.cpp Marian port (notes/18). It is
+This is the tokenizer half of the llama.cpp Marian port (notes/18). It is
 deliberately separate from ``convert_marian_gguf.py`` (which handles weights):
 The gate proves, fail-fast, that llama.cpp's UGM tokenizer reproduces the Marian
 SentencePiece tokenizer byte-for-byte before any architecture code is written.

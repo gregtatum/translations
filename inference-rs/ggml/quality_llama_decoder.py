@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Decoder quality gate — chrF parity of the llama.cpp ``marian`` decoder vs G1 on a corpus.
+"""Decoder quality gate — chrF parity of the llama.cpp ``marian`` decoder vs bare-libggml.
 
 Translates a slice of the shared English corpus through both engines (en->ru), detokenizes
-with the target SPM, and reports corpus chrF (llama.cpp hypothesis vs the G1 float anchor)
+with the target SPM, and reports corpus chrF (llama.cpp vs the bare-libggml float anchor)
 plus the exact output-id match rate. Both are the SAME weight math, so the FLOAT vs FLOAT
-run should be near-identical; the Q8_0 llama.cpp run is compared to G1 Q8_0 as a quantized
+run should be near-identical; the Q8_0 llama.cpp run is compared to bare-libggml Q8_0 as a
+quantized
 sanity check (chrF on par = the SSRU + cross-attn + recurrence combination is sound at scale).
 
 Run via ``task rs:ggml-llama-quality`` (defaults to 100 sentences; pass -n N to change).
@@ -26,14 +27,14 @@ sys.path.insert(0, str(_ONNX))
 import tokenizer as tok  # noqa: E402
 
 _DEC = _HERE / "marian_decoder_dump"
-_G1 = _HERE / "marian_ggml"
+_BARE = _HERE / "marian_ggml"
 _CORPUS = _HERE.parent / "corpora" / "nllb-en-fr.txt"
 
 
-def _g1_decode(model: Path, id_lines: list[list[int]]) -> list[list[int]]:
+def _bare_decode(model: Path, id_lines: list[list[int]]) -> list[list[int]]:
     inp = "\n".join(" ".join(str(i) for i in ids) for ids in id_lines) + "\n"
     out = subprocess.run(
-        [str(_G1), str(model), "decode"],
+        [str(_BARE), str(model), "decode"],
         input=inp,
         capture_output=True,
         text=True,
@@ -76,20 +77,24 @@ def main() -> int:
     print(f"corpus: {_CORPUS.name}  sentences={len(id_lines)}\n")
 
     models_ll = _HERE / "models"
-    models_g1 = _HERE / "models"
+    models_bare = _HERE / "models"
 
-    print("Gate 3 — chrF (llama.cpp hypothesis vs G1 anchor), en->ru:")
+    print("Gate 3 — chrF (llama.cpp hypothesis vs bare-libggml anchor), en->ru:")
     # FLOAT vs FLOAT: same weight math, should be ~identical.
     ll_f = _llama_decode(models_ll / "marian-llama.float.gguf", id_lines)
-    g1_f = _g1_decode(models_g1 / "marian.float.gguf", id_lines)
-    _report("llama float vs G1 float", ll_f, g1_f)
+    bare_f = _bare_decode(models_bare / "marian.float.gguf", id_lines)
+    _report("llama float vs bare-libggml float", ll_f, bare_f)
 
     # Q8_0 sanity if both quantized GGUFs exist.
     ll_q = models_ll / "marian-llama.q8_0.gguf"
-    g1_q = models_g1 / "marian.q8_0.gguf"
-    if ll_q.exists() and g1_q.exists():
-        _report("llama q8_0 vs G1 q8_0", _llama_decode(ll_q, id_lines), _g1_decode(g1_q, id_lines))
-        _report("llama q8_0 vs G1 float", _llama_decode(ll_q, id_lines), g1_f)
+    bare_q = models_bare / "marian.q8_0.gguf"
+    if ll_q.exists() and bare_q.exists():
+        _report(
+            "llama q8_0 vs bare-libggml q8_0",
+            _llama_decode(ll_q, id_lines),
+            _bare_decode(bare_q, id_lines),
+        )
+        _report("llama q8_0 vs bare-libggml float", _llama_decode(ll_q, id_lines), bare_f)
     else:
         print("    (Q8_0 GGUFs not present; skipping the quantized rows)")
     return 0

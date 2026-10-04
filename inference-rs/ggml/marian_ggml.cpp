@@ -1,5 +1,5 @@
-// Bare-libggml translation engine for the Marian/Bergamot student model (G1 of the
-// ggml-port evaluation; see notes/18-ggml-port-design.md). This is the ggml analog of
+// Bare-libggml translation engine for the Marian/Bergamot student model (the clean-room
+// route of the ggml-port evaluation; see notes/18-ggml-port-design.md). The ggml analog of
 // onnx/engine.py: it loads the GGUF written by convert_marian_gguf.py, builds a
 // post-norm transformer encoder graph and an SSRU decoder-step graph directly on
 // libggml, and runs the greedy decode loop in this driver (no in-graph loop), threading
@@ -16,7 +16,7 @@
 //
 // Tokenization lives in Python (the shared SPM), so this binary consumes/produces ids —
 // keeping tokenization identical across every engine and deferring llama.cpp SPM parity
-// to G2.
+// to the llama.cpp arch.
 
 #include "ggml.h"
 #include "ggml-cpu.h"

@@ -2,7 +2,7 @@
 """Pre-tokenize a block corpus into source ids for the ggml engine's blockbench mode.
 
 The ggml engine is a compiled binary whose RSS we sample directly (the whole point of
-G1's memory fairness), so it must not embed a tokenizer process. Instead this step runs
+bare-libggml's memory fairness), so it must not embed a tokenizer process. Instead this runs
 once, before timing, using the SAME SentencePiece model as the ONNX eval (appending EOS,
 no BOS — production behavior), and writes an ids-block file the binary consumes:
 

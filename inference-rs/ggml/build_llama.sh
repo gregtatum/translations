@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build the CPU-only libllama for the Marian arch (G2) and compile the encoder-parity
+# Build the CPU-only libllama for the Marian arch and compile the encoder-parity
 # driver (ggml/marian_encoder_dump) against it.
 #
 # The driver feeds exact source ids to LLM_ARCH_MARIAN's encoder graph and dumps the full

@@ -1,6 +1,6 @@
 // Encoder parity driver: feed EXACT source ids to the llama.cpp Marian encoder and dump the
 // full per-token encoder context [n_embd, seq] to a binary file for numpy comparison
-// against the G1 / numpy_ref golden.
+// against the bare-libggml / numpy_ref golden.
 //
 // This is Option (a)+(c): a tiny libllama driver that enables embeddings with
 // pooling_type = NONE, so llama_encode writes the whole encoder output, retrieved via
@@ -67,7 +67,7 @@ int main(int argc, char ** argv) {
     if (!embd) { fprintf(stderr, "no embeddings returned\n"); return 1; }
 
     // llama.cpp lays out embeddings as [n_tokens, n_embd] row-major (token-major), matching
-    // G1's ggml_encoder.bin ([seq, dim] with dim contiguous). Write it straight through.
+    // bare-libggml's ggml_encoder.bin ([seq, dim], dim contiguous). Write it straight through.
     std::ofstream o(out_path, std::ios::binary);
     o.write((const char *) embd, (size_t) n_tokens * n_embd * sizeof(float));
     o.close();

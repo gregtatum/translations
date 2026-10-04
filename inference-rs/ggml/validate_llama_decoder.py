@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Decoder gate — the llama.cpp ``marian`` SSRU decoder end-to-end vs the numpy_ref/G1 goldens.
+"""Decoder gate — the llama.cpp ``marian`` SSRU decoder vs the numpy_ref + bare-libggml goldens.
 
 Two gates on the fixed sentence (the same source ids the encoder gate uses), driven through
 ``ggml/marian_decoder_dump`` (a libllama two-phase driver: llama_encode -> greedy llama_decode,
@@ -12,8 +12,9 @@ threading the SSRU recurrent cell state via llama.cpp's recurrent memory):
     the shifted target embeddings at position 0, so only the positional encoding enters
     step 0 and the start token is inert (see notes/23-float-model-support.md).
 
-  Gate 2 — end-to-end greedy: the full greedy loop's output ids must match G1's float greedy
-    output for the fixed sentence. Exercises the recurrent state threading across steps.
+  Gate 2 — end-to-end greedy: the full greedy loop's output ids must match bare-libggml's
+    float greedy output for the fixed sentence. Exercises recurrent state threading across
+    steps.
 
 Run via ``task rs:ggml-llama-decoder`` (builds libllama, the driver, and the GGUF first).
 """
@@ -35,9 +36,9 @@ import numpy_ref as ref  # noqa: E402
 import tokenizer as tok  # noqa: E402
 
 _DEC = _HERE / "marian_decoder_dump"
-_G1 = _HERE / "marian_ggml"
+_BARE = _HERE / "marian_ggml"
 _MODEL = _HERE / "models" / "marian-llama.float.gguf"
-_G1_MODEL = _HERE / "models" / "marian.float.gguf"
+_BARE_MODEL = _HERE / "models" / "marian.float.gguf"
 _SENT = "Hello, world. This is a test of the translation engine."
 _LOGITS_TOL = 1e-3  # first-step logits are O(10); 1e-3 abs is a tight graph-correctness bar
 
@@ -78,7 +79,7 @@ def main() -> int:
         f"{'PASS' if gate1 else 'FAIL'}\n"
     )
 
-    # --- Gate 2: end-to-end greedy output ids vs G1 float ---
+    # --- Gate 2: end-to-end greedy output ids vs bare-libggml float ---
     llama_out = subprocess.run(
         [str(_DEC), "decode", str(_MODEL), "--", *[str(i) for i in src_ids]],
         check=True,
@@ -86,28 +87,29 @@ def main() -> int:
         text=True,
     ).stdout.strip()
 
-    g1_out = "?"
-    have_g1 = _G1.exists() and _G1_MODEL.exists()
-    if have_g1:
-        g1_out = subprocess.run(
-            [str(_G1), str(_G1_MODEL), "decode"],
+    bare_out = "?"
+    have_bare = _BARE.exists() and _BARE_MODEL.exists()
+    if have_bare:
+        bare_out = subprocess.run(
+            [str(_BARE), str(_BARE_MODEL), "decode"],
             input=" ".join(str(i) for i in src_ids) + "\n",
             capture_output=True,
             text=True,
             check=True,
         ).stdout.strip()
-        gate2 = llama_out == g1_out
+        gate2 = llama_out == bare_out
     else:
         gate2 = None
 
-    print("Gate 2 — end-to-end greedy output ids vs G1 float:")
-    print(f"    llama.cpp: {llama_out}")
-    if have_g1:
-        print(f"    G1:        {g1_out}")
+    print("Gate 2 — end-to-end greedy output ids vs bare-libggml float:")
+    print(f"    llama.cpp:    {llama_out}")
+    if have_bare:
+        print(f"    bare-libggml: {bare_out}")
         print(f"    {'PASS (id-identical)' if gate2 else 'FAIL (ids differ)'}\n")
     else:
         print(
-            "    (G1 engine/GGUF not built; skipping the id comparison — run task rs:ggml-build)\n"
+            "    (bare-libggml engine/GGUF not built; skipping the id comparison —\n"
+            "     run task rs:ggml-build)\n"
         )
 
     ok = gate1 and (gate2 in (True, None))

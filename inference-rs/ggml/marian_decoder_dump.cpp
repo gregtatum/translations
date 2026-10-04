@@ -1,6 +1,6 @@
 // End-to-end decoder driver: feed EXACT source ids to the llama.cpp Marian encoder-decoder and
 // run the two-phase greedy loop (llama_encode -> llama_decode*), producing output ids and
-// (on the first step) the full [vocab] logits vector for numeric parity against G1.
+// (on the first step) the full [vocab] logits vector for parity against bare-libggml.
 //
 // This is the decoder analog of marian_encoder_dump.cpp. Tokenization stays in Python (the shared
 // SPM), so this binary consumes/produces ids — identical inputs across every engine.
@@ -13,7 +13,7 @@
 //                                                           space-separated output ids to stdout.
 //
 // The recurrent SSRU cell state is owned by llama.cpp's recurrent memory; we clear it per
-// sentence with llama_memory_clear so each decode starts from a zero cell (matching G1).
+// sentence with llama_memory_clear so each decode starts from a zero cell (as bare-libggml does).
 
 #include "llama.h"
 

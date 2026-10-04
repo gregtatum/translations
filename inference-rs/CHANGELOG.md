@@ -32,8 +32,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   embedding and positional encoding are `const` leaves, so it passes them through — and
   `onnx/numpy_ref.py` shared the old convention. All three ports are fixed and
   re-validated: `onnx/` (`decode_step.onnx` gained an `embed_gate` input, since
-  its embedding lookup is inside the graph), `ggml/marian_ggml.cpp` (G1), and
-  llama.cpp's `LLM_ARCH_MARIAN` decoder graph (G2) — the last in the external
+  its embedding lookup is inside the graph), `ggml/marian_ggml.cpp`, and
+  llama.cpp's `LLM_ARCH_MARIAN` decoder graph — the last in the external
   `~/src/llama.cpp` checkout, left uncommitted there. reference, fxtranslate
   (int8 + float32), numpy_ref, ONNX (float + int8), and both ggml ports now
   produce identical output. See `notes/23-float-model-support.md`.

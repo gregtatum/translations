@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Convert the float Marian/Bergamot student .npz to a llama.cpp ``marian`` GGUF (G2).
+"""Convert the float Marian/Bergamot student .npz to a llama.cpp ``marian`` GGUF.
 
-This is the G2 converter: unlike ``convert_marian_gguf.py`` (G1, bespoke tensor names for
-the bare-libggml engine), this packages the *same* proven weight math into the shape
+This is the llama.cpp converter: unlike ``convert_marian_gguf.py`` (bespoke tensor names
+for the bare-libggml engine), this packages the *same* proven weight math into the shape
 llama.cpp's ``LLM_ARCH_MARIAN`` expects — standard KV keys, ``enc.blk.N.*`` / ``dec.blk.N.*``
 tensor names, and the SentencePiece vocab embedded exactly as ``convert_spm_gguf.py`` does
 (so llama.cpp selects the UGM tokenizer, ``tokenizer.ggml.model = "t5"``).
@@ -11,7 +11,8 @@ The llama.cpp arch wires the full two-phase encoder + SSRU decoder; this emits t
 encoder + decoder (SSRU + cross-attention) tensor set, ``output.bias``, and hparams, in both
 a float GGUF (numeric parity gate) and a Q8_0 GGUF (top-K + chrF + perf).
 
-Weight orientation is unchanged from G1: each linear is stored transposed to numpy shape
+Weight orientation is unchanged from the bare-libggml converter: each linear is stored
+transposed to numpy shape
 ``(out, in)`` → ggml ``ne0=in, ne1=out`` so ``ggml_mul_mat(W, x)`` gives ``y[o]=sum_i W[i,o]*x[i]``.
 The sinusoidal absolute positional encoding is baked into ``position_embd`` (indexed by
 absolute position in the graph) — the same table ``numpy_ref.build_positional_encoding``

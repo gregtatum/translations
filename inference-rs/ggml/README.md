@@ -1,10 +1,11 @@
-# Bare-libggml translation engine (G1 of the ggml/llama.cpp port eval)
+# Bare-libggml translation engine (ggml/llama.cpp port eval)
 
 A from-scratch converter + compiled ggml engine that runs the Bergamot/Marian student model
 on **libggml**, so its speed/memory/quality sit in the same `final_comparison.py` table as
-`inference-rs`, marian, and ONNX. This is **G1** — a bare-libggml binary (own encoder+decoder
-`ggml_cgraph` + host greedy loop), the closest honest analog to the ONNX eval's clean-room
-route. It is *not* a full `LLM_ARCH_MARIAN` in llama.cpp (that is G2, the product path). See
+`inference-rs`, marian, and ONNX. This is the **bare-libggml route** — a binary with its own
+encoder+decoder `ggml_cgraph` + host greedy loop, the closest honest analog to the ONNX eval's
+clean-room route. It is *not* a full `LLM_ARCH_MARIAN` in llama.cpp (that is the product
+path). See
 `../notes/18-ggml-port-design.md` for the full design, gates, and results, and `SPEC.md` in
 `../onnx/` for the architecture (the model is identical).
 

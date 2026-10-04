@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Encoder gate — the llama.cpp ``marian`` encoder vs the numpy_ref float golden.
 
-Feeds the fixed sentence's EXACT source ids (the same ids G1 and numpy_ref use) through
+Feeds the fixed sentence's EXACT source ids (the same ids bare-libggml and numpy_ref use)
+through
 ``ggml/marian_encoder_dump`` (a libllama driver that runs LLM_GRAPH_TYPE_ENCODER with
 pooling NONE + embeddings, then reads llama_get_embeddings) and diffs the full per-token
 encoder context [seq, dim] against ``numpy_ref.encode``. PASS = abs max < 1e-4.

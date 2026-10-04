@@ -50,8 +50,8 @@ GGML_BIN = CRATE / "ggml/marian_ggml"
 GGML_PRETOK = CRATE / "ggml/pretokenize.py"
 GGML_MODELS = CRATE / "ggml/models"
 # The llama.cpp LLM_ARCH_MARIAN engine is also a compiled binary (built by ggml/build_llama.sh),
-# so its RSS is the fairest memory peer to G1. It consumes the SAME pretokenized source-id block
-# file G1 uses and emits identical [block] spans. See notes/18.
+# so its RSS is the fairest memory peer to bare-libggml. It consumes the SAME pretokenized
+# source-id block file that engine uses and emits identical [block] spans. See notes/18.
 LLAMA_BIN = CRATE / "ggml/marian_llama_blockbench"
 LLAMA_MODELS = CRATE / "ggml/models"
 
@@ -307,7 +307,8 @@ def main() -> None:
                 f"[final] llama GGUF missing: {gguf} (build it: "
                 f"task rs:ggml-llama-convert or python ggml/convert_marian_llama.py)"
             )
-        # Same pretokenized source ids as G1 (shared SPM) — the sampled process is the binary alone.
+        # Same pretokenized source ids as bare-libggml (shared SPM) — the sampled process is
+        # the binary alone.
         llama_pretok = tempfile.NamedTemporaryFile("w", suffix=".ids", delete=False)
         pre = subprocess.run(
             [str(VENV_PY), str(GGML_PRETOK), str(blocks)], capture_output=True, text=True
@@ -468,8 +469,8 @@ def main() -> None:
         )
         if args.ggml:
             print(
-                f"  llama.cpp vs ggml (G1)       : {lw / med(ggm['wps']):.2f}x  "
-                f"(llama/G1; >=1 = llama's scheduler meets/beats G1's hand loop)"
+                f"  llama.cpp vs bare-libggml    : {lw / med(ggm['wps']):.2f}x  "
+                f"(>=1 = llama's scheduler meets/beats the hand loop)"
             )
     print(
         "\nnotes:\n"
@@ -529,13 +530,14 @@ def main() -> None:
             "  - llama.cpp caveats (read the row with these in mind):\n"
             "    * the LLM_ARCH_MARIAN engine inside upstream llama.cpp (marian-arch branch),\n"
             "      driven two-phase (llama_encode -> greedy llama_decode). A compiled single\n"
-            "      binary like G1, so its RSS is a fair peer (ggml arenas + weights).\n"
+            "      binary like bare-libggml, so its RSS is a fair peer (ggml arenas + weights).\n"
             "    * threads set on the llama context (n_threads / n_threads_batch); llama.cpp\n"
             "      uses its own ggml threadpool (OpenMP was off at build).\n"
             "    * single-sequence: one sentence at a time (no block batching), same shape as\n"
-            "      G1's per-sentence encoder path. Its own Q8_0 GGUF (marian-llama.q8_0.gguf),\n"
-            "      whose block layout differs slightly from G1's, so a handful of argmaxes flip\n"
-            "      (~0.2% output-length difference vs G1) — same source ids, same greedy math."
+            "      the bare-libggml per-sentence encoder path. Its own Q8_0 GGUF\n"
+            "      (marian-llama.q8_0.gguf), whose block layout differs slightly, so a\n"
+            "      handful of argmaxes flip (~0.2% output-length difference) — same\n"
+            "      source ids, same greedy math."
         )
 
 
