@@ -29,44 +29,72 @@ translator-cli int8  Погода сегодня хорошая.
 translator-cli f32   Погода сегодня хорошая.
 ```
 
-## Where the divergence does look like it lives
+## Root cause: the decoder's first step embedded a token marian does not
 
-Three independent implementations of the forward pass agree with each other and
-disagree with `translator-cli`:
+**marian zero-pads the decoder input at position 0.** It builds the decoder input
+by shifting the target embeddings right and zero-padding the vacated first slot
+(`shift(embeddings, {0, 1, 0})` in `DecoderTransformer::step`), so at the first
+step there is no previous token to embed — only the positional encoding.
 
-- `fxtranslate` f32
-- `fxtranslate` int8
-- `onnx/numpy_ref.py` — a clean-room numpy implementation read from the `.npz`
+`fxtranslate` seeded `prev = eos` and embedded it, the BOS convention other
+toolkits use. `Wemb[eos]` has 476 of its 512 entries non-zero, and scaled by
+`√512` it has L2 norm **30.5** against `PE(0)`'s **16.0** — so the first decode
+step was receiving a spurious vector ~1.9× the size of the only signal that says
+"this is the start of a sentence."
 
-Tokenization is also exonerated: `fxtranslate`'s source ids match `sentencepiece`
-exactly (`[287, 6751, 279, 8097, 1168, 264, 0]` for "The weather is nice today."),
-and the reference trace's input node has the same length.
+Confirmed directly in the reference trace: the decoder step-0 embedding node
+(`id=397`) is all 512 elements zero, and the step-0 PE node (`id=399`) is exactly
+`PE(0)` in marian's block layout (256 zeros, then 256 ones). `decoder_start_state_1`
+is also all zeros, so the SSRU cell seeding was already right.
 
-What remains, and the shape of the evidence, points at the **first decode step**
-rather than the arithmetic. The wording-divergent cases look like a displaced or
-dropped first token, not like noise:
+The symptom was systematic. Step-0 logits over the same 280 shortlist candidates:
 
 ```
-src : I love programming.
-ref : Я люблю программирование.
-rust: люблю программирование.            <- leading "Я" absent
-
-src : Please close the door.
-ref : Пожалуйста, закройте дверь.
-rust: , пожалуйста, закрой дверь.        <- output begins with a comma
+translator-cli: ▁Погода(18.79) ▁Сегодня(15.80) ▁По(13.83) ▁У(11.18) ▁На(11.06) ▁В(11.02)
+fxtranslate   : ▁сегодня(15.22) ▁погода(11.78) ▁на(10.28)  ▁и(10.25)  ▁у(9.87)  ▁сейчас(9.35)
 ```
 
-A sentence cannot legitimately begin with a comma, so step 0 is emitting
-something it should not. That is consistent with the capitalization symptom
-having the same root cause rather than being a separate post-processing gap.
+The same words, in systematically the opposite case. The model picked the right
+word and the wrong capitalization; once the first token differed, word order and
+agreement drifted downstream, which is why some sentences looked reordered or
+truncated rather than merely lowercased.
 
-**Important caveat on the evidence.** `numpy_ref.greedy` seeds the decoder with
-`prev = eos`, `pos = 0`, zero SSRU states — the same convention
-`Engine::greedy` uses. So numpy_ref's agreement validates the ops and the weight
-layout (which is what certifies the float path below); it does **not**
-independently validate the decoder start convention. If the seeding is what
-differs from marian, both implementations would share the error. That is the
-next thing to check, and it is not checked here.
+### Impact of the fix
+
+Greedy exact-match against `translator-cli`, shortlist off, `corpora/dev-en.txt`:
+
+| pair | before | after |
+|---|---|---|
+| en-ru int8 | 0/20 | 18/20 |
+| en-ru **float32** | 0/20 | **20/20** |
+| en-fr int8 | 15/20 | 19/20 |
+| en-es int8 | 6/20 | 19/20 |
+
+float32 reaching 20/20 is the clean confirmation: with the seeding fixed,
+`fxtranslate` reproduces the reference exactly, and the handful of remaining int8
+mismatches are the legitimate near-tie reshuffles quantization causes (they are
+single-word synonym swaps — `как ты`/`как дела`, `и`/`а` — and they disappear at
+float32).
+
+Pinned by `tests/decoder_seed.rs`, which fails on both counts without the fix.
+
+### Why nothing caught this
+
+Three layers of existing verification all had the same blind spot:
+
+- **The trace replay** (`oracle replay`) recomputes each node from its children
+  *in the trace*. The decoder's step-0 embedding and PE are `const` leaf nodes, so
+  they are passed through, never recomputed. The replay reports 635 nodes
+  recomputed and no real divergence even with the bug present.
+- **`onnx/numpy_ref.py`** seeds `prev = tok.eos_id` — the same convention, hence
+  the same bug. Its agreement with `fxtranslate` validated the ops and weight
+  layout but not the seeding. The ONNX and ggml ports inherit this too, since
+  they were built against the same reference.
+- **The en-fr anchor test** (`Hello world.` → `Bonjour le monde.`) is one of the
+  sentences that happens to be robust to the perturbation, so it passed either way.
+
+The float32 work is what made this findable: it ruled out quantization in one
+step, which left the driver loop as the only place to look.
 
 ## The float path itself
 
@@ -100,7 +128,7 @@ Against `onnx/numpy_ref.py` on the same sentence and the same source ids:
 | | encoder max abs diff | first-step logits max abs diff | top-5 |
 |---|---|---|---|
 | int8 | 0.168 | 4.742 | reshuffled, argmax disagreed |
-| **float32** | **1.9e-06** | **5.8e-05** | **identical, in order** |
+| **float32** | **1.9e-06** | **4.2e-05** | **identical, in order** |
 
 That residual is f32 accumulation-order noise. Orientation is separately pinned
 by cosine similarity: int8-vs-float on the same weight scores 0.9998–0.99998,

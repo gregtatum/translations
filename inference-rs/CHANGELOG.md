@@ -7,6 +7,33 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Decoder first-step seeding.** The decoder embedded its seed token (`eos`) at
+  position 0, but marian zero-pads there: it builds the decoder input by shifting
+  the target embeddings right and zero-padding the vacated first slot
+  (`shift(embeddings, {0, 1, 0})`), so the first step sees only the positional
+  encoding. Embedding `Wemb[eos]` injected a vector of L2 norm 30.5 against
+  `PE(0)`'s 16.0 — nearly 2× the only signal marking a sentence start — so the
+  model picked the right word in the wrong case, and word order drifted from
+  there. Greedy exact-match against `translator-cli` (shortlist off,
+  `corpora/dev-en.txt`):
+
+  | pair | before | after |
+  |---|---|---|
+  | en-ru int8 | 0/20 | 18/20 |
+  | en-ru float32 | 0/20 | **20/20** |
+  | en-fr int8 | 15/20 | 19/20 |
+  | en-es int8 | 6/20 | 19/20 |
+
+  **This changes output for every model and pair.** The remaining int8 mismatches
+  are legitimate quantization near-ties (they vanish at float32). Pinned by
+  `tests/decoder_seed.rs`. The trace replay could not catch it — the step-0
+  embedding and PE are `const` leaves, so it passes them through — and
+  `onnx/numpy_ref.py` shares the old convention, so the ONNX and ggml ports need
+  the same fix before their gates mean anything. See
+  `notes/23-float-model-support.md`.
+
 ### Added
 
 - Float32 (non-quantized) model support. `marian-conv --gemm-type float32`
@@ -29,7 +56,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
     now chosen at load from the dtype rather than purely by feature.
   - Verified against `onnx/numpy_ref.py`, an independent float implementation of
     the same checkpoint: encoder max abs diff 1.9e-06 and first-step logits
-    5.8e-05, with an identical top-5 — versus 0.168 / 4.74 for the int8 path.
+    4.2e-05, with an identical top-5 — versus 0.168 / 4.74 for the int8 path.
   - `--float32` on `task rs:translate`, `rs:translate-reference`, and `rs:parity`
     runs the `<pair>-f32` conversion, so both engines can be compared at either
     precision through the same interface.

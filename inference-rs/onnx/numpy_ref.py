@@ -87,10 +87,22 @@ def build_pe(max_seq: int) -> np.ndarray:
 PE = build_pe(256)
 
 
-def embed(ids: list[int], start_pos: int = 0) -> np.ndarray:
-    """sqrt(d)*Wemb[id] + PE(pos), scaling BEFORE adding PE."""
+def embed(ids: list[int], start_pos: int = 0, decoder: bool = False) -> np.ndarray:
+    """sqrt(d)*Wemb[id] + PE(pos), scaling BEFORE adding PE.
+
+    With ``decoder=True``, position 0 gets *no* embedding, only the positional
+    encoding. marian builds the decoder input by shifting the target embeddings
+    right and zero-padding the vacated first slot (``shift(embeddings, {0,1,0})``
+    in ``DecoderTransformer::step``), so the first step has no previous token to
+    embed. Embedding the seed token there instead injects a vector ~1.9x the norm
+    of PE(0) and makes the model prefer lowercase sentence-initial tokens; see
+    ``notes/23-float-model-support.md``.
+    """
     x = npz.EMBED_SCALE * npz.wemb()[ids]  # [seq,384]
     pe = PE[start_pos : start_pos + len(ids)]
+    if decoder and start_pos == 0:
+        x = x.copy()
+        x[0] = 0.0
     return (x + pe).astype(np.float32)
 
 
@@ -149,7 +161,7 @@ def decode_step(
     ``states[i]`` is the pre-ReLU SSRU cell ``c`` for layer i (init zeros).
     Returns ``(logits[32000], new_states)``.
     """
-    u = embed([prev_token], start_pos=pos)[0]  # [384]
+    u = embed([prev_token], start_pos=pos, decoder=True)[0]  # [384]
     new_states: list[np.ndarray] = []
 
     for layer in range(1, npz.DEC_DEPTH + 1):

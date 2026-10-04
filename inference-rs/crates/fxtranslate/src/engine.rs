@@ -471,7 +471,9 @@ impl Engine {
             .map(|s| s.candidates(src_ids, self.shared_vocab));
 
         let mut out = Vec::new();
-        let mut prev = eos; // decoder is seeded with EOS
+        let mut prev = eos; // Seeded with EOS, but `embed_into` discards the embedding at
+                            // position 0 (marian zero-pads the shifted target embeddings there), so
+                            // the seed id only matters from step 1 on.
         for step in 0..max_len {
             let top = self.decode_step(prev, step, &context, seq, &mut cells);
             let next = self.project_argmax(&top, candidates.as_deref());
@@ -510,7 +512,9 @@ impl Engine {
         let candidate_count = cand_set.len();
 
         let mut hits = Vec::new();
-        let mut prev = eos; // decoder is seeded with EOS, as in `greedy`
+        let mut prev = eos; // Seeded with EOS, but `embed_into` discards the embedding at
+                            // position 0 (marian zero-pads the shifted target embeddings there), so
+                            // the seed id only matters from step 1 on. Same as `greedy`.
         for step in 0..max_len {
             let top = self.decode_step(prev, step, &context, seq, &mut cells);
             // Full-vocab argmax — the shortlist does NOT decide the token here.
@@ -1825,6 +1829,20 @@ impl Engine {
             let dst = &mut out[t * d..(t + 1) * d];
             match side {
                 Side::Source => self.weights.src_embed_row_into(id, dst),
+                // Decoder position 0 gets *no* embedding — only the positional
+                // encoding. marian builds the decoder input by shifting the
+                // target embeddings right and zero-padding the vacated first
+                // slot (`shift(embeddings, {0, 1, 0})` in
+                // `DecoderTransformer::step`), so at the first step there is no
+                // previous token to embed. Embedding the seed token instead (the
+                // BOS convention other toolkits use) injects a vector ~1.9× the
+                // norm of PE(0) into that step, which swamps the sentence-initial
+                // signal: the model then prefers the lowercase form of the token
+                // it would otherwise emit. Confirmed against the reference trace,
+                // whose decoder step-0 embedding node is all zeros; worth
+                // 0/20 → 18/20 greedy exact-match vs translator-cli on en-ru.
+                // See notes/23-float-model-support.md.
+                Side::Target if start + t == 0 => dst.fill(0.0),
                 Side::Target => self.weights.trg_embed_row_into(id, dst),
             }
             let pos = (start + t) as f32;
