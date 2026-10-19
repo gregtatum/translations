@@ -10,7 +10,8 @@
 //! + `backend`), selected at compile time in this precedence:
 //! 1. **`gemmology_simd`** — the vendored gemmology SIMD kernel via FFI
 //!    (`src/gemmology_shim.cpp`), for native aarch64 (i8mm) / x86_64 (AVX2), when
-//!    `build.rs` could build the shim.
+//!    `build.rs` could build the shim and the CPU has those instructions (checked
+//!    at run time; without them every weight takes the scalar kernel).
 //! 2. **wasm SIMD128** — a pure-Rust kernel (`core::arch::wasm32`, `dot_i16x8_s`),
 //!    when the target is `wasm32` built with `+simd128` and gemmology is not live.
 //! 3. **scalar stub** — otherwise; [`PreparedB::new`] always returns `None`, so
@@ -37,9 +38,25 @@ mod imp {
         fn gemmology_gemm_threads() -> usize;
     }
 
+    /// Whether this CPU has the instructions the shim was compiled for. `build.rs`
+    /// targets AVX2 / i8mm whatever the host, so elsewhere the shim is a SIGILL.
+    #[cfg(target_arch = "x86_64")]
+    fn usable() -> bool {
+        std::arch::is_x86_feature_detected!("avx2")
+    }
+
+    #[cfg(target_arch = "aarch64")]
+    fn usable() -> bool {
+        std::arch::is_aarch64_feature_detected!("i8mm")
+            && std::arch::is_aarch64_feature_detected!("dotprod")
+    }
+
     /// Cores the intra-op GEMM pool will use (feature `gemm-threads` +
     /// `FXT_GEMM_THREADS`): `1` = inert (sequential), `0` = feature not compiled.
     pub fn gemm_threads() -> usize {
+        if !usable() {
+            return 1;
+        }
         // SAFETY: reads a size from the shim; always valid.
         unsafe { gemmology_gemm_threads() }
     }
@@ -48,6 +65,9 @@ mod imp {
     /// allocations gemmology holds, which dhat (Rust-heap only) cannot see. For
     /// memory accounting.
     pub fn prepared_bytes() -> usize {
+        if !usable() {
+            return 0;
+        }
         // SAFETY: reads an atomic counter in the shim; always valid.
         unsafe { gemmology_prepared_bytes() }
     }
@@ -57,6 +77,9 @@ mod imp {
     /// is live rather than trusting it didn't silently fall back to scalar — the
     /// scalar stub below reports "scalar" instead.
     pub fn backend() -> &'static str {
+        if !usable() {
+            return "scalar";
+        }
         // SAFETY: the shim returns a pointer to a static, NUL-terminated string
         // (xsimd's `Arch::name()`), valid for the whole program.
         let name = unsafe { std::ffi::CStr::from_ptr(gemmology_backend_name()) };
@@ -85,6 +108,9 @@ mod imp {
         /// If `b_transposed.len() != n * k`.
         pub fn new(b_transposed: &[i8], n: usize, k: usize) -> Option<PreparedB> {
             assert_eq!(b_transposed.len(), n * k, "B length must be n * k");
+            if !usable() {
+                return None;
+            }
             // SAFETY: pointer/len are consistent with (n, k); the shim only reads
             // n*k bytes and copies them into its own buffer.
             let handle = unsafe { gemmology_prepare_b(b_transposed.as_ptr(), n, k) };

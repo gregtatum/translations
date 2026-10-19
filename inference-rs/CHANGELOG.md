@@ -9,6 +9,21 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **No SIGILL on CPUs without the SIMD kernel's instructions.** `build.rs`
+  compiles the gemmology shim with `-mavx2` (x86_64) or `-march=armv8.4-a+i8mm`
+  (aarch64) whatever machine will run it, and nothing checked the CPU at run time,
+  so on an x86-64 without AVX2 (or an aarch64 core without i8mm) the process loaded
+  the model and then died with an illegal instruction on the first multiply
+  (exit 132; issue #4). `gemm.rs` now checks the CPU at run time
+  (`is_x86_feature_detected!("avx2")`; `is_aarch64_feature_detected!("i8mm")` and
+  `"dotprod"`) and, without them, never calls into the shim: `PreparedB::new`
+  returns `None`, every weight takes the existing scalar kernel, and `backend()`
+  reports `"scalar"`. No build changes. Under `qemu-x86_64 -cpu Nehalem` a
+  translation that exited 132 now completes, byte-identical to a `portable` build;
+  on AVX2 hardware the output is unchanged. Under `qemu-aarch64` as Cortex-A53,
+  Cortex-A72 and Neoverse-N1 (no i8mm) a translation that exited 132 now
+  completes, with the same output as on i8mm cores; not yet run on such hardware.
+
 - **Decoder first-step seeding.** The decoder embedded its seed token (`eos`) at
   position 0, but marian zero-pads there: it builds the decoder input by shifting
   the target embeddings right and zero-padding the vacated first slot
